@@ -7,8 +7,13 @@ import {
   type InsertMessage,
   type Activity,
   type InsertActivity,
+  clients,
+  sessions,
+  messages,
+  activities,
 } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Clients
@@ -34,22 +39,13 @@ export interface IStorage {
   createActivity(activity: InsertActivity): Promise<Activity>;
 }
 
-export class MemStorage implements IStorage {
-  private clients: Map<string, Client>;
-  private sessions: Map<string, Session>;
-  private messages: Map<string, Message>;
-  private activities: Map<string, Activity>;
+export class DatabaseStorage implements IStorage {
+  async seedData() {
+    const existingClients = await db.select().from(clients);
+    if (existingClients.length > 0) {
+      return;
+    }
 
-  constructor() {
-    this.clients = new Map();
-    this.sessions = new Map();
-    this.messages = new Map();
-    this.activities = new Map();
-    this.seedData();
-  }
-
-  private seedData() {
-    // Seed clients
     const sampleClients: InsertClient[] = [
       {
         name: "Sarah Wilson",
@@ -108,13 +104,9 @@ export class MemStorage implements IStorage {
       },
     ];
 
-    sampleClients.forEach((client) => {
-      const id = randomUUID();
-      this.clients.set(id, { ...client, id });
-    });
+    const insertedClients = await db.insert(clients).values(sampleClients).returning();
+    const clientIds = insertedClients.map((c) => c.id);
 
-    // Seed sessions
-    const clientIds = Array.from(this.clients.keys());
     const sampleSessions: InsertSession[] = [
       {
         clientId: clientIds[0],
@@ -158,12 +150,8 @@ export class MemStorage implements IStorage {
       },
     ];
 
-    sampleSessions.forEach((session) => {
-      const id = randomUUID();
-      this.sessions.set(id, { ...session, id });
-    });
+    await db.insert(sessions).values(sampleSessions);
 
-    // Seed activities
     const sampleActivities: InsertActivity[] = [
       {
         clientId: clientIds[0],
@@ -191,12 +179,8 @@ export class MemStorage implements IStorage {
       },
     ];
 
-    sampleActivities.forEach((activity) => {
-      const id = randomUUID();
-      this.activities.set(id, { ...activity, id });
-    });
+    await db.insert(activities).values(sampleActivities);
 
-    // Seed messages
     const sampleMessages: InsertMessage[] = [
       {
         clientId: clientIds[0],
@@ -224,88 +208,82 @@ export class MemStorage implements IStorage {
       },
     ];
 
-    sampleMessages.forEach((message) => {
-      const id = randomUUID();
-      this.messages.set(id, { ...message, id });
-    });
+    await db.insert(messages).values(sampleMessages);
   }
 
   // Client methods
   async getClients(): Promise<Client[]> {
-    return Array.from(this.clients.values());
+    return await db.select().from(clients);
   }
 
   async getClient(id: string): Promise<Client | undefined> {
-    return this.clients.get(id);
+    const [client] = await db.select().from(clients).where(eq(clients.id, id));
+    return client || undefined;
   }
 
   async createClient(insertClient: InsertClient): Promise<Client> {
-    const id = randomUUID();
-    const client: Client = { ...insertClient, id };
-    this.clients.set(id, client);
+    const [client] = await db.insert(clients).values(insertClient).returning();
     return client;
   }
 
   async updateClient(id: string, data: Partial<InsertClient>): Promise<Client | undefined> {
-    const client = this.clients.get(id);
-    if (!client) return undefined;
-
-    const updatedClient = { ...client, ...data };
-    this.clients.set(id, updatedClient);
-    return updatedClient;
+    const [updatedClient] = await db
+      .update(clients)
+      .set(data)
+      .where(eq(clients.id, id))
+      .returning();
+    return updatedClient || undefined;
   }
 
   async deleteClient(id: string): Promise<boolean> {
-    return this.clients.delete(id);
+    const result = await db.delete(clients).where(eq(clients.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // Session methods
   async getSessions(): Promise<Session[]> {
-    return Array.from(this.sessions.values());
+    return await db.select().from(sessions);
   }
 
   async getSession(id: string): Promise<Session | undefined> {
-    return this.sessions.get(id);
+    const [session] = await db.select().from(sessions).where(eq(sessions.id, id));
+    return session || undefined;
   }
 
   async createSession(insertSession: InsertSession): Promise<Session> {
-    const id = randomUUID();
-    const session: Session = { ...insertSession, id };
-    this.sessions.set(id, session);
+    const [session] = await db.insert(sessions).values(insertSession).returning();
     return session;
   }
 
   // Message methods
   async getMessages(): Promise<Message[]> {
-    return Array.from(this.messages.values());
+    return await db.select().from(messages);
   }
 
   async getMessage(id: string): Promise<Message | undefined> {
-    return this.messages.get(id);
+    const [message] = await db.select().from(messages).where(eq(messages.id, id));
+    return message || undefined;
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
-    const id = randomUUID();
-    const message: Message = { ...insertMessage, id };
-    this.messages.set(id, message);
+    const [message] = await db.insert(messages).values(insertMessage).returning();
     return message;
   }
 
   // Activity methods
   async getActivities(): Promise<Activity[]> {
-    return Array.from(this.activities.values());
+    return await db.select().from(activities);
   }
 
   async getActivity(id: string): Promise<Activity | undefined> {
-    return this.activities.get(id);
+    const [activity] = await db.select().from(activities).where(eq(activities.id, id));
+    return activity || undefined;
   }
 
   async createActivity(insertActivity: InsertActivity): Promise<Activity> {
-    const id = randomUUID();
-    const activity: Activity = { ...insertActivity, id };
-    this.activities.set(id, activity);
+    const [activity] = await db.insert(activities).values(insertActivity).returning();
     return activity;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
