@@ -38,9 +38,9 @@ const navigationItems = [
   },
   {
     title: "Smart Scheduling",
-    url: "#",
+    url: "/scheduling",
     icon: Calendar,
-    locked: true,
+    locked: false,
   },
   {
     title: "Communication",
