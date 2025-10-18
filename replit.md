@@ -29,7 +29,25 @@ Wellio is an AI-powered fitness & wellness coaching platform MVP that helps prof
    - Status management (Active, Inactive, Paused)
    - Goal types: Weight Loss, Muscle Gain, Endurance, Flexibility, General Wellness
 
-3. **Communication**
+3. **Progress Analytics**
+   - 4 key metrics: Active Clients, Avg Progress, Session Completion, Top Performers
+   - Time range selector (7/30/90/365 days) - filters session-based metrics
+   - Progress Trend line chart (monthly avg progress and sessions)
+   - Goal Distribution pie chart
+   - Individual Performance bar chart
+   - Performance insights with color-coded alerts
+   - Achievement badges system
+
+4. **Smart Scheduling**
+   - Monthly calendar view with session display
+   - Session booking form with validation
+   - Today's schedule panel
+   - All sessions list with status filter (scheduled, completed, cancelled)
+   - Color-coded session types (training, consultation, follow-up, assessment)
+   - Month navigation controls
+   - Database-backed session persistence
+
+5. **Communication**
    - Real-time messaging interface
    - Client conversation list with unread badges
    - Send messages with validation
@@ -37,9 +55,7 @@ Wellio is an AI-powered fitness & wellness coaching platform MVP that helps prof
    - Error handling and loading states
 
 ### Coming Soon Features (Locked with Tooltips):
-- Progress Analytics
-- Smart Scheduling
-- Predictive Analytics
+- Predictive Analytics (AI-powered insights)
 
 ## Design System
 
@@ -196,6 +212,10 @@ All dashboard stats are calculated from real API data:
 - No dead UI - every interaction works as expected
 
 ## Recent Changes (October 2025)
+- ✅ PostgreSQL database migration with Drizzle ORM (replaced in-memory storage)
+- ✅ Database seeding system for sample data
+- ✅ Progress Analytics page with time-filtered metrics and charts
+- ✅ Smart Scheduling page with calendar view and booking system
 - ✅ Complete MVP implementation with teal/lime color scheme
 - ✅ Dashboard with 100% accurate real-time analytics
 - ✅ Full CRUD client management with validation
@@ -204,16 +224,19 @@ All dashboard stats are calculated from real API data:
 - ✅ Responsive Shadcn sidebar navigation
 - ✅ Fixed timezone issues (using local dates, not UTC)
 - ✅ Fixed time sorting (proper AM/PM chronological order)
-- ✅ E2E testing validation passed
+- ✅ E2E testing validation passed for all pages
 - ✅ All data sourced from backend (no mock data)
 
 ## Development Notes
-- **Storage**: Using in-memory MemStorage for MVP (no database persistence)
+- **Storage**: PostgreSQL database with Drizzle ORM and Neon pool connection
+- **Database**: UUID primary keys (varchar with gen_random_uuid), idempotent seeding on startup
 - **Timezone**: All date operations use local timezone (`toLocaleDateString('en-CA')`)
 - **Time Parsing**: Session times sorted with AM/PM conversion to minutes for accuracy
 - **Validation**: All forms use react-hook-form with zodResolver for type-safe validation
 - **Query Management**: TanStack Query v5 with proper cache invalidation on mutations
-- **Locked Features**: Analytics, Scheduling, Predictive features show lock icons with "Coming soon" tooltips
+- **Analytics**: Session-based metrics filter by time range; client metrics show current state
+- **Scheduling**: Calendar with monthly navigation, color-coded session types, booking form
+- **Locked Features**: Only Predictive Analytics shows lock icon with "Coming soon" tooltip
 
 ## User Preferences
 - Brand colors must be #E2F9AD (lime) and #28A0AE (teal)
