@@ -32,9 +32,9 @@ const navigationItems = [
   },
   {
     title: "Progress Analytics",
-    url: "#",
+    url: "/analytics",
     icon: TrendingUp,
-    locked: true,
+    locked: false,
   },
   {
     title: "Smart Scheduling",
