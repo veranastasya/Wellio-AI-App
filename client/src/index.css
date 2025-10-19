@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Foundation - Prevent cropped content */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* Prevent double scroll on body */
+}
+
+body {
+  min-height: 100%;
+}
+
 /* LIGHT MODE */
 :root {
   --button-outline: rgba(0,0,0, .10);

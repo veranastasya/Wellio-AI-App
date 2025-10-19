@@ -368,7 +368,7 @@ function ClientForm({
               <FormItem>
                 <FormLabel>Phone (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="+1 (555) 000-0000" {...field} data-testid="input-client-phone" />
+                  <Input placeholder="+1 (555) 000-0000" {...field} value={field.value || ""} data-testid="input-client-phone" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -406,7 +406,7 @@ function ClientForm({
               <FormItem>
                 <FormLabel>Goal Type</FormLabel>
                 <FormControl>
-                  <Input placeholder="Weight Loss, Strength Training..." {...field} data-testid="input-client-goal" />
+                  <Input placeholder="Weight Loss, Strength Training..." {...field} value={field.value || ""} data-testid="input-client-goal" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -445,6 +445,7 @@ function ClientForm({
                   placeholder="Additional notes about the client..."
                   className="min-h-24"
                   {...field}
+                  value={field.value || ""}
                   data-testid="input-client-notes"
                 />
               </FormControl>

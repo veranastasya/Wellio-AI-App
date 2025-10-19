@@ -38,12 +38,12 @@ export default function App() {
         <SidebarProvider style={style as React.CSSProperties}>
           <div className="flex h-screen w-full">
             <AppSidebar />
-            <div className="flex flex-col flex-1 overflow-hidden">
-              <header className="flex items-center justify-between p-4 border-b border-border bg-background">
+            <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+              <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
                 <SidebarTrigger data-testid="button-sidebar-toggle" />
                 <ThemeToggle />
               </header>
-              <main className="flex-1 overflow-hidden">
+              <main className="flex-1 overflow-y-auto overflow-x-hidden">
                 <Router />
               </main>
             </div>

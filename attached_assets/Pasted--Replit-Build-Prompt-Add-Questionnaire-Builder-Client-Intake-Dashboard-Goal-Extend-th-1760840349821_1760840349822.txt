@@ -1,0 +1,148 @@
+# Replit Build Prompt — Add Questionnaire Builder (Client Intake Dashboard)
+
+## 🎯 Goal
+Extend the **Wellio MVP** with a new **Questionnaire Builder** — a separate page in the sidebar (no lock icon).  
+This feature allows coaches to **create custom client intake forms** (similar to Google Forms), send them to clients, and automatically generate client profiles when responses are submitted.
+
+---
+
+## 🧭 Navigation & Placement
+Add a new **menu item**:
+- **Questionnaires** (no lock icon)
+  - Appears between **Client Management** and **Progress Analytics**
+  - Clicking it opens the **Questionnaire Dashboard** (new page)
+
+---
+
+## 📄 Questionnaire Dashboard (new page)
+This page lists all created questionnaires and allows coaches to build new ones.
+
+### Layout
+- **Header:** “Questionnaires” + `New Questionnaire` button (primary CTA)
+- **List/Table view:**  
+  Columns: `Name`, `Status (Draft / Published)`, `Responses`, `Last Updated`, `Actions`
+- **Actions menu per row:** Edit, Preview, Duplicate, Archive, Delete
+- **Empty state:**  
+  “No questionnaires yet. Create your first intake form to onboard clients faster.”  
+  Button → `Create Questionnaire`
+
+### Actions
+- **Create Questionnaire** → opens the **Questionnaire Builder Editor**
+- **Edit Questionnaire** → open builder pre-filled with existing questions
+- **Preview** → opens a mock client-facing version
+- **Publish** → enables sending this questionnaire to clients
+- **Archive** → hides from dropdowns (but keeps data)
+
+---
+
+## 🛠 Questionnaire Builder Editor
+A simplified “Google Forms”–style editor for creating or editing forms.
+
+### Left (Main Canvas)
+- List of questions (each card includes label, type, required toggle)
+- Question types: Short text, Paragraph, Multiple choice, Checkboxes, Dropdown, Date, Number
+- Drag-and-drop reordering
+
+### Right (Sidebar)
+- Form properties:
+  - Form name
+  - Welcome text
+  - Consent text (toggle required)
+  - Confirmation message (text)
+- Default fields (cannot be removed):
+  - First Name, Last Name, Email, Phone
+  - These appear at the top for consistency
+
+### Buttons / Controls
+- `+ Add Question`  
+- `Preview` (opens modal or new page)
+- `Save Draft` / `Publish`
+
+---
+
+## 💬 Client Creation Flow Integration
+Modify the **Client Management** “New Client” modal to include two creation options:
+1. **Add Manually** — existing flow remains unchanged.
+2. **Send Questionnaire** — new flow.
+
+### “Send Questionnaire” flow:
+1. Coach enters **Client Name** (required).
+2. Selects a **Questionnaire Template** from a dropdown (populated from published questionnaires).
+3. Clicks **Send** → form is “sent” (simulate sending for MVP).
+4. A new **client record** appears in the Client List:
+   - Status = `Pending`
+   - Basic info = name + placeholder
+   - Once “response” (mocked submission) is received, the client profile auto-updates with parsed questionnaire data and status changes to `Active`.
+
+*(For MVP, mock the submission process — clicking a button like “Simulate Response” can auto-fill data back into the client’s profile.)*
+
+---
+
+## 🧩 Data Structure (extend existing)
+### `Questionnaire`
+- `id`
+- `name`
+- `status` (“draft” | “published”)
+- `questions[]` (array of question objects)
+  - `id`, `label`, `type`, `isRequired`, `options[]`
+- `createdAt`, `updatedAt`
+
+### `Client`
+- Extend with optional:
+  - `intakeSource`: “manual” | “questionnaire”
+  - `questionnaireId` (if applicable)
+  - `status`: “pending” until intake form parsed
+
+### `Response` (mocked for MVP)
+- `id`
+- `questionnaireId`
+- `clientId`
+- `answers[]` (key/value pairs)
+
+---
+
+## 🧠 Functionality Summary
+
+### Questionnaire Dashboard
+✅ View existing questionnaires  
+✅ Create new form  
+✅ Edit, Duplicate, Archive  
+✅ Publish / Unpublish  
+✅ Preview form
+
+### Questionnaire Builder
+✅ Add, remove, reorder questions  
+✅ Default required client info fields (cannot be deleted)  
+✅ Save as draft or publish  
+✅ Simple validation (required fields, text/number types)
+
+### Client Management
+✅ “New Client” modal:
+   - Option A: Add manually (existing)
+   - Option B: Send via questionnaire (new)
+✅ Pending client records appear automatically
+✅ Simulate automatic profile creation once questionnaire data returns
+
+---
+
+## 💎 Design
+- Follow Wellio’s existing style (lime `#E2F9AD`, teal `#28A0AE`).
+- Keep consistent sidebar, header, and card layout.
+- Questionnaire list view matches the same visual pattern as Client Management.
+
+---
+
+## 🚫 Out of Scope for MVP
+- Real email sending or form hosting (simulate locally).
+- External integrations.
+- Response analytics (may be added later).
+
+---
+
+## ✅ Acceptance Criteria
+- “Questionnaires” tab appears and is functional.
+- I can create, edit, and publish a custom form with default client fields.
+- From “Client Management” → “+ New Client” → I can send a questionnaire.
+- A pending client profile appears once sent.
+- I can simulate a completed form → client profile populates automatically.
+- All other existing pages (Dashboard, Client Management, Chat) continue to work as before.
