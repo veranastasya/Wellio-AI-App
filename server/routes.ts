@@ -1,7 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertClientSchema, insertSessionSchema, insertMessageSchema, insertActivitySchema } from "@shared/schema";
+import { 
+  insertClientSchema, 
+  insertSessionSchema, 
+  insertMessageSchema, 
+  insertActivitySchema,
+  insertQuestionnaireSchema,
+  insertResponseSchema
+} from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Client routes
@@ -154,6 +161,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(activity);
     } catch (error) {
       res.status(400).json({ error: "Invalid activity data" });
+    }
+  });
+
+  // Questionnaire routes
+  app.get("/api/questionnaires", async (_req, res) => {
+    try {
+      const questionnaires = await storage.getQuestionnaires();
+      res.json(questionnaires);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch questionnaires" });
+    }
+  });
+
+  app.get("/api/questionnaires/:id", async (req, res) => {
+    try {
+      const questionnaire = await storage.getQuestionnaire(req.params.id);
+      if (!questionnaire) {
+        return res.status(404).json({ error: "Questionnaire not found" });
+      }
+      res.json(questionnaire);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch questionnaire" });
+    }
+  });
+
+  app.post("/api/questionnaires", async (req, res) => {
+    try {
+      const validatedData = insertQuestionnaireSchema.parse(req.body);
+      const questionnaire = await storage.createQuestionnaire(validatedData);
+      res.status(201).json(questionnaire);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid questionnaire data" });
+    }
+  });
+
+  app.patch("/api/questionnaires/:id", async (req, res) => {
+    try {
+      const validatedData = insertQuestionnaireSchema.partial().parse(req.body);
+      const questionnaire = await storage.updateQuestionnaire(req.params.id, validatedData);
+      if (!questionnaire) {
+        return res.status(404).json({ error: "Questionnaire not found" });
+      }
+      res.json(questionnaire);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid questionnaire data" });
+    }
+  });
+
+  app.delete("/api/questionnaires/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteQuestionnaire(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Questionnaire not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete questionnaire" });
+    }
+  });
+
+  // Response routes
+  app.get("/api/responses", async (_req, res) => {
+    try {
+      const responses = await storage.getResponses();
+      res.json(responses);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch responses" });
+    }
+  });
+
+  app.get("/api/responses/:id", async (req, res) => {
+    try {
+      const response = await storage.getResponse(req.params.id);
+      if (!response) {
+        return res.status(404).json({ error: "Response not found" });
+      }
+      res.json(response);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch response" });
+    }
+  });
+
+  app.post("/api/responses", async (req, res) => {
+    try {
+      const validatedData = insertResponseSchema.parse(req.body);
+      const response = await storage.createResponse(validatedData);
+      res.status(201).json(response);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid response data" });
     }
   });
 
