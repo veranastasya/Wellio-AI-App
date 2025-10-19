@@ -1,4 +1,4 @@
-import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock } from "lucide-react";
+import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock, ClipboardList } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -28,6 +28,12 @@ const navigationItems = [
     title: "Client Management",
     url: "/clients",
     icon: Users,
+    locked: false,
+  },
+  {
+    title: "Questionnaires",
+    url: "/questionnaires",
+    icon: ClipboardList,
     locked: false,
   },
   {

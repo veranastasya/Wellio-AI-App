@@ -11,6 +11,9 @@ import Clients from "@/pages/clients";
 import Communication from "@/pages/communication";
 import Analytics from "@/pages/analytics";
 import Scheduling from "@/pages/scheduling";
+import Questionnaires from "@/pages/questionnaires";
+import QuestionnaireBuilder from "@/pages/questionnaire-builder";
+import QuestionnairePreview from "@/pages/questionnaire-preview";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -18,6 +21,10 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/clients" component={Clients} />
+      <Route path="/questionnaires" component={Questionnaires} />
+      <Route path="/questionnaires/new" component={QuestionnaireBuilder} />
+      <Route path="/questionnaires/:id/edit" component={QuestionnaireBuilder} />
+      <Route path="/questionnaires/:id/preview" component={QuestionnairePreview} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/scheduling" component={Scheduling} />
       <Route path="/communication" component={Communication} />
