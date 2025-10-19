@@ -1,0 +1,118 @@
+# Replit Fix Prompt — Prevent Cropped Content & Enable Proper Scrolling
+
+**Goal:**  
+Across **all screens**, eliminate any vertical cropping so users can always scroll to the bottom of the page. The **sidebar/header** may stay fixed/sticky, but the **main content area must be the only vertical scroll container**. No cards/sections should use fixed heights that cut content off.
+
+---
+
+## What to change (global)
+1. **Single scroll container**
+   - The page should scroll on the **main content area**, not inside cards.
+   - Avoid nested scrollbars.
+
+2. **Remove fixed heights**
+   - Replace any `height: <px>` on page containers, sections, cards, charts with:
+     - `height: auto;` (preferred), or
+     - `min-height` if a minimum is needed.
+
+3. **Avoid clipping**
+   - Remove `overflow: hidden` from `html`, `body`, `main`, and page wrappers.
+   - Only use `overflow: hidden` for intentional masked UI (e.g., modals, toasts).
+
+4. **Sticky shell only**
+   - Sidebar: fixed or sticky OK.
+   - Top header: `position: sticky; top: 0;` with proper z-index.
+   - Content below must flow and scroll under it (with top padding to offset header height).
+
+---
+
+## Layout rules to implement
+- **HTML/BODY**
+  - Full-height page and border-box sizing to fix off-by-one layouts.
+
+- **App Shell**
+  - Use a two-column layout where the left rail (sidebar) is fixed width.
+  - The right panel (**main**) fills remaining width and is the **only** scrollable area.
+
+- **Cards/Charts**
+  - Let content define height (`height: auto`).
+  - For charts, use a responsive wrapper with either `aspect-ratio` or a `min-height` (e.g., 260–320px), never a fixed height that can be smaller than content.
+
+---
+
+## CSS to apply (tech-agnostic)
+> Apply these styles (or their equivalent in your framework) globally.
+
+```css
+/* 1) Foundation */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;         /* prevent double scroll on body */
+  background: #F8FAFC;      /* app bg (optional) */
+}
+
+/* 2) App shell */
+.app {
+  min-height: 100vh;        /* full viewport height */
+  display: grid;
+  grid-template-columns: 260px 1fr; /* sidebar + main */
+}
+
+/* Sidebar (left) */
+.app__sidebar {
+  position: sticky;         /* or fixed if already used */
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow: auto;           /* sidebar can scroll independently if long */
+}
+
+/* Main content (right) – the ONLY vertical scroll container */
+.app__main {
+  min-height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;         /* enables page scrolling */
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sticky top header inside main */
+.app__header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: saturate(180%) blur(6px); /* optional */
+}
+
+/* Content wrapper below header */
+.app__content {
+  flex: 1 1 auto;           /* takes remaining space */
+  padding: 24px;            /* page gutters */
+}
+
+/* 3) Cards & sections */
+.card { 
+  overflow: visible;        /* avoid clipping inner content */
+  height: auto;             /* never fixed heights */
+}
+
+/* Charts: responsive wrapper */
+.chart-wrap {
+  width: 100%;
+  min-height: 280px;        /* ensures legibility */
+  /* Alternatively: aspect-ratio: 16 / 9; */
+}
+
+/* 4) Kill accidental clipping on common containers */
+main, section, .container, .dashboard, .grid, .list, .panel {
+  overflow: visible;
+  height: auto;
+}

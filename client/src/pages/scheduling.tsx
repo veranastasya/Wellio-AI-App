@@ -159,14 +159,14 @@ export default function Scheduling() {
 
   if (clientsLoading || sessionsLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center p-6">
         <div className="text-muted-foreground">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-auto p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight" data-testid="heading-scheduling">Smart Scheduling</h1>
@@ -458,7 +458,7 @@ export default function Scheduling() {
                 </SelectContent>
               </Select>
             </CardHeader>
-            <CardContent className="space-y-3 max-h-96 overflow-auto">
+            <CardContent className="space-y-3">
               {filteredSessions.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground text-sm">
                   No sessions found

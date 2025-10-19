@@ -115,7 +115,7 @@ export default function Clients() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 overflow-auto bg-background">
+      <div className="bg-background">
         <div className="max-w-7xl mx-auto p-6 space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Client Management</h1>
@@ -142,7 +142,7 @@ export default function Clients() {
 
   if (isError) {
     return (
-      <div className="flex-1 overflow-auto bg-background">
+      <div className="bg-background">
         <div className="max-w-7xl mx-auto p-6">
           <Card className="border-destructive">
             <CardContent className="py-16 text-center">
@@ -159,7 +159,7 @@ export default function Clients() {
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-background">
+    <div className="bg-background">
       <div className="max-w-7xl mx-auto p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>

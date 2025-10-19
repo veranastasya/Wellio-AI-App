@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Message, Client, InsertMessage } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -117,8 +116,8 @@ export default function Communication() {
 
   if (clientsLoading || messagesLoading) {
     return (
-      <div className="flex-1 overflow-hidden bg-background">
-        <div className="max-w-7xl mx-auto p-6 h-full flex flex-col">
+      <div className="bg-background">
+        <div className="max-w-7xl mx-auto p-6">
           <div className="mb-6">
             <h1 className="text-3xl font-bold text-foreground">Communication</h1>
             <p className="text-muted-foreground mt-1">Loading conversations...</p>
@@ -150,7 +149,7 @@ export default function Communication() {
 
   if (clientsError || messagesError) {
     return (
-      <div className="flex-1 overflow-hidden bg-background">
+      <div className="bg-background">
         <div className="max-w-7xl mx-auto p-6">
           <Card className="border-destructive">
             <CardContent className="py-16 text-center">
@@ -166,15 +165,15 @@ export default function Communication() {
   }
 
   return (
-    <div className="flex-1 overflow-hidden bg-background">
-      <div className="max-w-7xl mx-auto p-6 h-full flex flex-col">
+    <div className="bg-background">
+      <div className="max-w-7xl mx-auto p-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground" data-testid="text-communication-title">Communication</h1>
           <p className="text-muted-foreground mt-1">Message your clients and manage conversations</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 overflow-hidden">
-          <Card className="flex flex-col h-full" data-testid="card-client-list">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card data-testid="card-client-list">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Clients</CardTitle>
               <div className="relative mt-2">
@@ -188,9 +187,8 @@ export default function Communication() {
                 />
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-hidden p-0">
-              <ScrollArea className="h-full">
-                <div className="space-y-1 p-4">
+            <CardContent className="p-4">
+                <div className="space-y-1">
                   {filteredClients.map((client, index) => {
                     const lastMsg = getLastMessage(client.id);
                     return (
@@ -237,11 +235,10 @@ export default function Communication() {
                     </p>
                   )}
                 </div>
-              </ScrollArea>
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 flex flex-col h-full" data-testid="card-messages">
+          <Card className="lg:col-span-2" data-testid="card-messages">
             {selectedClient ? (
               <>
                 <CardHeader className="pb-3 border-b">
@@ -257,9 +254,8 @@ export default function Communication() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-hidden p-0">
-                  <ScrollArea className="h-full">
-                    <div className="p-4 space-y-4">
+                <CardContent className="p-4">
+                    <div className="space-y-4">
                       {clientMessages.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">
                           No messages yet. Start the conversation!
@@ -293,7 +289,6 @@ export default function Communication() {
                         ))
                       )}
                     </div>
-                  </ScrollArea>
                 </CardContent>
                 <div className="p-4 border-t">
                   {validationError && (
