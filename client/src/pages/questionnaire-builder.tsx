@@ -102,7 +102,7 @@ export default function QuestionnaireBuilder() {
           confirmationMessage: formData.confirmationMessage,
           updatedAt: now,
         };
-        await apiRequest(`/api/questionnaires/${id}`, "PATCH", payload);
+        await apiRequest("PATCH", `/api/questionnaires/${id}`, payload);
       } else {
         const payload = {
           name: formData.name,
@@ -115,7 +115,7 @@ export default function QuestionnaireBuilder() {
           createdAt: now,
           updatedAt: now,
         };
-        await apiRequest("/api/questionnaires", "POST", payload);
+        await apiRequest("POST", "/api/questionnaires", payload);
       }
     },
     onSuccess: () => {
@@ -126,10 +126,11 @@ export default function QuestionnaireBuilder() {
       });
       setLocation("/questionnaires");
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Save questionnaire error:", error);
       toast({
         title: "Error",
-        description: "Failed to save questionnaire",
+        description: error?.message || "Failed to save questionnaire",
         variant: "destructive",
       });
     },
