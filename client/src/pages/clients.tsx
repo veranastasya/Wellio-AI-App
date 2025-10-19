@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send } from "lucide-react";
+import type { Questionnaire } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -46,10 +48,15 @@ export default function Clients() {
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [creationMode, setCreationMode] = useState<"manual" | "questionnaire">("manual");
   const { toast } = useToast();
 
   const { data: clients = [], isLoading, isError } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
+  });
+
+  const { data: questionnaires = [] } = useQuery<Questionnaire[]>({
+    queryKey: ["/api/questionnaires"],
   });
 
   const filteredClients = clients.filter(
@@ -166,7 +173,12 @@ export default function Clients() {
             <h1 className="text-3xl font-bold text-foreground" data-testid="text-clients-title">Client Management</h1>
             <p className="text-muted-foreground mt-1">Manage your coaching clients and track their progress</p>
           </div>
-          <Dialog open={isNewClientOpen} onOpenChange={setIsNewClientOpen}>
+          <Dialog open={isNewClientOpen} onOpenChange={(open) => {
+            setIsNewClientOpen(open);
+            if (!open) {
+              setCreationMode("manual");
+            }
+          }}>
             <DialogTrigger asChild>
               <Button className="gap-2" data-testid="button-new-client">
                 <Plus className="w-4 h-4" />
@@ -177,13 +189,43 @@ export default function Clients() {
               <DialogHeader>
                 <DialogTitle>Add New Client</DialogTitle>
                 <DialogDescription>
-                  Enter the details for your new client below
+                  Choose how you want to onboard this client
                 </DialogDescription>
               </DialogHeader>
-              <ClientForm
-                onSubmit={(data) => createClientMutation.mutate(data)}
-                isLoading={createClientMutation.isPending}
-              />
+
+              <div className="flex gap-2 mb-4">
+                <Button
+                  variant={creationMode === "manual" ? "default" : "outline"}
+                  onClick={() => setCreationMode("manual")}
+                  className="flex-1"
+                  data-testid="button-mode-manual"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Manually
+                </Button>
+                <Button
+                  variant={creationMode === "questionnaire" ? "default" : "outline"}
+                  onClick={() => setCreationMode("questionnaire")}
+                  className="flex-1"
+                  data-testid="button-mode-questionnaire"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Questionnaire
+                </Button>
+              </div>
+
+              {creationMode === "manual" ? (
+                <ClientForm
+                  onSubmit={(data) => createClientMutation.mutate(data)}
+                  isLoading={createClientMutation.isPending}
+                />
+              ) : (
+                <QuestionnaireForm
+                  questionnaires={questionnaires.filter(q => q.status === "published")}
+                  onSubmit={(data) => createClientMutation.mutate(data)}
+                  isLoading={createClientMutation.isPending}
+                />
+              )}
             </DialogContent>
           </Dialog>
         </div>
@@ -461,6 +503,128 @@ function ClientForm({
         </div>
       </form>
     </Form>
+  );
+}
+
+function QuestionnaireForm({
+  questionnaires,
+  onSubmit,
+  isLoading,
+}: {
+  questionnaires: Questionnaire[];
+  onSubmit: (data: InsertClient) => void;
+  isLoading: boolean;
+}) {
+  const [clientName, setClientName] = useState("");
+  const [selectedQuestionnaire, setSelectedQuestionnaire] = useState("");
+  const { toast } = useToast();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!clientName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a client name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedQuestionnaire) {
+      toast({
+        title: "Error",
+        description: "Please select a questionnaire",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Generate a valid email from client name by sanitizing it
+    const sanitizedName = clientName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+      .replace(/\s+/g, '.') // Replace spaces with dots
+      .replace(/\.+/g, '.') // Remove consecutive dots
+      .replace(/^\.|\.$/g, ''); // Remove leading/trailing dots
+
+    // Use a fallback if name becomes empty after sanitization
+    const emailPrefix = sanitizedName || 'pending.client';
+
+    const clientData: InsertClient = {
+      name: clientName,
+      email: `${emailPrefix}@pending.com`,
+      status: "pending",
+      progressScore: 0,
+      joinedDate: new Date().toISOString().split("T")[0],
+      intakeSource: "questionnaire",
+      questionnaireId: selectedQuestionnaire,
+    };
+
+    onSubmit(clientData);
+  };
+
+  if (questionnaires.length === 0) {
+    return (
+      <div className="py-8 text-center space-y-4">
+        <p className="text-muted-foreground">
+          No published questionnaires available.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Create and publish a questionnaire first to use this feature.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="client-name">Client Name</Label>
+        <Input
+          id="client-name"
+          value={clientName}
+          onChange={(e) => setClientName(e.target.value)}
+          placeholder="Enter client name"
+          data-testid="input-questionnaire-client-name"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="questionnaire">Select Questionnaire</Label>
+        <Select value={selectedQuestionnaire} onValueChange={setSelectedQuestionnaire}>
+          <SelectTrigger data-testid="select-questionnaire">
+            <SelectValue placeholder="Choose a questionnaire" />
+          </SelectTrigger>
+          <SelectContent>
+            {questionnaires.map((q) => (
+              <SelectItem key={q.id} value={q.id}>
+                {q.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+        <p className="text-sm font-medium">What happens next?</p>
+        <ul className="text-sm text-muted-foreground space-y-1">
+          <li>• Client will appear with "Pending" status</li>
+          <li>• You can simulate questionnaire response for MVP</li>
+          <li>• Profile auto-populates when response is submitted</li>
+        </ul>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4">
+        <Button
+          type="submit"
+          disabled={isLoading}
+          data-testid="button-send-questionnaire"
+        >
+          {isLoading ? "Sending..." : "Send Questionnaire"}
+        </Button>
+      </div>
+    </form>
   );
 }
 
