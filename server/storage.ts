@@ -7,10 +7,16 @@ import {
   type InsertMessage,
   type Activity,
   type InsertActivity,
+  type Questionnaire,
+  type InsertQuestionnaire,
+  type Response,
+  type InsertResponse,
   clients,
   sessions,
   messages,
   activities,
+  questionnaires,
+  responses,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -37,6 +43,18 @@ export interface IStorage {
   getActivities(): Promise<Activity[]>;
   getActivity(id: string): Promise<Activity | undefined>;
   createActivity(activity: InsertActivity): Promise<Activity>;
+
+  // Questionnaires
+  getQuestionnaires(): Promise<Questionnaire[]>;
+  getQuestionnaire(id: string): Promise<Questionnaire | undefined>;
+  createQuestionnaire(questionnaire: InsertQuestionnaire): Promise<Questionnaire>;
+  updateQuestionnaire(id: string, questionnaire: Partial<InsertQuestionnaire>): Promise<Questionnaire | undefined>;
+  deleteQuestionnaire(id: string): Promise<boolean>;
+
+  // Responses
+  getResponses(): Promise<Response[]>;
+  getResponse(id: string): Promise<Response | undefined>;
+  createResponse(response: InsertResponse): Promise<Response>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -283,6 +301,50 @@ export class DatabaseStorage implements IStorage {
   async createActivity(insertActivity: InsertActivity): Promise<Activity> {
     const [activity] = await db.insert(activities).values(insertActivity).returning();
     return activity;
+  }
+
+  // Questionnaire methods
+  async getQuestionnaires(): Promise<Questionnaire[]> {
+    return await db.select().from(questionnaires);
+  }
+
+  async getQuestionnaire(id: string): Promise<Questionnaire | undefined> {
+    const [questionnaire] = await db.select().from(questionnaires).where(eq(questionnaires.id, id));
+    return questionnaire || undefined;
+  }
+
+  async createQuestionnaire(insertQuestionnaire: InsertQuestionnaire): Promise<Questionnaire> {
+    const [questionnaire] = await db.insert(questionnaires).values(insertQuestionnaire).returning();
+    return questionnaire;
+  }
+
+  async updateQuestionnaire(id: string, data: Partial<InsertQuestionnaire>): Promise<Questionnaire | undefined> {
+    const [updatedQuestionnaire] = await db
+      .update(questionnaires)
+      .set(data)
+      .where(eq(questionnaires.id, id))
+      .returning();
+    return updatedQuestionnaire || undefined;
+  }
+
+  async deleteQuestionnaire(id: string): Promise<boolean> {
+    const result = await db.delete(questionnaires).where(eq(questionnaires.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Response methods
+  async getResponses(): Promise<Response[]> {
+    return await db.select().from(responses);
+  }
+
+  async getResponse(id: string): Promise<Response | undefined> {
+    const [response] = await db.select().from(responses).where(eq(responses.id, id));
+    return response || undefined;
+  }
+
+  async createResponse(insertResponse: InsertResponse): Promise<Response> {
+    const [response] = await db.insert(responses).values(insertResponse).returning();
+    return response;
   }
 }
 

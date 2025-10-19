@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, timestamp, boolean, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -14,6 +14,8 @@ export const clients = pgTable("clients", {
   joinedDate: text("joined_date").notNull(),
   lastSession: text("last_session"),
   notes: text("notes"),
+  intakeSource: text("intake_source"),
+  questionnaireId: varchar("questionnaire_id"),
 });
 
 export const sessions = pgTable("sessions", {
@@ -48,6 +50,27 @@ export const activities = pgTable("activities", {
   status: text("status").notNull().default("completed"),
 });
 
+export const questionnaires = pgTable("questionnaires", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  status: text("status").notNull().default("draft"),
+  questions: json("questions").notNull(),
+  welcomeText: text("welcome_text"),
+  consentText: text("consent_text"),
+  consentRequired: boolean("consent_required").notNull().default(false),
+  confirmationMessage: text("confirmation_message"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const responses = pgTable("responses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  questionnaireId: varchar("questionnaire_id").notNull(),
+  clientId: varchar("client_id"),
+  answers: json("answers").notNull(),
+  submittedAt: text("submitted_at").notNull(),
+});
+
 export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
 });
@@ -64,6 +87,14 @@ export const insertActivitySchema = createInsertSchema(activities).omit({
   id: true,
 });
 
+export const insertQuestionnaireSchema = createInsertSchema(questionnaires).omit({
+  id: true,
+});
+
+export const insertResponseSchema = createInsertSchema(responses).omit({
+  id: true,
+});
+
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
 
@@ -75,3 +106,9 @@ export type Message = typeof messages.$inferSelect;
 
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
 export type Activity = typeof activities.$inferSelect;
+
+export type InsertQuestionnaire = z.infer<typeof insertQuestionnaireSchema>;
+export type Questionnaire = typeof questionnaires.$inferSelect;
+
+export type InsertResponse = z.infer<typeof insertResponseSchema>;
+export type Response = typeof responses.$inferSelect;
