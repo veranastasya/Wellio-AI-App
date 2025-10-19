@@ -23,13 +23,27 @@ Wellio is an AI-powered fitness & wellness coaching platform MVP that helps prof
 
 2. **Client Management**
    - Full CRUD operations (Create, Read, Update, Delete)
+   - Two client creation modes:
+     - **Add Manually**: Full form with all client details
+     - **Send Questionnaire**: Quick onboarding via published intake forms
    - Search clients by name or email
    - Client cards with progress tracking (0-100 scale)
    - Form validation with error feedback
-   - Status management (Active, Inactive, Paused)
-   - Goal types: Weight Loss, Muscle Gain, Endurance, Flexibility, General Wellness
+   - Status management (Active, Inactive, Paused, Pending)
+   - Pending status for questionnaire-based client intake
+   - Auto-generated emails with sanitization for special characters
 
-3. **Progress Analytics**
+3. **Questionnaire Builder**
+   - Full questionnaire CRUD with draft/published workflow
+   - Visual form builder with multiple question types:
+     - Short Text, Paragraph, Multiple Choice, Checkboxes, Dropdown, Date, Number
+   - Customizable form settings (welcome text, consent, confirmation message)
+   - Form preview functionality
+   - Publish workflow for sending to clients
+   - Integration with Client Management for pending client creation
+   - Email sanitization for client names with special characters (apostrophes, accents, etc.)
+
+4. **Progress Analytics**
    - 4 key metrics: Active Clients, Avg Progress, Session Completion, Top Performers
    - Time range selector (7/30/90/365 days) - filters session-based metrics
    - Progress Trend line chart (monthly avg progress and sessions)
@@ -38,7 +52,7 @@ Wellio is an AI-powered fitness & wellness coaching platform MVP that helps prof
    - Performance insights with color-coded alerts
    - Achievement badges system
 
-4. **Smart Scheduling**
+5. **Smart Scheduling**
    - Monthly calendar view with session display
    - Session booking form with validation
    - Today's schedule panel
@@ -47,7 +61,7 @@ Wellio is an AI-powered fitness & wellness coaching platform MVP that helps prof
    - Month navigation controls
    - Database-backed session persistence
 
-5. **Communication**
+6. **Communication**
    - Real-time messaging interface
    - Client conversation list with unread badges
    - Send messages with validation
@@ -92,7 +106,11 @@ client/
       ui/ - Shadcn UI components (Button, Card, Dialog, etc.)
     pages/
       dashboard.tsx - Main dashboard with stats and charts
-      clients.tsx - Client management with CRUD
+      clients.tsx - Client management with CRUD and questionnaire integration
+      questionnaires.tsx - Questionnaire list and management
+      questionnaire-builder.tsx - Form builder/editor with preview
+      analytics.tsx - Progress analytics with time-filtered metrics
+      scheduling.tsx - Smart scheduling with calendar
       communication.tsx - Messaging interface
     lib/
       queryClient.ts - TanStack Query setup with apiRequest helper
@@ -128,29 +146,42 @@ design_guidelines.md - Design system documentation
 - `GET /api/activities` - Get all activities
 - `POST /api/activities` - Create new activity
 
+### Questionnaires
+- `GET /api/questionnaires` - Get all questionnaires
+- `GET /api/questionnaires/:id` - Get questionnaire by ID
+- `POST /api/questionnaires` - Create new questionnaire (validated with insertQuestionnaireSchema)
+- `PATCH /api/questionnaires/:id` - Update questionnaire
+- `DELETE /api/questionnaires/:id` - Delete questionnaire
+
+### Responses
+- `GET /api/responses` - Get all responses
+- `POST /api/responses` - Submit questionnaire response (validated with insertResponseSchema)
+
 ## Data Models
 
 ### Client
 ```typescript
 {
-  id: number (auto-increment)
+  id: varchar (UUID)
   name: string
   email: string
   phone?: string
-  status: "active" | "inactive" | "paused"
-  goalType: "weight_loss" | "muscle_gain" | "endurance" | "flexibility" | "general_wellness"
+  status: "active" | "inactive" | "paused" | "pending"
+  goalType?: string
   progressScore: number (0-100)
   joinedDate: string (YYYY-MM-DD)
   lastSession?: string (YYYY-MM-DD)
   notes?: string
+  intakeSource?: string ("questionnaire" for pending clients)
+  questionnaireId?: varchar (UUID reference to questionnaires)
 }
 ```
 
 ### Session
 ```typescript
 {
-  id: number (auto-increment)
-  clientId: number
+  id: varchar (UUID)
+  clientId: varchar (UUID)
   clientName: string
   sessionType: "training" | "consultation" | "follow_up" | "assessment"
   date: string (YYYY-MM-DD)
@@ -164,8 +195,8 @@ design_guidelines.md - Design system documentation
 ### Message
 ```typescript
 {
-  id: number (auto-increment)
-  clientId: number
+  id: varchar (UUID)
+  clientId: varchar (UUID)
   clientName: string
   content: string
   sender: "coach" | "client"
@@ -177,13 +208,49 @@ design_guidelines.md - Design system documentation
 ### Activity
 ```typescript
 {
-  id: number (auto-increment)
-  clientId?: number
-  clientName?: string
+  id: varchar (UUID)
+  clientId: varchar (UUID)
+  clientName: string
   activityType: "session" | "message" | "progress" | "milestone" | "goal"
   description: string
   timestamp: string (ISO 8601)
-  status?: "completed" | "pending" | "cancelled"
+  status: "completed" | "pending" | "cancelled"
+}
+```
+
+### Questionnaire
+```typescript
+{
+  id: varchar (UUID)
+  name: string
+  status: "draft" | "published"
+  questions: json (array of Question objects)
+  welcomeText?: string
+  consentText?: string
+  consentRequired: boolean
+  confirmationMessage?: string
+  createdAt: string (ISO 8601)
+  updatedAt: string (ISO 8601)
+}
+
+// Question object structure:
+{
+  id: string
+  label: string
+  type: "short_text" | "paragraph" | "multiple_choice" | "checkboxes" | "dropdown" | "date" | "number"
+  isRequired: boolean
+  options?: string[] (for multiple_choice/checkboxes/dropdown)
+}
+```
+
+### Response
+```typescript
+{
+  id: varchar (UUID)
+  questionnaireId: varchar (UUID reference)
+  clientId?: varchar (UUID reference)
+  answers: json (key-value pairs)
+  submittedAt: string (ISO 8601)
 }
 ```
 
@@ -216,6 +283,13 @@ All dashboard stats are calculated from real API data:
 - ✅ Database seeding system for sample data
 - ✅ Progress Analytics page with time-filtered metrics and charts
 - ✅ Smart Scheduling page with calendar view and booking system
+- ✅ **Questionnaire Builder system** (NEW - October 19, 2025)
+  - Full CRUD for questionnaires with draft/published workflow
+  - Visual form builder with 7 question types
+  - Client Management integration: "Send Questionnaire" mode
+  - Pending client status for questionnaire-based intake
+  - Email sanitization for special characters in client names
+  - E2E testing validation passed
 - ✅ Fixed vertical scrolling across all pages (removed nested scroll containers)
 - ✅ Complete MVP implementation with teal/lime color scheme
 - ✅ Dashboard with 100% accurate real-time analytics
@@ -225,8 +299,9 @@ All dashboard stats are calculated from real API data:
 - ✅ Responsive Shadcn sidebar navigation
 - ✅ Fixed timezone issues (using local dates, not UTC)
 - ✅ Fixed time sorting (proper AM/PM chronological order)
-- ✅ E2E testing validation passed for all pages
+- ✅ E2E testing validation passed for all features
 - ✅ All data sourced from backend (no mock data)
+- ✅ Fixed apiRequest parameter order bug in questionnaire builder
 
 ## Development Notes
 - **Storage**: PostgreSQL database with Drizzle ORM and Neon pool connection
@@ -237,10 +312,16 @@ All dashboard stats are calculated from real API data:
 - **Query Management**: TanStack Query v5 with proper cache invalidation on mutations
 - **Analytics**: Session-based metrics filter by time range; client metrics show current state
 - **Scheduling**: Calendar with monthly navigation, color-coded session types, booking form
+- **Questionnaires**: 
+  - Draft/published workflow with validation
+  - Email sanitization: removes special chars, converts spaces to dots, fallback to "pending.client"
+  - Only published questionnaires shown in "Send Questionnaire" dropdown
+  - apiRequest helper uses (method, url, data) parameter order
 - **Locked Features**: Only Predictive Analytics shows lock icon with "Coming soon" tooltip
 
 ## User Preferences
 - Brand colors must be #E2F9AD (lime) and #28A0AE (teal)
 - All visible UI buttons must be functional (no dead interactions)
-- Use in-memory storage (MemStorage) - no database required for MVP
+- PostgreSQL database with Drizzle ORM for data persistence
 - Modern, clean aesthetic with professional coaching platform feel
+- Questionnaire Builder positioned between Client Management and Progress Analytics in sidebar
