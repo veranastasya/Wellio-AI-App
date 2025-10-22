@@ -16,6 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import logoImage from "@assets/Group 626535_1761099357468.png";
 
 const navigationItems = [
   {
@@ -69,9 +70,12 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-accent flex items-center justify-center">
-            <span className="text-xl font-bold text-primary">W</span>
-          </div>
+          <img 
+            src={logoImage} 
+            alt="Wellio Logo" 
+            className="w-10 h-10 rounded-lg"
+            data-testid="logo-image"
+          />
           <span className="text-xl font-bold text-foreground">Wellio</span>
         </div>
       </SidebarHeader>
