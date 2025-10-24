@@ -7,8 +7,12 @@ import {
   insertMessageSchema, 
   insertActivitySchema,
   insertQuestionnaireSchema,
-  insertResponseSchema
+  insertResponseSchema,
+  insertNutritionLogSchema,
+  insertWorkoutLogSchema,
+  insertCheckInSchema,
 } from "@shared/schema";
+import { analyzeClientData } from "./ai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Client routes
@@ -250,6 +254,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(response);
     } catch (error) {
       res.status(400).json({ error: "Invalid response data" });
+    }
+  });
+
+  // Nutrition Log routes
+  app.get("/api/nutrition-logs", async (_req, res) => {
+    try {
+      const nutritionLogs = await storage.getNutritionLogs();
+      res.json(nutritionLogs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch nutrition logs" });
+    }
+  });
+
+  app.post("/api/nutrition-logs", async (req, res) => {
+    try {
+      const validatedData = insertNutritionLogSchema.parse(req.body);
+      const nutritionLog = await storage.createNutritionLog(validatedData);
+      res.status(201).json(nutritionLog);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid nutrition log data" });
+    }
+  });
+
+  // Workout Log routes
+  app.get("/api/workout-logs", async (_req, res) => {
+    try {
+      const workoutLogs = await storage.getWorkoutLogs();
+      res.json(workoutLogs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch workout logs" });
+    }
+  });
+
+  app.post("/api/workout-logs", async (req, res) => {
+    try {
+      const validatedData = insertWorkoutLogSchema.parse(req.body);
+      const workoutLog = await storage.createWorkoutLog(validatedData);
+      res.status(201).json(workoutLog);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid workout log data" });
+    }
+  });
+
+  // Check-in routes
+  app.get("/api/check-ins", async (_req, res) => {
+    try {
+      const checkIns = await storage.getCheckIns();
+      res.json(checkIns);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch check-ins" });
+    }
+  });
+
+  app.post("/api/check-ins", async (req, res) => {
+    try {
+      const validatedData = insertCheckInSchema.parse(req.body);
+      const checkIn = await storage.createCheckIn(validatedData);
+      res.status(201).json(checkIn);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid check-in data" });
+    }
+  });
+
+  // AI Insights routes
+  app.get("/api/insights/:clientId", async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const allNutritionLogs = await storage.getNutritionLogs();
+      const allWorkoutLogs = await storage.getWorkoutLogs();
+      const allCheckIns = await storage.getCheckIns();
+
+      const clientNutritionLogs = allNutritionLogs.filter(log => log.clientId === clientId);
+      const clientWorkoutLogs = allWorkoutLogs.filter(log => log.clientId === clientId);
+      const clientCheckIns = allCheckIns.filter(log => log.clientId === clientId);
+
+      const insights = await analyzeClientData(
+        clientId,
+        client.name,
+        clientNutritionLogs,
+        clientWorkoutLogs,
+        clientCheckIns
+      );
+
+      res.json(insights);
+    } catch (error) {
+      console.error("Error generating insights:", error);
+      res.status(500).json({ error: "Failed to generate insights" });
     }
   });
 
