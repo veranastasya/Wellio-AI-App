@@ -17,7 +17,7 @@ Wellio is an AI-powered fitness & wellness coaching platform MVP designed to hel
 The platform utilizes a modern design with React, Tailwind CSS, and Shadcn UI components. It incorporates a teal (#28A0AE) and lime (#E2F9AD) color scheme, supports dark mode, and uses the Inter font family. Interaction patterns include subtle hover and active elevation states for components. The responsive design ensures usability across various viewports, featuring a collapsible sidebar navigation.
 
 ### Technical Implementations
-Wellio is built with a React frontend and an Express.js backend. Data is persisted using PostgreSQL with Drizzle ORM. State management is handled by TanStack Query v5, and form handling uses React Hook Form with Zod validation. Data visualization is powered by Recharts. The system employs UUID primary keys, uses local timezones for date operations, and ensures robust form validation across all inputs. Loading skeletons and error states are implemented for improved user experience.
+Wellio is built with a React frontend and an Express.js backend. Data is persisted using PostgreSQL with Drizzle ORM. State management is handled by TanStack Query v5, and form handling uses React Hook Form with Zod validation. Data visualization is powered by Recharts. The system employs UUID primary keys, uses local timezones for date operations, and ensures robust form validation across all inputs. Loading skeletons and error states are implemented for improved user experience. All numeric health metrics (calories, macronutrients, weight, body fat) use the `real` data type to support decimal precision.
 
 ### Feature Specifications
 - **Dashboard**: Real-time stats, client progress distribution, today's schedule, recent activity, and AI insights.
