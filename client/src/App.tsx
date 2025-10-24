@@ -14,6 +14,7 @@ import Scheduling from "@/pages/scheduling";
 import Questionnaires from "@/pages/questionnaires";
 import QuestionnaireBuilder from "@/pages/questionnaire-builder";
 import QuestionnairePreview from "@/pages/questionnaire-preview";
+import AIInsights from "@/pages/ai-insights";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/analytics" component={Analytics} />
       <Route path="/scheduling" component={Scheduling} />
       <Route path="/communication" component={Communication} />
+      <Route path="/ai-insights" component={AIInsights} />
       <Route component={NotFound} />
     </Switch>
   );

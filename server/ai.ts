@@ -80,23 +80,41 @@ function analyzeNutritionTrend(logs: NutritionLog[]): TrendAnalysis | null {
 
   const recentAvgProtein = recent.reduce((sum, log) => sum + (log.protein || 0), 0) / recent.length;
   const earlierAvgProtein = earlier.reduce((sum, log) => sum + (log.protein || 0), 0) / earlier.length;
-  const proteinChange = ((recentAvgProtein - earlierAvgProtein) / earlierAvgProtein) * 100;
-
+  
   const recentAvgCalories = recent.reduce((sum, log) => sum + (log.calories || 0), 0) / recent.length;
   const earlierAvgCalories = earlier.reduce((sum, log) => sum + (log.calories || 0), 0) / earlier.length;
-  const calorieChange = ((recentAvgCalories - earlierAvgCalories) / earlierAvgCalories) * 100;
+
+  // Guard against division by zero
+  if (earlierAvgProtein <= 0 && earlierAvgCalories <= 0) {
+    return {
+      category: "nutrition",
+      trend: "stable",
+      confidence: 0.3,
+      description: "Insufficient historical nutrition data to detect trends",
+    };
+  }
 
   let trend: TrendAnalysis["trend"] = "stable";
   let description = "";
   let recommendation = "";
 
-  if (Math.abs(proteinChange) > 10) {
+  // Calculate protein change only if we have valid baseline
+  const proteinChange = earlierAvgProtein > 0 
+    ? ((recentAvgProtein - earlierAvgProtein) / earlierAvgProtein) * 100 
+    : 0;
+
+  // Calculate calorie change only if we have valid baseline
+  const calorieChange = earlierAvgCalories > 0 
+    ? ((recentAvgCalories - earlierAvgCalories) / earlierAvgCalories) * 100 
+    : 0;
+
+  if (earlierAvgProtein > 0 && Math.abs(proteinChange) > 10) {
     trend = proteinChange > 0 ? "improving" : "declining";
     description = `Protein intake ${proteinChange > 0 ? "increased" : "decreased"} by ${Math.abs(proteinChange).toFixed(1)}% over recent period`;
     if (proteinChange < -10) {
       recommendation = "Consider increasing protein intake to support muscle recovery and growth";
     }
-  } else if (Math.abs(calorieChange) > 15) {
+  } else if (earlierAvgCalories > 0 && Math.abs(calorieChange) > 15) {
     trend = "stable";
     description = `Calorie intake ${calorieChange > 0 ? "increased" : "decreased"} by ${Math.abs(calorieChange).toFixed(1)}%`;
     recommendation = "Monitor energy levels and adjust calories based on training intensity";

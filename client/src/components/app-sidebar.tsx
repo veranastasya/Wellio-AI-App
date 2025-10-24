@@ -1,4 +1,4 @@
-import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock, ClipboardList } from "lucide-react";
+import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock, ClipboardList, Brain } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -53,6 +53,12 @@ const navigationItems = [
     title: "Communication",
     url: "/communication",
     icon: MessageSquare,
+    locked: false,
+  },
+  {
+    title: "AI Insights",
+    url: "/ai-insights",
+    icon: Brain,
     locked: false,
   },
   {
