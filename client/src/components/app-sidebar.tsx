@@ -1,4 +1,4 @@
-import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock, ClipboardList, Brain } from "lucide-react";
+import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock, ClipboardList, Brain, FileText } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -59,6 +59,12 @@ const navigationItems = [
     title: "AI Insights",
     url: "/ai-insights",
     icon: Brain,
+    locked: false,
+  },
+  {
+    title: "Client Data Logs",
+    url: "/client-logs",
+    icon: FileText,
     locked: false,
   },
   {
