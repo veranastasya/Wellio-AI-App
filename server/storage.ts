@@ -11,12 +11,21 @@ import {
   type InsertQuestionnaire,
   type Response,
   type InsertResponse,
+  type NutritionLog,
+  type InsertNutritionLog,
+  type WorkoutLog,
+  type InsertWorkoutLog,
+  type CheckIn,
+  type InsertCheckIn,
   clients,
   sessions,
   messages,
   activities,
   questionnaires,
   responses,
+  nutritionLogs,
+  workoutLogs,
+  checkIns,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -55,6 +64,24 @@ export interface IStorage {
   getResponses(): Promise<Response[]>;
   getResponse(id: string): Promise<Response | undefined>;
   createResponse(response: InsertResponse): Promise<Response>;
+
+  // Nutrition Logs
+  getNutritionLogs(): Promise<NutritionLog[]>;
+  getNutritionLog(id: string): Promise<NutritionLog | undefined>;
+  createNutritionLog(nutritionLog: InsertNutritionLog): Promise<NutritionLog>;
+
+  // Workout Logs
+  getWorkoutLogs(): Promise<WorkoutLog[]>;
+  getWorkoutLog(id: string): Promise<WorkoutLog | undefined>;
+  createWorkoutLog(workoutLog: InsertWorkoutLog): Promise<WorkoutLog>;
+
+  // Check-ins
+  getCheckIns(): Promise<CheckIn[]>;
+  getCheckIn(id: string): Promise<CheckIn | undefined>;
+  createCheckIn(checkIn: InsertCheckIn): Promise<CheckIn>;
+
+  // Seeding
+  seedData(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -227,6 +254,137 @@ export class DatabaseStorage implements IStorage {
     ];
 
     await db.insert(messages).values(sampleMessages);
+
+    const sampleNutritionLogs: InsertNutritionLog[] = [
+      {
+        clientId: clientIds[0],
+        clientName: "Sarah Wilson",
+        date: "2024-10-13",
+        calories: 2100,
+        protein: 140,
+        carbs: 200,
+        fats: 70,
+        notes: "On track with macros",
+        createdAt: "2024-10-13T08:00:00Z",
+      },
+      {
+        clientId: clientIds[0],
+        clientName: "Sarah Wilson",
+        date: "2024-10-12",
+        calories: 2050,
+        protein: 135,
+        carbs: 210,
+        fats: 65,
+        notes: "Slightly lower protein",
+        createdAt: "2024-10-12T08:00:00Z",
+      },
+      {
+        clientId: clientIds[1],
+        clientName: "Alex Thompson",
+        date: "2024-10-13",
+        calories: 2400,
+        protein: 150,
+        carbs: 250,
+        fats: 80,
+        notes: "High energy day",
+        createdAt: "2024-10-13T08:00:00Z",
+      },
+    ];
+
+    await db.insert(nutritionLogs).values(sampleNutritionLogs);
+
+    const sampleWorkoutLogs: InsertWorkoutLog[] = [
+      {
+        clientId: clientIds[0],
+        clientName: "Sarah Wilson",
+        date: "2024-10-12",
+        workoutType: "Strength Training",
+        duration: 60,
+        intensity: "High",
+        exercises: JSON.stringify([
+          { name: "Squats", sets: 4, reps: 8, weight: 135 },
+          { name: "Bench Press", sets: 4, reps: 8, weight: 95 },
+          { name: "Deadlifts", sets: 3, reps: 6, weight: 185 },
+        ]),
+        notes: "Great session, increased weight on squats",
+        createdAt: "2024-10-12T10:30:00Z",
+      },
+      {
+        clientId: clientIds[1],
+        clientName: "Alex Thompson",
+        date: "2024-10-13",
+        workoutType: "Cardio",
+        duration: 45,
+        intensity: "Medium",
+        exercises: JSON.stringify([
+          { name: "Running", distance: "5K", time: "28:15" },
+          { name: "Rowing", distance: "1000m", time: "4:20" },
+        ]),
+        notes: "PR on 5K time!",
+        createdAt: "2024-10-13T06:30:00Z",
+      },
+    ];
+
+    await db.insert(workoutLogs).values(sampleWorkoutLogs);
+
+    const sampleCheckIns: InsertCheckIn[] = [
+      {
+        clientId: clientIds[0],
+        clientName: "Sarah Wilson",
+        date: "2024-10-07",
+        weight: 145,
+        bodyFat: 22,
+        measurements: JSON.stringify({
+          chest: 36,
+          waist: 28,
+          hips: 38,
+          arms: 12,
+        }),
+        photos: JSON.stringify([]),
+        mood: "Excellent",
+        energy: "High",
+        notes: "Feeling strong and energized",
+        createdAt: "2024-10-07T09:00:00Z",
+      },
+      {
+        clientId: clientIds[0],
+        clientName: "Sarah Wilson",
+        date: "2024-09-30",
+        weight: 147,
+        bodyFat: 23,
+        measurements: JSON.stringify({
+          chest: 36.5,
+          waist: 28.5,
+          hips: 38.5,
+          arms: 12,
+        }),
+        photos: JSON.stringify([]),
+        mood: "Good",
+        energy: "Medium",
+        notes: "Making progress",
+        createdAt: "2024-09-30T09:00:00Z",
+      },
+      {
+        clientId: clientIds[1],
+        clientName: "Alex Thompson",
+        date: "2024-10-01",
+        weight: 172,
+        bodyFat: 18,
+        measurements: JSON.stringify({
+          chest: 40,
+          waist: 32,
+          hips: 38,
+          arms: 14,
+        }),
+        photos: JSON.stringify([]),
+        mood: "Great",
+        energy: "High",
+        notes: "Cardio is improving",
+        createdAt: "2024-10-01T09:00:00Z",
+      },
+    ];
+
+    await db.insert(checkIns).values(sampleCheckIns);
   }
 
   // Client methods
@@ -345,6 +503,51 @@ export class DatabaseStorage implements IStorage {
   async createResponse(insertResponse: InsertResponse): Promise<Response> {
     const [response] = await db.insert(responses).values(insertResponse).returning();
     return response;
+  }
+
+  // Nutrition Log methods
+  async getNutritionLogs(): Promise<NutritionLog[]> {
+    return await db.select().from(nutritionLogs);
+  }
+
+  async getNutritionLog(id: string): Promise<NutritionLog | undefined> {
+    const [nutritionLog] = await db.select().from(nutritionLogs).where(eq(nutritionLogs.id, id));
+    return nutritionLog || undefined;
+  }
+
+  async createNutritionLog(insertNutritionLog: InsertNutritionLog): Promise<NutritionLog> {
+    const [nutritionLog] = await db.insert(nutritionLogs).values(insertNutritionLog).returning();
+    return nutritionLog;
+  }
+
+  // Workout Log methods
+  async getWorkoutLogs(): Promise<WorkoutLog[]> {
+    return await db.select().from(workoutLogs);
+  }
+
+  async getWorkoutLog(id: string): Promise<WorkoutLog | undefined> {
+    const [workoutLog] = await db.select().from(workoutLogs).where(eq(workoutLogs.id, id));
+    return workoutLog || undefined;
+  }
+
+  async createWorkoutLog(insertWorkoutLog: InsertWorkoutLog): Promise<WorkoutLog> {
+    const [workoutLog] = await db.insert(workoutLogs).values(insertWorkoutLog).returning();
+    return workoutLog;
+  }
+
+  // Check-in methods
+  async getCheckIns(): Promise<CheckIn[]> {
+    return await db.select().from(checkIns);
+  }
+
+  async getCheckIn(id: string): Promise<CheckIn | undefined> {
+    const [checkIn] = await db.select().from(checkIns).where(eq(checkIns.id, id));
+    return checkIn || undefined;
+  }
+
+  async createCheckIn(insertCheckIn: InsertCheckIn): Promise<CheckIn> {
+    const [checkIn] = await db.insert(checkIns).values(insertCheckIn).returning();
+    return checkIn;
   }
 }
 

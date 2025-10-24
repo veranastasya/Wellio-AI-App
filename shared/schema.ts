@@ -71,6 +71,47 @@ export const responses = pgTable("responses", {
   submittedAt: text("submitted_at").notNull(),
 });
 
+export const nutritionLogs = pgTable("nutrition_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  clientName: text("client_name").notNull(),
+  date: text("date").notNull(),
+  calories: integer("calories"),
+  protein: integer("protein"),
+  carbs: integer("carbs"),
+  fats: integer("fats"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const workoutLogs = pgTable("workout_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  clientName: text("client_name").notNull(),
+  date: text("date").notNull(),
+  workoutType: text("workout_type").notNull(),
+  duration: integer("duration"),
+  intensity: text("intensity"),
+  exercises: json("exercises"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const checkIns = pgTable("check_ins", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  clientName: text("client_name").notNull(),
+  date: text("date").notNull(),
+  weight: integer("weight"),
+  bodyFat: integer("body_fat"),
+  measurements: json("measurements"),
+  photos: json("photos"),
+  mood: text("mood"),
+  energy: text("energy"),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
 });
@@ -95,6 +136,18 @@ export const insertResponseSchema = createInsertSchema(responses).omit({
   id: true,
 });
 
+export const insertNutritionLogSchema = createInsertSchema(nutritionLogs).omit({
+  id: true,
+});
+
+export const insertWorkoutLogSchema = createInsertSchema(workoutLogs).omit({
+  id: true,
+});
+
+export const insertCheckInSchema = createInsertSchema(checkIns).omit({
+  id: true,
+});
+
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
 
@@ -112,3 +165,12 @@ export type Questionnaire = typeof questionnaires.$inferSelect;
 
 export type InsertResponse = z.infer<typeof insertResponseSchema>;
 export type Response = typeof responses.$inferSelect;
+
+export type InsertNutritionLog = z.infer<typeof insertNutritionLogSchema>;
+export type NutritionLog = typeof nutritionLogs.$inferSelect;
+
+export type InsertWorkoutLog = z.infer<typeof insertWorkoutLogSchema>;
+export type WorkoutLog = typeof workoutLogs.$inferSelect;
+
+export type InsertCheckIn = z.infer<typeof insertCheckInSchema>;
+export type CheckIn = typeof checkIns.$inferSelect;
