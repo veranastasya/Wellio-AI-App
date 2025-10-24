@@ -516,7 +516,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createNutritionLog(insertNutritionLog: InsertNutritionLog): Promise<NutritionLog> {
-    const [nutritionLog] = await db.insert(nutritionLogs).values(insertNutritionLog).returning();
+    const dataWithTimestamp = {
+      ...insertNutritionLog,
+      createdAt: new Date().toISOString(),
+    };
+    const [nutritionLog] = await db.insert(nutritionLogs).values(dataWithTimestamp).returning();
     return nutritionLog;
   }
 
@@ -531,7 +535,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createWorkoutLog(insertWorkoutLog: InsertWorkoutLog): Promise<WorkoutLog> {
-    const [workoutLog] = await db.insert(workoutLogs).values(insertWorkoutLog).returning();
+    const dataWithTimestamp = {
+      ...insertWorkoutLog,
+      createdAt: new Date().toISOString(),
+    };
+    const [workoutLog] = await db.insert(workoutLogs).values(dataWithTimestamp).returning();
     return workoutLog;
   }
 
@@ -546,7 +554,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCheckIn(insertCheckIn: InsertCheckIn): Promise<CheckIn> {
-    const [checkIn] = await db.insert(checkIns).values(insertCheckIn).returning();
+    const dataWithTimestamp = {
+      ...insertCheckIn,
+      createdAt: new Date().toISOString(),
+    };
+    const [checkIn] = await db.insert(checkIns).values(dataWithTimestamp).returning();
     return checkIn;
   }
 }

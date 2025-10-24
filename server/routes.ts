@@ -273,7 +273,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const nutritionLog = await storage.createNutritionLog(validatedData);
       res.status(201).json(nutritionLog);
     } catch (error) {
-      res.status(400).json({ error: "Invalid nutrition log data" });
+      console.error("Nutrition log validation error:", error);
+      res.status(400).json({ error: "Invalid nutrition log data", details: error instanceof Error ? error.message : String(error) });
     }
   });
 

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, timestamp, boolean, json } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, real, timestamp, boolean, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -102,8 +102,8 @@ export const checkIns = pgTable("check_ins", {
   clientId: varchar("client_id").notNull(),
   clientName: text("client_name").notNull(),
   date: text("date").notNull(),
-  weight: integer("weight"),
-  bodyFat: integer("body_fat"),
+  weight: real("weight"),
+  bodyFat: real("body_fat"),
   measurements: json("measurements"),
   photos: json("photos"),
   mood: text("mood"),
@@ -138,14 +138,20 @@ export const insertResponseSchema = createInsertSchema(responses).omit({
 
 export const insertNutritionLogSchema = createInsertSchema(nutritionLogs).omit({
   id: true,
+}).extend({
+  createdAt: z.string().optional(),
 });
 
 export const insertWorkoutLogSchema = createInsertSchema(workoutLogs).omit({
   id: true,
+}).extend({
+  createdAt: z.string().optional(),
 });
 
 export const insertCheckInSchema = createInsertSchema(checkIns).omit({
   id: true,
+}).extend({
+  createdAt: z.string().optional(),
 });
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
