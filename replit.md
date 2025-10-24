@@ -1,323 +1,7 @@
 # Wellio - AI Agent For Smarter Coaching
 
 ## Overview
-Wellio is an AI-powered fitness & wellness coaching platform MVP that helps professionals manage their coaching practice with client insights and streamlined workflows. Built with React and Express.js, featuring a modern dashboard interface with teal (#28A0AE) and lime (#E2F9AD) brand colors.
-
-## Tech Stack
-- **Frontend**: React, TypeScript, Tailwind CSS, Shadcn UI, Wouter
-- **Backend**: Express.js, Node.js
-- **Data Visualization**: Recharts
-- **Storage**: In-memory (MemStorage)
-- **State Management**: TanStack Query v5
-- **Form Handling**: React Hook Form with Zod validation
-
-## Features
-
-### Fully Functional Features:
-1. **Dashboard**
-   - Real-time stats cards: Total Clients, Active Sessions, Success Rate, Avg Progress
-   - Client Progress Distribution chart (quartile-based performance visualization)
-   - Today's Schedule (filtered by local date, chronologically sorted)
-   - Recent Activity feed (last 3 activities)
-   - AI Insights card (dynamic insights from client data)
-
-2. **Client Management**
-   - Full CRUD operations (Create, Read, Update, Delete)
-   - Two client creation modes:
-     - **Add Manually**: Full form with all client details
-     - **Send Questionnaire**: Quick onboarding via published intake forms
-   - Search clients by name or email
-   - Client cards with progress tracking (0-100 scale)
-   - Form validation with error feedback
-   - Status management (Active, Inactive, Paused, Pending)
-   - Pending status for questionnaire-based client intake
-   - Auto-generated emails with sanitization for special characters
-
-3. **Questionnaire Builder**
-   - Full questionnaire CRUD with draft/published workflow
-   - Visual form builder with multiple question types:
-     - Short Text, Paragraph, Multiple Choice, Checkboxes, Dropdown, Date, Number
-   - Customizable form settings (welcome text, consent, confirmation message)
-   - Form preview functionality
-   - Publish workflow for sending to clients
-   - Integration with Client Management for pending client creation
-   - Email sanitization for client names with special characters (apostrophes, accents, etc.)
-
-4. **Progress Analytics**
-   - 4 key metrics: Active Clients, Avg Progress, Session Completion, Top Performers
-   - Time range selector (7/30/90/365 days) - filters session-based metrics
-   - Progress Trend line chart (monthly avg progress and sessions)
-   - Goal Distribution pie chart
-   - Individual Performance bar chart
-   - Performance insights with color-coded alerts
-   - Achievement badges system
-
-5. **Smart Scheduling**
-   - Monthly calendar view with session display
-   - Session booking form with validation
-   - Today's schedule panel
-   - All sessions list with status filter (scheduled, completed, cancelled)
-   - Color-coded session types (training, consultation, follow-up, assessment)
-   - Month navigation controls
-   - Database-backed session persistence
-
-6. **Communication**
-   - Real-time messaging interface
-   - Client conversation list with unread badges
-   - Send messages with validation
-   - Message history with timestamps
-   - Error handling and loading states
-
-### Coming Soon Features (Locked with Tooltips):
-- Predictive Analytics (AI-powered insights)
-
-## Design System
-
-### Colors
-- **Primary (Teal)**: #28A0AE / hsl(186 61% 42%)
-- **Accent (Lime)**: #E2F9AD / hsl(75 85% 80%)
-- **Background**: hsl(210 40% 98%) light / hsl(222.2 84% 4.9%) dark
-- **Card**: hsl(0 0% 100%) light / hsl(217 33% 17%) dark
-- **Dark Mode**: Fully supported with adaptive tokens
-
-### Typography
-- Font Family: Inter (system fallback)
-- Headings: Bold weights (600-800)
-- Body: Regular (400) and Medium (500)
-
-### Interaction System
-- `hover-elevate` - Subtle background elevation on hover
-- `active-elevate-2` - Dramatic elevation on press
-- All Button/Badge components use built-in elevation states
-
-### Components
-- Built with Shadcn UI primitives
-- Sidebar navigation with collapsible support
-- Custom styled cards, buttons, badges
-- Responsive design for all viewports
-
-## Project Structure
-```
-client/
-  src/
-    components/
-      app-sidebar.tsx - Navigation sidebar with locked items
-      theme-toggle.tsx - Dark/light mode toggle
-      ui/ - Shadcn UI components (Button, Card, Dialog, etc.)
-    pages/
-      dashboard.tsx - Main dashboard with stats and charts
-      clients.tsx - Client management with CRUD and questionnaire integration
-      questionnaires.tsx - Questionnaire list and management
-      questionnaire-builder.tsx - Form builder/editor with preview
-      analytics.tsx - Progress analytics with time-filtered metrics
-      scheduling.tsx - Smart scheduling with calendar
-      communication.tsx - Messaging interface
-    lib/
-      queryClient.ts - TanStack Query setup with apiRequest helper
-    App.tsx - Main app with SidebarProvider and routing
-    
-server/
-  routes.ts - API endpoints with validation
-  storage.ts - In-memory storage (IStorage interface + MemStorage)
-  
-shared/
-  schema.ts - Drizzle schemas, Zod validation, TypeScript types
-
-design_guidelines.md - Design system documentation
-```
-
-## API Routes
-
-### Clients
-- `GET /api/clients` - Get all clients
-- `POST /api/clients` - Create new client (validated with insertClientSchema)
-- `PATCH /api/clients/:id` - Update client
-- `DELETE /api/clients/:id` - Delete client
-
-### Sessions
-- `GET /api/sessions` - Get all sessions
-- `POST /api/sessions` - Create new session
-
-### Messages
-- `GET /api/messages` - Get all messages
-- `POST /api/messages` - Send new message (validated with insertMessageSchema)
-
-### Activities
-- `GET /api/activities` - Get all activities
-- `POST /api/activities` - Create new activity
-
-### Questionnaires
-- `GET /api/questionnaires` - Get all questionnaires
-- `GET /api/questionnaires/:id` - Get questionnaire by ID
-- `POST /api/questionnaires` - Create new questionnaire (validated with insertQuestionnaireSchema)
-- `PATCH /api/questionnaires/:id` - Update questionnaire
-- `DELETE /api/questionnaires/:id` - Delete questionnaire
-
-### Responses
-- `GET /api/responses` - Get all responses
-- `POST /api/responses` - Submit questionnaire response (validated with insertResponseSchema)
-
-## Data Models
-
-### Client
-```typescript
-{
-  id: varchar (UUID)
-  name: string
-  email: string
-  phone?: string
-  status: "active" | "inactive" | "paused" | "pending"
-  goalType?: string
-  progressScore: number (0-100)
-  joinedDate: string (YYYY-MM-DD)
-  lastSession?: string (YYYY-MM-DD)
-  notes?: string
-  intakeSource?: string ("questionnaire" for pending clients)
-  questionnaireId?: varchar (UUID reference to questionnaires)
-}
-```
-
-### Session
-```typescript
-{
-  id: varchar (UUID)
-  clientId: varchar (UUID)
-  clientName: string
-  sessionType: "training" | "consultation" | "follow_up" | "assessment"
-  date: string (YYYY-MM-DD)
-  startTime: string (e.g., "9:00 AM")
-  endTime: string (e.g., "10:00 AM")
-  status: "scheduled" | "completed" | "cancelled"
-  notes?: string
-}
-```
-
-### Message
-```typescript
-{
-  id: varchar (UUID)
-  clientId: varchar (UUID)
-  clientName: string
-  content: string
-  sender: "coach" | "client"
-  timestamp: string (ISO 8601)
-  read: boolean
-}
-```
-
-### Activity
-```typescript
-{
-  id: varchar (UUID)
-  clientId: varchar (UUID)
-  clientName: string
-  activityType: "session" | "message" | "progress" | "milestone" | "goal"
-  description: string
-  timestamp: string (ISO 8601)
-  status: "completed" | "pending" | "cancelled"
-}
-```
-
-### Questionnaire
-```typescript
-{
-  id: varchar (UUID)
-  name: string
-  status: "draft" | "published"
-  questions: json (array of Question objects)
-  welcomeText?: string
-  consentText?: string
-  consentRequired: boolean
-  confirmationMessage?: string
-  createdAt: string (ISO 8601)
-  updatedAt: string (ISO 8601)
-}
-
-// Question object structure:
-{
-  id: string
-  label: string
-  type: "short_text" | "paragraph" | "multiple_choice" | "checkboxes" | "dropdown" | "date" | "number"
-  isRequired: boolean
-  options?: string[] (for multiple_choice/checkboxes/dropdown)
-}
-```
-
-### Response
-```typescript
-{
-  id: varchar (UUID)
-  questionnaireId: varchar (UUID reference)
-  clientId?: varchar (UUID reference)
-  answers: json (key-value pairs)
-  submittedAt: string (ISO 8601)
-}
-```
-
-## Data Accuracy & Production Readiness
-
-### 100% Authentic Backend Data
-All dashboard stats are calculated from real API data:
-- **Total Clients**: Direct count from `/api/clients`
-- **Active Sessions**: Count of sessions with `status === "scheduled"`
-- **Success Rate**: `completedSessions / (completedSessions + activeSessions) * 100`
-- **Avg Progress**: Average of all client `progressScore` values
-- **Today's Schedule**: Filters sessions by local date (`toLocaleDateString('en-CA')`) and sorts chronologically
-- **Chart Data**: Quartile averages computed from actual client progress scores
-- **AI Insights**: Dynamic insights based on client plateau detection and progress analysis
-
-### No Mock/Synthetic Data
-- Removed all hardcoded percentages and fake metrics
-- No fabricated trends or synthetic multipliers
-- Every displayed value has a real data source from backend APIs
-
-### UX Quality
-- Loading skeletons on all query-dependent pages
-- Error states with user-friendly messages
-- Form validation with visible feedback (toast notifications)
-- All buttons functional with proper states (loading, disabled, success)
-- No dead UI - every interaction works as expected
-
-## Recent Changes (October 2025)
-- ✅ PostgreSQL database migration with Drizzle ORM (replaced in-memory storage)
-- ✅ Database seeding system for sample data
-- ✅ Progress Analytics page with time-filtered metrics and charts
-- ✅ Smart Scheduling page with calendar view and booking system
-- ✅ **Questionnaire Builder system** (NEW - October 19, 2025)
-  - Full CRUD for questionnaires with draft/published workflow
-  - Visual form builder with 7 question types
-  - Client Management integration: "Send Questionnaire" mode
-  - Pending client status for questionnaire-based intake
-  - Email sanitization for special characters in client names
-  - E2E testing validation passed
-- ✅ Fixed vertical scrolling across all pages (removed nested scroll containers)
-- ✅ Complete MVP implementation with teal/lime color scheme
-- ✅ Dashboard with 100% accurate real-time analytics
-- ✅ Full CRUD client management with validation
-- ✅ Real-time communication hub with error handling
-- ✅ Dark mode support with proper token system
-- ✅ Responsive Shadcn sidebar navigation
-- ✅ Fixed timezone issues (using local dates, not UTC)
-- ✅ Fixed time sorting (proper AM/PM chronological order)
-- ✅ E2E testing validation passed for all features
-- ✅ All data sourced from backend (no mock data)
-- ✅ Fixed apiRequest parameter order bug in questionnaire builder
-
-## Development Notes
-- **Storage**: PostgreSQL database with Drizzle ORM and Neon pool connection
-- **Database**: UUID primary keys (varchar with gen_random_uuid), idempotent seeding on startup
-- **Timezone**: All date operations use local timezone (`toLocaleDateString('en-CA')`)
-- **Time Parsing**: Session times sorted with AM/PM conversion to minutes for accuracy
-- **Validation**: All forms use react-hook-form with zodResolver for type-safe validation
-- **Query Management**: TanStack Query v5 with proper cache invalidation on mutations
-- **Analytics**: Session-based metrics filter by time range; client metrics show current state
-- **Scheduling**: Calendar with monthly navigation, color-coded session types, booking form
-- **Questionnaires**: 
-  - Draft/published workflow with validation
-  - Email sanitization: removes special chars, converts spaces to dots, fallback to "pending.client"
-  - Only published questionnaires shown in "Send Questionnaire" dropdown
-  - apiRequest helper uses (method, url, data) parameter order
-- **Locked Features**: Only Predictive Analytics shows lock icon with "Coming soon" tooltip
+Wellio is an AI-powered fitness & wellness coaching platform MVP designed to help professionals manage their coaching practice efficiently. It provides client insights and streamlines workflows, aiming to enhance coaching effectiveness and client outcomes. The platform features a modern dashboard, client management, questionnaire building, progress analytics, smart scheduling, communication tools, and AI-driven insights for personalized recommendations. Wellio aims to be a comprehensive solution for coaches looking to optimize their practice with technology.
 
 ## User Preferences
 - Brand colors must be #E2F9AD (lime) and #28A0AE (teal)
@@ -325,3 +9,38 @@ All dashboard stats are calculated from real API data:
 - PostgreSQL database with Drizzle ORM for data persistence
 - Modern, clean aesthetic with professional coaching platform feel
 - Questionnaire Builder positioned between Client Management and Progress Analytics in sidebar
+- AI Insights and Client Data Logs positioned after Communication in sidebar navigation
+
+## System Architecture
+
+### UI/UX Decisions
+The platform utilizes a modern design with React, Tailwind CSS, and Shadcn UI components. It incorporates a teal (#28A0AE) and lime (#E2F9AD) color scheme, supports dark mode, and uses the Inter font family. Interaction patterns include subtle hover and active elevation states for components. The responsive design ensures usability across various viewports, featuring a collapsible sidebar navigation.
+
+### Technical Implementations
+Wellio is built with a React frontend and an Express.js backend. Data is persisted using PostgreSQL with Drizzle ORM. State management is handled by TanStack Query v5, and form handling uses React Hook Form with Zod validation. Data visualization is powered by Recharts. The system employs UUID primary keys, uses local timezones for date operations, and ensures robust form validation across all inputs. Loading skeletons and error states are implemented for improved user experience.
+
+### Feature Specifications
+- **Dashboard**: Real-time stats, client progress distribution, today's schedule, recent activity, and AI insights.
+- **Client Management**: Full CRUD operations for clients, supporting manual entry and questionnaire-based onboarding. Includes client search, progress tracking, status management, and form validation.
+- **Questionnaire Builder**: Full CRUD for questionnaires with draft/published workflow. Features a visual builder supporting various question types and customizable form settings. Integrates with client management for intake.
+- **Progress Analytics**: Tracks key metrics like active clients and average progress over customizable time ranges, with trend charts, goal distribution, and performance insights.
+- **Smart Scheduling**: Monthly calendar view for session management, booking forms, and color-coded session types.
+- **Communication**: Real-time messaging interface with client conversation lists and message history.
+- **AI Insights Dashboard**: Provides personalized, AI-powered trend analysis for nutrition, activity, and progress categories for individual clients. Includes confidence scoring, actionable recommendations generated by OpenAI GPT-4, and visual trend badges.
+- **Client Data Logs**: Tabbed interface for recording nutrition, workout, and check-in data, with nullable number fields for accurate data representation.
+
+### System Design Choices
+All displayed data is sourced from a robust backend, ensuring 100% authenticity without mock or synthetic data. The system is designed for data accuracy, with calculations like success rate and average progress derived directly from live API data. AI insights leverage OpenAI GPT-4 for sophisticated pattern detection and recommendation generation, requiring a minimum of three data points for trend analysis and incorporating zero-baseline protection.
+
+## External Dependencies
+- **OpenAI GPT-4**: For AI insight generation and actionable recommendations.
+- **PostgreSQL**: Primary database for data persistence, managed with Drizzle ORM.
+- **Node.js**: Backend runtime environment.
+- **React**: Frontend library.
+- **Tailwind CSS**: Utility-first CSS framework for styling.
+- **Shadcn UI**: UI component library built on Radix UI.
+- **Wouter**: React router for client-side navigation.
+- **Recharts**: JavaScript library for data visualization.
+- **TanStack Query v5**: For data fetching, caching, and state management.
+- **React Hook Form**: For form management and validation.
+- **Zod**: For schema validation.
