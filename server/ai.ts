@@ -255,16 +255,26 @@ ${trends.filter(t => t.recommendation).map(t => `- ${t.recommendation}`).join('\
     return completion.choices[0]?.message?.content || "Unable to generate summary at this time.";
   } catch (error) {
     console.error("OpenAI API error:", error);
-    // Fallback to rule-based summary
+    // Fallback to rule-based summary with data source acknowledgment
     const improving = trends.filter(t => t.trend === "improving").length;
     const declining = trends.filter(t => t.trend === "declining").length;
+    
+    // Count synced entries for fallback summary
+    const syncedNutrition = nutritionLogs.filter(log => log.dataSource === "apple_health").length;
+    const syncedWorkouts = workoutLogs.filter(log => log.dataSource === "apple_health").length;
+    const syncedCheckIns = checkIns.filter(log => log.dataSource === "apple_health").length;
+    const totalSynced = syncedNutrition + syncedWorkouts + syncedCheckIns;
+    
+    const dataSourceNote = totalSynced > 0 
+      ? ` Data includes ${totalSynced} auto-synced entries from wearables for improved tracking accuracy.` 
+      : "";
 
     if (improving > declining) {
-      return `${clientName} is making great progress across multiple areas. Continue current program with minor adjustments as needed.`;
+      return `${clientName} is making great progress across multiple areas. Continue current program with minor adjustments as needed.${dataSourceNote}`;
     } else if (declining > 0) {
-      return `${clientName} shows some areas needing attention. Focus on consistency and review nutrition targets.`;
+      return `${clientName} shows some areas needing attention. Focus on consistency and review nutrition targets.${dataSourceNote}`;
     } else {
-      return `${clientName} is maintaining steady progress. Consider adding new challenges to break through current plateau.`;
+      return `${clientName} is maintaining steady progress. Consider adding new challenges to break through current plateau.${dataSourceNote}`;
     }
   }
 }
