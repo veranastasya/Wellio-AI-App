@@ -215,12 +215,19 @@ async function generateAISummary(
   checkIns: CheckIn[]
 ): Promise<string> {
   try {
+    // Count synced vs manual entries
+    const syncedNutrition = nutritionLogs.filter(log => log.dataSource === "apple_health").length;
+    const syncedWorkouts = workoutLogs.filter(log => log.dataSource === "apple_health").length;
+    const syncedCheckIns = checkIns.filter(log => log.dataSource === "apple_health").length;
+    const totalSynced = syncedNutrition + syncedWorkouts + syncedCheckIns;
+    
     const context = `
 Client: ${clientName}
 Data Summary:
-- ${nutritionLogs.length} nutrition logs
-- ${workoutLogs.length} workout sessions
-- ${checkIns.length} check-ins
+- ${nutritionLogs.length} nutrition logs (${syncedNutrition} auto-synced from wearables)
+- ${workoutLogs.length} workout sessions (${syncedWorkouts} auto-synced from wearables)
+- ${checkIns.length} check-ins (${syncedCheckIns} auto-synced from wearables)
+- Data collection: ${totalSynced > 0 ? "Automated tracking enabled via wearable integration" : "Manual tracking only"}
 
 Detected Trends:
 ${trends.map(t => `- ${t.category}: ${t.trend} - ${t.description}`).join('\n')}
@@ -234,7 +241,7 @@ ${trends.filter(t => t.recommendation).map(t => `- ${t.recommendation}`).join('\
       messages: [
         {
           role: "system",
-          content: "You are a professional fitness coach AI assistant. Provide concise, actionable insights based on client data. Keep summaries under 100 words and focus on the most important trends and next steps.",
+          content: "You are a professional fitness coach AI assistant. Provide concise, actionable insights based on client data. Keep summaries under 100 words and focus on the most important trends and next steps. When wearable data is present, acknowledge the benefit of automated tracking for data accuracy.",
         },
         {
           role: "user",

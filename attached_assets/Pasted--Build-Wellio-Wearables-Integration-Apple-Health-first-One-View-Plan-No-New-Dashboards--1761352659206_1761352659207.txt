@@ -1,0 +1,95 @@
+# 📌 Build: Wellio Wearables Integration (Apple Health first) — **One-View Plan (No New Dashboards)**
+
+## 🧭 Context
+We already have:
+- `/client-logs` for manual entries (nutrition, workouts, check-ins)
+- `/ai-insights` for GPT-powered trends & recommendations
+- Postgres tables: `nutrition_logs`, `workout_logs`, `check_ins`
+
+## 🎯 Goal
+Ingest Apple Health (and later other wearables) into the **same data model and views**.
+- **No new dashboards.** Only enhance existing pages with light filters/badges.
+
+---
+
+## 🧠 Strategy (High-Level)
+1) **Ingest** wearable data (Apple Health via aggregator or native app)  
+2) **Normalize & upsert** into existing tables with a `source/provider` marker  
+3) **Surface** in existing UIs with a small **Source** chip + optional filter  
+4) **Let AI reuse** the richer dataset for trend detection—no AI changes required
+
+---
+
+## 🔧 Scope (What to Build)
+
+### 1) Data Model (additive, non-breaking)
+- Add to all three tables:
+  - `source TEXT DEFAULT 'manual'`
+  - `provider TEXT` (e.g., `apple_health`, `fitbit`, `oura`)
+  - `external_id TEXT` (idempotency)
+- Unique index: `(client_id, provider, external_id)` on each table
+
+> Purpose: wearable rows become **read-only** imports; manual rows remain editable.  
+> AI and UI can **filter** or **combine** both.
+
+### 2) Wearables Connector (Apple Health first)
+- A provider interface that can:
+  - **Connect** a client account
+  - **Backfill** last 30–90 days on connect
+  - **Receive** ongoing updates (webhooks/pulls)
+  - **Normalize** fields to internal DTOs (kcal, grams, minutes, bpm, ISO dates)
+- Map to:
+  - `workout_logs` (type, duration, calories, avg_hr)
+  - `nutrition_logs` (energy_kcal, carbs_g, protein_g, fat_g) — if available
+  - `check_ins` (weight_kg, resting_hr_bpm, sleep_minutes, sleep_quality_score)
+
+### 3) Light UI Enhancements (keep existing pages)
+- **/client-logs**
+  - Add a **Source** chip on each row: `Manual | Apple Health | Fitbit | Oura`
+  - Add a **Source filter** dropdown
+  - If `source != 'manual'`: display as **read-only** with a lock icon tooltip (“Imported from wearable”)
+- **/ai-insights**
+  - Add a small **Data Sources** pill (e.g., `Manual, Apple Health`)
+  - Optional **Source filter** (same options as above)
+  - Keep insight cards, trendlines, and confidence scoring as-is
+
+### 4) Consent & Controls
+- Per-client **consent screen** with scopes (workouts, sleep, heart rate, nutrition)
+- Show **last sync** timestamp; **pause/resume** sync toggle
+- Log **audit events** (connect, revoke, pause, resume)
+
+---
+
+## 🧩 Data Flow (Simple)
+1) Client connects Apple Health → consent granted  
+2) On-connect **backfill** imports past data (e.g., 90 days)  
+3) Incoming **updates** arrive via webhook/poll → normalized → **idempotent upsert**  
+4) Data appears in `/client-logs` (with Source chip) and feeds `/ai-insights`
+
+---
+
+## ✅ Acceptance Criteria
+- Connecting Apple Health for a client imports historical data and shows it in **/client-logs** with `Source=Apple Health`
+- **/ai-insights** uses the imported data to produce trends (e.g., “Steps ↑ 18% WoW”) without layout changes
+- **No additional dashboards** were created
+- Imported wearable rows are **read-only**; manual entries remain editable
+- Source filtering works on both pages
+- Client can **revoke/pause** sharing; sync stops accordingly
+
+---
+
+## 📈 Success Metrics
+- ≥95% successful syncs (webhooks + backfills)
+- Insight coverage across **activity, recovery, nutrition** increases without adding UI complexity
+- Time-to-insight reduced vs manual-only data (e.g., % of clients reaching ≥3 datapoints per metric within 7 days)
+
+---
+
+## 🗂️ Milestones (Lean)
+1) Migrations + Source chips/filters in UI  
+2) Apple Health connector + 90-day backfill  
+3) Webhook updates + idempotent upserts  
+4) Consent screen + pause/revoke controls  
+5) E2E test: connect → backfill → insights render (no new dashboards)
+
+---

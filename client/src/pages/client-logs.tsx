@@ -27,6 +27,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertNutritionLogSchema, insertWorkoutLogSchema, insertCheckInSchema } from "@shared/schema";
 import { ClipboardList, Apple, Dumbbell, Scale } from "lucide-react";
 import type { z } from "zod";
+import { DeviceConnection } from "@/components/device-connection";
 
 interface Client {
   id: string;
@@ -238,8 +239,11 @@ export default function ClientLogs() {
             </CardContent>
           </Card>
 
-          {selectedClientId && (
-            <Tabs defaultValue="nutrition" className="w-full">
+          {selectedClientId && selectedClient && (
+            <>
+              <DeviceConnection clientId={selectedClientId} clientName={selectedClient.name} />
+              
+              <Tabs defaultValue="nutrition" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="nutrition" data-testid="tab-nutrition">
                   <Apple className="w-4 h-4 mr-2" />
@@ -630,6 +634,7 @@ export default function ClientLogs() {
                 </Card>
               </TabsContent>
             </Tabs>
+            </>
           )}
         </div>
       </div>

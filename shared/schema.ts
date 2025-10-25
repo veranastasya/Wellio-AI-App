@@ -81,6 +81,7 @@ export const nutritionLogs = pgTable("nutrition_logs", {
   carbs: real("carbs"),
   fats: real("fats"),
   notes: text("notes"),
+  dataSource: text("data_source").notNull().default("manual"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -94,6 +95,7 @@ export const workoutLogs = pgTable("workout_logs", {
   intensity: text("intensity"),
   exercises: json("exercises"),
   notes: text("notes"),
+  dataSource: text("data_source").notNull().default("manual"),
   createdAt: text("created_at").notNull(),
 });
 
@@ -109,7 +111,20 @@ export const checkIns = pgTable("check_ins", {
   mood: text("mood"),
   energy: text("energy"),
   notes: text("notes"),
+  dataSource: text("data_source").notNull().default("manual"),
   createdAt: text("created_at").notNull(),
+});
+
+export const deviceConnections = pgTable("device_connections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  clientName: text("client_name").notNull(),
+  deviceType: text("device_type").notNull(),
+  status: text("status").notNull().default("connected"),
+  syncEnabled: boolean("sync_enabled").notNull().default(true),
+  dataPermissions: json("data_permissions").notNull(),
+  lastSyncedAt: text("last_synced_at"),
+  connectedAt: text("connected_at").notNull(),
 });
 
 export const insertClientSchema = createInsertSchema(clients).omit({
@@ -154,6 +169,10 @@ export const insertCheckInSchema = createInsertSchema(checkIns).omit({
   createdAt: z.string().optional(),
 });
 
+export const insertDeviceConnectionSchema = createInsertSchema(deviceConnections).omit({
+  id: true,
+});
+
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
 
@@ -180,3 +199,6 @@ export type WorkoutLog = typeof workoutLogs.$inferSelect;
 
 export type InsertCheckIn = z.infer<typeof insertCheckInSchema>;
 export type CheckIn = typeof checkIns.$inferSelect;
+
+export type InsertDeviceConnection = z.infer<typeof insertDeviceConnectionSchema>;
+export type DeviceConnection = typeof deviceConnections.$inferSelect;

@@ -11,8 +11,10 @@ import {
   insertNutritionLogSchema,
   insertWorkoutLogSchema,
   insertCheckInSchema,
+  insertDeviceConnectionSchema,
 } from "@shared/schema";
 import { analyzeClientData } from "./ai";
+import { syncAppleHealthData } from "./sync";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Client routes
@@ -315,6 +317,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(checkIn);
     } catch (error) {
       res.status(400).json({ error: "Invalid check-in data" });
+    }
+  });
+
+  // Device Connection routes
+  app.get("/api/device-connections", async (_req, res) => {
+    try {
+      const connections = await storage.getDeviceConnections();
+      res.json(connections);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch device connections" });
+    }
+  });
+
+  app.get("/api/device-connections/client/:clientId", async (req, res) => {
+    try {
+      const connections = await storage.getDeviceConnectionsByClient(req.params.clientId);
+      res.json(connections);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch device connections" });
+    }
+  });
+
+  app.post("/api/device-connections", async (req, res) => {
+    try {
+      const validatedData = insertDeviceConnectionSchema.parse(req.body);
+      const connection = await storage.createDeviceConnection(validatedData);
+      res.status(201).json(connection);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid device connection data" });
+    }
+  });
+
+  app.patch("/api/device-connections/:id", async (req, res) => {
+    try {
+      const validatedData = insertDeviceConnectionSchema.partial().parse(req.body);
+      const connection = await storage.updateDeviceConnection(req.params.id, validatedData);
+      if (!connection) {
+        return res.status(404).json({ error: "Device connection not found" });
+      }
+      res.json(connection);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid device connection data" });
+    }
+  });
+
+  app.delete("/api/device-connections/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteDeviceConnection(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Device connection not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete device connection" });
+    }
+  });
+
+  // Sync routes
+  app.post("/api/sync/apple-health", async (req, res) => {
+    try {
+      const { clientId, clientName, daysToSync } = req.body;
+      if (!clientId || !clientName) {
+        return res.status(400).json({ error: "clientId and clientName are required" });
+      }
+      
+      const results = await syncAppleHealthData({ 
+        clientId, 
+        clientName, 
+        daysToSync: daysToSync || 7 
+      });
+      
+      res.json({
+        success: true,
+        ...results,
+        message: `Synced ${daysToSync || 7} days of Apple Health data`,
+      });
+    } catch (error) {
+      console.error("Apple Health sync error:", error);
+      res.status(500).json({ error: "Failed to sync Apple Health data" });
     }
   });
 

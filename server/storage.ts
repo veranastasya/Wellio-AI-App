@@ -17,6 +17,8 @@ import {
   type InsertWorkoutLog,
   type CheckIn,
   type InsertCheckIn,
+  type DeviceConnection,
+  type InsertDeviceConnection,
   clients,
   sessions,
   messages,
@@ -26,6 +28,7 @@ import {
   nutritionLogs,
   workoutLogs,
   checkIns,
+  deviceConnections,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -79,6 +82,14 @@ export interface IStorage {
   getCheckIns(): Promise<CheckIn[]>;
   getCheckIn(id: string): Promise<CheckIn | undefined>;
   createCheckIn(checkIn: InsertCheckIn): Promise<CheckIn>;
+
+  // Device Connections
+  getDeviceConnections(): Promise<DeviceConnection[]>;
+  getDeviceConnectionsByClient(clientId: string): Promise<DeviceConnection[]>;
+  getDeviceConnection(id: string): Promise<DeviceConnection | undefined>;
+  createDeviceConnection(deviceConnection: InsertDeviceConnection): Promise<DeviceConnection>;
+  updateDeviceConnection(id: string, deviceConnection: Partial<InsertDeviceConnection>): Promise<DeviceConnection | undefined>;
+  deleteDeviceConnection(id: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -560,6 +571,38 @@ export class DatabaseStorage implements IStorage {
     };
     const [checkIn] = await db.insert(checkIns).values(dataWithTimestamp).returning();
     return checkIn;
+  }
+
+  // Device Connection methods
+  async getDeviceConnections(): Promise<DeviceConnection[]> {
+    return await db.select().from(deviceConnections);
+  }
+
+  async getDeviceConnectionsByClient(clientId: string): Promise<DeviceConnection[]> {
+    return await db.select().from(deviceConnections).where(eq(deviceConnections.clientId, clientId));
+  }
+
+  async getDeviceConnection(id: string): Promise<DeviceConnection | undefined> {
+    const [deviceConnection] = await db.select().from(deviceConnections).where(eq(deviceConnections.id, id));
+    return deviceConnection || undefined;
+  }
+
+  async createDeviceConnection(insertDeviceConnection: InsertDeviceConnection): Promise<DeviceConnection> {
+    const [deviceConnection] = await db.insert(deviceConnections).values(insertDeviceConnection).returning();
+    return deviceConnection;
+  }
+
+  async updateDeviceConnection(id: string, updateData: Partial<InsertDeviceConnection>): Promise<DeviceConnection | undefined> {
+    const [deviceConnection] = await db.update(deviceConnections)
+      .set(updateData)
+      .where(eq(deviceConnections.id, id))
+      .returning();
+    return deviceConnection || undefined;
+  }
+
+  async deleteDeviceConnection(id: string): Promise<boolean> {
+    const result = await db.delete(deviceConnections).where(eq(deviceConnections.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 }
 
