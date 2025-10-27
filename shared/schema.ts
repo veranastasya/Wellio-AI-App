@@ -127,6 +127,19 @@ export const deviceConnections = pgTable("device_connections", {
   connectedAt: text("connected_at").notNull(),
 });
 
+export const connectionRequests = pgTable("connection_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  clientName: text("client_name").notNull(),
+  clientEmail: text("client_email").notNull(),
+  deviceType: text("device_type").notNull(),
+  status: text("status").notNull().default("pending"),
+  requestedAt: text("requested_at").notNull(),
+  respondedAt: text("responded_at"),
+  expiresAt: text("expires_at").notNull(),
+  inviteCode: text("invite_code").notNull(),
+});
+
 export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
 });
@@ -173,6 +186,14 @@ export const insertDeviceConnectionSchema = createInsertSchema(deviceConnections
   id: true,
 });
 
+export const insertConnectionRequestSchema = createInsertSchema(connectionRequests).omit({
+  id: true,
+}).extend({
+  requestedAt: z.string().optional(),
+  expiresAt: z.string().optional(),
+  inviteCode: z.string().optional(),
+});
+
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
 
@@ -202,3 +223,6 @@ export type CheckIn = typeof checkIns.$inferSelect;
 
 export type InsertDeviceConnection = z.infer<typeof insertDeviceConnectionSchema>;
 export type DeviceConnection = typeof deviceConnections.$inferSelect;
+
+export type InsertConnectionRequest = z.infer<typeof insertConnectionRequestSchema>;
+export type ConnectionRequest = typeof connectionRequests.$inferSelect;
