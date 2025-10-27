@@ -51,17 +51,33 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
     onSuccess: (data: any) => {
       // Open ROOK connection page in a new window
       if (data.connectionUrl) {
-        window.open(data.connectionUrl, '_blank', 'noopener,noreferrer');
+        const popup = window.open(data.connectionUrl, '_blank', 'noopener,noreferrer');
+        
+        // Check if popup was blocked
+        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+          // Popup was blocked - show a message with a clickable link
+          toast({
+            title: "Popup Blocked",
+            description: "Please allow popups for this site, or click the link below to connect",
+          });
+          
+          // Fallback: navigate to the URL directly
+          setTimeout(() => {
+            window.location.href = data.connectionUrl;
+          }, 2000);
+        } else {
+          toast({
+            title: "ROOK Connection Opened",
+            description: "Please complete the connection in the new window",
+          });
+        }
       }
       
       queryClient.invalidateQueries({ queryKey: ["/api/device-connections/client", clientId] });
-      toast({
-        title: "ROOK Connection Initiated",
-        description: "Please complete the connection in the new window",
-      });
       setIsConnecting(false);
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("ROOK connection error:", error);
       toast({
         title: "Connection Failed",
         description: "Failed to initiate ROOK connection",
