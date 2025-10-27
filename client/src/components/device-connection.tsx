@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Smartphone, RefreshCw, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Smartphone, RefreshCw, CheckCircle2, XCircle, Clock, Apple, Send, Copy } from "lucide-react";
 
 interface DeviceConnection {
   id: string;
@@ -26,22 +26,44 @@ interface DeviceConnection {
   connectedAt: string;
 }
 
+interface ConnectionRequest {
+  id: string;
+  clientId: string;
+  clientName: string;
+  clientEmail: string;
+  deviceType: string;
+  status: string;
+  requestedAt: string;
+  respondedAt?: string;
+  expiresAt: string;
+  inviteCode: string;
+}
+
 interface DeviceConnectionProps {
   clientId: string;
   clientName: string;
+  clientEmail: string;
 }
 
-export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps) {
+export function DeviceConnection({ clientId, clientName, clientEmail }: DeviceConnectionProps) {
   const { toast } = useToast();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSendingRequest, setIsSendingRequest] = useState(false);
 
   const { data: connections = [], isLoading } = useQuery<DeviceConnection[]>({
     queryKey: ["/api/device-connections/client", clientId],
     enabled: !!clientId,
   });
 
+  const { data: connectionRequests = [] } = useQuery<ConnectionRequest[]>({
+    queryKey: ["/api/connection-requests/client", clientId],
+    enabled: !!clientId,
+  });
+
   const rookConnection = connections.find(c => c.deviceType === "rook");
+  const appleHealthConnection = connections.find(c => c.deviceType === "apple_health");
+  const appleHealthRequest = connectionRequests.find(r => r.deviceType === "apple_health" && r.status === "pending");
 
   const connectMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/rook/connect", {
@@ -115,9 +137,55 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
     },
   });
 
+  const sendAppleHealthRequestMutation = useMutation<ConnectionRequest, Error, void>({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/connection-requests", {
+        clientId,
+        clientName,
+        clientEmail,
+        deviceType: "apple_health",
+      });
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/connection-requests/client", clientId] });
+      const inviteLink = `wellio://connect?code=${data.inviteCode}`;
+      
+      toast({
+        title: "Connection Request Sent",
+        description: `Invite code: ${data.inviteCode}. Client should open this link on their iPhone.`,
+        duration: 10000,
+      });
+      
+      setIsSendingRequest(false);
+    },
+    onError: () => {
+      toast({
+        title: "Request Failed",
+        description: "Failed to send Apple Health connection request",
+        variant: "destructive",
+      });
+      setIsSendingRequest(false);
+    },
+  });
+
   const handleConnect = () => {
     setIsConnecting(true);
     connectMutation.mutate();
+  };
+
+  const handleSendAppleHealthRequest = () => {
+    setIsSendingRequest(true);
+    sendAppleHealthRequestMutation.mutate();
+  };
+
+  const copyInviteLink = (inviteCode: string) => {
+    const inviteLink = `wellio://connect?code=${inviteCode}`;
+    navigator.clipboard.writeText(inviteLink);
+    toast({
+      title: "Link Copied",
+      description: "Share this link with your client to open on their iPhone",
+    });
   };
 
   const handleRefresh = () => {
@@ -232,51 +300,89 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
             </div>
           </div>
         ) : (
-          <div>
-            <Button variant="outline" className="w-full" onClick={handleConnect} data-testid="button-connect" disabled={isConnecting}>
-              <Smartphone className="w-4 h-4 mr-2" />
-              {isConnecting ? "Connecting..." : "Connect Wearables (ROOK)"}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              Supports Apple Health, Garmin, Fitbit, Oura, Whoop, and 400+ devices
-            </p>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-xs mt-2">
-                  What data will be synced?
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>ROOK Wearable Connection</DialogTitle>
-                  <DialogDescription>
-                    Automatically sync nutrition, workout, and check-in data from your wearables
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-3">
-                    <Label>Data to Sync</Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Nutrition Data</span>
-                        <Switch checked disabled />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Workout Data</span>
-                        <Switch checked disabled />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm">Check-in Data (Weight, Body Fat)</span>
-                        <Switch checked disabled />
-                      </div>
-                    </div>
+          <div className="space-y-4">
+            <div>
+              <Button variant="outline" className="w-full" onClick={handleConnect} data-testid="button-connect" disabled={isConnecting}>
+                <Smartphone className="w-4 h-4 mr-2" />
+                {isConnecting ? "Connecting..." : "Connect Wearables (ROOK)"}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Supports Garmin, Fitbit, Oura, Whoop, and 400+ devices
+              </p>
+            </div>
+
+            {/* Apple Health Section */}
+            <div className="pt-4 border-t">
+              {appleHealthConnection ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
+                    <Apple className="w-5 h-5 text-foreground" />
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Click "Connect Wearables" to open the ROOK connection page where you can authorize your devices
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Apple Health</p>
+                    <p className="text-xs text-muted-foreground">Connected via iOS app</p>
+                    {appleHealthConnection.lastSyncedAt && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                        <Clock className="w-3 h-3" />
+                        Last synced: {new Date(appleHealthConnection.lastSyncedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                </div>
+              ) : appleHealthRequest ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
+                      <Apple className="w-5 h-5 text-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">Apple Health</p>
+                      <p className="text-xs text-muted-foreground">Request pending - awaiting client approval</p>
+                    </div>
+                    <Badge variant="secondary" className="gap-1">
+                      <Clock className="w-3 h-3" />
+                      Pending
+                    </Badge>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium">Invite Code:</span>
+                      <code className="text-xs bg-background px-2 py-1 rounded">{appleHealthRequest.inviteCode}</code>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => copyInviteLink(appleHealthRequest.inviteCode)}
+                      data-testid="button-copy-invite"
+                    >
+                      <Copy className="w-3 h-3 mr-2" />
+                      Copy Invite Link
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Send this link to your client to open on their iPhone
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleSendAppleHealthRequest}
+                    disabled={isSendingRequest}
+                    data-testid="button-send-apple-health-request"
+                  >
+                    <Apple className="w-4 h-4 mr-2" />
+                    {isSendingRequest ? "Sending Request..." : "Send Apple Health Request"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Requires client to approve on their iOS device
                   </p>
                 </div>
-              </DialogContent>
-            </Dialog>
+              )}
+            </div>
           </div>
         )}
       </CardContent>

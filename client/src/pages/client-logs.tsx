@@ -32,6 +32,7 @@ import { DeviceConnection } from "@/components/device-connection";
 interface Client {
   id: string;
   name: string;
+  email: string;
   status: string;
 }
 
@@ -241,7 +242,11 @@ export default function ClientLogs() {
 
           {selectedClientId && selectedClient && (
             <>
-              <DeviceConnection clientId={selectedClientId} clientName={selectedClient.name} />
+              <DeviceConnection 
+                clientId={selectedClientId} 
+                clientName={selectedClient.name}
+                clientEmail={selectedClient.email}
+              />
               
               <Tabs defaultValue="nutrition" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
