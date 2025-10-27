@@ -15,6 +15,14 @@ import {
 } from "@shared/schema";
 import { analyzeClientData } from "./ai";
 import { syncAppleHealthData } from "./sync";
+import { 
+  verifyRookWebhook, 
+  mapRookNutritionToLog, 
+  mapRookPhysicalToWorkout, 
+  mapRookBodyToCheckIn,
+  generateRookConnectionUrl,
+  createRookUserBinding
+} from "./rook";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Client routes
@@ -396,6 +404,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Apple Health sync error:", error);
       res.status(500).json({ error: "Failed to sync Apple Health data" });
+    }
+  });
+
+  // ROOK Integration routes
+  app.post("/api/webhooks/rook", async (req, res) => {
+    try {
+      // Verify webhook signature
+      if (!verifyRookWebhook(req)) {
+        console.error("Invalid ROOK webhook signature");
+        return res.status(403).json({ error: "Invalid signature" });
+      }
+
+      const event = req.body;
+      console.log("ROOK webhook received:", event.type, "for user:", event.user_id);
+
+      // Find client by userId (stored in device connection)
+      const allConnections = await storage.getDeviceConnections();
+      const connection = allConnections.find(conn => 
+        conn.clientId === event.user_id && conn.deviceType === "rook"
+      );
+
+      if (!connection) {
+        console.warn(`No ROOK connection found for user_id: ${event.user_id}`);
+        // Still return 200 to acknowledge receipt
+        return res.status(200).json({ message: "Webhook received but no matching connection" });
+      }
+
+      // Process different event types
+      let processedCount = 0;
+
+      if (event.type === "NUTRITION") {
+        const nutritionLog = mapRookNutritionToLog(event, connection.clientId, connection.clientName);
+        if (nutritionLog) {
+          await storage.createNutritionLog(nutritionLog);
+          processedCount++;
+        }
+      }
+
+      if (event.type === "PHYSICAL") {
+        const workoutLog = mapRookPhysicalToWorkout(event, connection.clientId, connection.clientName);
+        if (workoutLog) {
+          await storage.createWorkoutLog(workoutLog);
+          processedCount++;
+        }
+      }
+
+      if (event.type === "BODY") {
+        const checkIn = mapRookBodyToCheckIn(event, connection.clientId, connection.clientName);
+        if (checkIn) {
+          await storage.createCheckIn(checkIn);
+          processedCount++;
+        }
+      }
+
+      // Update last synced timestamp
+      if (processedCount > 0) {
+        await storage.updateDeviceConnection(connection.id, {
+          lastSyncedAt: new Date().toISOString(),
+        });
+      }
+
+      res.status(200).json({ 
+        message: "Webhook processed successfully",
+        processed: processedCount 
+      });
+    } catch (error) {
+      console.error("ROOK webhook error:", error);
+      res.status(500).json({ error: "Failed to process webhook" });
+    }
+  });
+
+  app.post("/api/rook/connect", async (req, res) => {
+    try {
+      const { clientId, clientName } = req.body;
+      if (!clientId || !clientName) {
+        return res.status(400).json({ error: "clientId and clientName are required" });
+      }
+
+      // Create user binding in ROOK
+      const bindingSuccess = await createRookUserBinding(clientId, {
+        name: clientName,
+        type: "wellness_client"
+      });
+
+      if (!bindingSuccess) {
+        return res.status(500).json({ error: "Failed to create ROOK user binding" });
+      }
+
+      // Generate connection URL
+      const connectionUrl = generateRookConnectionUrl(clientId);
+
+      // Create device connection record
+      const connection = await storage.createDeviceConnection({
+        clientId,
+        clientName,
+        deviceType: "rook",
+        status: "pending",
+        syncEnabled: true,
+        dataPermissions: ["nutrition", "workouts", "check-ins"],
+        connectedAt: new Date().toISOString(),
+      });
+
+      res.json({
+        connectionUrl,
+        connection,
+        message: "ROOK connection initiated"
+      });
+    } catch (error) {
+      console.error("ROOK connect error:", error);
+      res.status(500).json({ error: "Failed to initiate ROOK connection" });
     }
   });
 

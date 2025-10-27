@@ -41,68 +41,48 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
     enabled: !!clientId,
   });
 
-  const appleHealthConnection = connections.find(c => c.deviceType === "apple_health");
+  const rookConnection = connections.find(c => c.deviceType === "rook");
 
   const connectMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/device-connections", {
+    mutationFn: () => apiRequest("POST", "/api/rook/connect", {
       clientId,
       clientName,
-      deviceType: "apple_health",
-      status: "connected",
-      syncEnabled: true,
-      dataPermissions: {
-        nutrition: true,
-        workouts: true,
-        checkIns: true,
-      },
-      connectedAt: new Date().toISOString(),
     }),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      // Open ROOK connection page in a new window
+      if (data.connectionUrl) {
+        window.open(data.connectionUrl, '_blank', 'noopener,noreferrer');
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/device-connections/client", clientId] });
       toast({
-        title: "Device Connected",
-        description: "Apple Health connected successfully",
+        title: "ROOK Connection Initiated",
+        description: "Please complete the connection in the new window",
       });
       setIsConnecting(false);
     },
     onError: () => {
       toast({
         title: "Connection Failed",
-        description: "Failed to connect Apple Health",
+        description: "Failed to initiate ROOK connection",
         variant: "destructive",
       });
+      setIsConnecting(false);
     },
   });
 
-  const syncMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/sync/apple-health", {
-      clientId,
-      clientName,
-      daysToSync: 7,
-    }),
-    onSuccess: (data: any) => {
+  const refreshMutation = useMutation({
+    mutationFn: () => new Promise((resolve) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/device-connections/client", clientId] });
       queryClient.invalidateQueries({ queryKey: ["/api/nutrition-logs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/workout-logs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/check-ins"] });
-      
-      if (appleHealthConnection) {
-        apiRequest("PATCH", `/api/device-connections/${appleHealthConnection.id}`, {
-          lastSyncedAt: new Date().toISOString(),
-        });
-        queryClient.invalidateQueries({ queryKey: ["/api/device-connections/client", clientId] });
-      }
-
+      setTimeout(resolve, 1000);
+    }),
+    onSuccess: () => {
       toast({
-        title: "Sync Complete",
-        description: `Synced ${data.nutritionLogsCreated + data.workoutLogsCreated + data.checkInsCreated} entries from Apple Health`,
-      });
-      setIsSyncing(false);
-    },
-    onError: () => {
-      toast({
-        title: "Sync Failed",
-        description: "Failed to sync Apple Health data",
-        variant: "destructive",
+        title: "Data Refreshed",
+        description: "Latest health data loaded from ROOK",
       });
       setIsSyncing(false);
     },
@@ -114,23 +94,24 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
       queryClient.invalidateQueries({ queryKey: ["/api/device-connections/client", clientId] });
       toast({
         title: "Device Disconnected",
-        description: "Apple Health has been disconnected",
+        description: "ROOK wearables connection has been disconnected",
       });
     },
   });
 
   const handleConnect = () => {
+    setIsConnecting(true);
     connectMutation.mutate();
   };
 
-  const handleSync = () => {
+  const handleRefresh = () => {
     setIsSyncing(true);
-    syncMutation.mutate();
+    refreshMutation.mutate();
   };
 
   const handleDisconnect = () => {
-    if (appleHealthConnection) {
-      disconnectMutation.mutate(appleHealthConnection.id);
+    if (rookConnection) {
+      disconnectMutation.mutate(rookConnection.id);
     }
   };
 
@@ -146,7 +127,7 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
             <CardTitle className="text-lg">Wearable Integration</CardTitle>
             <CardDescription>Connect devices to automatically sync health data</CardDescription>
           </div>
-          {appleHealthConnection ? (
+          {rookConnection ? (
             <Badge variant="default" className="gap-1" data-testid="badge-connected">
               <CheckCircle2 className="w-3 h-3" />
               Connected
@@ -160,18 +141,19 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
         </div>
       </CardHeader>
       <CardContent>
-        {appleHealthConnection ? (
+        {rookConnection ? (
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
               <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
                 <Smartphone className="w-5 h-5 text-foreground" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-sm">Apple Health</p>
-                {appleHealthConnection.lastSyncedAt && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <p className="font-medium text-sm">ROOK Wearables</p>
+                <p className="text-xs text-muted-foreground">Apple Health, Garmin, Fitbit, Oura & 400+ devices</p>
+                {rookConnection.lastSyncedAt && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                     <Clock className="w-3 h-3" />
-                    Last synced: {new Date(appleHealthConnection.lastSyncedAt).toLocaleString()}
+                    Last data: {new Date(rookConnection.lastSyncedAt).toLocaleString()}
                   </p>
                 )}
               </div>
@@ -179,12 +161,12 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={handleSync}
+                  onClick={handleRefresh}
                   disabled={isSyncing}
                   data-testid="button-sync"
                 >
                   <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-                  {isSyncing ? "Syncing..." : "Sync Now"}
+                  {isSyncing ? "Refreshing..." : "Refresh"}
                 </Button>
                 <Dialog>
                   <DialogTrigger asChild>
@@ -194,9 +176,9 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Manage Apple Health</DialogTitle>
+                      <DialogTitle>Manage ROOK Connection</DialogTitle>
                       <DialogDescription>
-                        Control what data is synced and manage your connection
+                        Control what data is synced and manage your wearables connection
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
@@ -224,7 +206,7 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
                           className="w-full"
                           data-testid="button-disconnect"
                         >
-                          Disconnect Apple Health
+                          Disconnect ROOK
                         </Button>
                       </div>
                     </div>
@@ -235,18 +217,24 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
           </div>
         ) : (
           <div>
-            <Dialog open={isConnecting} onOpenChange={setIsConnecting}>
+            <Button variant="outline" className="w-full" onClick={handleConnect} data-testid="button-connect" disabled={isConnecting}>
+              <Smartphone className="w-4 h-4 mr-2" />
+              {isConnecting ? "Connecting..." : "Connect Wearables (ROOK)"}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Supports Apple Health, Garmin, Fitbit, Oura, Whoop, and 400+ devices
+            </p>
+            <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline" className="w-full" data-testid="button-connect">
-                  <Smartphone className="w-4 h-4 mr-2" />
-                  Connect Apple Health
+                <Button variant="ghost" size="sm" className="text-xs mt-2">
+                  What data will be synced?
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Connect Apple Health</DialogTitle>
+                  <DialogTitle>ROOK Wearable Connection</DialogTitle>
                   <DialogDescription>
-                    Automatically sync nutrition, workout, and check-in data from Apple Health
+                    Automatically sync nutrition, workout, and check-in data from your wearables
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
@@ -267,9 +255,9 @@ export function DeviceConnection({ clientId, clientName }: DeviceConnectionProps
                       </div>
                     </div>
                   </div>
-                  <Button onClick={handleConnect} className="w-full" data-testid="button-confirm-connect">
-                    Connect and Start Syncing
-                  </Button>
+                  <p className="text-sm text-muted-foreground">
+                    Click "Connect Wearables" to open the ROOK connection page where you can authorize your devices
+                  </p>
                 </div>
               </DialogContent>
             </Dialog>
@@ -286,10 +274,13 @@ export function DataSourceBadge({ dataSource }: { dataSource: string }) {
     return null; // Don't show badge for manual entries
   }
 
+  const sourceLabel = dataSource === "apple_health" ? "Apple Health" : 
+                      dataSource === "rook" ? "ROOK" : dataSource;
+  
   return (
     <Badge variant="secondary" className="text-xs gap-1" data-testid={`badge-source-${dataSource}`}>
       <Smartphone className="w-3 h-3" />
-      {dataSource === "apple_health" ? "Apple Health" : dataSource}
+      {sourceLabel}
     </Badge>
   );
 }

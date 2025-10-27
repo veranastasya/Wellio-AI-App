@@ -215,10 +215,16 @@ async function generateAISummary(
   checkIns: CheckIn[]
 ): Promise<string> {
   try {
-    // Count synced vs manual entries
-    const syncedNutrition = nutritionLogs.filter(log => log.dataSource === "apple_health").length;
-    const syncedWorkouts = workoutLogs.filter(log => log.dataSource === "apple_health").length;
-    const syncedCheckIns = checkIns.filter(log => log.dataSource === "apple_health").length;
+    // Count synced vs manual entries (both apple_health and rook)
+    const syncedNutrition = nutritionLogs.filter(log => 
+      log.dataSource === "apple_health" || log.dataSource === "rook"
+    ).length;
+    const syncedWorkouts = workoutLogs.filter(log => 
+      log.dataSource === "apple_health" || log.dataSource === "rook"
+    ).length;
+    const syncedCheckIns = checkIns.filter(log => 
+      log.dataSource === "apple_health" || log.dataSource === "rook"
+    ).length;
     const totalSynced = syncedNutrition + syncedWorkouts + syncedCheckIns;
     
     const context = `
@@ -259,10 +265,16 @@ ${trends.filter(t => t.recommendation).map(t => `- ${t.recommendation}`).join('\
     const improving = trends.filter(t => t.trend === "improving").length;
     const declining = trends.filter(t => t.trend === "declining").length;
     
-    // Count synced entries for fallback summary
-    const syncedNutrition = nutritionLogs.filter(log => log.dataSource === "apple_health").length;
-    const syncedWorkouts = workoutLogs.filter(log => log.dataSource === "apple_health").length;
-    const syncedCheckIns = checkIns.filter(log => log.dataSource === "apple_health").length;
+    // Count synced entries for fallback summary (both apple_health and rook)
+    const syncedNutrition = nutritionLogs.filter(log => 
+      log.dataSource === "apple_health" || log.dataSource === "rook"
+    ).length;
+    const syncedWorkouts = workoutLogs.filter(log => 
+      log.dataSource === "apple_health" || log.dataSource === "rook"
+    ).length;
+    const syncedCheckIns = checkIns.filter(log => 
+      log.dataSource === "apple_health" || log.dataSource === "rook"
+    ).length;
     const totalSynced = syncedNutrition + syncedWorkouts + syncedCheckIns;
     
     const dataSourceNote = totalSynced > 0 
