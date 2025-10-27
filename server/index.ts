@@ -4,7 +4,15 @@ import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 
 const app = express();
-app.use(express.json());
+
+// Store raw body for webhook signature verification
+app.use(express.json({
+  verify: (req: any, _res, buf, encoding) => {
+    if (req.url === '/api/webhooks/rook') {
+      req.rawBody = buf.toString((encoding as BufferEncoding) || 'utf8');
+    }
+  }
+}));
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {

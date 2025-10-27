@@ -13,33 +13,44 @@ interface RookWebhookEvent {
 /**
  * Verify ROOK webhook signature using HMAC SHA-256
  */
-export function verifyRookWebhook(req: Request): boolean {
+export function verifyRookWebhook(req: Request & { rawBody?: string }): boolean {
   const receivedHash = req.headers['x-rook-hash'];
   
   if (!receivedHash || typeof receivedHash !== 'string') {
-    console.error('Missing X-ROOK-HASH header');
+    console.error('[ROOK] Missing X-ROOK-HASH header');
     return false;
   }
 
   const secretKey = process.env.ROOK_SECRET_KEY;
   if (!secretKey) {
-    console.error('ROOK_SECRET_KEY not configured');
+    console.error('[ROOK] ROOK_SECRET_KEY not configured');
     return false;
   }
 
-  // Generate HMAC signature from request body
-  const payload = JSON.stringify(req.body);
-  const hmac = crypto.createHmac('sha256', secretKey);
-  const calculatedHash = hmac.update(payload).digest('hex');
+  // Use raw body for HMAC verification (ROOK signs the raw payload)
+  const payload = req.rawBody;
+  if (!payload) {
+    console.error('[ROOK] No raw body available for verification');
+    return false;
+  }
 
-  // Use timing-safe comparison to prevent timing attacks
+  // Generate HMAC signature from raw request body
+  const hmac = crypto.createHmac('sha256', secretKey);
+  hmac.update(payload);
+  const calculatedHash = hmac.digest();
+
+  // Use timing-safe comparison with proper hex encoding
   try {
-    return crypto.timingSafeEqual(
-      Buffer.from(receivedHash),
-      Buffer.from(calculatedHash)
-    );
+    const receivedBuffer = Buffer.from(receivedHash, 'hex');
+    const isValid = crypto.timingSafeEqual(receivedBuffer, calculatedHash);
+    
+    if (!isValid) {
+      console.error('[ROOK] Signature mismatch - received:', receivedHash, 'calculated:', calculatedHash.toString('hex'));
+    }
+    
+    return isValid;
   } catch (error) {
-    console.error('HMAC verification failed:', error);
+    console.error('[ROOK] HMAC verification error:', error);
     return false;
   }
 }

@@ -409,15 +409,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ROOK Integration routes
   app.post("/api/webhooks/rook", async (req, res) => {
+    const startTime = Date.now();
     try {
       // Verify webhook signature
       if (!verifyRookWebhook(req)) {
-        console.error("Invalid ROOK webhook signature");
+        console.error("[ROOK] Webhook signature verification failed", {
+          timestamp: new Date().toISOString(),
+          headers: req.headers,
+          userId: req.body?.user_id,
+        });
         return res.status(403).json({ error: "Invalid signature" });
       }
 
       const event = req.body;
-      console.log("ROOK webhook received:", event.type, "for user:", event.user_id);
+      console.log(`[ROOK] Webhook received: type=${event.type} userId=${event.user_id} timestamp=${event.timestamp}`);
 
       // Find client by userId (stored in device connection)
       const allConnections = await storage.getDeviceConnections();
@@ -426,35 +431,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (!connection) {
-        console.warn(`No ROOK connection found for user_id: ${event.user_id}`);
+        console.warn(`[ROOK] No connection found for userId=${event.user_id}`);
         // Still return 200 to acknowledge receipt
         return res.status(200).json({ message: "Webhook received but no matching connection" });
       }
 
       // Process different event types
       let processedCount = 0;
+      const errors: string[] = [];
 
       if (event.type === "NUTRITION") {
-        const nutritionLog = mapRookNutritionToLog(event, connection.clientId, connection.clientName);
-        if (nutritionLog) {
-          await storage.createNutritionLog(nutritionLog);
-          processedCount++;
+        try {
+          const nutritionLog = mapRookNutritionToLog(event, connection.clientId, connection.clientName);
+          if (nutritionLog) {
+            await storage.createNutritionLog(nutritionLog);
+            processedCount++;
+          } else {
+            errors.push("Failed to map NUTRITION data");
+          }
+        } catch (error) {
+          errors.push(`NUTRITION mapping error: ${error}`);
+          console.error("[ROOK] NUTRITION mapping error:", error);
         }
       }
 
       if (event.type === "PHYSICAL") {
-        const workoutLog = mapRookPhysicalToWorkout(event, connection.clientId, connection.clientName);
-        if (workoutLog) {
-          await storage.createWorkoutLog(workoutLog);
-          processedCount++;
+        try {
+          const workoutLog = mapRookPhysicalToWorkout(event, connection.clientId, connection.clientName);
+          if (workoutLog) {
+            await storage.createWorkoutLog(workoutLog);
+            processedCount++;
+          } else {
+            errors.push("Failed to map PHYSICAL data");
+          }
+        } catch (error) {
+          errors.push(`PHYSICAL mapping error: ${error}`);
+          console.error("[ROOK] PHYSICAL mapping error:", error);
         }
       }
 
       if (event.type === "BODY") {
-        const checkIn = mapRookBodyToCheckIn(event, connection.clientId, connection.clientName);
-        if (checkIn) {
-          await storage.createCheckIn(checkIn);
-          processedCount++;
+        try {
+          const checkIn = mapRookBodyToCheckIn(event, connection.clientId, connection.clientName);
+          if (checkIn) {
+            await storage.createCheckIn(checkIn);
+            processedCount++;
+          } else {
+            errors.push("Failed to map BODY data");
+          }
+        } catch (error) {
+          errors.push(`BODY mapping error: ${error}`);
+          console.error("[ROOK] BODY mapping error:", error);
         }
       }
 
@@ -465,12 +492,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const duration = Date.now() - startTime;
+      console.log(`[ROOK] Webhook processed in ${duration}ms: type=${event.type} userId=${event.user_id} processed=${processedCount} errors=${errors.length}`);
+
       res.status(200).json({ 
         message: "Webhook processed successfully",
-        processed: processedCount 
+        processed: processedCount,
+        errors: errors.length > 0 ? errors : undefined
       });
     } catch (error) {
-      console.error("ROOK webhook error:", error);
+      const duration = Date.now() - startTime;
+      console.error(`[ROOK] Webhook processing failed after ${duration}ms:`, error);
       res.status(500).json({ error: "Failed to process webhook" });
     }
   });
