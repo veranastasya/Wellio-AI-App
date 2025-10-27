@@ -540,6 +540,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Connection Request routes (Apple Health integration)
+  app.post("/api/connection-requests", async (req, res) => {
+    try {
+      const { clientId, clientName, clientEmail, deviceType } = req.body;
+      
+      if (!clientId || !clientName || !clientEmail || !deviceType) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const request = await storage.createConnectionRequest({
+        clientId,
+        clientName,
+        clientEmail,
+        deviceType,
+      });
+
+      console.log(`[Connection Request] Created request for ${clientName} (${clientEmail})`);
+
+      res.json(request);
+    } catch (error) {
+      console.error("[Connection Request] Create error:", error);
+      res.status(500).json({ error: "Failed to create connection request" });
+    }
+  });
+
+  app.get("/api/connection-requests/pending", async (req, res) => {
+    try {
+      const { email } = req.query;
+      
+      if (!email || typeof email !== "string") {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      const request = await storage.getPendingConnectionRequestByEmail(email);
+      
+      if (!request) {
+        return res.status(404).json({ error: "No pending request found" });
+      }
+
+      res.json(request);
+    } catch (error) {
+      console.error("[Connection Request] Fetch pending error:", error);
+      res.status(500).json({ error: "Failed to fetch pending request" });
+    }
+  });
+
+  app.get("/api/connection-requests/by-code/:code", async (req, res) => {
+    try {
+      const { code } = req.params;
+      
+      const request = await storage.getConnectionRequestByInviteCode(code);
+      
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      res.json(request);
+    } catch (error) {
+      console.error("[Connection Request] Fetch by code error:", error);
+      res.status(500).json({ error: "Failed to fetch request" });
+    }
+  });
+
+  app.patch("/api/connection-requests/:id/status", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!status) {
+        return res.status(400).json({ error: "Status is required" });
+      }
+
+      const request = await storage.updateConnectionRequest(id, { status });
+      
+      if (!request) {
+        return res.status(404).json({ error: "Request not found" });
+      }
+
+      // If status is "connected", create a device connection
+      if (status === "connected") {
+        await storage.createDeviceConnection({
+          clientId: request.clientId,
+          clientName: request.clientName,
+          deviceType: request.deviceType,
+          status: "connected",
+          syncEnabled: true,
+          dataPermissions: {
+            nutrition: true,
+            workouts: true,
+            checkIns: true,
+          },
+          connectedAt: new Date().toISOString(),
+        });
+        console.log(`[Connection Request] Created device connection for ${request.clientName}`);
+      }
+
+      res.json(request);
+    } catch (error) {
+      console.error("[Connection Request] Update status error:", error);
+      res.status(500).json({ error: "Failed to update request status" });
+    }
+  });
+
+  app.get("/api/connection-requests/client/:clientId", async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      
+      const requests = await storage.getConnectionRequestsByClient(clientId);
+      
+      res.json(requests);
+    } catch (error) {
+      console.error("[Connection Request] Fetch client requests error:", error);
+      res.status(500).json({ error: "Failed to fetch client requests" });
+    }
+  });
+
   // AI Insights routes
   app.get("/api/insights/:clientId", async (req, res) => {
     try {

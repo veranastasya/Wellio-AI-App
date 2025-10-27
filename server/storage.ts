@@ -19,6 +19,8 @@ import {
   type InsertCheckIn,
   type DeviceConnection,
   type InsertDeviceConnection,
+  type ConnectionRequest,
+  type InsertConnectionRequest,
   clients,
   sessions,
   messages,
@@ -29,6 +31,7 @@ import {
   workoutLogs,
   checkIns,
   deviceConnections,
+  connectionRequests,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -90,6 +93,16 @@ export interface IStorage {
   createDeviceConnection(deviceConnection: InsertDeviceConnection): Promise<DeviceConnection>;
   updateDeviceConnection(id: string, deviceConnection: Partial<InsertDeviceConnection>): Promise<DeviceConnection | undefined>;
   deleteDeviceConnection(id: string): Promise<boolean>;
+
+  // Connection Requests
+  getConnectionRequests(): Promise<ConnectionRequest[]>;
+  getConnectionRequestsByClient(clientId: string): Promise<ConnectionRequest[]>;
+  getPendingConnectionRequestByEmail(email: string): Promise<ConnectionRequest | undefined>;
+  getConnectionRequestByInviteCode(code: string): Promise<ConnectionRequest | undefined>;
+  getConnectionRequest(id: string): Promise<ConnectionRequest | undefined>;
+  createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest>;
+  updateConnectionRequest(id: string, request: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined>;
+  deleteConnectionRequest(id: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -602,6 +615,67 @@ export class DatabaseStorage implements IStorage {
 
   async deleteDeviceConnection(id: string): Promise<boolean> {
     const result = await db.delete(deviceConnections).where(eq(deviceConnections.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Connection Request methods
+  async getConnectionRequests(): Promise<ConnectionRequest[]> {
+    return await db.select().from(connectionRequests);
+  }
+
+  async getConnectionRequestsByClient(clientId: string): Promise<ConnectionRequest[]> {
+    return await db.select().from(connectionRequests).where(eq(connectionRequests.clientId, clientId));
+  }
+
+  async getPendingConnectionRequestByEmail(email: string): Promise<ConnectionRequest | undefined> {
+    const [request] = await db.select()
+      .from(connectionRequests)
+      .where(eq(connectionRequests.clientEmail, email))
+      .orderBy(connectionRequests.requestedAt);
+    return request || undefined;
+  }
+
+  async getConnectionRequestByInviteCode(code: string): Promise<ConnectionRequest | undefined> {
+    const [request] = await db.select()
+      .from(connectionRequests)
+      .where(eq(connectionRequests.inviteCode, code));
+    return request || undefined;
+  }
+
+  async getConnectionRequest(id: string): Promise<ConnectionRequest | undefined> {
+    const [request] = await db.select().from(connectionRequests).where(eq(connectionRequests.id, id));
+    return request || undefined;
+  }
+
+  async createConnectionRequest(insertRequest: InsertConnectionRequest): Promise<ConnectionRequest> {
+    const requestedAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+    const inviteCode = Math.random().toString(36).substring(2, 15).toUpperCase();
+    
+    const dataWithDefaults = {
+      ...insertRequest,
+      requestedAt,
+      expiresAt,
+      inviteCode,
+    };
+    
+    const [request] = await db.insert(connectionRequests).values(dataWithDefaults).returning();
+    return request;
+  }
+
+  async updateConnectionRequest(id: string, updateData: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined> {
+    const [request] = await db.update(connectionRequests)
+      .set({
+        ...updateData,
+        respondedAt: updateData.status ? new Date().toISOString() : undefined,
+      })
+      .where(eq(connectionRequests.id, id))
+      .returning();
+    return request || undefined;
+  }
+
+  async deleteConnectionRequest(id: string): Promise<boolean> {
+    const result = await db.delete(connectionRequests).where(eq(connectionRequests.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }
