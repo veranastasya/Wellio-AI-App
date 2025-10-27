@@ -186,58 +186,35 @@ export function mapRookBodyToCheckIn(
 
 /**
  * Generate ROOK connection URL for a user
+ * 
+ * ROOK offers two environments:
+ * - Sandbox (testing): https://connect-sandbox.tryrook.io
+ * - Production: https://connect.tryrook.io
+ * 
+ * For API-based sources (Garmin, Fitbit, Oura, etc.), users simply visit
+ * the connections page and authorize their devices. No user binding needed.
  */
 export function generateRookConnectionUrl(userId: string, redirectUrl?: string): string {
   const clientUuid = process.env.ROOK_CLIENT_UUID;
+  const environment = process.env.ROOK_ENVIRONMENT || 'sandbox'; // 'sandbox' or 'production'
   
-  // ROOK Connect page URL format
-  const baseUrl = 'https://connect.tryrook.io';
+  // Choose base URL based on environment
+  const baseUrl = environment === 'production' 
+    ? 'https://connect.tryrook.io' 
+    : 'https://connect-sandbox.tryrook.io';
+  
   const params = new URLSearchParams({
     client_uuid: clientUuid || '',
     user_id: userId,
-    redirect_url: redirectUrl || `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client-logs`,
   });
   
-  return `${baseUrl}?${params.toString()}`;
-}
-
-/**
- * Create user binding in ROOK (for Extraction App usage)
- */
-export async function createRookUserBinding(userId: string, metadata?: Record<string, any>): Promise<boolean> {
-  const clientUuid = process.env.ROOK_CLIENT_UUID;
-  const secretKey = process.env.ROOK_SECRET_KEY;
+  // Add redirect URL if provided
+  if (redirectUrl) {
+    params.append('redirect_url', redirectUrl);
+  }
   
-  if (!clientUuid || !secretKey) {
-    console.error('ROOK credentials not configured');
-    return false;
-  }
-
-  try {
-    const credentials = Buffer.from(`${clientUuid}:${secretKey}`).toString('base64');
-    
-    const response = await fetch('https://api.rook-connect.dev/api/v1/extraction_app/binding/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${credentials}`,
-      },
-      body: JSON.stringify({
-        user_id: userId,
-        metadata: metadata || {},
-        salt: `${userId}_${Date.now()}`, // Unique salt for this binding
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('ROOK binding failed:', response.status, errorText);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Failed to create ROOK user binding:', error);
-    return false;
-  }
+  const connectionUrl = `${baseUrl}?${params.toString()}`;
+  console.log(`[ROOK] Generated connection URL for userId=${userId} environment=${environment}`);
+  
+  return connectionUrl;
 }

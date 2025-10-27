@@ -20,8 +20,7 @@ import {
   mapRookNutritionToLog, 
   mapRookPhysicalToWorkout, 
   mapRookBodyToCheckIn,
-  generateRookConnectionUrl,
-  createRookUserBinding
+  generateRookConnectionUrl
 } from "./rook";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -514,17 +513,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "clientId and clientName are required" });
       }
 
-      // Create user binding in ROOK
-      const bindingSuccess = await createRookUserBinding(clientId, {
-        name: clientName,
-        type: "wellness_client"
-      });
-
-      if (!bindingSuccess) {
-        return res.status(500).json({ error: "Failed to create ROOK user binding" });
-      }
-
-      // Generate connection URL
+      // Generate connection URL (no user binding needed for API-based sources)
+      // User will visit ROOK's connection page and authorize their devices
       const connectionUrl = generateRookConnectionUrl(clientId);
 
       // Create device connection record
@@ -538,14 +528,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         connectedAt: new Date().toISOString(),
       });
 
+      console.log(`[ROOK] Connection initiated for client=${clientName} userId=${clientId}`);
+
       res.json({
         connectionUrl,
         connection,
-        message: "ROOK connection initiated"
       });
     } catch (error) {
-      console.error("ROOK connect error:", error);
-      res.status(500).json({ error: "Failed to initiate ROOK connection" });
+      console.error("[ROOK] Connection error:", error);
+      res.status(500).json({ error: "Failed to create ROOK connection" });
     }
   });
 
