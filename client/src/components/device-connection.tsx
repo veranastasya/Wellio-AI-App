@@ -149,7 +149,7 @@ export function DeviceConnection({ clientId, clientName, clientEmail }: DeviceCo
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/connection-requests/client", clientId] });
-      const inviteLink = `wellio://connect?code=${data.inviteCode}`;
+      const inviteLink = `wellio://connection-request/${data.inviteCode}`;
       
       toast({
         title: "Connection Request Sent",
