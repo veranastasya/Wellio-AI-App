@@ -224,167 +224,164 @@ export function DeviceConnection({ clientId, clientName, clientEmail }: DeviceCo
           )}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {/* ROOK Wearables Section */}
         {rookConnection ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-              <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
-                <Smartphone className="w-5 h-5 text-foreground" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-sm">ROOK Wearables</p>
-                <p className="text-xs text-muted-foreground">Apple Health, Garmin, Fitbit, Oura & 400+ devices</p>
-                {rookConnection.lastSyncedAt && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                    <Clock className="w-3 h-3" />
-                    Last data: {new Date(rookConnection.lastSyncedAt).toLocaleString()}
-                  </p>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleRefresh}
-                  disabled={isSyncing}
-                  data-testid="button-sync"
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-                  {isSyncing ? "Refreshing..." : "Refresh"}
-                </Button>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="ghost" data-testid="button-manage">
-                      Manage
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Manage ROOK Connection</DialogTitle>
-                      <DialogDescription>
-                        Control what data is synced and manage your wearables connection
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-3">
-                        <Label>Data Permissions</Label>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">Nutrition Data</span>
-                            <Switch checked disabled />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">Workout Data</span>
-                            <Switch checked disabled />
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">Check-in Data</span>
-                            <Switch checked disabled />
-                          </div>
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+            <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
+              <Smartphone className="w-5 h-5 text-foreground" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-sm">ROOK Wearables</p>
+              <p className="text-xs text-muted-foreground">Garmin, Fitbit, Oura, Whoop & 400+ devices</p>
+              {rookConnection.lastSyncedAt && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                  <Clock className="w-3 h-3" />
+                  Last data: {new Date(rookConnection.lastSyncedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRefresh}
+                disabled={isSyncing}
+                data-testid="button-sync"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+                {isSyncing ? "Refreshing..." : "Refresh"}
+              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="ghost" data-testid="button-manage">
+                    Manage
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Manage ROOK Connection</DialogTitle>
+                    <DialogDescription>
+                      Control what data is synced and manage your wearables connection
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-3">
+                      <Label>Data Permissions</Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Nutrition Data</span>
+                          <Switch checked disabled />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Workout Data</span>
+                          <Switch checked disabled />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Check-in Data</span>
+                          <Switch checked disabled />
                         </div>
                       </div>
-                      <div className="pt-4 border-t">
-                        <Button
-                          variant="destructive"
-                          onClick={handleDisconnect}
-                          className="w-full"
-                          data-testid="button-disconnect"
-                        >
-                          Disconnect ROOK
-                        </Button>
-                      </div>
                     </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
+                    <div className="pt-4 border-t">
+                      <Button
+                        variant="destructive"
+                        onClick={handleDisconnect}
+                        className="w-full"
+                        data-testid="button-disconnect"
+                      >
+                        Disconnect ROOK
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div>
-              <Button variant="outline" className="w-full" onClick={handleConnect} data-testid="button-connect" disabled={isConnecting}>
-                <Smartphone className="w-4 h-4 mr-2" />
-                {isConnecting ? "Connecting..." : "Connect Wearables (ROOK)"}
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">
-                Supports Garmin, Fitbit, Oura, Whoop, and 400+ devices
-              </p>
-            </div>
-
-            {/* Apple Health Section */}
-            <div className="pt-4 border-t">
-              {appleHealthConnection ? (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
-                    <Apple className="w-5 h-5 text-foreground" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">Apple Health</p>
-                    <p className="text-xs text-muted-foreground">Connected via iOS app</p>
-                    {appleHealthConnection.lastSyncedAt && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                        <Clock className="w-3 h-3" />
-                        Last synced: {new Date(appleHealthConnection.lastSyncedAt).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                </div>
-              ) : appleHealthRequest ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                    <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
-                      <Apple className="w-5 h-5 text-foreground" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">Apple Health</p>
-                      <p className="text-xs text-muted-foreground">Request pending - awaiting client approval</p>
-                    </div>
-                    <Badge variant="secondary" className="gap-1">
-                      <Clock className="w-3 h-3" />
-                      Pending
-                    </Badge>
-                  </div>
-                  <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium">Invite Code:</span>
-                      <code className="text-xs bg-background px-2 py-1 rounded">{appleHealthRequest.inviteCode}</code>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => copyInviteLink(appleHealthRequest.inviteCode)}
-                      data-testid="button-copy-invite"
-                    >
-                      <Copy className="w-3 h-3 mr-2" />
-                      Copy Invite Link
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      Send this link to your client to open on their iPhone
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleSendAppleHealthRequest}
-                    disabled={isSendingRequest}
-                    data-testid="button-send-apple-health-request"
-                  >
-                    <Apple className="w-4 h-4 mr-2" />
-                    {isSendingRequest ? "Sending Request..." : "Send Apple Health Request"}
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Requires client to approve on their iOS device
-                  </p>
-                </div>
-              )}
-            </div>
+          <div>
+            <Button variant="outline" className="w-full" onClick={handleConnect} data-testid="button-connect" disabled={isConnecting}>
+              <Smartphone className="w-4 h-4 mr-2" />
+              {isConnecting ? "Connecting..." : "Connect Wearables (ROOK)"}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Supports Garmin, Fitbit, Oura, Whoop, and 400+ devices
+            </p>
           </div>
         )}
+
+        {/* Apple Health Section - Always visible, independent of ROOK */}
+        <div className="pt-4 border-t">
+          {appleHealthConnection ? (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+              <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
+                <Apple className="w-5 h-5 text-foreground" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-sm">Apple Health</p>
+                <p className="text-xs text-muted-foreground">Connected via iOS app</p>
+                {appleHealthConnection.lastSyncedAt && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    <Clock className="w-3 h-3" />
+                    Last synced: {new Date(appleHealthConnection.lastSyncedAt).toLocaleString()}
+                  </p>
+                )}
+              </div>
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+            </div>
+          ) : appleHealthRequest ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center">
+                  <Apple className="w-5 h-5 text-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-sm">Apple Health</p>
+                  <p className="text-xs text-muted-foreground">Request pending - awaiting client approval</p>
+                </div>
+                <Badge variant="secondary" className="gap-1">
+                  <Clock className="w-3 h-3" />
+                  Pending
+                </Badge>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium">Invite Code:</span>
+                  <code className="text-xs bg-background px-2 py-1 rounded">{appleHealthRequest.inviteCode}</code>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => copyInviteLink(appleHealthRequest.inviteCode)}
+                  data-testid="button-copy-invite"
+                >
+                  <Copy className="w-3 h-3 mr-2" />
+                  Copy Invite Link
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Send this link to your client to open on their iPhone
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleSendAppleHealthRequest}
+                disabled={isSendingRequest}
+                data-testid="button-send-apple-health-request"
+              >
+                <Apple className="w-4 h-4 mr-2" />
+                {isSendingRequest ? "Sending Request..." : "Send Apple Health Request"}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">
+                Requires client to approve on their iOS device
+              </p>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
