@@ -180,7 +180,7 @@ export function DeviceConnection({ clientId, clientName, clientEmail }: DeviceCo
   };
 
   const copyInviteLink = (inviteCode: string) => {
-    const inviteLink = `wellio://connect?code=${inviteCode}`;
+    const inviteLink = `wellio://connection-request/${inviteCode}`;
     navigator.clipboard.writeText(inviteLink);
     toast({
       title: "Link Copied",
