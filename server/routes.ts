@@ -12,6 +12,9 @@ import {
   insertWorkoutLogSchema,
   insertCheckInSchema,
   insertDeviceConnectionSchema,
+  insertClientTokenSchema,
+  insertClientInviteSchema,
+  insertClientPlanSchema,
 } from "@shared/schema";
 import { analyzeClientData } from "./ai";
 import { syncAppleHealthData } from "./sync";
@@ -686,6 +689,176 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating insights:", error);
       res.status(500).json({ error: "Failed to generate insights" });
+    }
+  });
+
+  // Client Invite routes (Coach creates invites for clients)
+  app.post("/api/client-invites", async (req, res) => {
+    try {
+      const { email, name, questionnaireId, message, coachName } = req.body;
+      
+      // Check if client already has an active invite
+      const existingInvite = await storage.getClientInviteByEmail(email);
+      if (existingInvite && existingInvite.status === 'pending') {
+        return res.status(400).json({ error: "Client already has a pending invite" });
+      }
+
+      // Create client token for authentication
+      const tokenData = insertClientTokenSchema.parse({
+        email,
+        coachName: coachName || "Your Coach",
+        status: "pending",
+      });
+      const clientToken = await storage.createClientToken(tokenData);
+
+      // Create invite
+      const inviteData = insertClientInviteSchema.parse({
+        email,
+        name,
+        tokenId: clientToken.id,
+        questionnaireId,
+        message,
+        status: "pending",
+      });
+      const invite = await storage.createClientInvite(inviteData);
+
+      res.status(201).json({
+        invite,
+        inviteLink: `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/onboard?token=${clientToken.token}`,
+      });
+    } catch (error) {
+      console.error("Error creating client invite:", error);
+      res.status(500).json({ error: "Failed to create invite" });
+    }
+  });
+
+  app.get("/api/client-invites/client/:clientId", async (req, res) => {
+    try {
+      const invite = await storage.getClientInviteByClientId(req.params.clientId);
+      res.json(invite || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch invite" });
+    }
+  });
+
+  app.get("/api/client-invites/email/:email", async (req, res) => {
+    try {
+      const invite = await storage.getClientInviteByEmail(req.params.email);
+      res.json(invite || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch invite" });
+    }
+  });
+
+  // Client Authentication routes
+  app.post("/api/client-auth/verify", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ error: "Token is required" });
+      }
+
+      const clientToken = await storage.getClientTokenByToken(token);
+      
+      if (!clientToken) {
+        return res.status(404).json({ error: "Invalid token" });
+      }
+
+      // Check if token is expired
+      if (clientToken.expiresAt && new Date(clientToken.expiresAt) < new Date()) {
+        return res.status(401).json({ error: "Token has expired" });
+      }
+
+      // Update last used timestamp
+      await storage.updateClientToken(clientToken.id, {
+        lastUsedAt: new Date().toISOString(),
+      });
+
+      // Get associated client data if clientId exists
+      let client = null;
+      if (clientToken.clientId) {
+        client = await storage.getClient(clientToken.clientId);
+      }
+
+      // Get invite information
+      const invite = await storage.getClientInviteByEmail(clientToken.email);
+
+      res.json({
+        token: clientToken,
+        client,
+        invite,
+      });
+    } catch (error) {
+      console.error("Error verifying token:", error);
+      res.status(500).json({ error: "Failed to verify token" });
+    }
+  });
+
+  // Client Plans routes
+  app.post("/api/client-plans", async (req, res) => {
+    try {
+      const validatedData = insertClientPlanSchema.parse(req.body);
+      const plan = await storage.createClientPlan(validatedData);
+      res.status(201).json(plan);
+    } catch (error) {
+      console.error("Error creating client plan:", error);
+      res.status(400).json({ error: "Invalid plan data" });
+    }
+  });
+
+  app.get("/api/client-plans/client/:clientId", async (req, res) => {
+    try {
+      const plans = await storage.getClientPlansByClientId(req.params.clientId);
+      res.json(plans);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch plans" });
+    }
+  });
+
+  app.get("/api/client-plans/client/:clientId/active", async (req, res) => {
+    try {
+      const plan = await storage.getActiveClientPlan(req.params.clientId);
+      res.json(plan || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch active plan" });
+    }
+  });
+
+  app.get("/api/client-plans/:id", async (req, res) => {
+    try {
+      const plan = await storage.getClientPlan(req.params.id);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch plan" });
+    }
+  });
+
+  app.patch("/api/client-plans/:id", async (req, res) => {
+    try {
+      const validatedData = insertClientPlanSchema.partial().parse(req.body);
+      const plan = await storage.updateClientPlan(req.params.id, validatedData);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid plan data" });
+    }
+  });
+
+  app.delete("/api/client-plans/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteClientPlan(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete plan" });
     }
   });
 
