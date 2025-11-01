@@ -768,6 +768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "pending",
       });
       const clientToken = await storage.createClientToken(tokenData);
+      console.log("[DEBUG] Created client token:", { id: clientToken.id, token: clientToken.token, email: clientToken.email });
 
       // Create invite
       const inviteData = insertClientInviteSchema.parse({
@@ -780,9 +781,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const invite = await storage.createClientInvite(inviteData);
 
+      const inviteLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/onboard?token=${clientToken.token}`;
+      console.log("[DEBUG] Returning invite link:", inviteLink);
+
       res.status(201).json({
         invite,
-        inviteLink: `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/onboard?token=${clientToken.token}`,
+        inviteLink,
       });
     } catch (error) {
       console.error("Error creating client invite:", error);
@@ -812,14 +816,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/client-auth/verify", async (req, res) => {
     try {
       const { token } = req.body;
+      console.log("[DEBUG] Token verification requested for:", token);
       
       if (!token) {
         return res.status(400).json({ error: "Token is required" });
       }
 
       const clientToken = await storage.getClientTokenByToken(token);
+      console.log("[DEBUG] Found client token:", clientToken ? { id: clientToken.id, email: clientToken.email } : null);
       
       if (!clientToken) {
+        console.log("[DEBUG] Token not found in database");
         return res.status(404).json({ error: "Invalid token" });
       }
 
@@ -839,8 +846,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         client = await storage.getClient(clientToken.clientId);
       }
 
-      // Get invite information
-      const invite = await storage.getClientInviteByEmail(clientToken.email);
+      // Get invite information using tokenId to ensure we get the correct invite
+      const allInvites = await storage.getClientInvites();
+      const invite = allInvites.find(i => i.tokenId === clientToken.id);
+
+      if (!invite) {
+        return res.status(404).json({ error: "Invite not found for this token" });
+      }
 
       res.json({
         token: clientToken,

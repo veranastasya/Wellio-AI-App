@@ -128,7 +128,7 @@ export default function ClientOnboard() {
         <CardHeader>
           <CardTitle className="text-2xl">Welcome to Wellio</CardTitle>
           <p className="text-sm text-muted-foreground mt-2">
-            {tokenData.invite.message || "Complete your onboarding questionnaire to get started"}
+            Complete your onboarding questionnaire to get started
           </p>
         </CardHeader>
         <CardContent>
