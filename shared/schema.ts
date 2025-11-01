@@ -38,6 +38,7 @@ export const messages = pgTable("messages", {
   sender: text("sender").notNull(),
   timestamp: text("timestamp").notNull(),
   read: boolean("read").notNull().default(false),
+  attachments: json("attachments"),
 });
 
 export const activities = pgTable("activities", {
@@ -140,6 +141,45 @@ export const connectionRequests = pgTable("connection_requests", {
   inviteCode: text("invite_code").notNull(),
 });
 
+export const clientTokens = pgTable("client_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id"),
+  token: text("token").notNull().unique(),
+  email: text("email").notNull(),
+  coachName: text("coach_name").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at"),
+  lastUsedAt: text("last_used_at"),
+});
+
+export const clientInvites = pgTable("client_invites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id"),
+  email: text("email").notNull(),
+  name: text("name"),
+  tokenId: varchar("token_id").notNull(),
+  questionnaireId: varchar("questionnaire_id"),
+  status: text("status").notNull().default("pending"),
+  sentAt: text("sent_at").notNull(),
+  completedAt: text("completed_at"),
+  message: text("message"),
+});
+
+export const clientPlans = pgTable("client_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  clientName: text("client_name").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  content: json("content").notNull(),
+  status: text("status").notNull().default("active"),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
 });
@@ -226,3 +266,32 @@ export type DeviceConnection = typeof deviceConnections.$inferSelect;
 
 export type InsertConnectionRequest = z.infer<typeof insertConnectionRequestSchema>;
 export type ConnectionRequest = typeof connectionRequests.$inferSelect;
+
+export const insertClientTokenSchema = createInsertSchema(clientTokens).omit({
+  id: true,
+}).extend({
+  createdAt: z.string().optional(),
+  token: z.string().optional(),
+});
+
+export const insertClientInviteSchema = createInsertSchema(clientInvites).omit({
+  id: true,
+}).extend({
+  sentAt: z.string().optional(),
+});
+
+export const insertClientPlanSchema = createInsertSchema(clientPlans).omit({
+  id: true,
+}).extend({
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type InsertClientToken = z.infer<typeof insertClientTokenSchema>;
+export type ClientToken = typeof clientTokens.$inferSelect;
+
+export type InsertClientInvite = z.infer<typeof insertClientInviteSchema>;
+export type ClientInvite = typeof clientInvites.$inferSelect;
+
+export type InsertClientPlan = z.infer<typeof insertClientPlanSchema>;
+export type ClientPlan = typeof clientPlans.$inferSelect;
