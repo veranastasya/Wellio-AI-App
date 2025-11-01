@@ -1,0 +1,104 @@
+# 💬 Prompt for Lovable — Build Client-Facing Prototype for "Value"
+
+**Goal:**  
+Design the **client-facing experience** for the Value platform — the part that clients access when their coach invites them via an onboarding form link or a manual invite.  
+The prototype should represent the **end-to-end client journey**, from onboarding to accessing their plan and chatting with their coach.
+
+---
+
+## 👤 Overview
+
+Clients access the app through a **shared token link** (sent by the coach via email).  
+Once they log in using the token, they complete the onboarding process and get access to their personal dashboard.
+
+After successful onboarding:
+- The client automatically appears on the coach’s dashboard.
+- The completed form is attached to the client’s record.
+
+---
+
+## 🧭 Client Flow
+
+### 1. Login / Access
+- Clients receive a unique **invite link** from their coach via email.
+- The link includes a **secure token** (no password needed).  
+- Once opened, the client sees a welcome screen with the coach’s name and a short message like:  
+  _“Welcome! Let’s get started with your onboarding so I can build your personalized plan.”_
+
+### 2. Onboarding Form
+- Clients complete the **onboarding form** created by the coach.  
+  - Supports open text, multiple choice, and checkboxes (similar to Google Forms).  
+  - Questions might include fitness goals, schedule, dietary preferences, etc.  
+- When submitted, a confirmation screen says:  
+  _“Thanks for completing your onboarding! Your coach will review your info and prepare your plan.”_
+
+### 3. Automatic Sync
+- After submission:
+  - The client automatically appears on the **coach’s dashboard**.  
+  - The completed form is attached to their profile.
+
+---
+
+## 🧩 Coach View Connection
+- If a coach manually adds a client, that client’s profile card includes an **“Invite Link”** button.  
+  - If the client hasn’t been invited yet → show “Send Invite”.  
+  - If already onboarded automatically → show a message:  
+    _“This client has already been invited and onboarded.”_
+
+---
+
+## 🏠 Post-Onboarding: Client Dashboard
+
+After onboarding, the client can log in again via the same token link and see:
+
+### 1. My Profile
+- Basic info (name, coach name, start date).  
+- Summary of goals and any coach notes.  
+
+### 2. My Plan
+- A simple structured view of their plan (e.g., workouts, nutrition, or weekly goals).  
+- Future versions may include tracking progress or marking tasks as complete.  
+
+### 3. Chat
+- Direct chat with the assigned coach.  
+- Supports text messages and file uploads (e.g., progress photos, screenshots).  
+- The chat history is persistent for each client.
+
+### 4. Forms (optional)
+- Clients can view any new forms sent by the coach and fill them directly from here.  
+
+---
+
+## 🧭 Navigation (Client Side)
+- My Profile  
+- My Plan  
+- Chat  
+- Forms  
+
+---
+
+## 💡 Design & UX Notes
+- Clean, calm interface — simple color palette and intuitive navigation.  
+- Keep focus on clarity and trust-building between client and coach.  
+- The app should feel personal — show coach name and avatar in key places (welcome, chat, etc.).  
+- Include sample data for:
+  - One sample client (logged in via token)
+  - Example plan
+  - One completed onboarding form
+  - Example chat messages  
+
+---
+
+## 🎯 Prototype Goal
+Demonstrate the **complete client experience**, showing how a client:
+> Receives invite → logs in via token → completes onboarding form → gets added to coach dashboard → accesses chat and plan.
+
+---
+
+## 🔒 Future Expansion (optional)
+Add a placeholder section in the client dashboard for **AI Insights** (under development), with a locked state:
+> “Coming soon — get personalized insights based on your progress.”
+
+---
+
+*(This prompt should be used to generate the standalone Client View prototype. It must visually and logically connect to the Coach View prototype from the main Value app.)*
