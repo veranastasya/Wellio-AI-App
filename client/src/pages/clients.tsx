@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send } from "lucide-react";
+import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus } from "lucide-react";
 import type { Questionnaire } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,9 @@ export default function Clients() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [creationMode, setCreationMode] = useState<"manual" | "questionnaire">("manual");
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
   const { toast } = useToast();
 
   const { data: clients = [], isLoading, isError } = useQuery<Client[]>({
@@ -107,6 +110,26 @@ export default function Clients() {
     },
   });
 
+  const createInviteMutation = useMutation({
+    mutationFn: async (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string }) => {
+      return await apiRequest("POST", "/api/client-invites", data);
+    },
+    onSuccess: (response: { invite: any; inviteLink: string }) => {
+      setInviteLink(response.inviteLink);
+      toast({
+        title: "Success",
+        description: "Invite created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create invite",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -118,6 +141,25 @@ export default function Clients() {
 
   const getAvatarColor = (index: number) => {
     return index % 2 === 0 ? "bg-primary text-white" : "bg-accent text-accent-foreground";
+  };
+
+  const copyInviteLink = async () => {
+    if (!inviteLink) return;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setInviteCopied(true);
+      toast({
+        title: "Copied!",
+        description: "Invite link copied to clipboard",
+      });
+      setTimeout(() => setInviteCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy link",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -173,18 +215,80 @@ export default function Clients() {
             <h1 className="text-3xl font-bold text-foreground" data-testid="text-clients-title">Client Management</h1>
             <p className="text-muted-foreground mt-1">Manage your coaching clients and track their progress</p>
           </div>
-          <Dialog open={isNewClientOpen} onOpenChange={(open) => {
-            setIsNewClientOpen(open);
-            if (!open) {
-              setCreationMode("manual");
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2" data-testid="button-new-client">
-                <Plus className="w-4 h-4" />
-                New Client
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Dialog open={isInviteOpen} onOpenChange={(open) => {
+              setIsInviteOpen(open);
+              if (!open) {
+                setInviteLink(null);
+                setInviteCopied(false);
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2" data-testid="button-send-invite">
+                  <UserPlus className="w-4 h-4" />
+                  Send Invite
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Send Client Invite</DialogTitle>
+                  <DialogDescription>
+                    Create a personalized invite link for your client to complete their onboarding
+                  </DialogDescription>
+                </DialogHeader>
+
+                {!inviteLink ? (
+                  <InviteForm
+                    questionnaires={questionnaires.filter(q => q.status === "published")}
+                    onSubmit={(data) => createInviteMutation.mutate(data)}
+                    isLoading={createInviteMutation.isPending}
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+                      <p className="text-sm font-medium text-foreground">Invite Link Created!</p>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={inviteLink}
+                          readOnly
+                          className="font-mono text-sm"
+                          data-testid="input-invite-link"
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={copyInviteLink}
+                          data-testid="button-copy-invite"
+                        >
+                          {inviteCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Share this link with your client. They'll use it to complete their onboarding questionnaire and create their account.
+                      </p>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button onClick={() => setIsInviteOpen(false)} data-testid="button-close-invite">
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isNewClientOpen} onOpenChange={(open) => {
+              setIsNewClientOpen(open);
+              if (!open) {
+                setCreationMode("manual");
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2" data-testid="button-new-client">
+                  <Plus className="w-4 h-4" />
+                  New Client
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add New Client</DialogTitle>
@@ -503,6 +607,149 @@ function ClientForm({
         </div>
       </form>
     </Form>
+  );
+}
+
+function InviteForm({
+  questionnaires,
+  onSubmit,
+  isLoading,
+}: {
+  questionnaires: Questionnaire[];
+  onSubmit: (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string }) => void;
+  isLoading: boolean;
+}) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [questionnaireId, setQuestionnaireId] = useState("");
+  const [message, setMessage] = useState("");
+  const { toast } = useToast();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter client email",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!name.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter client name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!questionnaireId) {
+      toast({
+        title: "Error",
+        description: "Please select a questionnaire",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    onSubmit({
+      email,
+      name,
+      questionnaireId,
+      message: message || undefined,
+      coachName: "Your Coach",
+    });
+  };
+
+  if (questionnaires.length === 0) {
+    return (
+      <div className="py-8 text-center space-y-4">
+        <p className="text-muted-foreground">
+          No published questionnaires available.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Create and publish a questionnaire first to use this feature.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="invite-email">Client Email</Label>
+        <Input
+          id="invite-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="client@example.com"
+          data-testid="input-invite-email"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="invite-name">Client Name</Label>
+        <Input
+          id="invite-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Enter client name"
+          data-testid="input-invite-name"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="invite-questionnaire">Onboarding Questionnaire</Label>
+        <Select value={questionnaireId} onValueChange={setQuestionnaireId}>
+          <SelectTrigger data-testid="select-invite-questionnaire">
+            <SelectValue placeholder="Choose a questionnaire" />
+          </SelectTrigger>
+          <SelectContent>
+            {questionnaires.map((q) => (
+              <SelectItem key={q.id} value={q.id}>
+                {q.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="invite-message">Custom Message (Optional)</Label>
+        <Textarea
+          id="invite-message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Add a personal message to your client..."
+          className="min-h-20"
+          data-testid="input-invite-message"
+        />
+      </div>
+
+      <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+        <p className="text-sm font-medium">What happens next?</p>
+        <ul className="text-sm text-muted-foreground space-y-1">
+          <li>• Client receives a secure invite link via email</li>
+          <li>• They complete the questionnaire using the link</li>
+          <li>• Their account is automatically created upon completion</li>
+          <li>• You can track their progress in the dashboard</li>
+        </ul>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4">
+        <Button
+          type="submit"
+          disabled={isLoading}
+          data-testid="button-create-invite"
+        >
+          {isLoading ? "Creating..." : "Create Invite Link"}
+        </Button>
+      </div>
+    </form>
   );
 }
 
