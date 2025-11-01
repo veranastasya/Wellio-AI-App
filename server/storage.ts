@@ -21,6 +21,12 @@ import {
   type InsertDeviceConnection,
   type ConnectionRequest,
   type InsertConnectionRequest,
+  type ClientToken,
+  type InsertClientToken,
+  type ClientInvite,
+  type InsertClientInvite,
+  type ClientPlan,
+  type InsertClientPlan,
   clients,
   sessions,
   messages,
@@ -32,6 +38,9 @@ import {
   checkIns,
   deviceConnections,
   connectionRequests,
+  clientTokens,
+  clientInvites,
+  clientPlans,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -103,6 +112,33 @@ export interface IStorage {
   createConnectionRequest(request: InsertConnectionRequest): Promise<ConnectionRequest>;
   updateConnectionRequest(id: string, request: Partial<InsertConnectionRequest>): Promise<ConnectionRequest | undefined>;
   deleteConnectionRequest(id: string): Promise<boolean>;
+
+  // Client Tokens
+  getClientTokens(): Promise<ClientToken[]>;
+  getClientToken(id: string): Promise<ClientToken | undefined>;
+  getClientTokenByToken(token: string): Promise<ClientToken | undefined>;
+  getClientTokenByEmail(email: string): Promise<ClientToken | undefined>;
+  createClientToken(clientToken: InsertClientToken): Promise<ClientToken>;
+  updateClientToken(id: string, clientToken: Partial<InsertClientToken>): Promise<ClientToken | undefined>;
+  deleteClientToken(id: string): Promise<boolean>;
+
+  // Client Invites
+  getClientInvites(): Promise<ClientInvite[]>;
+  getClientInvite(id: string): Promise<ClientInvite | undefined>;
+  getClientInviteByEmail(email: string): Promise<ClientInvite | undefined>;
+  getClientInviteByClientId(clientId: string): Promise<ClientInvite | undefined>;
+  createClientInvite(clientInvite: InsertClientInvite): Promise<ClientInvite>;
+  updateClientInvite(id: string, clientInvite: Partial<InsertClientInvite>): Promise<ClientInvite | undefined>;
+  deleteClientInvite(id: string): Promise<boolean>;
+
+  // Client Plans
+  getClientPlans(): Promise<ClientPlan[]>;
+  getClientPlan(id: string): Promise<ClientPlan | undefined>;
+  getClientPlansByClientId(clientId: string): Promise<ClientPlan[]>;
+  getActiveClientPlan(clientId: string): Promise<ClientPlan | undefined>;
+  createClientPlan(clientPlan: InsertClientPlan): Promise<ClientPlan>;
+  updateClientPlan(id: string, clientPlan: Partial<InsertClientPlan>): Promise<ClientPlan | undefined>;
+  deleteClientPlan(id: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -676,6 +712,149 @@ export class DatabaseStorage implements IStorage {
 
   async deleteConnectionRequest(id: string): Promise<boolean> {
     const result = await db.delete(connectionRequests).where(eq(connectionRequests.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Client Tokens
+  async getClientTokens(): Promise<ClientToken[]> {
+    return await db.select().from(clientTokens);
+  }
+
+  async getClientToken(id: string): Promise<ClientToken | undefined> {
+    const [token] = await db.select().from(clientTokens).where(eq(clientTokens.id, id));
+    return token || undefined;
+  }
+
+  async getClientTokenByToken(token: string): Promise<ClientToken | undefined> {
+    const [clientToken] = await db.select().from(clientTokens).where(eq(clientTokens.token, token));
+    return clientToken || undefined;
+  }
+
+  async getClientTokenByEmail(email: string): Promise<ClientToken | undefined> {
+    const [token] = await db.select().from(clientTokens).where(eq(clientTokens.email, email));
+    return token || undefined;
+  }
+
+  async createClientToken(insertToken: InsertClientToken): Promise<ClientToken> {
+    const createdAt = new Date().toISOString();
+    const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    
+    const dataWithDefaults = {
+      ...insertToken,
+      createdAt,
+      token,
+    };
+    
+    const [clientToken] = await db.insert(clientTokens).values(dataWithDefaults).returning();
+    return clientToken;
+  }
+
+  async updateClientToken(id: string, updateData: Partial<InsertClientToken>): Promise<ClientToken | undefined> {
+    const [token] = await db.update(clientTokens)
+      .set(updateData)
+      .where(eq(clientTokens.id, id))
+      .returning();
+    return token || undefined;
+  }
+
+  async deleteClientToken(id: string): Promise<boolean> {
+    const result = await db.delete(clientTokens).where(eq(clientTokens.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Client Invites
+  async getClientInvites(): Promise<ClientInvite[]> {
+    return await db.select().from(clientInvites);
+  }
+
+  async getClientInvite(id: string): Promise<ClientInvite | undefined> {
+    const [invite] = await db.select().from(clientInvites).where(eq(clientInvites.id, id));
+    return invite || undefined;
+  }
+
+  async getClientInviteByEmail(email: string): Promise<ClientInvite | undefined> {
+    const [invite] = await db.select().from(clientInvites).where(eq(clientInvites.email, email));
+    return invite || undefined;
+  }
+
+  async getClientInviteByClientId(clientId: string): Promise<ClientInvite | undefined> {
+    const [invite] = await db.select().from(clientInvites).where(eq(clientInvites.clientId, clientId));
+    return invite || undefined;
+  }
+
+  async createClientInvite(insertInvite: InsertClientInvite): Promise<ClientInvite> {
+    const sentAt = new Date().toISOString();
+    
+    const dataWithDefaults = {
+      ...insertInvite,
+      sentAt,
+    };
+    
+    const [invite] = await db.insert(clientInvites).values(dataWithDefaults).returning();
+    return invite;
+  }
+
+  async updateClientInvite(id: string, updateData: Partial<InsertClientInvite>): Promise<ClientInvite | undefined> {
+    const [invite] = await db.update(clientInvites)
+      .set(updateData)
+      .where(eq(clientInvites.id, id))
+      .returning();
+    return invite || undefined;
+  }
+
+  async deleteClientInvite(id: string): Promise<boolean> {
+    const result = await db.delete(clientInvites).where(eq(clientInvites.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Client Plans
+  async getClientPlans(): Promise<ClientPlan[]> {
+    return await db.select().from(clientPlans);
+  }
+
+  async getClientPlan(id: string): Promise<ClientPlan | undefined> {
+    const [plan] = await db.select().from(clientPlans).where(eq(clientPlans.id, id));
+    return plan || undefined;
+  }
+
+  async getClientPlansByClientId(clientId: string): Promise<ClientPlan[]> {
+    return await db.select().from(clientPlans).where(eq(clientPlans.clientId, clientId));
+  }
+
+  async getActiveClientPlan(clientId: string): Promise<ClientPlan | undefined> {
+    const [plan] = await db.select()
+      .from(clientPlans)
+      .where(eq(clientPlans.clientId, clientId))
+      .where(eq(clientPlans.status, 'active'));
+    return plan || undefined;
+  }
+
+  async createClientPlan(insertPlan: InsertClientPlan): Promise<ClientPlan> {
+    const now = new Date().toISOString();
+    
+    const dataWithDefaults = {
+      ...insertPlan,
+      createdAt: now,
+      updatedAt: now,
+    };
+    
+    const [plan] = await db.insert(clientPlans).values(dataWithDefaults).returning();
+    return plan;
+  }
+
+  async updateClientPlan(id: string, updateData: Partial<InsertClientPlan>): Promise<ClientPlan | undefined> {
+    const [plan] = await db.update(clientPlans)
+      .set({
+        ...updateData,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(clientPlans.id, id))
+      .returning();
+    return plan || undefined;
+  }
+
+  async deleteClientPlan(id: string): Promise<boolean> {
+    const result = await db.delete(clientPlans).where(eq(clientPlans.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }
