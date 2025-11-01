@@ -112,9 +112,10 @@ export default function Clients() {
 
   const createInviteMutation = useMutation({
     mutationFn: async (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string }) => {
-      return await apiRequest("POST", "/api/client-invites", data);
+      const response = await apiRequest("POST", "/api/client-invites", data);
+      return response as unknown as { invite: any; inviteLink: string };
     },
-    onSuccess: (response: { invite: any; inviteLink: string }) => {
+    onSuccess: (response) => {
       setInviteLink(response.inviteLink);
       toast({
         title: "Success",
@@ -289,49 +290,50 @@ export default function Clients() {
                   New Client
                 </Button>
               </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Add New Client</DialogTitle>
-                <DialogDescription>
-                  Choose how you want to onboard this client
-                </DialogDescription>
-              </DialogHeader>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Add New Client</DialogTitle>
+                  <DialogDescription>
+                    Choose how you want to onboard this client
+                  </DialogDescription>
+                </DialogHeader>
 
-              <div className="flex gap-2 mb-4">
-                <Button
-                  variant={creationMode === "manual" ? "default" : "outline"}
-                  onClick={() => setCreationMode("manual")}
-                  className="flex-1"
-                  data-testid="button-mode-manual"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Manually
-                </Button>
-                <Button
-                  variant={creationMode === "questionnaire" ? "default" : "outline"}
-                  onClick={() => setCreationMode("questionnaire")}
-                  className="flex-1"
-                  data-testid="button-mode-questionnaire"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Questionnaire
-                </Button>
-              </div>
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    variant={creationMode === "manual" ? "default" : "outline"}
+                    onClick={() => setCreationMode("manual")}
+                    className="flex-1"
+                    data-testid="button-mode-manual"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Manually
+                  </Button>
+                  <Button
+                    variant={creationMode === "questionnaire" ? "default" : "outline"}
+                    onClick={() => setCreationMode("questionnaire")}
+                    className="flex-1"
+                    data-testid="button-mode-questionnaire"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Questionnaire
+                  </Button>
+                </div>
 
-              {creationMode === "manual" ? (
-                <ClientForm
-                  onSubmit={(data) => createClientMutation.mutate(data)}
-                  isLoading={createClientMutation.isPending}
-                />
-              ) : (
-                <QuestionnaireForm
-                  questionnaires={questionnaires.filter(q => q.status === "published")}
-                  onSubmit={(data) => createClientMutation.mutate(data)}
-                  isLoading={createClientMutation.isPending}
-                />
-              )}
-            </DialogContent>
-          </Dialog>
+                {creationMode === "manual" ? (
+                  <ClientForm
+                    onSubmit={(data) => createClientMutation.mutate(data)}
+                    isLoading={createClientMutation.isPending}
+                  />
+                ) : (
+                  <QuestionnaireForm
+                    questionnaires={questionnaires.filter(q => q.status === "published")}
+                    onSubmit={(data) => createClientMutation.mutate(data)}
+                    isLoading={createClientMutation.isPending}
+                  />
+                )}
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="relative">
@@ -401,14 +403,16 @@ export default function Clients() {
                     <span>{client.phone}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-sm">
-                  <TrendingUp className="w-4 h-4 text-primary" />
-                  <span className="text-foreground">Progress: {client.progressScore}%</span>
-                </div>
+                {client.goalType && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>{client.goalType}</span>
+                  </div>
+                )}
                 {client.lastSession && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4" />
-                    <span>Last session: {client.lastSession}</span>
+                    <span>{new Date(client.lastSession).toLocaleDateString()}</span>
                   </div>
                 )}
               </CardContent>
@@ -419,7 +423,7 @@ export default function Clients() {
         {filteredClients.length === 0 && (
           <Card>
             <CardContent className="py-16 text-center">
-              <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+              <Users className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
               <p className="text-lg font-medium text-foreground">No clients found</p>
               <p className="text-sm text-muted-foreground mt-1">
                 {searchQuery ? "Try adjusting your search" : "Add your first client to get started"}
@@ -514,7 +518,12 @@ function ClientForm({
               <FormItem>
                 <FormLabel>Phone (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="+1 (555) 000-0000" {...field} value={field.value || ""} data-testid="input-client-phone" />
+                  <Input
+                    placeholder="+1 (555) 123-4567"
+                    {...field}
+                    value={field.value || ""}
+                    data-testid="input-client-phone"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -526,7 +535,7 @@ function ClientForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-client-status">
                       <SelectValue placeholder="Select status" />
@@ -535,7 +544,7 @@ function ClientForm({
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="paused">Paused</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -550,9 +559,14 @@ function ClientForm({
             name="goalType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Goal Type</FormLabel>
+                <FormLabel>Goal Type (Optional)</FormLabel>
                 <FormControl>
-                  <Input placeholder="Weight Loss, Strength Training..." {...field} value={field.value || ""} data-testid="input-client-goal" />
+                  <Input
+                    placeholder="Weight Loss, Muscle Gain, etc."
+                    {...field}
+                    value={field.value || ""}
+                    data-testid="input-client-goal"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -560,19 +574,12 @@ function ClientForm({
           />
           <FormField
             control={form.control}
-            name="progressScore"
+            name="joinedDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Progress Score (%)</FormLabel>
+                <FormLabel>Joined Date</FormLabel>
                 <FormControl>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    {...field}
-                    onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                    data-testid="input-client-progress"
-                  />
+                  <Input type="date" {...field} data-testid="input-client-joined" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -733,7 +740,7 @@ function InviteForm({
       <div className="bg-muted/50 p-4 rounded-lg space-y-2">
         <p className="text-sm font-medium">What happens next?</p>
         <ul className="text-sm text-muted-foreground space-y-1">
-          <li>• Client receives a secure invite link via email</li>
+          <li>• Client receives a secure invite link</li>
           <li>• They complete the questionnaire using the link</li>
           <li>• Their account is automatically created upon completion</li>
           <li>• You can track their progress in the dashboard</li>
@@ -787,15 +794,13 @@ function QuestionnaireForm({
       return;
     }
 
-    // Generate a valid email from client name by sanitizing it
     const sanitizedName = clientName
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-      .replace(/\s+/g, '.') // Replace spaces with dots
-      .replace(/\.+/g, '.') // Remove consecutive dots
-      .replace(/^\.|\.$/g, ''); // Remove leading/trailing dots
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '.')
+      .replace(/\.+/g, '.')
+      .replace(/^\.|\.$/g, '');
 
-    // Use a fallback if name becomes empty after sanitization
     const emailPrefix = sanitizedName || 'pending.client';
 
     const clientData: InsertClient = {

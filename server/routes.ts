@@ -261,10 +261,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/responses", async (req, res) => {
     try {
-      const validatedData = insertResponseSchema.parse(req.body);
+      const { token, ...responseData } = req.body;
+      const validatedData = insertResponseSchema.parse(responseData);
+      
+      // If token provided, handle client onboarding flow
+      if (token) {
+        const clientToken = await storage.getClientTokenByToken(token);
+        if (!clientToken) {
+          return res.status(404).json({ error: "Invalid token" });
+        }
+
+        // Check if client already exists
+        let client;
+        if (clientToken.clientId) {
+          client = await storage.getClient(clientToken.clientId);
+        } else {
+          // Create new client from questionnaire response
+          // Use tokenId to look up the specific invite, not email (which may have multiple invites)
+          const allInvites = await storage.getClientInvites();
+          const invite = allInvites.find(i => i.tokenId === clientToken.id);
+          if (!invite) {
+            return res.status(404).json({ error: "Invite not found for this token" });
+          }
+
+          // Extract client data from questionnaire answers
+          const answers = responseData.answers as any;
+          const clientData = {
+            name: invite.name,
+            email: clientToken.email,
+            status: "active" as const,
+            progressScore: 0,
+            joinedDate: new Date().toISOString().split("T")[0],
+            intakeSource: "questionnaire" as const,
+            questionnaireId: invite.questionnaireId,
+            // Extract additional fields from answers if available
+            phone: answers.phone || answers.phoneNumber || "",
+            goalType: answers.goalType || answers.goal || answers.primaryGoal || "",
+            notes: answers.notes || answers.additionalInfo || "",
+          };
+
+          client = await storage.createClient(clientData);
+
+          // Update token with client ID
+          await storage.updateClientToken(clientToken.id, {
+            clientId: client.id,
+            status: "active",
+          });
+
+          // Update invite status
+          await storage.updateClientInvite(invite.id, {
+            status: "completed",
+            clientId: client.id,
+          });
+        }
+
+        // Link response to client
+        validatedData.clientId = client.id;
+      }
+      
       const response = await storage.createResponse(validatedData);
       res.status(201).json(response);
     } catch (error) {
+      console.error("Error creating response:", error);
       res.status(400).json({ error: "Invalid response data" });
     }
   });
