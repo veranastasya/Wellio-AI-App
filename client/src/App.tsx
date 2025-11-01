@@ -57,20 +57,6 @@ function ClientRouter() {
   );
 }
 
-function Router() {
-  return (
-    <Switch>
-      <Route path="/client/onboard" component={ClientOnboard} />
-      <Route path="/client/:rest*">
-        {() => <ClientRouter />}
-      </Route>
-      <Route path="/:rest*">
-        {() => <CoachRouter />}
-      </Route>
-    </Switch>
-  );
-}
-
 function CoachLayout() {
   return (
     <SidebarProvider style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "3rem" } as React.CSSProperties}>
