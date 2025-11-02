@@ -877,6 +877,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Invite not found for this token" });
       }
 
+      console.log("[DEBUG] Returning invite data:", { 
+        inviteId: invite.id, 
+        questionnaireId: invite.questionnaireId,
+        hasQuestionnaireId: !!invite.questionnaireId 
+      });
+
       res.json({
         token: clientToken,
         client,
