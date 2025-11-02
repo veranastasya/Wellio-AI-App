@@ -24,70 +24,221 @@ import ClientChat from "@/pages/client-chat";
 import ClientForms from "@/pages/client-forms";
 import NotFound from "@/pages/not-found";
 
-function CoachRouter() {
-  return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/clients" component={Clients} />
-      <Route path="/questionnaires" component={Questionnaires} />
-      <Route path="/questionnaires/new" component={QuestionnaireBuilder} />
-      <Route path="/questionnaires/:id/edit" component={QuestionnaireBuilder} />
-      <Route path="/questionnaires/:id/preview" component={QuestionnairePreview} />
-      <Route path="/analytics" component={Analytics} />
-      <Route path="/scheduling" component={Scheduling} />
-      <Route path="/communication" component={Communication} />
-      <Route path="/ai-insights" component={AIInsights} />
-      <Route path="/client-logs" component={ClientLogs} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
-
-function ClientRouter() {
-  return (
-    <ClientLayout>
-      <Switch>
-        <Route path="/client/dashboard" component={ClientDashboard} />
-        <Route path="/client/profile" component={ClientProfile} />
-        <Route path="/client/chat" component={ClientChat} />
-        <Route path="/client/forms" component={ClientForms} />
-        <Route component={NotFound} />
-      </Switch>
-    </ClientLayout>
-  );
-}
-
-function CoachLayout() {
-  return (
-    <SidebarProvider style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "3rem" } as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 min-h-screen max-h-screen">
-          <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <ThemeToggle />
-          </header>
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">
-            <CoachRouter />
-          </main>
-        </div>
-      </div>
-    </SidebarProvider>
-  );
-}
-
 export default function App() {
+  const style = {
+    "--sidebar-width": "16rem",
+    "--sidebar-width-icon": "3rem",
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Switch>
+          {/* Client Onboarding - No layout */}
           <Route path="/client/onboard" component={ClientOnboard} />
-          <Route path="/client/:rest*">
-            {() => <ClientRouter />}
+          
+          {/* Client Portal Routes - Client Layout */}
+          <Route path="/client/dashboard">
+            <ClientLayout>
+              <ClientDashboard />
+            </ClientLayout>
           </Route>
-          <Route path="/:rest*">
-            {() => <CoachLayout />}
+          <Route path="/client/profile">
+            <ClientLayout>
+              <ClientProfile />
+            </ClientLayout>
           </Route>
+          <Route path="/client/chat">
+            <ClientLayout>
+              <ClientChat />
+            </ClientLayout>
+          </Route>
+          <Route path="/client/forms">
+            <ClientLayout>
+              <ClientForms />
+            </ClientLayout>
+          </Route>
+
+          {/* Coach Routes - Sidebar Layout */}
+          <Route path="/">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <Dashboard />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+          <Route path="/clients">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <Clients />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+          <Route path="/questionnaires">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <Questionnaires />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+          <Route path="/questionnaires/new">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <QuestionnaireBuilder />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+          <Route path="/questionnaires/:id/edit">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <QuestionnaireBuilder />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+          <Route path="/questionnaires/:id/preview">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <QuestionnairePreview />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+          <Route path="/analytics">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <Analytics />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+          <Route path="/scheduling">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <Scheduling />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+          <Route path="/communication">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <Communication />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+          <Route path="/ai-insights">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <AIInsights />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+          <Route path="/client-logs">
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <AppSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <ClientLogs />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
+          </Route>
+
+          {/* 404 Not Found */}
+          <Route component={NotFound} />
         </Switch>
         <Toaster />
       </TooltipProvider>
