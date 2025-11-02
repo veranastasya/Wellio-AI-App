@@ -25,6 +25,7 @@ import {
   mapRookBodyToCheckIn,
   generateRookConnectionUrl
 } from "./rook";
+import { sendInviteEmail } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Client routes
@@ -287,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Extract client data from questionnaire answers
           const answers = responseData.answers as any;
           const clientData = {
-            name: invite.name,
+            name: invite.name || "New Client",
             email: clientToken.email,
             status: "active" as const,
             progressScore: 0,
@@ -315,8 +316,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Link response to client
-        validatedData.clientId = client.id;
+        // Link response to client (client is guaranteed to exist at this point)
+        if (client) {
+          validatedData.clientId = client.id;
+        }
       }
       
       const response = await storage.createResponse(validatedData);
@@ -783,6 +786,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const inviteLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/onboard?token=${clientToken.token}`;
       console.log("[DEBUG] Returning invite link:", inviteLink);
+
+      // Send invite email
+      try {
+        const questionnaires = await storage.getQuestionnaires();
+        const questionnaire = questionnaires.find(q => q.id === questionnaireId);
+        
+        await sendInviteEmail({
+          to: email,
+          clientName: name,
+          coachName: coachName || "Your Coach",
+          inviteLink,
+          questionnaireName: questionnaire?.name,
+          message,
+        });
+        console.log("[Email] Successfully sent invite email to:", email);
+      } catch (emailError) {
+        // Log email error but don't fail the invite creation
+        console.error("[Email] Failed to send invite email:", emailError);
+        // Continue with response - invite is still created even if email fails
+      }
 
       res.status(201).json({
         invite,
