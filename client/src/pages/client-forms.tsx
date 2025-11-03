@@ -66,8 +66,6 @@ export default function ClientForms() {
     return null;
   }
 
-  const clientResponses = responses.filter((r) => r.clientId === clientData.id);
-
   const getQuestionnaireName = (questionnaireId: string) => {
     const questionnaire = questionnaires.find((q) => q.id === questionnaireId);
     return questionnaire?.name || "Unknown Form";
@@ -85,11 +83,11 @@ export default function ClientForms() {
           <CardHeader className="border-b gap-1 space-y-0 pb-2">
             <CardTitle className="text-lg">Completed Forms</CardTitle>
             <p className="text-sm text-muted-foreground">
-              {clientResponses.length} form{clientResponses.length !== 1 ? "s" : ""} completed
+              {responses.length} form{responses.length !== 1 ? "s" : ""} completed
             </p>
           </CardHeader>
           <CardContent className="p-6">
-            {clientResponses.length === 0 ? (
+            {responses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
                 <FileText className="w-16 h-16 text-muted-foreground/50" />
                 <div>
@@ -101,7 +99,7 @@ export default function ClientForms() {
               </div>
             ) : (
               <div className="space-y-3">
-                {clientResponses.map((response) => (
+                {responses.map((response) => (
                   <Card key={response.id} className="hover-elevate">
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">

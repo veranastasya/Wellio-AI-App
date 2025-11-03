@@ -1,7 +1,23 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
+
+// Extend Express session type
+declare module 'express-session' {
+  interface SessionData {
+    clientId?: string;
+    clientEmail?: string;
+  }
+}
+
+// Authentication middleware for client routes
+function requireClientAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session || !req.session.clientId) {
+    return res.status(401).json({ error: "Unauthorized - Please log in" });
+  }
+  next();
+}
 import { 
   insertClientSchema, 
   insertSessionSchema, 
@@ -119,20 +135,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Message routes
-  app.get("/api/messages", async (_req, res) => {
+  app.get("/api/messages", requireClientAuth, async (req, res) => {
     try {
-      const messages = await storage.getMessages();
-      res.json(messages);
+      const clientId = req.session.clientId!;
+      const allMessages = await storage.getMessages();
+      // Filter messages for this client only
+      const clientMessages = allMessages.filter(m => m.clientId === clientId);
+      res.json(clientMessages);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch messages" });
     }
   });
 
-  app.get("/api/messages/:id", async (req, res) => {
+  app.get("/api/messages/:id", requireClientAuth, async (req, res) => {
     try {
+      const clientId = req.session.clientId!;
       const message = await storage.getMessage(req.params.id);
       if (!message) {
         return res.status(404).json({ error: "Message not found" });
+      }
+      // Verify the message belongs to this client
+      if (message.clientId !== clientId) {
+        return res.status(403).json({ error: "Access denied" });
       }
       res.json(message);
     } catch (error) {
@@ -140,9 +164,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/messages", async (req, res) => {
+  app.post("/api/messages", requireClientAuth, async (req, res) => {
     try {
-      const validatedData = insertMessageSchema.parse(req.body);
+      const clientId = req.session.clientId!;
+      // Override any client-supplied clientId with the authenticated session clientId
+      const messageData = { ...req.body, clientId };
+      const validatedData = insertMessageSchema.parse(messageData);
       const message = await storage.createMessage(validatedData);
       res.status(201).json(message);
     } catch (error) {
@@ -240,20 +267,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Response routes
-  app.get("/api/responses", async (_req, res) => {
+  app.get("/api/responses", requireClientAuth, async (req, res) => {
     try {
-      const responses = await storage.getResponses();
-      res.json(responses);
+      const clientId = req.session.clientId!;
+      const allResponses = await storage.getResponses();
+      // Filter responses for this client only
+      const clientResponses = allResponses.filter(r => r.clientId === clientId);
+      res.json(clientResponses);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch responses" });
     }
   });
 
-  app.get("/api/responses/:id", async (req, res) => {
+  app.get("/api/responses/:id", requireClientAuth, async (req, res) => {
     try {
+      const clientId = req.session.clientId!;
       const response = await storage.getResponse(req.params.id);
       if (!response) {
         return res.status(404).json({ error: "Response not found" });
+      }
+      // Verify the response belongs to this client
+      if (response.clientId !== clientId) {
+        return res.status(403).json({ error: "Access denied" });
       }
       res.json(response);
     } catch (error) {
@@ -264,10 +299,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/responses", async (req, res) => {
     try {
       const { token, ...responseData } = req.body;
-      const validatedData = insertResponseSchema.parse(responseData);
       
-      // If token provided, handle client onboarding flow
+      // If token provided, handle client onboarding flow (unauthenticated)
       if (token) {
+        const validatedData = insertResponseSchema.parse(responseData);
         const clientToken = await storage.getClientTokenByToken(token);
         if (!clientToken) {
           return res.status(404).json({ error: "Invalid token" });
@@ -321,10 +356,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (client) {
           validatedData.clientId = client.id;
         }
+        
+        const response = await storage.createResponse(validatedData);
+        res.status(201).json(response);
+      } else {
+        // No token: require authentication and use session clientId
+        if (!req.session || !req.session.clientId) {
+          return res.status(401).json({ error: "Unauthorized - Please log in" });
+        }
+        
+        const clientId = req.session.clientId;
+        // Override any client-supplied clientId with the authenticated session clientId
+        const sanitizedData = { ...responseData, clientId };
+        const validatedData = insertResponseSchema.parse(sanitizedData);
+        
+        const response = await storage.createResponse(validatedData);
+        res.status(201).json(response);
       }
-      
-      const response = await storage.createResponse(validatedData);
-      res.status(201).json(response);
     } catch (error) {
       console.error("Error creating response:", error);
       res.status(400).json({ error: "Invalid response data" });
@@ -934,6 +982,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastLoginAt: new Date().toISOString(),
       });
 
+      // Set session
+      req.session.clientId = client.id;
+      req.session.clientEmail = client.email;
+
       res.json({ 
         success: true, 
         client: { 
@@ -976,6 +1028,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastLoginAt: new Date().toISOString(),
       });
 
+      // Set session
+      req.session.clientId = client.id;
+      req.session.clientEmail = client.email;
+
       res.json({ 
         success: true, 
         client: {
@@ -995,13 +1051,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current client session
-  app.get("/api/client-auth/me", async (req, res) => {
+  app.get("/api/client-auth/me", requireClientAuth, async (req, res) => {
     try {
-      const clientId = req.headers['x-client-id'] as string;
-      
-      if (!clientId) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
+      const clientId = req.session.clientId!;
 
       const client = await storage.getClient(clientId);
       if (!client) {
