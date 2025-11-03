@@ -18,6 +18,8 @@ import QuestionnairePreview from "@/pages/questionnaire-preview";
 import AIInsights from "@/pages/ai-insights";
 import ClientLogs from "@/pages/client-logs";
 import ClientOnboard from "@/pages/client-onboard";
+import ClientPasswordSetup from "@/pages/client-password-setup";
+import ClientLogin from "@/pages/client-login";
 import ClientDashboard from "@/pages/client-dashboard";
 import ClientProfile from "@/pages/client-profile";
 import ClientChat from "@/pages/client-chat";
@@ -34,8 +36,10 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Switch>
-          {/* Client Onboarding - No layout */}
+          {/* Client Authentication - No layout */}
           <Route path="/client/onboard" component={ClientOnboard} />
+          <Route path="/client/setup-password" component={ClientPasswordSetup} />
+          <Route path="/client/login" component={ClientLogin} />
           
           {/* Client Portal Routes - Client Layout */}
           <Route path="/client/dashboard">

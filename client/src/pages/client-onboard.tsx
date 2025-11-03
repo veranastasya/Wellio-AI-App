@@ -68,10 +68,20 @@ export default function ClientOnboard() {
       console.log("[CLIENT] questionnaireId:", data?.invite?.questionnaireId);
       setTokenData(data);
       
-      // If client already exists, redirect to dashboard
+      // If client already exists
       if (data.client) {
-        localStorage.setItem("clientToken", tokenValue);
-        setLocation("/client/dashboard");
+        // Check if password is set
+        if (data.client.passwordHash) {
+          // Password already set, redirect to login
+          toast({
+            title: "Account exists",
+            description: "Please log in with your credentials",
+          });
+          setLocation("/client/login");
+        } else {
+          // Client exists but password not set, go to password setup
+          setLocation("/client/setup-password?token=" + tokenValue);
+        }
       }
     } catch (error) {
       toast({
@@ -106,13 +116,13 @@ export default function ClientOnboard() {
       });
     },
     onSuccess: () => {
-      localStorage.setItem("clientToken", token!);
-      const message = questionnaire?.confirmationMessage || "Your account has been created successfully";
+      const message = questionnaire?.confirmationMessage || "Questionnaire submitted successfully!";
       toast({
-        title: "Welcome!",
+        title: "Great!",
         description: message,
       });
-      setLocation("/client/dashboard");
+      // Redirect to password setup
+      setLocation("/client/setup-password?token=" + token);
     },
     onError: (error: any) => {
       toast({
