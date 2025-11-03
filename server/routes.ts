@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import bcrypt from "bcrypt";
 import { 
   insertClientSchema, 
   insertSessionSchema, 
@@ -891,6 +892,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying token:", error);
       res.status(500).json({ error: "Failed to verify token" });
+    }
+  });
+
+  // Set password for first-time clients
+  app.post("/api/client-auth/set-password", async (req, res) => {
+    try {
+      const { token, password } = req.body;
+      
+      if (!token || !password) {
+        return res.status(400).json({ error: "Token and password are required" });
+      }
+
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+
+      // Verify token and get client
+      const clientToken = await storage.getClientTokenByToken(token);
+      if (!clientToken || !clientToken.clientId) {
+        return res.status(404).json({ error: "Invalid token or client not found" });
+      }
+
+      const client = await storage.getClient(clientToken.clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Check if password already set
+      if (client.passwordHash) {
+        return res.status(400).json({ error: "Password already set. Please use login instead." });
+      }
+
+      // Hash password
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
+
+      // Update client with password
+      await storage.updateClient(client.id, {
+        passwordHash,
+        lastLoginAt: new Date().toISOString(),
+      });
+
+      res.json({ 
+        success: true, 
+        client: { 
+          id: client.id, 
+          name: client.name, 
+          email: client.email 
+        } 
+      });
+    } catch (error) {
+      console.error("Error setting password:", error);
+      res.status(500).json({ error: "Failed to set password" });
+    }
+  });
+
+  // Login for returning clients
+  app.post("/api/client-auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      // Find client by email
+      const clients = await storage.getClients();
+      const client = clients.find(c => c.email.toLowerCase() === email.toLowerCase());
+
+      if (!client || !client.passwordHash) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      // Verify password
+      const isValid = await bcrypt.compare(password, client.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ error: "Invalid email or password" });
+      }
+
+      // Update last login
+      await storage.updateClient(client.id, {
+        lastLoginAt: new Date().toISOString(),
+      });
+
+      res.json({ 
+        success: true, 
+        client: {
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          status: client.status,
+          progressScore: client.progressScore,
+          joinedDate: client.joinedDate,
+          goalType: client.goalType,
+        }
+      });
+    } catch (error) {
+      console.error("Error logging in:", error);
+      res.status(500).json({ error: "Failed to login" });
+    }
+  });
+
+  // Get current client session
+  app.get("/api/client-auth/me", async (req, res) => {
+    try {
+      const clientId = req.headers['x-client-id'] as string;
+      
+      if (!clientId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      res.json({ 
+        client: {
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          status: client.status,
+          progressScore: client.progressScore,
+          joinedDate: client.joinedDate,
+          goalType: client.goalType,
+          phone: client.phone,
+          notes: client.notes,
+          lastSession: client.lastSession,
+        }
+      });
+    } catch (error) {
+      console.error("Error getting client session:", error);
+      res.status(500).json({ error: "Failed to get session" });
     }
   });
 

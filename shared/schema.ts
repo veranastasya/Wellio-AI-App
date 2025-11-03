@@ -7,12 +7,14 @@ export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   email: text("email").notNull(),
+  passwordHash: text("password_hash"),
   phone: text("phone"),
   status: text("status").notNull().default("active"),
   goalType: text("goal_type"),
   progressScore: integer("progress_score").notNull().default(0),
   joinedDate: text("joined_date").notNull(),
   lastSession: text("last_session"),
+  lastLoginAt: text("last_login_at"),
   notes: text("notes"),
   intakeSource: text("intake_source"),
   questionnaireId: varchar("questionnaire_id"),
@@ -70,6 +72,8 @@ export const responses = pgTable("responses", {
   clientId: varchar("client_id"),
   answers: json("answers").notNull(),
   submittedAt: text("submitted_at").notNull(),
+  isDraft: boolean("is_draft").notNull().default(false),
+  lastSavedAt: text("last_saved_at"),
 });
 
 export const nutritionLogs = pgTable("nutrition_logs", {
