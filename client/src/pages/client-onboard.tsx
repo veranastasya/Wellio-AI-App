@@ -64,6 +64,8 @@ export default function ClientOnboard() {
     try {
       const response = await apiRequest("POST", "/api/client-auth/verify", { token: tokenValue });
       const data = response as any;
+      console.log("[CLIENT] Token verified, data:", data);
+      console.log("[CLIENT] questionnaireId:", data?.invite?.questionnaireId);
       setTokenData(data);
       
       // If client already exists, redirect to dashboard
@@ -83,10 +85,15 @@ export default function ClientOnboard() {
   };
 
   // Fetch questionnaire
-  const { data: questionnaire, isLoading: isLoadingQuestionnaire } = useQuery<Questionnaire>({
-    queryKey: tokenData?.invite?.questionnaireId ? ["/api/questionnaires", tokenData.invite.questionnaireId] : [],
-    enabled: !!tokenData?.invite?.questionnaireId,
+  const questionnaireId = tokenData?.invite?.questionnaireId;
+  console.log("[CLIENT] Questionnaire query state:", { questionnaireId, hasTokenData: !!tokenData });
+  
+  const { data: questionnaire, isLoading: isLoadingQuestionnaire, error: questionnaireError } = useQuery<Questionnaire>({
+    queryKey: questionnaireId ? ["/api/questionnaires", questionnaireId] : ["skip"],
+    enabled: !!questionnaireId,
   });
+  
+  console.log("[CLIENT] Questionnaire loaded:", { questionnaire: !!questionnaire, isLoading: isLoadingQuestionnaire, error: questionnaireError });
 
   const submitMutation = useMutation({
     mutationFn: async (formAnswers: Record<string, any>) => {
