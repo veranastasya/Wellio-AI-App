@@ -63,7 +63,7 @@ export default function ClientOnboard() {
   const verifyToken = async (tokenValue: string) => {
     try {
       const response = await apiRequest("POST", "/api/client-auth/verify", { token: tokenValue });
-      const data = response as any;
+      const data = await response.json();
       console.log("[CLIENT] Token verified, data:", data);
       console.log("[CLIENT] questionnaireId:", data?.invite?.questionnaireId);
       setTokenData(data);
