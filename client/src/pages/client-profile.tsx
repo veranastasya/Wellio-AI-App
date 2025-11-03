@@ -25,7 +25,7 @@ export default function ClientProfile() {
   const verifyAndLoadClient = async (token: string) => {
     try {
       const response = await apiRequest("POST", "/api/client-auth/verify", { token });
-      const data = response as any;
+      const data = await response.json();
       
       if (!data.client) {
         setLocation("/client/onboard?token=" + token);
