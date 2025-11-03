@@ -66,7 +66,7 @@ export default function ClientForms() {
 
   const getQuestionnaireName = (questionnaireId: string) => {
     const questionnaire = questionnaires.find((q) => q.id === questionnaireId);
-    return questionnaire?.title || "Unknown Form";
+    return questionnaire?.name || "Unknown Form";
   };
 
   return (
