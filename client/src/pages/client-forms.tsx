@@ -13,28 +13,32 @@ export default function ClientForms() {
   const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("clientToken");
-    if (!token) {
-      setLocation("/client/onboard");
+    const clientId = localStorage.getItem("clientId");
+    if (!clientId) {
+      setLocation("/client/login");
       return;
     }
 
-    verifyAndLoadClient(token);
+    loadClient();
   }, []);
 
-  const verifyAndLoadClient = async (token: string) => {
+  const loadClient = async () => {
     try {
-      const response = await apiRequest("POST", "/api/client-auth/verify", { token });
+      const response = await apiRequest("GET", "/api/client-auth/me");
       const data = await response.json();
       
       if (!data.client) {
-        setLocation("/client/onboard?token=" + token);
+        localStorage.removeItem("clientId");
+        localStorage.removeItem("clientEmail");
+        setLocation("/client/login");
         return;
       }
 
       setClientData(data.client);
     } catch (error) {
-      setLocation("/client/onboard");
+      localStorage.removeItem("clientId");
+      localStorage.removeItem("clientEmail");
+      setLocation("/client/login");
     } finally {
       setIsVerifying(false);
     }

@@ -24,6 +24,7 @@ import ClientDashboard from "@/pages/client-dashboard";
 import ClientProfile from "@/pages/client-profile";
 import ClientChat from "@/pages/client-chat";
 import ClientForms from "@/pages/client-forms";
+import ClientPlan from "@/pages/client-plan";
 import NotFound from "@/pages/not-found";
 
 export default function App() {
@@ -60,6 +61,11 @@ export default function App() {
           <Route path="/client/forms">
             <ClientLayout>
               <ClientForms />
+            </ClientLayout>
+          </Route>
+          <Route path="/client/plan">
+            <ClientLayout>
+              <ClientPlan />
             </ClientLayout>
           </Route>
 

@@ -2,17 +2,17 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { User, MessageSquare, FileText, LayoutDashboard, Menu, X } from "lucide-react";
+import { MessageSquare, FileText, Home, TrendingUp, Menu, X } from "lucide-react";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { path: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { path: "/client/profile", label: "My Profile", icon: User },
-    { path: "/client/chat", label: "Chat", icon: MessageSquare },
+    { path: "/client/dashboard", label: "Home", icon: Home },
     { path: "/client/forms", label: "Forms", icon: FileText },
+    { path: "/client/chat", label: "Chat", icon: MessageSquare },
+    { path: "/client/plan", label: "Plan", icon: TrendingUp },
   ];
 
   const isActive = (path: string) => location === path;
