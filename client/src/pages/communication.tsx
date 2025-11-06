@@ -48,18 +48,7 @@ export default function Communication() {
     },
   });
 
-  const filteredClients = clients.filter((client) =>
-    client.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const selectedClient = clients.find((c) => c.id === selectedClientId);
-  
-  const clientMessages = selectedClientId
-    ? messages
-        .filter((m) => m.clientId === selectedClientId)
-        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    : [];
-
+  // Helper functions - must be defined before use
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -80,6 +69,40 @@ export default function Communication() {
       (m) => m.clientId === clientId && m.sender === "client" && !m.read
     ).length;
   };
+
+  // Computed values using helper functions
+  const filteredClients = clients
+    .filter((client) =>
+      client.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      // Sort by unread count first (clients with unread messages at top)
+      const unreadA = getUnreadCount(a.id);
+      const unreadB = getUnreadCount(b.id);
+      if (unreadA !== unreadB) {
+        return unreadB - unreadA; // Higher unread count first
+      }
+      
+      // Then sort by most recent message
+      const lastMsgA = getLastMessage(a.id);
+      const lastMsgB = getLastMessage(b.id);
+      if (lastMsgA && lastMsgB) {
+        return new Date(lastMsgB.timestamp).getTime() - new Date(lastMsgA.timestamp).getTime();
+      }
+      if (lastMsgA) return -1; // A has messages, B doesn't
+      if (lastMsgB) return 1; // B has messages, A doesn't
+      
+      // Finally sort alphabetically by name
+      return a.name.localeCompare(b.name);
+    });
+
+  const selectedClient = clients.find((c) => c.id === selectedClientId);
+  
+  const clientMessages = selectedClientId
+    ? messages
+        .filter((m) => m.clientId === selectedClientId)
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    : [];
 
   // Mark messages as read when coach opens a conversation
   useEffect(() => {
