@@ -193,20 +193,21 @@ export default function ClientPasswordSetup() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter password"
                   required
+                  className="pr-10"
                   data-testid="input-password"
                 />
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
                   onClick={() => setShowPassword(!showPassword)}
                   data-testid="button-toggle-password"
                 >
                   {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
+                    <EyeOff className="w-4 h-4 text-muted-foreground" />
                   ) : (
-                    <Eye className="w-4 h-4" />
+                    <Eye className="w-4 h-4 text-muted-foreground" />
                   )}
                 </Button>
               </div>
