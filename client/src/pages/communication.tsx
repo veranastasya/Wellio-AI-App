@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Send, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import type { Message, Client, InsertMessage } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -21,20 +22,29 @@ export default function Communication() {
   });
 
   const { data: messages = [], isLoading: messagesLoading, isError: messagesError } = useQuery<Message[]>({
-    queryKey: ["/api/messages"],
+    queryKey: ["/api/coach/messages"],
   });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (data: InsertMessage) => {
-      return await apiRequest("POST", "/api/messages", data);
+      return await apiRequest("POST", "/api/coach/messages", data);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
       setMessageText("");
       toast({
         title: "Success",
         description: "Message sent successfully",
       });
+    },
+  });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      return await apiRequest("PATCH", `/api/coach/messages/${messageId}/read`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
     },
   });
 
@@ -64,6 +74,25 @@ export default function Communication() {
     if (clientMsgs.length === 0) return null;
     return clientMsgs[clientMsgs.length - 1];
   };
+
+  const getUnreadCount = (clientId: string) => {
+    return messages.filter(
+      (m) => m.clientId === clientId && m.sender === "client" && !m.read
+    ).length;
+  };
+
+  // Mark messages as read when coach opens a conversation
+  useEffect(() => {
+    if (selectedClientId) {
+      const unreadMessages = messages.filter(
+        (m) => m.clientId === selectedClientId && m.sender === "client" && !m.read
+      );
+      
+      unreadMessages.forEach((msg) => {
+        markAsReadMutation.mutate(msg.id);
+      });
+    }
+  }, [selectedClientId]);
 
   const handleSendMessage = () => {
     setValidationError("");
@@ -191,6 +220,7 @@ export default function Communication() {
                 <div className="space-y-1">
                   {filteredClients.map((client, index) => {
                     const lastMsg = getLastMessage(client.id);
+                    const unreadCount = getUnreadCount(client.id);
                     return (
                       <button
                         key={client.id}
@@ -213,7 +243,17 @@ export default function Communication() {
                             <span className="text-sm font-semibold">{getInitials(client.name)}</span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm">{client.name}</p>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="font-medium text-sm">{client.name}</p>
+                              {unreadCount > 0 && (
+                                <Badge 
+                                  className="bg-primary text-white h-5 min-w-5 px-1.5"
+                                  data-testid={`badge-unread-count-${index}`}
+                                >
+                                  {unreadCount}
+                                </Badge>
+                              )}
+                            </div>
                             {lastMsg && (
                               <p className="text-xs text-muted-foreground truncate">
                                 {lastMsg.content}
