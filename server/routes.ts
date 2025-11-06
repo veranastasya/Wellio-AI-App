@@ -177,6 +177,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Coach message routes (no client auth required - for coach access)
+  app.get("/api/coach/messages", async (_req, res) => {
+    try {
+      const messages = await storage.getMessages();
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  app.post("/api/coach/messages", async (req, res) => {
+    try {
+      const validatedData = insertMessageSchema.parse(req.body);
+      const message = await storage.createMessage(validatedData);
+      res.status(201).json(message);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid message data" });
+    }
+  });
+
+  app.patch("/api/coach/messages/:id/read", async (req, res) => {
+    try {
+      const message = await storage.updateMessage(req.params.id, { read: true });
+      if (!message) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+      res.json(message);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update message" });
+    }
+  });
+
   // Activity routes
   app.get("/api/activities", async (_req, res) => {
     try {

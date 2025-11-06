@@ -1,0 +1,102 @@
+# 🧩 Chat Workflow: Client → Coach Messaging Flow (Wellio)
+
+## Goal
+Ensure that when a **client sends a message**, the **coach receives it** — appearing in their chat with an **unread message indicator** and a synchronized conversation thread.  
+Currently, messages sent by clients are not visible to coaches.
+
+---
+
+## 🧠 User Stories
+
+### 1. Client → Coach Messaging
+**As a client**,  
+I want to send a message to my coach from the chat section,  
+so that I can easily communicate questions or updates about my plan.
+
+**Acceptance Criteria:**
+- When a client sends a message:
+  - A chat thread is created **if it doesn’t exist** between that client and coach.
+  - The message appears in the client’s chat view immediately.
+  - The coach’s dashboard shows the **new conversation** with an **unread message badge**.
+  - The message is visible to the coach when they open that thread.
+
+---
+
+### 2. Coach Receives Message
+**As a coach**,  
+I want to see all incoming messages from my clients,  
+so that I can respond promptly and maintain continuous communication.
+
+**Acceptance Criteria:**
+- Coach’s chat section updates in **real-time** when a client sends a message.
+- If the coach is offline, the message appears in their inbox the next time they log in.
+- Unread messages display a **counter** or **badge** (e.g., “1 new message”).
+- Once the coach opens the conversation, the unread count is cleared.
+
+---
+
+### 3. Two-Way Sync
+**As both a coach and client**,  
+I want my messages to appear instantly on both ends,  
+so that the chat feels seamless and responsive.
+
+**Acceptance Criteria:**
+- Messages appear in chronological order on both sides.
+- Sending or receiving doesn’t require a page refresh.
+- The chat supports continuous conversation in the same thread (no duplication or reset).
+
+---
+
+### 4. Read Receipts (Optional, Future)
+**As a client**,  
+I want to know if my coach has seen my message,  
+so that I have confidence they’ve received it.
+
+**Acceptance Criteria:**
+- A small indicator (e.g., “Seen” or checkmark) appears after the coach views the message.
+
+---
+
+## 🧭 End-to-End Flow Summary
+
+1. **Client logs in** → navigates to **Chat** → selects their **coach**.  
+2. Client **types a message** and presses **Send**.  
+3. System checks:
+   - If a thread exists between this client and coach → use it.
+   - If not → create a new **1:1 conversation thread**.
+4. The **client sees** their message appear instantly in the chat window.
+5. The **coach’s dashboard**:
+   - Displays the new message in their inbox.
+   - Marks it as **unread**.
+   - Shows a **notification badge** or visual indicator.
+6. When the **coach opens** the message:
+   - The unread count resets.
+   - The client can optionally see a “Seen” status.
+7. Both parties can continue the conversation within the same thread.
+
+---
+
+## 🧩 Key UI Components
+
+| Role   | View                  | Expected Behavior |
+|--------|-----------------------|-------------------|
+| Client | Chat → Message Input  | Send message → see it appear instantly |
+| Coach  | Chat Inbox            | New unread message badge appears |
+| Coach  | Chat Thread           | Sees full conversation, unread cleared on open |
+| Both   | Shared Thread View    | Messages sync in real-time |
+
+---
+
+## ✅ Success Criteria
+
+- [ ] Client messages appear in coach’s chat view.  
+- [ ] Coaches see unread message indicators.  
+- [ ] Chat threads persist across sessions.  
+- [ ] Messages sync in real time (instant delivery).  
+- [ ] No duplicate threads between the same client–coach pair.
+
+---
+
+### Notes
+Keep this within the existing **Chat module** — no new dashboard or navigation changes needed.  
+The focus is on **fixing the message delivery flow** and ensuring visibility + state sync between both users.

@@ -62,6 +62,7 @@ export interface IStorage {
   getMessages(): Promise<Message[]>;
   getMessage(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
+  updateMessage(id: string, message: Partial<InsertMessage>): Promise<Message | undefined>;
 
   // Activities
   getActivities(): Promise<Activity[]>;
@@ -504,6 +505,15 @@ export class DatabaseStorage implements IStorage {
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
     const [message] = await db.insert(messages).values(insertMessage).returning();
     return message;
+  }
+
+  async updateMessage(id: string, updateData: Partial<InsertMessage>): Promise<Message | undefined> {
+    const [updatedMessage] = await db
+      .update(messages)
+      .set(updateData)
+      .where(eq(messages.id, id))
+      .returning();
+    return updatedMessage || undefined;
   }
 
   // Activity methods
