@@ -1,0 +1,113 @@
+# 🧭 UI Parity & Global Unread Indicators (Wellio)
+
+## Goal
+Make the **client UI layout identical to the coach UI** (left-side menu layout), and add a **global unread indicator** on the hamburger/side menu for **both roles** whenever there are unread chat messages.
+
+---
+
+## Scope
+- Apply a **shared shell layout** (header + left nav + content) to both **Client** and **Coach** apps.
+- Add **unread badges** on:
+  - The **Chat** item in the left menu (per-conversation and aggregate states).
+  - The **hamburger/side menu icon** itself (global dot/badge) when **any** unread messages exist.
+
+---
+
+## User Stories
+
+### 1) UI Parity: Client Layout Matches Coach
+**As a client,**  
+I want the same left-side navigation and page structure as coaches,  
+so that the app is consistent and easy to navigate.
+
+**Acceptance Criteria**
+- Client app uses the **same left-side navigation** structure as coach:
+  - **Menu (left):** Home, Forms, Chat, Plan/Progress, Settings (labels can be role-appropriate).
+  - **Content (right):** Page body content.
+- Responsive behavior:
+  - ≥1024px: left menu is **fixed**.
+  - <1024px: left menu collapses to a **hamburger** that opens a drawer.
+- Visual consistency: typography, spacing, iconography, and hover/active states match coach UI.
+- No duplication of pages; just **role-based gating** of visibility and permissions.
+
+---
+
+### 2) Chat Unread: Menu-Level Badges
+**As a user (coach or client),**  
+I want to see an unread badge on **Chat** in the left menu when new messages arrive,  
+so that I know where attention is required.
+
+**Acceptance Criteria**
+- **Chat menu item** shows an **unread badge/counter** when any conversation has unread messages.
+- If a per-conversation list is visible inside Chat, individual threads show their **own unread counts**.
+- Opening a conversation **marks its messages as read** and updates the counters.
+- Returning to the menu updates the **aggregate** unread count accordingly.
+
+---
+
+### 3) Global Unread: Hamburger/Menu Icon Indicator
+**As a user (coach or client),**  
+I want a small, global visual indicator on the **hamburger/menu icon** when there are unread messages,  
+so that I notice new activity even when the menu is collapsed.
+
+**Acceptance Criteria**
+- When **any chat** has unread messages, the **hamburger/menu icon** displays a **dot or badge**.
+- Indicator clears when **all** unread messages are read.
+- Works across breakpoints (desktop collapsed state and mobile).
+
+---
+
+### 4) Real-Time Awareness (Behavioral)
+**As a user (coach or client),**  
+I want the unread indicators to update **without refreshing**,  
+so that the app feels responsive and reliable.
+
+**Acceptance Criteria**
+- Unread badges (Chat item + hamburger icon) **update in real time** when messages are received or read.
+- Offline scenario: indicators **sync** correctly on next load/login.
+
+---
+
+## Navigation & IA (Information Architecture)
+
+**Left Menu (shared shell)**
+- Home
+- Forms (client: draft + submitted; coach: assigned + received)
+- Chat (threads list + unread counters)
+- Plan / Progress
+- Settings (profile, notifications, security)
+
+**Notes**
+- Labels can be **role-specific**, but **placement and interaction** remain consistent.
+- Ensure **keyboard navigation** (Tab/Shift+Tab) and **ARIA** labels for accessibility:
+  - Hamburger button: `aria-controls`, `aria-expanded`
+  - Badges: `aria-live="polite"` for unread updates
+
+---
+
+## Visual Design Requirements
+- **Badge tokens**:
+  - Shape: circular pill for counts, dot for global menu
+  - Max count display: `99+`
+- **States**:
+  - Default, Hover, Active, Disabled
+- **Theming**:
+  - Uses existing Wellio theme tokens (colors, spacing, elevation).
+
+---
+
+## Success Criteria (Definition of Done)
+- [ ] Client UI uses the **same shell** and **left-side menu** as Coach.
+- [ ] Chat menu item shows **accurate unread counts**.
+- [ ] **Hamburger/menu icon** displays a **global unread indicator** when any unread exists.
+- [ ] Indicators **update in real time** and sync after offline sessions.
+- [ ] **Responsive** behavior works across desktop/tablet/mobile.
+- [ ] **Accessibility**: keyboard navigable, ARIA-compliant for indicators.
+
+---
+
+## Non-Goals
+- No new chat features beyond **visibility and indicators** (delivery/read logic is handled in the chat workflow).
+- No changes to analytics or notification channels beyond **UI indicators**.
+
+---
