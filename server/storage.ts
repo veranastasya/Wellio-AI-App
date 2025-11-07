@@ -27,6 +27,8 @@ import {
   type InsertClientInvite,
   type ClientPlan,
   type InsertClientPlan,
+  type Goal,
+  type InsertGoal,
   clients,
   sessions,
   messages,
@@ -41,6 +43,7 @@ import {
   clientTokens,
   clientInvites,
   clientPlans,
+  goals,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -140,6 +143,14 @@ export interface IStorage {
   createClientPlan(clientPlan: InsertClientPlan): Promise<ClientPlan>;
   updateClientPlan(id: string, clientPlan: Partial<InsertClientPlan>): Promise<ClientPlan | undefined>;
   deleteClientPlan(id: string): Promise<boolean>;
+
+  // Goals
+  getGoals(): Promise<Goal[]>;
+  getGoal(id: string): Promise<Goal | undefined>;
+  getGoalsByClientId(clientId: string): Promise<Goal[]>;
+  createGoal(goal: InsertGoal): Promise<Goal>;
+  updateGoal(id: string, goal: Partial<InsertGoal>): Promise<Goal | undefined>;
+  deleteGoal(id: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -832,10 +843,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveClientPlan(clientId: string): Promise<ClientPlan | undefined> {
-    const [plan] = await db.select()
+    const plans = await db.select()
       .from(clientPlans)
-      .where(eq(clientPlans.clientId, clientId))
-      .where(eq(clientPlans.status, 'active'));
+      .where(eq(clientPlans.clientId, clientId));
+    const [plan] = plans.filter(p => p.status === 'active');
     return plan || undefined;
   }
 
@@ -865,6 +876,43 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClientPlan(id: string): Promise<boolean> {
     const result = await db.delete(clientPlans).where(eq(clientPlans.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getGoals(): Promise<Goal[]> {
+    return await db.select().from(goals);
+  }
+
+  async getGoal(id: string): Promise<Goal | undefined> {
+    const result = await db.select().from(goals).where(eq(goals.id, id));
+    return result[0];
+  }
+
+  async getGoalsByClientId(clientId: string): Promise<Goal[]> {
+    return await db.select().from(goals).where(eq(goals.clientId, clientId));
+  }
+
+  async createGoal(goal: InsertGoal): Promise<Goal> {
+    const now = new Date().toISOString();
+    const result = await db.insert(goals).values({
+      ...goal,
+      createdAt: goal.createdAt || now,
+      updatedAt: goal.updatedAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updateGoal(id: string, goal: Partial<InsertGoal>): Promise<Goal | undefined> {
+    const now = new Date().toISOString();
+    const result = await db.update(goals)
+      .set({ ...goal, updatedAt: now })
+      .where(eq(goals.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteGoal(id: string): Promise<boolean> {
+    const result = await db.delete(goals).where(eq(goals.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }

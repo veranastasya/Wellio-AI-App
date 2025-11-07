@@ -184,6 +184,23 @@ export const clientPlans = pgTable("client_plans", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const goals = pgTable("goals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  clientName: text("client_name").notNull(),
+  goalType: text("goal_type").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  targetValue: real("target_value").notNull(),
+  currentValue: real("current_value").notNull().default(0),
+  unit: text("unit").notNull(),
+  deadline: text("deadline").notNull(),
+  status: text("status").notNull().default("active"),
+  priority: text("priority").notNull().default("medium"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
 });
@@ -291,6 +308,13 @@ export const insertClientPlanSchema = createInsertSchema(clientPlans).omit({
   updatedAt: z.string().optional(),
 });
 
+export const insertGoalSchema = createInsertSchema(goals).omit({
+  id: true,
+}).extend({
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
 export type InsertClientToken = z.infer<typeof insertClientTokenSchema>;
 export type ClientToken = typeof clientTokens.$inferSelect;
 
@@ -299,3 +323,6 @@ export type ClientInvite = typeof clientInvites.$inferSelect;
 
 export type InsertClientPlan = z.infer<typeof insertClientPlanSchema>;
 export type ClientPlan = typeof clientPlans.$inferSelect;
+
+export type InsertGoal = z.infer<typeof insertGoalSchema>;
+export type Goal = typeof goals.$inferSelect;
