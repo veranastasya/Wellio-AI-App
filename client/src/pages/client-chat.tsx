@@ -4,16 +4,19 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, MessageSquare } from "lucide-react";
+import { Loader2, Send, MessageSquare, Paperclip, X, FileText, Image as ImageIcon, Video, FileAudio, Download } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Client, Message, InsertMessage } from "@shared/schema";
+import type { Client, Message, InsertMessage, MessageAttachment } from "@shared/schema";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 export default function ClientChat() {
   const [, setLocation] = useLocation();
   const [clientData, setClientData] = useState<Client | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
   const [messageText, setMessageText] = useState("");
+  const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -98,20 +101,26 @@ export default function ClientChat() {
   }, [messages, clientData]);
 
   const handleSendMessage = () => {
-    if (!clientData || !messageText.trim()) {
+    if (!clientData) {
+      return;
+    }
+
+    if (!messageText.trim() && pendingAttachments.length === 0) {
       return;
     }
 
     const newMessage: InsertMessage = {
       clientId: clientData.id,
       clientName: clientData.name,
-      content: messageText.trim(),
+      content: messageText.trim() || "(File attachment)",
       sender: "client",
       timestamp: new Date().toISOString(),
       read: false,
+      attachments: pendingAttachments.length > 0 ? pendingAttachments : undefined,
     };
 
     sendMessageMutation.mutate(newMessage);
+    setPendingAttachments([]); // Clear attachments after sending
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -143,6 +152,67 @@ export default function ClientChat() {
     } else {
       return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     }
+  };
+
+  const handleFileUpload = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    try {
+      const successful = result.successful?.[0];
+      if (!successful) {
+        toast({
+          title: "Upload Failed",
+          description: "No file was uploaded successfully",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const objectURL = (successful.uploadURL as string) || successful.response?.uploadURL;
+      if (!objectURL) {
+        toast({
+          title: "Upload Failed",
+          description: "Failed to get upload URL",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await apiRequest<{ attachment: MessageAttachment }>("POST", "/api/attachments/save", {
+        objectURL,
+        fileName: successful.name,
+        fileType: successful.type || "application/octet-stream",
+        fileSize: successful.size,
+      });
+
+      setPendingAttachments((prev) => [...prev, response.attachment]);
+      toast({
+        title: "File Attached",
+        description: `${successful.name} is ready to send`,
+      });
+    } catch (error) {
+      console.error("Error handling file upload:", error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to process uploaded file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeAttachment = (attachmentId: string) => {
+    setPendingAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+  };
+
+  const getAttachmentIcon = (fileType: string) => {
+    if (fileType.startsWith("image/")) return ImageIcon;
+    if (fileType.startsWith("video/")) return Video;
+    if (fileType.startsWith("audio/")) return FileAudio;
+    return FileText;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   if (isVerifying || messagesLoading) {
@@ -214,6 +284,69 @@ export default function ClientChat() {
                           }`}
                         >
                           <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                          
+                          {/* Display attachments */}
+                          {message.attachments && message.attachments.length > 0 && (
+                            <div className="mt-2 space-y-2">
+                              {message.attachments.map((attachment) => {
+                                const Icon = getAttachmentIcon(attachment.fileType);
+                                const isImage = attachment.fileType.startsWith("image/");
+                                
+                                return (
+                                  <div
+                                    key={attachment.id}
+                                    className={`rounded-md overflow-hidden ${
+                                      message.sender === "client"
+                                        ? "bg-white/10 border border-white/20"
+                                        : "bg-background border"
+                                    }`}
+                                    data-testid={`attachment-${attachment.id}`}
+                                  >
+                                    {isImage ? (
+                                      <a
+                                        href={attachment.objectPath}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block hover-elevate"
+                                      >
+                                        <img
+                                          src={attachment.objectPath}
+                                          alt={attachment.fileName}
+                                          className="max-w-full h-auto rounded-md"
+                                        />
+                                      </a>
+                                    ) : (
+                                      <a
+                                        href={attachment.objectPath}
+                                        download={attachment.fileName}
+                                        className="flex items-center gap-2 p-2 hover-elevate"
+                                      >
+                                        <Icon className={`w-4 h-4 flex-shrink-0 ${
+                                          message.sender === "client" ? "text-white/70" : "text-muted-foreground"
+                                        }`} />
+                                        <div className="flex-1 min-w-0">
+                                          <p className={`text-xs font-medium truncate ${
+                                            message.sender === "client" ? "text-white" : "text-foreground"
+                                          }`}>
+                                            {attachment.fileName}
+                                          </p>
+                                          <p className={`text-xs ${
+                                            message.sender === "client" ? "text-white/60" : "text-muted-foreground"
+                                          }`}>
+                                            {formatFileSize(attachment.fileSize)}
+                                          </p>
+                                        </div>
+                                        <Download className={`w-4 h-4 flex-shrink-0 ${
+                                          message.sender === "client" ? "text-white/70" : "text-muted-foreground"
+                                        }`} />
+                                      </a>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          
                           <p
                             className={`text-xs mt-1 ${
                               message.sender === "client"
@@ -230,7 +363,38 @@ export default function ClientChat() {
                 })
               )}
             </div>
-            <div className="border-t p-4">
+            <div className="border-t p-4 space-y-3">
+              {/* Pending attachments display */}
+              {pendingAttachments.length > 0 && (
+                <div className="space-y-2">
+                  {pendingAttachments.map((attachment) => {
+                    const Icon = getAttachmentIcon(attachment.fileType);
+                    return (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center gap-2 p-2 bg-muted rounded-md"
+                        data-testid={`pending-attachment-${attachment.id}`}
+                      >
+                        <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{attachment.fileName}</p>
+                          <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => removeAttachment(attachment.id)}
+                          className="flex-shrink-0 h-8 w-8"
+                          data-testid={`button-remove-attachment-${attachment.id}`}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              
               <div className="flex gap-2">
                 <Input
                   placeholder="Type your message..."
@@ -240,17 +404,35 @@ export default function ClientChat() {
                   disabled={sendMessageMutation.isPending}
                   data-testid="input-message"
                 />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!messageText.trim() || sendMessageMutation.isPending}
-                  data-testid="button-send"
-                >
-                  {sendMessageMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                </Button>
+                <div className="flex gap-2">
+                  <ObjectUploader
+                    maxNumberOfFiles={5}
+                    maxFileSize={52428800}
+                    onGetUploadParameters={async () => {
+                      const response = await apiRequest<{ uploadURL: string }>("POST", "/api/attachments/upload", {});
+                      return {
+                        method: "PUT" as const,
+                        url: response.uploadURL,
+                      };
+                    }}
+                    onComplete={handleFileUpload}
+                    buttonVariant="ghost"
+                    buttonSize="icon"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </ObjectUploader>
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending}
+                    data-testid="button-send"
+                  >
+                    {sendMessageMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
