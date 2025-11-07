@@ -23,6 +23,7 @@ export default function Communication() {
 
   const { data: messages = [], isLoading: messagesLoading, isError: messagesError } = useQuery<Message[]>({
     queryKey: ["/api/coach/messages"],
+    refetchInterval: 5000, // Poll every 5 seconds for real-time updates
   });
 
   const sendMessageMutation = useMutation({
@@ -104,7 +105,7 @@ export default function Communication() {
         .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     : [];
 
-  // Mark messages as read when coach opens a conversation
+  // Mark messages as read when coach opens a conversation or new messages arrive
   useEffect(() => {
     if (selectedClientId) {
       const unreadMessages = messages.filter(
@@ -115,7 +116,7 @@ export default function Communication() {
         markAsReadMutation.mutate(msg.id);
       });
     }
-  }, [selectedClientId]);
+  }, [selectedClientId, messages]);
 
   const handleSendMessage = () => {
     setValidationError("");

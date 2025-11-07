@@ -51,6 +51,7 @@ export default function ClientChat() {
   const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
     enabled: !!clientData,
+    refetchInterval: 5000, // Poll every 5 seconds for real-time updates
   });
 
   const sendMessageMutation = useMutation({
