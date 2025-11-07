@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { NutritionLog, WorkoutLog, CheckIn } from "@shared/schema";
+import type { NutritionLog, WorkoutLog, CheckIn, Goal } from "@shared/schema";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -27,7 +27,8 @@ export async function analyzeClientData(
   clientName: string,
   nutritionLogs: NutritionLog[],
   workoutLogs: WorkoutLog[],
-  checkIns: CheckIn[]
+  checkIns: CheckIn[],
+  goals?: Goal[]
 ): Promise<ClientInsight> {
   const trends: TrendAnalysis[] = [];
 
@@ -49,8 +50,8 @@ export async function analyzeClientData(
     if (progressTrend) trends.push(progressTrend);
   }
 
-  // Generate AI summary using OpenAI
-  const summary = await generateAISummary(clientName, trends, nutritionLogs, workoutLogs, checkIns);
+  // Generate AI summary using OpenAI (including goals)
+  const summary = await generateAISummary(clientName, trends, nutritionLogs, workoutLogs, checkIns, goals);
 
   return {
     id: `insight_${clientId}_${Date.now()}`,
@@ -212,7 +213,8 @@ async function generateAISummary(
   trends: TrendAnalysis[],
   nutritionLogs: NutritionLog[],
   workoutLogs: WorkoutLog[],
-  checkIns: CheckIn[]
+  checkIns: CheckIn[],
+  goals?: Goal[]
 ): Promise<string> {
   try {
     // Count synced vs manual entries (both apple_health and rook)
@@ -227,13 +229,23 @@ async function generateAISummary(
     ).length;
     const totalSynced = syncedNutrition + syncedWorkouts + syncedCheckIns;
     
+    // Analyze goals progress
+    const activeGoals = goals?.filter(g => g.status === "active") || [];
+    const goalsContext = activeGoals.length > 0 
+      ? `\n\nActive Goals:\n${activeGoals.map(g => {
+          const progress = g.targetValue > 0 ? Math.round((g.currentValue / g.targetValue) * 100) : 0;
+          const daysLeft = Math.ceil((new Date(g.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+          return `- ${g.title}: ${progress}% complete (${g.currentValue}/${g.targetValue} ${g.unit}) - ${daysLeft > 0 ? `${daysLeft} days remaining` : 'deadline passed'}`;
+        }).join('\n')}`
+      : "";
+    
     const context = `
 Client: ${clientName}
 Data Summary:
 - ${nutritionLogs.length} nutrition logs (${syncedNutrition} auto-synced from wearables)
 - ${workoutLogs.length} workout sessions (${syncedWorkouts} auto-synced from wearables)
 - ${checkIns.length} check-ins (${syncedCheckIns} auto-synced from wearables)
-- Data collection: ${totalSynced > 0 ? "Automated tracking enabled via wearable integration" : "Manual tracking only"}
+- Data collection: ${totalSynced > 0 ? "Automated tracking enabled via wearable integration" : "Manual tracking only"}${goalsContext}
 
 Detected Trends:
 ${trends.map(t => `- ${t.category}: ${t.trend} - ${t.description}`).join('\n')}
@@ -247,15 +259,15 @@ ${trends.filter(t => t.recommendation).map(t => `- ${t.recommendation}`).join('\
       messages: [
         {
           role: "system",
-          content: "You are a professional fitness coach AI assistant. Provide concise, actionable insights based on client data. Keep summaries under 100 words and focus on the most important trends and next steps. When wearable data is present, acknowledge the benefit of automated tracking for data accuracy.",
+          content: "You are a professional fitness coach AI assistant. Provide concise, actionable insights based on client data. Keep summaries under 100 words and focus on the most important trends and next steps. When wearable data is present, acknowledge the benefit of automated tracking for data accuracy. When goals are present, reference them in your summary and recommendations.",
         },
         {
           role: "user",
-          content: `Based on this client data, provide a brief performance summary and top 1-2 recommendations:\n\n${context}`,
+          content: `Based on this client data, provide a brief performance summary and top 1-2 recommendations. If goals are present, comment on their progress:\n\n${context}`,
         },
       ],
       temperature: 0.7,
-      max_tokens: 150,
+      max_tokens: 200,
     });
 
     return completion.choices[0]?.message?.content || "Unable to generate summary at this time.";

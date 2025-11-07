@@ -312,6 +312,7 @@ export function ClientGoals({ clientId, clientName }: ClientGoalsProps) {
                         <Textarea
                           placeholder="Additional details about this goal..."
                           {...field}
+                          value={field.value || ""}
                           data-testid="input-description"
                         />
                       </FormControl>

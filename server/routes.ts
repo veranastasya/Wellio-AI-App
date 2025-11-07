@@ -833,17 +833,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allNutritionLogs = await storage.getNutritionLogs();
       const allWorkoutLogs = await storage.getWorkoutLogs();
       const allCheckIns = await storage.getCheckIns();
+      const allGoals = await storage.getGoals();
 
       const clientNutritionLogs = allNutritionLogs.filter(log => log.clientId === clientId);
       const clientWorkoutLogs = allWorkoutLogs.filter(log => log.clientId === clientId);
       const clientCheckIns = allCheckIns.filter(log => log.clientId === clientId);
+      const clientGoals = allGoals.filter(goal => goal.clientId === clientId);
 
       const insights = await analyzeClientData(
         clientId,
         client.name,
         clientNutritionLogs,
         clientWorkoutLogs,
-        clientCheckIns
+        clientCheckIns,
+        clientGoals
       );
 
       res.json(insights);
