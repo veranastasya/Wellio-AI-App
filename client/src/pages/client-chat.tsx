@@ -74,6 +74,28 @@ export default function ClientChat() {
     },
   });
 
+  const markAsReadMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      return await apiRequest("PATCH", `/api/messages/${messageId}/read`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
+    },
+  });
+
+  // Auto-mark coach messages as read when chat page loads
+  useEffect(() => {
+    if (!clientData) return;
+
+    const unreadMessages = messages.filter(
+      (m) => m.sender === "coach" && !m.read
+    );
+
+    unreadMessages.forEach((msg) => {
+      markAsReadMutation.mutate(msg.id);
+    });
+  }, [messages, clientData]);
+
   const handleSendMessage = () => {
     if (!clientData || !messageText.trim()) {
       return;

@@ -177,6 +177,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/messages/:id/read", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const message = await storage.getMessage(req.params.id);
+      if (!message) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+      // Verify the message belongs to this client
+      if (message.clientId !== clientId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const updatedMessage = await storage.updateMessage(req.params.id, { read: true });
+      res.json(updatedMessage);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update message" });
+    }
+  });
+
   // Coach message routes (no client auth required - for coach access)
   app.get("/api/coach/messages", async (_req, res) => {
     try {
