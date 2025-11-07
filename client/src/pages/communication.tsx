@@ -1,20 +1,23 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Search } from "lucide-react";
+import { Send, Search, Paperclip, X, FileText, Image as ImageIcon, Video, FileAudio, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import type { Message, Client, InsertMessage } from "@shared/schema";
+import type { Message, Client, InsertMessage, MessageAttachment } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 export default function Communication() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [validationError, setValidationError] = useState("");
+  const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const { toast } = useToast();
 
   const { data: clients = [], isLoading: clientsLoading, isError: clientsError } = useQuery<Client[]>({
@@ -126,21 +129,23 @@ export default function Communication() {
       return;
     }
     
-    if (!messageText.trim()) {
-      setValidationError("Please enter a message");
+    if (!messageText.trim() && pendingAttachments.length === 0) {
+      setValidationError("Please enter a message or attach a file");
       return;
     }
 
     const newMessage: InsertMessage = {
       clientId: selectedClientId,
       clientName: selectedClient.name,
-      content: messageText,
+      content: messageText || "(File attachment)",
       sender: "coach",
       timestamp: new Date().toISOString(),
       read: false,
+      attachments: pendingAttachments.length > 0 ? pendingAttachments : undefined,
     };
 
     sendMessageMutation.mutate(newMessage);
+    setPendingAttachments([]); // Clear attachments after sending
   };
 
   const formatTime = (timestamp: string) => {
@@ -165,6 +170,67 @@ export default function Communication() {
     } else {
       return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     }
+  };
+
+  const handleFileUpload = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    try {
+      const successful = result.successful?.[0];
+      if (!successful) {
+        toast({
+          title: "Upload Failed",
+          description: "No file was uploaded successfully",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const objectURL = (successful.uploadURL as string) || successful.response?.uploadURL;
+      if (!objectURL) {
+        toast({
+          title: "Upload Failed",
+          description: "Failed to get upload URL",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await apiRequest<{ attachment: MessageAttachment }>("POST", "/api/attachments/save", {
+        objectURL,
+        fileName: successful.name,
+        fileType: successful.type || "application/octet-stream",
+        fileSize: successful.size,
+      });
+
+      setPendingAttachments((prev) => [...prev, response.attachment]);
+      toast({
+        title: "File Attached",
+        description: `${successful.name} is ready to send`,
+      });
+    } catch (error) {
+      console.error("Error handling file upload:", error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to process uploaded file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeAttachment = (attachmentId: string) => {
+    setPendingAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+  };
+
+  const getAttachmentIcon = (fileType: string) => {
+    if (fileType.startsWith("image/")) return ImageIcon;
+    if (fileType.startsWith("video/")) return Video;
+    if (fileType.startsWith("audio/")) return FileAudio;
+    return FileText;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   if (clientsLoading || messagesLoading) {
@@ -341,6 +407,69 @@ export default function Communication() {
                               }`}
                             >
                               <p className="text-sm">{msg.content}</p>
+                              
+                              {/* Display attachments */}
+                              {msg.attachments && msg.attachments.length > 0 && (
+                                <div className="mt-2 space-y-2">
+                                  {msg.attachments.map((attachment) => {
+                                    const Icon = getAttachmentIcon(attachment.fileType);
+                                    const isImage = attachment.fileType.startsWith("image/");
+                                    
+                                    return (
+                                      <div
+                                        key={attachment.id}
+                                        className={`rounded-md overflow-hidden ${
+                                          msg.sender === "coach"
+                                            ? "bg-white/10 border border-white/20"
+                                            : "bg-background border"
+                                        }`}
+                                        data-testid={`attachment-${attachment.id}`}
+                                      >
+                                        {isImage ? (
+                                          <a
+                                            href={attachment.objectPath}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block hover-elevate"
+                                          >
+                                            <img
+                                              src={attachment.objectPath}
+                                              alt={attachment.fileName}
+                                              className="max-w-full h-auto rounded-md"
+                                            />
+                                          </a>
+                                        ) : (
+                                          <a
+                                            href={attachment.objectPath}
+                                            download={attachment.fileName}
+                                            className="flex items-center gap-2 p-2 hover-elevate"
+                                          >
+                                            <Icon className={`w-4 h-4 flex-shrink-0 ${
+                                              msg.sender === "coach" ? "text-white/70" : "text-muted-foreground"
+                                            }`} />
+                                            <div className="flex-1 min-w-0">
+                                              <p className={`text-xs font-medium truncate ${
+                                                msg.sender === "coach" ? "text-white" : "text-foreground"
+                                              }`}>
+                                                {attachment.fileName}
+                                              </p>
+                                              <p className={`text-xs ${
+                                                msg.sender === "coach" ? "text-white/60" : "text-muted-foreground"
+                                              }`}>
+                                                {formatFileSize(attachment.fileSize)}
+                                              </p>
+                                            </div>
+                                            <Download className={`w-4 h-4 flex-shrink-0 ${
+                                              msg.sender === "coach" ? "text-white/70" : "text-muted-foreground"
+                                            }`} />
+                                          </a>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              
                               <p
                                 className={`text-xs mt-1 ${
                                   msg.sender === "coach" ? "text-white/70" : "text-muted-foreground"
@@ -354,10 +483,42 @@ export default function Communication() {
                       )}
                     </div>
                 </CardContent>
-                <div className="p-4 border-t">
+                <div className="p-4 border-t space-y-3">
                   {validationError && (
                     <p className="text-sm text-destructive mb-2">{validationError}</p>
                   )}
+                  
+                  {/* Pending attachments display */}
+                  {pendingAttachments.length > 0 && (
+                    <div className="space-y-2">
+                      {pendingAttachments.map((attachment) => {
+                        const Icon = getAttachmentIcon(attachment.fileType);
+                        return (
+                          <div
+                            key={attachment.id}
+                            className="flex items-center gap-2 p-2 bg-muted rounded-md"
+                            data-testid={`pending-attachment-${attachment.id}`}
+                          >
+                            <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{attachment.fileName}</p>
+                              <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
+                            </div>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => removeAttachment(attachment.id)}
+                              className="flex-shrink-0 h-8 w-8"
+                              data-testid={`button-remove-attachment-${attachment.id}`}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
                   <div className="flex gap-2">
                     <Textarea
                       placeholder="Type your message..."
@@ -375,19 +536,37 @@ export default function Communication() {
                       className="min-h-12 max-h-32 resize-none"
                       data-testid="input-message"
                     />
-                    <Button
-                      onClick={handleSendMessage}
-                      disabled={sendMessageMutation.isPending}
-                      size="icon"
-                      className="flex-shrink-0"
-                      data-testid="button-send-message"
-                    >
-                      {sendMessageMutation.isPending ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <ObjectUploader
+                        maxNumberOfFiles={5}
+                        maxFileSize={52428800}
+                        onGetUploadParameters={async () => {
+                          const response = await apiRequest<{ uploadURL: string }>("POST", "/api/attachments/upload", {});
+                          return {
+                            method: "PUT" as const,
+                            url: response.uploadURL,
+                          };
+                        }}
+                        onComplete={handleFileUpload}
+                        buttonVariant="ghost"
+                        buttonSize="icon"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                      </ObjectUploader>
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={sendMessageMutation.isPending}
+                        size="icon"
+                        className="flex-shrink-0"
+                        data-testid="button-send-message"
+                      >
+                        {sendMessageMutation.isPending ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </>
