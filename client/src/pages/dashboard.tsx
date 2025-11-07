@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Video, Trophy, DollarSign, Lightbulb, TrendingUp } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { Client, Session, Activity } from "@shared/schema";
+import { GoalsDashboardWidget } from "@/components/goals/goals-dashboard-widget";
 
 export default function Dashboard() {
   const { data: clients = [], isLoading: clientsLoading, isError: clientsError } = useQuery<Client[]>({
@@ -307,34 +308,36 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="bg-gradient-to-br from-primary to-primary/80 text-white" data-testid="card-ai-insights">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Lightbulb className="w-5 h-5" />
-                <CardTitle className="text-white">AI Insights</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="font-semibold text-white">Progress Overview</p>
-                <p className="text-sm text-white/90 mt-1">
-                  {clients.length > 0
-                    ? `Average client progress: ${Math.round(clients.reduce((sum, c) => sum + c.progressScore, 0) / clients.length)}%. ${clients.filter(c => c.progressScore < 70).length} clients may benefit from plan adjustments.`
-                    : "Add clients to see AI-powered insights and recommendations."}
+          <GoalsDashboardWidget />
+        </div>
+
+        <Card className="bg-gradient-to-br from-primary to-primary/80 text-white" data-testid="card-ai-insights">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5" />
+              <CardTitle className="text-white">AI Insights</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <p className="font-semibold text-white">Progress Overview</p>
+              <p className="text-sm text-white/90 mt-1">
+                {clients.length > 0
+                  ? `Average client progress: ${Math.round(clients.reduce((sum, c) => sum + c.progressScore, 0) / clients.length)}%. ${clients.filter(c => c.progressScore < 70).length} clients may benefit from plan adjustments.`
+                  : "Add clients to see AI-powered insights and recommendations."}
+              </p>
+            </div>
+            {clients.length > 0 && (
+              <div className="border-t border-white/20 pt-3">
+                <p className="text-sm text-white/90">
+                  {clients.filter(c => c.progressScore < 70).length > 0
+                    ? `Consider scheduling check-ins with clients below 70% progress to re-evaluate their programs.`
+                    : "All clients are making excellent progress! Keep up the great work."}
                 </p>
               </div>
-              {clients.length > 0 && (
-                <div className="border-t border-white/20 pt-3">
-                  <p className="text-sm text-white/90">
-                    {clients.filter(c => c.progressScore < 70).length > 0
-                      ? `Consider scheduling check-ins with clients below 70% progress to re-evaluate their programs.`
-                      : "All clients are making excellent progress! Keep up the great work."}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
