@@ -32,6 +32,7 @@ import {
   insertClientTokenSchema,
   insertClientInviteSchema,
   insertClientPlanSchema,
+  insertGoalSchema,
 } from "@shared/schema";
 import { analyzeClientData } from "./ai";
 import { syncAppleHealthData } from "./sync";
@@ -1194,6 +1195,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete plan" });
+    }
+  });
+
+  // Goals routes
+  app.get("/api/goals", async (_req, res) => {
+    try {
+      const goals = await storage.getGoals();
+      res.json(goals);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch goals" });
+    }
+  });
+
+  app.get("/api/goals/client/:clientId", async (req, res) => {
+    try {
+      const goals = await storage.getGoalsByClientId(req.params.clientId);
+      res.json(goals);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch goals" });
+    }
+  });
+
+  app.get("/api/goals/:id", async (req, res) => {
+    try {
+      const goal = await storage.getGoal(req.params.id);
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+      res.json(goal);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch goal" });
+    }
+  });
+
+  app.post("/api/goals", async (req, res) => {
+    try {
+      const validatedData = insertGoalSchema.parse(req.body);
+      const goal = await storage.createGoal(validatedData);
+      res.status(201).json(goal);
+    } catch (error) {
+      console.error("Error creating goal:", error);
+      res.status(400).json({ error: "Invalid goal data" });
+    }
+  });
+
+  app.patch("/api/goals/:id", async (req, res) => {
+    try {
+      const validatedData = insertGoalSchema.partial().parse(req.body);
+      const goal = await storage.updateGoal(req.params.id, validatedData);
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+      res.json(goal);
+    } catch (error) {
+      console.error("Error updating goal:", error);
+      res.status(400).json({ error: "Invalid goal data" });
+    }
+  });
+
+  app.delete("/api/goals/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteGoal(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete goal" });
     }
   });
 
