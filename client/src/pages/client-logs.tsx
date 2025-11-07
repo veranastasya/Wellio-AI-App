@@ -25,9 +25,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { insertNutritionLogSchema, insertWorkoutLogSchema, insertCheckInSchema } from "@shared/schema";
-import { ClipboardList, Apple, Dumbbell, Scale } from "lucide-react";
+import { ClipboardList, Apple, Dumbbell, Scale, Target } from "lucide-react";
 import type { z } from "zod";
 import { DeviceConnection } from "@/components/device-connection";
+import { ClientGoals } from "@/components/goals/client-goals";
 
 interface Client {
   id: string;
@@ -249,7 +250,7 @@ export default function ClientLogs() {
               />
               
               <Tabs defaultValue="nutrition" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="nutrition" data-testid="tab-nutrition">
                   <Apple className="w-4 h-4 mr-2" />
                   Nutrition
@@ -261,6 +262,10 @@ export default function ClientLogs() {
                 <TabsTrigger value="checkin" data-testid="tab-checkin">
                   <Scale className="w-4 h-4 mr-2" />
                   Check-in
+                </TabsTrigger>
+                <TabsTrigger value="goals" data-testid="tab-goals">
+                  <Target className="w-4 h-4 mr-2" />
+                  Goals
                 </TabsTrigger>
               </TabsList>
 
@@ -637,6 +642,10 @@ export default function ClientLogs() {
                     </Form>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="goals">
+                <ClientGoals clientId={selectedClientId} clientName={selectedClient.name} />
               </TabsContent>
             </Tabs>
             </>
