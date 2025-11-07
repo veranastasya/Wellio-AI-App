@@ -2,6 +2,9 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission, ObjectAccessGroupType } from "./objectAcl";
+import type { MessageAttachment } from "@shared/schema";
 
 // Extend Express session type
 declare module 'express-session' {
@@ -225,6 +228,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(message);
     } catch (error) {
       res.status(500).json({ error: "Failed to update message" });
+    }
+  });
+
+  // File attachment routes for messaging
+  // Reference: blueprint:javascript_object_storage
+  
+  // Serve private objects with ACL checks
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      
+      // For messaging attachments, check if user has access
+      // Access is granted if: user is coach OR user is the client in the message
+      const clientId = req.session?.clientId;
+      
+      // Get the attachment metadata to verify access
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId: clientId, // For clients, this is their clientId
+        requestedPermission: ObjectPermission.READ,
+      });
+      
+      // For coach access, we allow all (they can see all client messages)
+      // For client access, canAccess checks if they own the file
+      if (!clientId && !canAccess) {
+        return res.sendStatus(401);
+      }
+      
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error accessing object:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+  
+  // Get upload URL for attachments (both coach and client can upload)
+  app.post("/api/attachments/upload", async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+  
+  // Save attachment metadata after upload
+  app.post("/api/attachments/save", async (req, res) => {
+    try {
+      const { objectURL, fileName, fileType, fileSize } = req.body;
+      
+      if (!objectURL || !fileName || !fileType || !fileSize) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      // Get userId - either coach (no session) or client (session.clientId)
+      const userId = req.session?.clientId || "coach";
+      
+      const objectStorageService = new ObjectStorageService();
+      
+      // Set ACL policy for the uploaded file
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        objectURL,
+        {
+          owner: userId,
+          // Private visibility - only participants in the message can access
+          visibility: "private",
+          aclRules: [
+            {
+              group: {
+                type: ObjectAccessGroupType.MESSAGE_PARTICIPANT,
+                id: "messaging", // All messaging participants
+              },
+              permission: ObjectPermission.READ,
+            },
+          ],
+        }
+      );
+      
+      const attachment: MessageAttachment = {
+        id: crypto.randomUUID(),
+        fileName,
+        fileType,
+        fileSize,
+        objectPath,
+        uploadedAt: new Date().toISOString(),
+      };
+      
+      res.status(200).json({ attachment });
+    } catch (error) {
+      console.error("Error saving attachment:", error);
+      res.status(500).json({ error: "Failed to save attachment" });
     }
   });
 

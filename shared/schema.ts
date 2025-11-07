@@ -262,7 +262,19 @@ export type InsertSession = z.infer<typeof insertSessionSchema>;
 export type Session = typeof sessions.$inferSelect;
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
-export type Message = typeof messages.$inferSelect;
+// Message attachment types
+export interface MessageAttachment {
+  id: string;
+  fileName: string;
+  fileType: string; // MIME type
+  fileSize: number; // in bytes
+  objectPath: string; // path to object storage
+  uploadedAt: string;
+}
+
+export type Message = typeof messages.$inferSelect & {
+  attachments?: MessageAttachment[] | null;
+};
 
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
 export type Activity = typeof activities.$inferSelect;
