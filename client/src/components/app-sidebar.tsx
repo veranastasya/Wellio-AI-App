@@ -1,5 +1,6 @@
 import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock, ClipboardList, Brain, FileText } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -16,7 +17,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 import logoImage from "@assets/Group 626535_1761099357468.png";
+import type { Message } from "@shared/schema";
 
 const navigationItems = [
   {
@@ -54,6 +57,7 @@ const navigationItems = [
     url: "/communication",
     icon: MessageSquare,
     locked: false,
+    showUnreadBadge: true,
   },
   {
     title: "AI Insights",
@@ -77,6 +81,16 @@ const navigationItems = [
 
 export function AppSidebar() {
   const [location] = useLocation();
+
+  // Fetch coach messages to count unread
+  const { data: messages = [] } = useQuery<Message[]>({
+    queryKey: ["/api/coach/messages"],
+  });
+
+  // Count unread messages from clients
+  const unreadCount = messages.filter(
+    (m) => m.sender === "client" && !m.read
+  ).length;
 
   return (
     <Sidebar>
@@ -125,6 +139,15 @@ export function AppSidebar() {
                       <Link href={item.url}>
                         <item.icon className="w-5 h-5" />
                         <span>{item.title}</span>
+                        {item.showUnreadBadge && unreadCount > 0 && (
+                          <Badge 
+                            variant="default" 
+                            className="ml-auto bg-primary text-primary-foreground"
+                            data-testid="badge-communication-unread"
+                          >
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </Badge>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   )}
