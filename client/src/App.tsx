@@ -3,10 +3,11 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ClientSidebar } from "@/components/client-sidebar";
+import { SidebarTriggerWithBadge } from "@/components/sidebar-trigger-with-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { ClientLayout } from "@/components/client-layout";
 import Dashboard from "@/pages/dashboard";
 import Clients from "@/pages/clients";
 import Communication from "@/pages/communication";
@@ -42,31 +43,86 @@ export default function App() {
           <Route path="/client/setup-password" component={ClientPasswordSetup} />
           <Route path="/client/login" component={ClientLogin} />
           
-          {/* Client Portal Routes - Client Layout */}
+          {/* Client Portal Routes - Sidebar Layout (UI Parity) */}
           <Route path="/client/dashboard">
-            <ClientLayout>
-              <ClientDashboard />
-            </ClientLayout>
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <ClientSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTriggerWithBadge role="client" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <ClientDashboard />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
           </Route>
           <Route path="/client/profile">
-            <ClientLayout>
-              <ClientProfile />
-            </ClientLayout>
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <ClientSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTriggerWithBadge role="client" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <ClientProfile />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
           </Route>
           <Route path="/client/chat">
-            <ClientLayout>
-              <ClientChat />
-            </ClientLayout>
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <ClientSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTriggerWithBadge role="client" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <ClientChat />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
           </Route>
           <Route path="/client/forms">
-            <ClientLayout>
-              <ClientForms />
-            </ClientLayout>
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <ClientSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTriggerWithBadge role="client" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <ClientForms />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
           </Route>
           <Route path="/client/plan">
-            <ClientLayout>
-              <ClientPlan />
-            </ClientLayout>
+            <SidebarProvider style={style as React.CSSProperties}>
+              <div className="flex h-screen w-full">
+                <ClientSidebar />
+                <div className="flex flex-col flex-1 min-h-screen max-h-screen">
+                  <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
+                    <SidebarTriggerWithBadge role="client" />
+                    <ThemeToggle />
+                  </header>
+                  <main className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <ClientPlan />
+                  </main>
+                </div>
+              </div>
+            </SidebarProvider>
           </Route>
 
           {/* Coach Routes - Sidebar Layout */}
@@ -76,7 +132,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -92,7 +148,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -108,7 +164,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -124,7 +180,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -140,7 +196,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -156,7 +212,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -172,7 +228,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -188,7 +244,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -204,7 +260,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -220,7 +276,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -236,7 +292,7 @@ export default function App() {
                 <AppSidebar />
                 <div className="flex flex-col flex-1 min-h-screen max-h-screen">
                   <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background">
-                    <SidebarTrigger data-testid="button-sidebar-toggle" />
+                    <SidebarTriggerWithBadge role="coach" />
                     <ThemeToggle />
                   </header>
                   <main className="flex-1 overflow-y-auto overflow-x-hidden">
