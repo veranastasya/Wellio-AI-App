@@ -176,14 +176,25 @@ export default function ClientChat() {
         return;
       }
 
-      const response = await apiRequest<{ attachment: MessageAttachment }>("POST", "/api/attachments/save", {
+      if (!clientData) {
+        toast({
+          title: "Upload Failed",
+          description: "Client data not loaded",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const res = await apiRequest("POST", "/api/attachments/save", {
         objectURL,
         fileName: successful.name,
         fileType: successful.type || "application/octet-stream",
         fileSize: successful.size,
+        clientId: clientData.id,
       });
+      const data: { attachment: MessageAttachment } = await res.json();
 
-      setPendingAttachments((prev) => [...prev, response.attachment]);
+      setPendingAttachments((prev) => [...prev, data.attachment]);
       toast({
         title: "File Attached",
         description: `${successful.name} is ready to send`,
@@ -409,10 +420,11 @@ export default function ClientChat() {
                     maxNumberOfFiles={5}
                     maxFileSize={52428800}
                     onGetUploadParameters={async () => {
-                      const response = await apiRequest<{ uploadURL: string }>("POST", "/api/attachments/upload", {});
+                      const res = await apiRequest("POST", "/api/attachments/upload", {});
+                      const data: { uploadURL: string } = await res.json();
                       return {
                         method: "PUT" as const,
-                        url: response.uploadURL,
+                        url: data.uploadURL,
                       };
                     }}
                     onComplete={handleFileUpload}

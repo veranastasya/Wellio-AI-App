@@ -66,10 +66,15 @@ class MessageParticipantAccessGroup extends BaseObjectAccessGroup {
   }
 
   async hasMember(userId: string): Promise<boolean> {
-    // In this implementation, access is granted if the userId matches the message clientId
-    // The actual message validation is done at the route level
-    // This is a simplified implementation - in production, you'd check the database
-    return true; // Access control is handled at route level
+    // For message attachments:
+    // - Coach (userId === "coach") can access all client messages
+    // - Client can access if their ID matches the group ID (which is set to the clientId for that conversation)
+    if (userId === "coach") {
+      return true; // Coach can access all message attachments
+    }
+    
+    // Check if the client's ID matches the conversation clientId stored in the group
+    return userId === this.id;
   }
 }
 

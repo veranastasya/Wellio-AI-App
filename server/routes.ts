@@ -283,18 +283,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Save attachment metadata after upload
   app.post("/api/attachments/save", async (req, res) => {
     try {
-      const { objectURL, fileName, fileType, fileSize } = req.body;
+      const { objectURL, fileName, fileType, fileSize, clientId } = req.body;
       
-      if (!objectURL || !fileName || !fileType || !fileSize) {
+      if (!objectURL || !fileName || !fileType || !fileSize || !clientId) {
         return res.status(400).json({ error: "Missing required fields" });
       }
       
+      // Verify the clientId exists in the database
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
       // Get userId - either coach (no session) or client (session.clientId)
+      // For coach: no client session means coach access
+      // For client: must have a session with clientId
       const userId = req.session?.clientId || "coach";
+      
+      // Verify authorization:
+      // - Clients can only upload for their own conversations
+      // - Coach can upload for any client (when no client session exists)
+      if (userId !== "coach" && userId !== clientId) {
+        return res.status(403).json({ error: "Not authorized to upload for this conversation" });
+      }
       
       const objectStorageService = new ObjectStorageService();
       
       // Set ACL policy for the uploaded file
+      // The group ID is the clientId - this allows both coach and that specific client to access
       const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
         objectURL,
         {
@@ -305,7 +321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             {
               group: {
                 type: ObjectAccessGroupType.MESSAGE_PARTICIPANT,
-                id: "messaging", // All messaging participants
+                id: clientId, // Specific client for this conversation
               },
               permission: ObjectPermission.READ,
             },

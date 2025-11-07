@@ -194,14 +194,25 @@ export default function Communication() {
         return;
       }
 
-      const response = await apiRequest<{ attachment: MessageAttachment }>("POST", "/api/attachments/save", {
+      if (!selectedClientId) {
+        toast({
+          title: "Upload Failed",
+          description: "Please select a client first",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const res = await apiRequest("POST", "/api/attachments/save", {
         objectURL,
         fileName: successful.name,
         fileType: successful.type || "application/octet-stream",
         fileSize: successful.size,
+        clientId: selectedClientId,
       });
+      const data: { attachment: MessageAttachment } = await res.json();
 
-      setPendingAttachments((prev) => [...prev, response.attachment]);
+      setPendingAttachments((prev) => [...prev, data.attachment]);
       toast({
         title: "File Attached",
         description: `${successful.name} is ready to send`,
@@ -541,10 +552,11 @@ export default function Communication() {
                         maxNumberOfFiles={5}
                         maxFileSize={52428800}
                         onGetUploadParameters={async () => {
-                          const response = await apiRequest<{ uploadURL: string }>("POST", "/api/attachments/upload", {});
+                          const res = await apiRequest("POST", "/api/attachments/upload", {});
+                          const data: { uploadURL: string } = await res.json();
                           return {
                             method: "PUT" as const,
-                            url: response.uploadURL,
+                            url: data.uploadURL,
                           };
                         }}
                         onComplete={handleFileUpload}
