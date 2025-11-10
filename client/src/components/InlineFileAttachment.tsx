@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Paperclip, Loader2, X, FileText, Image as ImageIcon, Video, FileAudio } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +8,7 @@ import type { MessageAttachment } from "@shared/schema";
 interface InlineFileAttachmentProps {
   onAttachmentsAdded: (attachments: MessageAttachment[]) => void;
   clientId: string;
+  currentAttachmentCount: number;
   maxFiles?: number;
   maxFileSize?: number;
   allowedTypes?: string[];
@@ -33,6 +34,7 @@ const DEFAULT_MAX_FILES = 5;
 export function InlineFileAttachment({
   onAttachmentsAdded,
   clientId,
+  currentAttachmentCount,
   maxFiles = DEFAULT_MAX_FILES,
   maxFileSize = DEFAULT_MAX_SIZE,
   allowedTypes = DEFAULT_ALLOWED_TYPES,
@@ -40,7 +42,7 @@ export function InlineFileAttachment({
   className = "",
 }: InlineFileAttachmentProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadingRef = useRef(false);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
   const validateFile = (file: File): string | null => {
@@ -92,22 +94,19 @@ export function InlineFileAttachment({
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    if (uploadingRef.current) return;
-
-    const validFiles: File[] = [];
-    const errors: string[] = [];
-
-    // Check max files
-    if (files.length > maxFiles) {
+    if (isUploading) {
       toast({
-        title: "Too Many Files",
-        description: `You can only upload up to ${maxFiles} files at once`,
+        title: "Upload in Progress",
+        description: "Please wait for the current upload to complete",
         variant: "destructive",
       });
       return;
     }
 
-    // Validate each file
+    const validFiles: File[] = [];
+    const errors: string[] = [];
+
+    // Validate each file first
     Array.from(files).forEach((file) => {
       const error = validateFile(file);
       if (error) {
@@ -117,7 +116,7 @@ export function InlineFileAttachment({
       }
     });
 
-    // Show errors if any
+    // Show validation errors if any
     if (errors.length > 0) {
       toast({
         title: "Invalid Files",
@@ -126,35 +125,51 @@ export function InlineFileAttachment({
       });
     }
 
+    // Check total attachments (current + valid new files) against max limit
+    const totalAfterUpload = currentAttachmentCount + validFiles.length;
+    if (totalAfterUpload > maxFiles) {
+      const remaining = maxFiles - currentAttachmentCount;
+      toast({
+        title: "Too Many Files",
+        description: remaining > 0 
+          ? `You can only upload ${remaining} more file(s). Total limit is ${maxFiles} files.`
+          : `You've already reached the maximum of ${maxFiles} files. Remove some attachments first.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Upload valid files
     if (validFiles.length > 0) {
-      uploadingRef.current = true;
+      setIsUploading(true);
 
-      const uploadPromises = validFiles.map((file) => uploadFile(file));
-      const results = await Promise.all(uploadPromises);
+      try {
+        const uploadPromises = validFiles.map((file) => uploadFile(file));
+        const results = await Promise.all(uploadPromises);
 
-      const successfulAttachments = results.filter(
-        (att): att is MessageAttachment => att !== null
-      );
+        const successfulAttachments = results.filter(
+          (att): att is MessageAttachment => att !== null
+        );
 
-      if (successfulAttachments.length > 0) {
-        onAttachmentsAdded(successfulAttachments);
-        toast({
-          title: "Files Attached",
-          description: `${successfulAttachments.length} file(s) ready to send`,
-        });
+        if (successfulAttachments.length > 0) {
+          onAttachmentsAdded(successfulAttachments);
+          toast({
+            title: "Files Attached",
+            description: `${successfulAttachments.length} file(s) ready to send`,
+          });
+        }
+
+        const failedCount = validFiles.length - successfulAttachments.length;
+        if (failedCount > 0) {
+          toast({
+            title: "Upload Failed",
+            description: `${failedCount} file(s) failed to upload`,
+            variant: "destructive",
+          });
+        }
+      } finally {
+        setIsUploading(false);
       }
-
-      const failedCount = validFiles.length - successfulAttachments.length;
-      if (failedCount > 0) {
-        toast({
-          title: "Upload Failed",
-          description: `${failedCount} file(s) failed to upload`,
-          variant: "destructive",
-        });
-      }
-
-      uploadingRef.current = false;
     }
 
     // Reset input
@@ -183,11 +198,11 @@ export function InlineFileAttachment({
         size="icon"
         variant="ghost"
         onClick={handleButtonClick}
-        disabled={disabled || uploadingRef.current}
+        disabled={disabled || isUploading}
         className={className}
         data-testid="button-attach-file"
       >
-        {uploadingRef.current ? (
+        {isUploading ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
           <Paperclip className="w-4 h-4" />

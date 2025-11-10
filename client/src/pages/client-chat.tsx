@@ -4,12 +4,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, MessageSquare, Paperclip, X, FileText, Image as ImageIcon, Video, FileAudio, Download } from "lucide-react";
+import { Loader2, Send, MessageSquare, X, FileText, Image as ImageIcon, Video, FileAudio, Download } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client, Message, InsertMessage, MessageAttachment } from "@shared/schema";
-import { ObjectUploader } from "@/components/ObjectUploader";
-import type { UploadResult } from "@uppy/core";
+import { InlineFileAttachment } from "@/components/InlineFileAttachment";
+import { DragDropFileZone } from "@/components/DragDropFileZone";
 
 export default function ClientChat() {
   const [, setLocation] = useLocation();
@@ -154,59 +154,8 @@ export default function ClientChat() {
     }
   };
 
-  const handleFileUpload = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    try {
-      const successful = result.successful?.[0];
-      if (!successful) {
-        toast({
-          title: "Upload Failed",
-          description: "No file was uploaded successfully",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const objectURL = (successful.uploadURL as string) || successful.response?.uploadURL;
-      if (!objectURL) {
-        toast({
-          title: "Upload Failed",
-          description: "Failed to get upload URL",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!clientData) {
-        toast({
-          title: "Upload Failed",
-          description: "Client data not loaded",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const res = await apiRequest("POST", "/api/attachments/save", {
-        objectURL,
-        fileName: successful.name,
-        fileType: successful.type || "application/octet-stream",
-        fileSize: successful.size,
-        clientId: clientData.id,
-      });
-      const data: { attachment: MessageAttachment } = await res.json();
-
-      setPendingAttachments((prev) => [...prev, data.attachment]);
-      toast({
-        title: "File Attached",
-        description: `${successful.name} is ready to send`,
-      });
-    } catch (error) {
-      console.error("Error handling file upload:", error);
-      toast({
-        title: "Upload Failed",
-        description: "Failed to process uploaded file",
-        variant: "destructive",
-      });
-    }
+  const handleAttachmentsAdded = (newAttachments: MessageAttachment[]) => {
+    setPendingAttachments((prev) => [...prev, ...newAttachments]);
   };
 
   const removeAttachment = (attachmentId: string) => {
@@ -374,79 +323,79 @@ export default function ClientChat() {
                 })
               )}
             </div>
-            <div className="border-t p-4 space-y-3">
-              {/* Pending attachments display */}
-              {pendingAttachments.length > 0 && (
-                <div className="space-y-2">
-                  {pendingAttachments.map((attachment) => {
-                    const Icon = getAttachmentIcon(attachment.fileType);
-                    return (
-                      <div
-                        key={attachment.id}
-                        className="flex items-center gap-2 p-2 bg-muted rounded-md"
-                        data-testid={`pending-attachment-${attachment.id}`}
-                      >
-                        <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{attachment.fileName}</p>
-                          <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
-                        </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => removeAttachment(attachment.id)}
-                          className="flex-shrink-0 h-8 w-8"
-                          data-testid={`button-remove-attachment-${attachment.id}`}
+            <DragDropFileZone
+              onAttachmentsAdded={handleAttachmentsAdded}
+              clientId={clientData?.id || ""}
+              currentAttachmentCount={pendingAttachments.length}
+              disabled={!clientData || sendMessageMutation.isPending}
+              maxFiles={5}
+              maxFileSize={25 * 1024 * 1024}
+            >
+              <div className="border-t p-4 space-y-3">
+                {/* Pending attachments display */}
+                {pendingAttachments.length > 0 && (
+                  <div className="space-y-2">
+                    {pendingAttachments.map((attachment) => {
+                      const Icon = getAttachmentIcon(attachment.fileType);
+                      return (
+                        <div
+                          key={attachment.id}
+                          className="flex items-center gap-2 p-2 bg-muted rounded-md"
+                          data-testid={`pending-attachment-${attachment.id}`}
                         >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Type your message..."
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  onKeyDown={handleKeyPress}
-                  disabled={sendMessageMutation.isPending}
-                  data-testid="input-message"
-                />
+                          <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{attachment.fileName}</p>
+                            <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeAttachment(attachment.id)}
+                            className="flex-shrink-0 h-8 w-8"
+                            data-testid={`button-remove-attachment-${attachment.id}`}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                
                 <div className="flex gap-2">
-                  <ObjectUploader
-                    maxNumberOfFiles={5}
-                    maxFileSize={52428800}
-                    onGetUploadParameters={async () => {
-                      const res = await apiRequest("POST", "/api/attachments/upload", {});
-                      const data: { uploadURL: string } = await res.json();
-                      return {
-                        method: "PUT" as const,
-                        url: data.uploadURL,
-                      };
-                    }}
-                    onComplete={handleFileUpload}
-                    buttonVariant="ghost"
-                    buttonSize="icon"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </ObjectUploader>
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending}
-                    data-testid="button-send"
-                  >
-                    {sendMessageMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
-                  </Button>
+                  <Input
+                    placeholder="Type your message..."
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    disabled={sendMessageMutation.isPending}
+                    data-testid="input-message"
+                  />
+                  <div className="flex gap-2">
+                    <InlineFileAttachment
+                      onAttachmentsAdded={handleAttachmentsAdded}
+                      clientId={clientData?.id || ""}
+                      currentAttachmentCount={pendingAttachments.length}
+                      disabled={!clientData || sendMessageMutation.isPending}
+                      maxFiles={5}
+                      maxFileSize={25 * 1024 * 1024}
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending}
+                      data-testid="button-send"
+                    >
+                      {sendMessageMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </DragDropFileZone>
           </CardContent>
         </Card>
       </div>

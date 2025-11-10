@@ -6,6 +6,7 @@ import type { MessageAttachment } from "@shared/schema";
 interface DragDropFileZoneProps {
   onAttachmentsAdded: (attachments: MessageAttachment[]) => void;
   clientId: string;
+  currentAttachmentCount: number;
   maxFiles?: number;
   maxFileSize?: number;
   allowedTypes?: string[];
@@ -29,6 +30,7 @@ const DEFAULT_ALLOWED_TYPES = [
 export function DragDropFileZone({
   onAttachmentsAdded,
   clientId,
+  currentAttachmentCount,
   maxFiles = 5,
   maxFileSize = 25 * 1024 * 1024,
   allowedTypes = DEFAULT_ALLOWED_TYPES,
@@ -37,6 +39,7 @@ export function DragDropFileZone({
   disabled = false,
 }: DragDropFileZoneProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const dragCounter = useRef(0);
   const { toast } = useToast();
 
@@ -113,7 +116,7 @@ export function DragDropFileZone({
   };
 
   const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
-    if (disabled) return;
+    if (disabled || isUploading) return;
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -123,20 +126,10 @@ export function DragDropFileZone({
 
     if (files.length === 0) return;
 
-    // Check max files
-    if (files.length > maxFiles) {
-      toast({
-        title: "Too Many Files",
-        description: `You can only upload up to ${maxFiles} files at once`,
-        variant: "destructive",
-      });
-      return;
-    }
-
     const validFiles: File[] = [];
     const errors: string[] = [];
 
-    // Validate each file
+    // Validate each file first
     files.forEach((file) => {
       const error = validateFile(file);
       if (error) {
@@ -146,7 +139,7 @@ export function DragDropFileZone({
       }
     });
 
-    // Show errors if any
+    // Show validation errors if any
     if (errors.length > 0) {
       toast({
         title: "Invalid Files",
@@ -155,30 +148,50 @@ export function DragDropFileZone({
       });
     }
 
+    // Check total attachments (current + valid new files) against max limit
+    const totalAfterUpload = currentAttachmentCount + validFiles.length;
+    if (totalAfterUpload > maxFiles) {
+      const remaining = maxFiles - currentAttachmentCount;
+      toast({
+        title: "Too Many Files",
+        description: remaining > 0 
+          ? `You can only upload ${remaining} more file(s). Total limit is ${maxFiles} files.`
+          : `You've already reached the maximum of ${maxFiles} files. Remove some attachments first.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Upload valid files
     if (validFiles.length > 0) {
-      const uploadPromises = validFiles.map((file) => uploadFile(file));
-      const results = await Promise.all(uploadPromises);
+      setIsUploading(true);
 
-      const successfulAttachments = results.filter(
-        (att): att is MessageAttachment => att !== null
-      );
+      try {
+        const uploadPromises = validFiles.map((file) => uploadFile(file));
+        const results = await Promise.all(uploadPromises);
 
-      if (successfulAttachments.length > 0) {
-        onAttachmentsAdded(successfulAttachments);
-        toast({
-          title: "Files Attached",
-          description: `${successfulAttachments.length} file(s) ready to send`,
-        });
-      }
+        const successfulAttachments = results.filter(
+          (att): att is MessageAttachment => att !== null
+        );
 
-      const failedCount = validFiles.length - successfulAttachments.length;
-      if (failedCount > 0) {
-        toast({
-          title: "Upload Failed",
-          description: `${failedCount} file(s) failed to upload`,
-          variant: "destructive",
-        });
+        if (successfulAttachments.length > 0) {
+          onAttachmentsAdded(successfulAttachments);
+          toast({
+            title: "Files Attached",
+            description: `${successfulAttachments.length} file(s) ready to send`,
+          });
+        }
+
+        const failedCount = validFiles.length - successfulAttachments.length;
+        if (failedCount > 0) {
+          toast({
+            title: "Upload Failed",
+            description: `${failedCount} file(s) failed to upload`,
+            variant: "destructive",
+          });
+        }
+      } finally {
+        setIsUploading(false);
       }
     }
   };
@@ -191,9 +204,14 @@ export function DragDropFileZone({
       onDrop={handleDrop}
       className={`relative ${className}`}
     >
-      {isDragging && !disabled && (
+      {isDragging && !disabled && !isUploading && (
         <div className="absolute inset-0 bg-primary/10 border-2 border-dashed border-primary rounded-lg z-10 flex items-center justify-center pointer-events-none">
           <p className="text-sm font-medium text-primary">Drop files here</p>
+        </div>
+      )}
+      {isUploading && (
+        <div className="absolute inset-0 bg-background/80 rounded-lg z-10 flex items-center justify-center pointer-events-none">
+          <p className="text-sm font-medium text-foreground">Uploading files...</p>
         </div>
       )}
       {children}
