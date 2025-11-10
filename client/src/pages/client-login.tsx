@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, LogIn, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import logoImage from "@assets/Group 626535_1761099357468.png";
 
 export default function ClientLogin() {
   const [, setLocation] = useLocation();
@@ -64,14 +65,34 @@ export default function ClientLogin() {
     }
   };
 
+  const handleBrandKeyDown = (e: React.KeyboardEvent) => {
+    // Support both Enter and Space for keyboard navigation
+    if (e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      setLocation("/");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4">
-            <LogIn className="w-6 h-6 text-primary" />
+          <div className="flex items-baseline gap-3 mb-4">
+            <Link
+              href="/"
+              aria-label="Wellio home"
+              data-testid="brand-icon-link"
+              onKeyDown={handleBrandKeyDown}
+              className="flex items-center justify-center w-10 h-10 p-2 rounded-lg overflow-visible hover-elevate active-elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <img 
+                src={logoImage} 
+                alt="Wellio Logo" 
+                className="w-6 h-6 object-contain"
+              />
+            </Link>
+            <CardTitle className="text-2xl">Welcome to Wellio</CardTitle>
           </div>
-          <CardTitle className="text-2xl">Welcome to Wellio</CardTitle>
           <CardDescription>
             Sign in to access your coaching dashboard
           </CardDescription>
@@ -106,20 +127,19 @@ export default function ClientLogin() {
                   className="pr-10"
                   data-testid="input-password"
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
                   onClick={() => setShowPassword(!showPassword)}
                   data-testid="button-toggle-password"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-1 hover:bg-accent rounded-md transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4 text-muted-foreground" />
                   ) : (
                     <Eye className="w-4 h-4 text-muted-foreground" />
                   )}
-                </Button>
+                </button>
               </div>
             </div>
 
