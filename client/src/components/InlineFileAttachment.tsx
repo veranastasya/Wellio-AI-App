@@ -94,6 +94,7 @@ export function InlineFileAttachment({
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
+    
     if (isUploading) {
       toast({
         title: "Upload in Progress",
@@ -103,11 +104,17 @@ export function InlineFileAttachment({
       return;
     }
 
+    // Immediately clear file input to prevent showing selected files
+    const fileArray = Array.from(files);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     const validFiles: File[] = [];
     const errors: string[] = [];
 
     // Validate each file first
-    Array.from(files).forEach((file) => {
+    fileArray.forEach((file) => {
       const error = validateFile(file);
       if (error) {
         errors.push(`${file.name}: ${error}`);
@@ -170,11 +177,6 @@ export function InlineFileAttachment({
       } finally {
         setIsUploading(false);
       }
-    }
-
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
     }
   };
 
