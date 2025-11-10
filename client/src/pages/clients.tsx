@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus } from "lucide-react";
 import type { Questionnaire } from "@shared/schema";
+import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -406,7 +407,7 @@ export default function Clients() {
                 {client.goalType && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <TrendingUp className="w-4 h-4" />
-                    <span>{client.goalType}</span>
+                    <span>{getGoalTypeLabel(client.goalType, client.goalDescription)}</span>
                   </div>
                 )}
                 {client.lastSession && (
@@ -470,13 +471,16 @@ function ClientForm({
       email: client?.email || "",
       phone: client?.phone || "",
       status: client?.status || "active",
-      goalType: client?.goalType || "",
+      goalType: client?.goalType || undefined,
+      goalDescription: client?.goalDescription || "",
       progressScore: client?.progressScore || 0,
       joinedDate: client?.joinedDate || new Date().toISOString().split("T")[0],
       lastSession: client?.lastSession || "",
       notes: client?.notes || "",
     },
   });
+
+  const selectedGoalType = form.watch("goalType");
 
   return (
     <Form {...form}>
@@ -559,15 +563,21 @@ function ClientForm({
             name="goalType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Goal Type (Optional)</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Weight Loss, Muscle Gain, etc."
-                    {...field}
-                    value={field.value || ""}
-                    data-testid="input-client-goal"
-                  />
-                </FormControl>
+                <FormLabel>Goal (Optional)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ""}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-client-goal">
+                      <SelectValue placeholder="Select your goal" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {GOAL_TYPES.map((goalType) => (
+                      <SelectItem key={goalType} value={goalType}>
+                        {GOAL_TYPE_LABELS[goalType]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -586,6 +596,27 @@ function ClientForm({
             )}
           />
         </div>
+
+        {selectedGoalType === "other" && (
+          <FormField
+            control={form.control}
+            name="goalDescription"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Describe your goal</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Tell us about your specific goal..."
+                    {...field}
+                    value={field.value || ""}
+                    data-testid="input-client-goal-description"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <FormField
           control={form.control}

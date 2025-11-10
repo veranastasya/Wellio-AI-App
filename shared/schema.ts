@@ -3,6 +3,52 @@ import { pgTable, text, varchar, integer, real, timestamp, boolean, json } from 
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const GOAL_TYPES = [
+  "lose_weight",
+  "gain_muscle_strength",
+  "improve_body_composition",
+  "maintain_weight",
+  "improve_health",
+  "eat_healthier",
+  "increase_energy",
+  "improve_fitness_endurance",
+  "reduce_stress_improve_balance",
+  "improve_sleep_recovery",
+  "prepare_event",
+  "other",
+] as const;
+
+export type GoalType = typeof GOAL_TYPES[number];
+
+export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
+  lose_weight: "Lose weight",
+  gain_muscle_strength: "Gain muscle / strength",
+  improve_body_composition: "Improve body composition",
+  maintain_weight: "Maintain current weight",
+  improve_health: "Improve overall health",
+  eat_healthier: "Eat healthier",
+  increase_energy: "Increase energy",
+  improve_fitness_endurance: "Improve fitness / endurance",
+  reduce_stress_improve_balance: "Reduce stress & improve balance",
+  improve_sleep_recovery: "Improve sleep & recovery",
+  prepare_event: "Prepare for an event",
+  other: "Other",
+};
+
+export function getGoalTypeLabel(goalType: string | null | undefined, goalDescription?: string | null): string {
+  if (!goalType) return "Not set";
+  
+  if (goalType === "other" && goalDescription) {
+    return goalDescription;
+  }
+  
+  if (goalType in GOAL_TYPE_LABELS) {
+    return GOAL_TYPE_LABELS[goalType as GoalType];
+  }
+  
+  return goalDescription || goalType;
+}
+
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -11,6 +57,7 @@ export const clients = pgTable("clients", {
   phone: text("phone"),
   status: text("status").notNull().default("active"),
   goalType: text("goal_type"),
+  goalDescription: text("goal_description"),
   progressScore: integer("progress_score").notNull().default(0),
   joinedDate: text("joined_date").notNull(),
   lastSession: text("last_session"),
@@ -203,7 +250,23 @@ export const goals = pgTable("goals", {
 
 export const insertClientSchema = createInsertSchema(clients).omit({
   id: true,
-});
+}).extend({
+  goalType: z.enum(GOAL_TYPES, {
+    errorMap: () => ({ message: "Please select your primary goal" }),
+  }).optional(),
+  goalDescription: z.string().optional(),
+}).refine(
+  (data) => {
+    if (data.goalType === "other" && !data.goalDescription) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "Please describe your goal when selecting 'Other'",
+    path: ["goalDescription"],
+  }
+);
 
 export const insertSessionSchema = createInsertSchema(sessions).omit({
   id: true,

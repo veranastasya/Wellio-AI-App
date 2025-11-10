@@ -1,0 +1,95 @@
+# 🧭 Update "Goal Type" Field: Replace Free Text with Dropdown (Wellio)
+
+## Goal
+Replace the existing **free-text “Goal Type” input field** with a **required dropdown selector** across the entire client experience — ensuring consistent goal categorization, easier data tracking, and better analytics alignment for coaches.
+
+---
+
+## Requirements
+
+### 1) Field Replacement
+**Current:**  
+- Field label: “Goal Type”  
+- Type: Free text input  
+- Optional  
+
+**New:**  
+- Field label: **“Goal”**  
+- Type: **Dropdown (select field)**  
+- Required: **Yes**  
+- Editable: **Yes** — clients can update their goal later via profile or settings.
+
+---
+
+### 2) Dropdown Options
+Replace the free-text input with the following preset goal options:
+
+1. Lose weight  
+2. Gain muscle / strength  
+3. Improve body composition  
+4. Maintain current weight  
+5. Improve overall health  
+6. Eat healthier  
+7. Increase energy  
+8. Improve fitness / endurance  
+9. Reduce stress & improve balance  
+10. Improve sleep & recovery  
+11. Prepare for an event  
+12. Other  
+
+If “Other” is selected → show a small **free text input** field labeled “Describe your goal”.
+
+---
+
+### 3) Validation
+- Field is **required** during onboarding and profile editing.  
+- User **cannot proceed** without selecting one option.  
+- Show inline validation:  
+  - Error message: *“Please select your primary goal.”*  
+
+---
+
+### 4) Placement & Consistency
+Update the field **everywhere it appears**:
+
+| Location | Update Needed |
+|-----------|----------------|
+| Client onboarding form | Replace free text with dropdown |
+| Client profile / settings | Replace free text field with dropdown + editable option |
+| Coach dashboard (client view) | Display the selected goal as a dropdown label |
+| Analytics & Insights | Store as a **string value** from the dropdown (no longer arbitrary text) |
+| Exports / Reports | Reflect new standardized goal values |
+
+---
+
+### 5) Editing Flow
+- Clients can **edit their goal** from their dashboard profile.  
+- Show confirmation modal: *“Are you sure you want to change your primary goal? Your progress tracking may be adjusted.”*  
+- Coaches see the updated goal in real-time on their side.
+
+---
+
+### 6) Data & Integration
+- Store value as `goal_type` in user schema with allowed values from dropdown list.
+- Existing clients with free-text goals:
+  - Migrate data into `goal_type = 'Other'` + `goal_description = [old text value]`.
+- Ensure all downstream components (coach dashboards, analytics, exports) reference the new field type.
+
+---
+
+### 7) UI/UX Notes
+- Default state: “Select your goal” (placeholder, not selectable).  
+- Dropdown uses Wellio’s standard component styling.  
+- Tooltip hint: *“Choose the one that best describes what you want to achieve right now.”*  
+- Keyboard and screen reader accessible.
+
+---
+
+### ✅ Definition of Done
+- [ ] All free-text Goal Type fields replaced with dropdowns.  
+- [ ] Field required during onboarding.  
+- [ ] Editable post-onboarding.  
+- [ ] “Other” opens free text input.  
+- [ ] Coach and analytics views display standardized goal values.  
+- [ ] Legacy data migrated and visible.  
+- [ ] All instances tested across client + coach flows.
