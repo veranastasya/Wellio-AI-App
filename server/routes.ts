@@ -22,7 +22,8 @@ function requireClientAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 import { 
-  insertClientSchema, 
+  insertClientSchema,
+  updateClientSchema,
   insertSessionSchema, 
   insertMessageSchema, 
   insertActivitySchema,
@@ -36,6 +37,8 @@ import {
   insertClientInviteSchema,
   insertClientPlanSchema,
   insertGoalSchema,
+  GOAL_TYPES,
+  type GoalType,
 } from "@shared/schema";
 import { analyzeClientData } from "./ai";
 import { syncAppleHealthData } from "./sync";
@@ -83,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/clients/:id", async (req, res) => {
     try {
-      const validatedData = insertClientSchema.partial().parse(req.body);
+      const validatedData = updateClientSchema.parse(req.body);
       const client = await storage.updateClient(req.params.id, validatedData);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
@@ -103,6 +106,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete client" });
+    }
+  });
+
+  // Admin migration endpoint - idempotent goalType migration
+  app.post("/api/admin/migrate-goal-types", async (_req, res) => {
+    try {
+      const clients = await storage.getClients();
+      const migratedIds: string[] = [];
+      let skippedCount = 0;
+      
+      // Mapping table for common free-text values (case-insensitive, trimmed)
+      const goalTypeMapping: Record<string, GoalType> = {
+        "weight loss": "lose_weight",
+        "lose weight": "lose_weight",
+        "muscle gain": "gain_muscle_strength",
+        "gain muscle": "gain_muscle_strength",
+        "strength training": "gain_muscle_strength",
+        "build strength": "gain_muscle_strength",
+        "cardio": "improve_fitness_endurance",
+        "cardio session": "improve_fitness_endurance",
+        "endurance": "improve_fitness_endurance",
+        "flexibility": "prepare_event",
+        "flexibility & mobility": "prepare_event",
+        "nutrition": "eat_healthier",
+        "nutrition consultation": "eat_healthier",
+        "healthy eating": "eat_healthier",
+        "improve health": "improve_health",
+        "body composition": "improve_body_composition",
+        "maintain weight": "maintain_weight",
+        "energy": "increase_energy",
+        "mental health": "reduce_stress_improve_balance",
+        "stress": "reduce_stress_improve_balance",
+        "sleep": "improve_sleep_recovery",
+        "consistency": "prepare_event",
+      };
+
+      for (const client of clients) {
+        const currentGoalType = client.goalType?.trim() || "";
+        
+        // Skip if already migrated (goalType is a valid enum value)
+        if (currentGoalType && GOAL_TYPES.includes(currentGoalType as GoalType)) {
+          skippedCount++;
+          continue;
+        }
+
+        let newGoalType: GoalType;
+        let newGoalDescription: string | null = null;
+
+        if (!currentGoalType) {
+          // NULL or empty: default to "other" with "Unspecified"
+          newGoalType = "other";
+          newGoalDescription = "Unspecified";
+        } else {
+          // Try to map using case-insensitive lookup
+          const mappedType = goalTypeMapping[currentGoalType.toLowerCase()];
+          if (mappedType) {
+            newGoalType = mappedType;
+            newGoalDescription = null; // Clear description for mapped values
+          } else {
+            // Unknown value: default to "other" with original as description
+            newGoalType = "other";
+            newGoalDescription = currentGoalType;
+          }
+        }
+
+        // Update client with new values
+        await storage.updateClient(client.id, {
+          goalType: newGoalType,
+          goalDescription: newGoalDescription || undefined,
+        });
+
+        migratedIds.push(client.id);
+      }
+
+      res.json({
+        success: true,
+        totalClients: clients.length,
+        migratedCount: migratedIds.length,
+        skippedCount,
+        migratedIds,
+      });
+    } catch (error) {
+      console.error("Migration error:", error);
+      res.status(500).json({ error: "Migration failed" });
     }
   });
 

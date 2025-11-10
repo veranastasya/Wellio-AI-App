@@ -248,25 +248,34 @@ export const goals = pgTable("goals", {
   updatedAt: text("updated_at").notNull(),
 });
 
-export const insertClientSchema = createInsertSchema(clients).omit({
+const baseClientSchema = createInsertSchema(clients).omit({
   id: true,
 }).extend({
   goalType: z.enum(GOAL_TYPES, {
     errorMap: () => ({ message: "Please select your primary goal" }),
   }).optional(),
   goalDescription: z.string().optional(),
-}).refine(
-  (data) => {
-    if (data.goalType === "other" && !data.goalDescription) {
-      return false;
-    }
-    return true;
-  },
-  {
-    message: "Please describe your goal when selecting 'Other'",
-    path: ["goalDescription"],
+});
+
+export const insertClientSchema = baseClientSchema.superRefine((data, ctx) => {
+  if (data.goalType === "other" && !data.goalDescription) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please describe your goal when selecting 'Other'",
+      path: ["goalDescription"],
+    });
   }
-);
+});
+
+export const updateClientSchema = baseClientSchema.partial().superRefine((data, ctx) => {
+  if (data.goalType === "other" && !data.goalDescription) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please describe your goal when selecting 'Other'",
+      path: ["goalDescription"],
+    });
+  }
+});
 
 export const insertSessionSchema = createInsertSchema(sessions).omit({
   id: true,
