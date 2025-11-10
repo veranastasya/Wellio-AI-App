@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Mail, Phone, Calendar, Target, FileText } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Client } from "@shared/schema";
+import { getGoalTypeLabel } from "@shared/schema";
 
 export default function ClientProfile() {
   const [, setLocation] = useLocation();
@@ -121,7 +122,7 @@ export default function ClientProfile() {
                       <Target className="w-4 h-4" />
                       Primary Goal
                     </div>
-                    <div className="text-base">{clientData.goalType}</div>
+                    <div className="text-base">{getGoalTypeLabel(clientData.goalType, clientData.goalDescription)}</div>
                   </div>
                 )}
 

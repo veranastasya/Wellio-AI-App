@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, User, MessageSquare, FileText, TrendingUp } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Client } from "@shared/schema";
+import { getGoalTypeLabel } from "@shared/schema";
 
 export default function ClientDashboard() {
   const [, setLocation] = useLocation();
@@ -122,7 +123,7 @@ export default function ClientDashboard() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Current Goal</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-xl font-bold">{clientData.goalType}</div>
+                <div className="text-xl font-bold">{getGoalTypeLabel(clientData.goalType, clientData.goalDescription)}</div>
                 <div className="text-sm text-muted-foreground mt-1">Stay focused!</div>
               </CardContent>
             </Card>
