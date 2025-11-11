@@ -10,28 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, AlertCircle } from "lucide-react";
-
-type QuestionType = "short_text" | "paragraph" | "multiple_choice" | "checkboxes" | "dropdown" | "date" | "number";
-
-interface Question {
-  id: string;
-  label: string;
-  type: QuestionType;
-  isRequired: boolean;
-  options?: string[];
-}
-
-interface Questionnaire {
-  id: string;
-  name: string;
-  status: string;
-  questions: Question[];
-  welcomeText?: string;
-  consentText?: string;
-  consentRequired: boolean;
-  confirmationMessage?: string;
-}
+import { Loader2, AlertCircle, Upload, X } from "lucide-react";
+import type { Question, Questionnaire } from "@shared/schema";
+import { normalizeQuestion } from "@shared/schema";
 
 export default function ClientOnboard() {
   const [, setLocation] = useLocation();
@@ -64,22 +45,16 @@ export default function ClientOnboard() {
     try {
       const response = await apiRequest("POST", "/api/client-auth/verify", { token: tokenValue });
       const data = await response.json();
-      console.log("[CLIENT] Token verified, data:", data);
-      console.log("[CLIENT] questionnaireId:", data?.invite?.questionnaireId);
       setTokenData(data);
       
-      // If client already exists
       if (data.client) {
-        // Check if password is set
         if (data.client.passwordHash) {
-          // Password already set, redirect to login
           toast({
             title: "Account exists",
             description: "Please log in with your credentials",
           });
           setLocation("/client/login");
         } else {
-          // Client exists but password not set, go to password setup
           setLocation("/client/setup-password?token=" + tokenValue);
         }
       }
@@ -94,25 +69,21 @@ export default function ClientOnboard() {
     }
   };
 
-  // Fetch questionnaire
   const questionnaireId = tokenData?.invite?.questionnaireId;
-  console.log("[CLIENT] Questionnaire query state:", { questionnaireId, hasTokenData: !!tokenData });
   
-  const { data: questionnaire, isLoading: isLoadingQuestionnaire, error: questionnaireError } = useQuery<Questionnaire>({
+  const { data: questionnaire, isLoading: isLoadingQuestionnaire } = useQuery<Questionnaire>({
     queryKey: questionnaireId ? ["/api/questionnaires", questionnaireId] : ["skip"],
     enabled: !!questionnaireId,
   });
-  
-  console.log("[CLIENT] Questionnaire loaded:", { questionnaire: !!questionnaire, isLoading: isLoadingQuestionnaire, error: questionnaireError });
 
   const submitMutation = useMutation({
     mutationFn: async (formAnswers: Record<string, any>) => {
       return await apiRequest("POST", "/api/responses", {
         questionnaireId: tokenData.invite.questionnaireId,
-        clientId: "", // Will be set by backend
+        clientId: "",
         answers: formAnswers,
         submittedAt: new Date().toISOString(),
-        token, // Include token for onboarding flow
+        token,
       });
     },
     onSuccess: () => {
@@ -121,7 +92,6 @@ export default function ClientOnboard() {
         title: "Great!",
         description: message,
       });
-      // Redirect to password setup
       setLocation("/client/setup-password?token=" + token);
     },
     onError: (error: any) => {
@@ -136,9 +106,10 @@ export default function ClientOnboard() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate required questions
-    const unansweredRequired = questionnaire?.questions.filter(
-      q => q.isRequired && !answers[q.id]
+    const normalizedQuestions = (questionnaire?.questions as any[] || []).map(normalizeQuestion);
+    
+    const unansweredRequired = normalizedQuestions.filter(
+      (q: Question) => q.required && !answers[q.id]
     );
 
     if (unansweredRequired && unansweredRequired.length > 0) {
@@ -150,7 +121,6 @@ export default function ClientOnboard() {
       return;
     }
 
-    // Check consent if required
     if (questionnaire?.consentRequired && !consentGiven) {
       toast({
         title: "Consent Required",
@@ -169,6 +139,7 @@ export default function ClientOnboard() {
 
   const renderQuestion = (question: Question) => {
     const value = answers[question.id] || "";
+    const settings = (question.settings || {}) as any;
 
     switch (question.type) {
       case "short_text":
@@ -176,14 +147,21 @@ export default function ClientOnboard() {
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
               {question.label}
-              {question.isRequired && <span className="text-destructive ml-1">*</span>}
+              {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
             <Input
               id={question.id}
               data-testid={`input-${question.id}`}
               value={value}
               onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-              required={question.isRequired}
+              placeholder={settings.placeholder}
+              required={question.required}
+              minLength={settings.minLength}
+              maxLength={settings.maxLength}
+              pattern={settings.pattern}
             />
           </div>
         );
@@ -193,15 +171,65 @@ export default function ClientOnboard() {
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
               {question.label}
-              {question.isRequired && <span className="text-destructive ml-1">*</span>}
+              {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
             <Textarea
               id={question.id}
               data-testid={`textarea-${question.id}`}
               value={value}
               onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-              required={question.isRequired}
+              placeholder={settings.placeholder}
+              required={question.required}
+              minLength={settings.minLength}
+              maxLength={settings.maxLength}
               className="min-h-24"
+            />
+          </div>
+        );
+
+      case "email":
+        return (
+          <div key={question.id} className="space-y-2">
+            <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
+              {question.label}
+              {question.required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
+            <Input
+              id={question.id}
+              data-testid={`input-${question.id}`}
+              type="email"
+              value={value}
+              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+              placeholder={settings.placeholder || "email@example.com"}
+              required={question.required}
+            />
+          </div>
+        );
+
+      case "phone":
+        return (
+          <div key={question.id} className="space-y-2">
+            <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
+              {question.label}
+              {question.required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
+            <Input
+              id={question.id}
+              data-testid={`input-${question.id}`}
+              type="tel"
+              value={value}
+              onChange={(e) => handleAnswerChange(question.id, e.target.value)}
+              placeholder={settings.placeholder || "(555) 123-4567"}
+              required={question.required}
             />
           </div>
         );
@@ -211,15 +239,25 @@ export default function ClientOnboard() {
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
               {question.label}
-              {question.isRequired && <span className="text-destructive ml-1">*</span>}
+              {question.required && <span className="text-destructive ml-1">*</span>}
+              {settings.unitLabel && (
+                <span className="text-sm text-muted-foreground ml-2">({settings.unitLabel})</span>
+              )}
             </Label>
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
             <Input
               id={question.id}
               data-testid={`input-${question.id}`}
               type="number"
               value={value}
               onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-              required={question.isRequired}
+              placeholder={settings.placeholder}
+              required={question.required}
+              min={settings.min}
+              max={settings.max}
+              step={settings.step}
             />
           </div>
         );
@@ -229,15 +267,20 @@ export default function ClientOnboard() {
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
               {question.label}
-              {question.isRequired && <span className="text-destructive ml-1">*</span>}
+              {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
             <Input
               id={question.id}
               data-testid={`input-${question.id}`}
               type="date"
               value={value}
               onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-              required={question.isRequired}
+              required={question.required}
+              min={settings.minDate}
+              max={settings.maxDate}
             />
           </div>
         );
@@ -247,10 +290,13 @@ export default function ClientOnboard() {
           <div key={question.id} className="space-y-2">
             <Label data-testid={`label-${question.id}`}>
               {question.label}
-              {question.isRequired && <span className="text-destructive ml-1">*</span>}
+              {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
             <div className="space-y-2">
-              {question.options?.map((option, idx) => (
+              {settings.options?.map((option: string, idx: number) => (
                 <div key={idx} className="flex items-center space-x-2">
                   <input
                     type="radio"
@@ -261,13 +307,39 @@ export default function ClientOnboard() {
                     checked={value === option}
                     onChange={(e) => handleAnswerChange(question.id, e.target.value)}
                     className="w-4 h-4"
-                    required={question.isRequired}
+                    required={question.required}
                   />
                   <Label htmlFor={`${question.id}-${idx}`} className="font-normal cursor-pointer">
                     {option}
                   </Label>
                 </div>
               ))}
+              {settings.allowOther && (
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id={`${question.id}-other`}
+                    data-testid={`radio-${question.id}-other`}
+                    name={question.id}
+                    value="__other__"
+                    checked={value?.startsWith("Other: ")}
+                    onChange={() => handleAnswerChange(question.id, "Other: ")}
+                    className="w-4 h-4"
+                  />
+                  <Label htmlFor={`${question.id}-other`} className="font-normal cursor-pointer">
+                    Other:
+                  </Label>
+                  {value?.startsWith("Other: ") && (
+                    <Input
+                      value={value.replace("Other: ", "")}
+                      onChange={(e) => handleAnswerChange(question.id, `Other: ${e.target.value}`)}
+                      placeholder="Please specify"
+                      className="ml-2"
+                      data-testid={`input-${question.id}-other`}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -278,10 +350,13 @@ export default function ClientOnboard() {
           <div key={question.id} className="space-y-2">
             <Label data-testid={`label-${question.id}`}>
               {question.label}
-              {question.isRequired && <span className="text-destructive ml-1">*</span>}
+              {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
             <div className="space-y-2">
-              {question.options?.map((option, idx) => (
+              {settings.options?.map((option: string, idx: number) => (
                 <div key={idx} className="flex items-center space-x-2">
                   <Checkbox
                     id={`${question.id}-${idx}`}
@@ -299,6 +374,39 @@ export default function ClientOnboard() {
                   </Label>
                 </div>
               ))}
+              {settings.allowOther && (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`${question.id}-other`}
+                      data-testid={`checkbox-${question.id}-other`}
+                      checked={checkboxValues.some((v: string) => v.startsWith("Other: "))}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          handleAnswerChange(question.id, [...checkboxValues, "Other: "]);
+                        } else {
+                          handleAnswerChange(question.id, checkboxValues.filter((v: string) => !v.startsWith("Other: ")));
+                        }
+                      }}
+                    />
+                    <Label htmlFor={`${question.id}-other`} className="font-normal cursor-pointer">
+                      Other
+                    </Label>
+                  </div>
+                  {checkboxValues.some((v: string) => v.startsWith("Other: ")) && (
+                    <Input
+                      value={checkboxValues.find((v: string) => v.startsWith("Other: "))?.replace("Other: ", "") || ""}
+                      onChange={(e) => {
+                        const newValues = checkboxValues.filter((v: string) => !v.startsWith("Other: "));
+                        handleAnswerChange(question.id, [...newValues, `Other: ${e.target.value}`]);
+                      }}
+                      placeholder="Please specify"
+                      className="ml-6"
+                      data-testid={`input-${question.id}-other`}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -308,24 +416,87 @@ export default function ClientOnboard() {
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
               {question.label}
-              {question.isRequired && <span className="text-destructive ml-1">*</span>}
+              {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
             <Select
               value={value}
               onValueChange={(val) => handleAnswerChange(question.id, val)}
-              required={question.isRequired}
+              required={question.required}
             >
               <SelectTrigger id={question.id} data-testid={`select-${question.id}`}>
                 <SelectValue placeholder="Select an option" />
               </SelectTrigger>
               <SelectContent>
-                {question.options?.map((option, idx) => (
+                {settings.options?.map((option: string, idx: number) => (
                   <SelectItem key={idx} value={option} data-testid={`select-option-${question.id}-${idx}`}>
                     {option}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
+        );
+
+      case "file_upload":
+        return (
+          <div key={question.id} className="space-y-2">
+            <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
+              {question.label}
+              {question.required && <span className="text-destructive ml-1">*</span>}
+            </Label>
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
+            <div className="border-2 border-dashed rounded-lg p-4">
+              <Input
+                id={question.id}
+                type="file"
+                data-testid={`input-${question.id}`}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  handleAnswerChange(question.id, files.map(f => ({ name: f.name, size: f.size, type: f.type })));
+                }}
+                accept={settings.allowedTypes?.join(",")}
+                multiple={settings.maxFiles > 1}
+                required={question.required}
+                className="hidden"
+              />
+              <label
+                htmlFor={question.id}
+                className="flex flex-col items-center justify-center gap-2 cursor-pointer"
+              >
+                <Upload className="h-8 w-8 text-muted-foreground" />
+                <div className="text-center">
+                  <p className="text-sm font-medium">Click to upload</p>
+                  <p className="text-xs text-muted-foreground">
+                    {settings.allowedTypes?.join(", ")} (max {settings.maxSizeMB}MB)
+                  </p>
+                </div>
+              </label>
+              {value && value.length > 0 && (
+                <div className="mt-3 space-y-1">
+                  {value.map((file: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between text-sm">
+                      <span>{file.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          const newFiles = value.filter((_: any, i: number) => i !== idx);
+                          handleAnswerChange(question.id, newFiles);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         );
 
@@ -347,104 +518,148 @@ export default function ClientOnboard() {
     );
   }
 
-  if (!tokenData) {
+  if (!tokenData || !questionnaire) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="py-16 text-center">
-            <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
-            <p className="text-lg font-medium text-destructive">Invalid Invite Link</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Please contact your coach for a valid invite link
-            </p>
+            {isLoadingQuestionnaire ? (
+              <>
+                <Loader2 className="w-12 h-12 mx-auto animate-spin text-primary mb-4" />
+                <p className="text-lg font-medium">Loading questionnaire...</p>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
+                <p className="text-lg font-medium">Invalid or expired invite link</p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  if (isLoadingQuestionnaire) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="py-16 text-center">
-            <Loader2 className="w-12 h-12 mx-auto animate-spin text-primary mb-4" />
-            <p className="text-lg font-medium">Loading questionnaire...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!questionnaire) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="py-16 text-center">
-            <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
-            <p className="text-lg font-medium text-destructive">Questionnaire Not Found</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Please contact your coach for assistance
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const normalizedQuestions = (questionnaire.questions as any[]).map(normalizeQuestion);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-2xl" data-testid="text-questionnaire-title">{questionnaire.name}</CardTitle>
-          {questionnaire.welcomeText && (
-            <CardDescription className="text-base mt-2" data-testid="text-welcome-message">
-              {questionnaire.welcomeText}
-            </CardDescription>
-          )}
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Render all questions */}
-            <div className="space-y-6">
-              {questionnaire.questions.map(question => renderQuestion(question))}
-            </div>
-
-            {/* Consent section */}
-            {questionnaire.consentRequired && questionnaire.consentText && (
-              <div className="space-y-2 pt-4 border-t">
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="consent"
-                    data-testid="checkbox-consent"
-                    checked={consentGiven}
-                    onCheckedChange={(checked) => setConsentGiven(checked as boolean)}
-                  />
-                  <Label htmlFor="consent" className="font-normal cursor-pointer text-sm">
-                    {questionnaire.consentText}
+    <div className="min-h-screen bg-background p-4">
+      <div className="max-w-2xl mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>{questionnaire.name}</CardTitle>
+            {questionnaire.welcomeText && (
+              <CardDescription className="text-base">
+                {questionnaire.welcomeText}
+              </CardDescription>
+            )}
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" data-testid="label-firstName">
+                    First Name <span className="text-destructive">*</span>
                   </Label>
+                  <Input
+                    id="firstName"
+                    data-testid="input-firstName"
+                    value={answers.firstName || ""}
+                    onChange={(e) => handleAnswerChange("firstName", e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" data-testid="label-lastName">
+                    Last Name <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="lastName"
+                    data-testid="input-lastName"
+                    value={answers.lastName || ""}
+                    onChange={(e) => handleAnswerChange("lastName", e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email" data-testid="label-email">
+                    Email <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    data-testid="input-email"
+                    value={answers.email || ""}
+                    onChange={(e) => handleAnswerChange("email", e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone" data-testid="label-phone">
+                    Phone <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    data-testid="input-phone"
+                    value={answers.phone || ""}
+                    onChange={(e) => handleAnswerChange("phone", e.target.value)}
+                    required
+                  />
                 </div>
               </div>
-            )}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={submitMutation.isPending}
-              data-testid="button-submit-questionnaire"
-            >
-              {submitMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Creating your account...
-                </>
-              ) : (
-                "Complete Onboarding"
+              {normalizedQuestions.length > 0 && (
+                <div className="border-t pt-6">
+                  <div className="space-y-6">
+                    {normalizedQuestions.map((question: Question) => renderQuestion(question))}
+                  </div>
+                </div>
               )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+
+              {questionnaire.consentRequired && questionnaire.consentText && (
+                <div className="border-t pt-6">
+                  <div className="flex items-start space-x-2">
+                    <Checkbox
+                      id="consent"
+                      checked={consentGiven}
+                      onCheckedChange={(checked) => setConsentGiven(checked as boolean)}
+                      data-testid="checkbox-consent"
+                    />
+                    <Label
+                      htmlFor="consent"
+                      className="text-sm leading-relaxed cursor-pointer"
+                      data-testid="label-consent"
+                    >
+                      {questionnaire.consentText}
+                    </Label>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  type="submit"
+                  disabled={submitMutation.isPending}
+                  data-testid="button-submit"
+                >
+                  {submitMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit"
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
