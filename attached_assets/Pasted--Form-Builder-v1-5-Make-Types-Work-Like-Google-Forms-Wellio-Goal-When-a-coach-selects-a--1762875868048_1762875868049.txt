@@ -1,0 +1,82 @@
+# Form Builder v1.5 — Make Types Work Like Google Forms (Wellio)
+
+## Goal
+When a coach selects a question type, the builder and the client form must render the correct control, collect valid data, and save it. Today everything behaves like short text. Fix that.
+
+---
+
+## Core UX (Coach side)
+
+1) Add question
+- Default: Short Answer
+- Coach can change Type from a dropdown
+
+2) Configure question
+- Fields shown for every question:
+  - Label
+  - Description (helper text)
+  - Required toggle
+- Type-specific settings panel below the label
+
+3) Options management (for choice types)
+- Inline list of options with:
+  - Add option row
+  - Reorder via drag handle
+  - Delete option
+  - Toggle “Other” option
+  - Optional default selection
+
+4) Actions on a question
+- Duplicate
+- Delete
+- Drag to reorder
+- Collapse/expand
+
+5) Preview
+- Live preview on the right mirrors the client form
+
+6) Save
+- Autosave changes
+- Save Draft and Publish buttons
+
+---
+
+## Supported Types and Expected Behavior
+
+| Type | Control in client form | Coach settings | Validation defaults |
+|---|---|---|---|
+| Short Answer | Single line input | Placeholder, character limit | Required, min/max length, pattern (regex allowed) |
+| Paragraph | Multiline textarea | Placeholder, character limit | Required, min/max length |
+| Multiple Choice | Radio list | Options list, default option, add “Other” | Required forces one selection |
+| Checkboxes | Checkbox group | Options list, allow “Other,” min/max selections | Required enforces at least 1, respect min/max |
+| Dropdown | Select menu | Options list, default option | Required enforces one selection |
+| Number | Number input | Placeholder, unit label, min, max, step | Numeric, range check |
+| Date | Date picker | Min date, max date | Valid ISO date within range |
+| Email | Email input | Placeholder | Valid email format |
+| Phone | Phone input | Placeholder, country code display | Valid phone format |
+| File Upload | File picker | Allowed types, max size, max files | Enforce type, size, count |
+
+Notes
+- All controls use the standard Wellio component library
+- All settings are persisted in the question schema
+- Client form uses the schema only
+
+---
+
+## Schema
+
+Each question stored as:
+
+```json
+{
+  "id": "q_001",
+  "type": "multiple_choice",
+  "label": "What is your main goal?",
+  "description": "Pick one",
+  "required": true,
+  "settings": {
+    "options": ["Lose weight", "Gain muscle", "Maintain weight"],
+    "allowOther": true,
+    "default": "Lose weight"
+  }
+}

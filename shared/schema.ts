@@ -248,6 +248,189 @@ export const goals = pgTable("goals", {
   updatedAt: text("updated_at").notNull(),
 });
 
+export const QUESTION_TYPES = [
+  "short_text",
+  "paragraph",
+  "multiple_choice",
+  "checkboxes",
+  "dropdown",
+  "number",
+  "date",
+  "email",
+  "phone",
+  "file_upload",
+] as const;
+
+export type QuestionType = typeof QUESTION_TYPES[number];
+
+const shortTextSettingsSchema = z.object({
+  placeholder: z.string().optional(),
+  characterLimit: z.number().optional(),
+  minLength: z.number().optional(),
+  maxLength: z.number().optional(),
+  pattern: z.string().optional(),
+});
+
+const paragraphSettingsSchema = z.object({
+  placeholder: z.string().optional(),
+  characterLimit: z.number().optional(),
+  minLength: z.number().optional(),
+  maxLength: z.number().optional(),
+});
+
+const multipleChoiceSettingsSchema = z.object({
+  options: z.array(z.string()).min(1),
+  allowOther: z.boolean().optional(),
+  defaultValue: z.string().optional(),
+});
+
+const checkboxesSettingsSchema = z.object({
+  options: z.array(z.string()).min(1),
+  allowOther: z.boolean().optional(),
+  minSelections: z.number().optional(),
+  maxSelections: z.number().optional(),
+});
+
+const dropdownSettingsSchema = z.object({
+  options: z.array(z.string()).min(1),
+  defaultValue: z.string().optional(),
+});
+
+const numberSettingsSchema = z.object({
+  placeholder: z.string().optional(),
+  unitLabel: z.string().optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  step: z.number().optional(),
+});
+
+const dateSettingsSchema = z.object({
+  minDate: z.string().optional(),
+  maxDate: z.string().optional(),
+});
+
+const emailSettingsSchema = z.object({
+  placeholder: z.string().optional(),
+});
+
+const phoneSettingsSchema = z.object({
+  placeholder: z.string().optional(),
+  countryCode: z.string().optional(),
+});
+
+const fileUploadSettingsSchema = z.object({
+  allowedTypes: z.array(z.string()).optional(),
+  maxSizeMB: z.number().optional(),
+  maxFiles: z.number().optional(),
+});
+
+export const questionSchema = z.discriminatedUnion("type", [
+  z.object({
+    id: z.string(),
+    type: z.literal("short_text"),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: shortTextSettingsSchema.optional(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("paragraph"),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: paragraphSettingsSchema.optional(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("multiple_choice"),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: multipleChoiceSettingsSchema,
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("checkboxes"),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: checkboxesSettingsSchema,
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("dropdown"),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: dropdownSettingsSchema,
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("number"),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: numberSettingsSchema.optional(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("date"),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: dateSettingsSchema.optional(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("email"),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: emailSettingsSchema.optional(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("phone"),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: phoneSettingsSchema.optional(),
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal("file_upload"),
+    label: z.string().min(1),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: fileUploadSettingsSchema.optional(),
+  }),
+]);
+
+export type Question = z.infer<typeof questionSchema>;
+
+export function normalizeQuestion(q: any): Question {
+  const normalized: any = {
+    id: q.id,
+    type: q.type || "short_text",
+    label: q.label || "",
+    description: q.description || "",
+    required: q.isRequired ?? q.required ?? false,
+    settings: q.settings || {},
+  };
+
+  if (q.options && !q.settings?.options) {
+    if (normalized.type === "multiple_choice" || normalized.type === "checkboxes" || normalized.type === "dropdown") {
+      normalized.settings = {
+        ...normalized.settings,
+        options: q.options,
+      };
+    }
+  }
+
+  return normalized;
+}
+
 const baseClientSchema = createInsertSchema(clients).omit({
   id: true,
 }).extend({
