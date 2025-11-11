@@ -1,0 +1,257 @@
+# 🧭 PRD: AI-Assisted Plan Builder (Wellio)
+**Version:** 1.1  
+**Purpose:** Implement a GPT-integrated chat flow for coaches to create and share personalized wellness/nutrition plans directly from client profiles.  
+**Environment:** Replit  
+**Output:** Functional in-app “Start Planning” feature that connects client data → AI chat → PDF plan generation → client sharing.
+
+---
+
+## 🔧 Summary
+When a coach completes or views a **Client Profile**, they should be able to click **“Start Planning”** to open a **GPT-powered chat interface** that:
+1. Automatically loads the client’s data and goals.
+2. Allows the coach to converse with an AI assistant to craft a personalized plan.
+3. Saves the plan as a **PDF** that can be:
+   - Attached to the client profile, and  
+   - Shared via chat with the client.
+
+This replaces static templates with a flexible, AI-assisted workflow — keeping the coach in control while leveraging automation for speed and personalization.
+
+---
+
+## 🧠 Product Goals
+
+| Goal | Description |
+|------|--------------|
+| **1. Enable AI-guided plan creation** | Allow coaches to use a GPT chat workspace to build personalized plans. |
+| **2. Streamline workflow** | Move directly from profile → plan creation → sharing, no manual copy-paste. |
+| **3. Save and share easily** | Allow coaches to export, attach, and send plans from the same interface. |
+| **4. Ensure consistency** | All plans stored under the client’s “Plans” tab with version control. |
+
+---
+
+## 🧩 Feature Components
+
+### 1️⃣ UI Components
+
+**Client Profile Page**
+- Add a new button: **“Start Planning”**
+  - Appears once all required client information is filled.
+  - If a plan already exists → button reads **“Continue Planning”** or **“Edit Plan”**.
+- Add a new **“Plans” tab** next to “Forms” and “Chat.”
+  - Displays all past plans with metadata (name, date, status, shared).
+
+---
+
+### 2️⃣ Planning Interface (GPT Chat)
+When the coach clicks **Start Planning**, open a modal or full-page workspace with:
+
+#### Left Panel – Client Summary
+Auto-populated with:
+- Name, Age, Gender  
+- Height, Weight  
+- Goal (dropdown value)  
+- Dietary preferences  
+- Activity level  
+- Notes / medical considerations  
+
+#### Right Panel – AI Chat Interface
+A conversational GPT environment with:
+- Chat bubble layout (Coach on right, AI on left)
+- Text input with “Send” button
+- “Save Draft” and “Generate PDF” buttons above chat
+
+---
+
+### 3️⃣ GPT Integration
+
+#### System Prompt Template
+The system must send a **context payload** to the GPT endpoint every time the session starts.
+
+**Example system message:**
+You are Wellio AI, a professional assistant that helps coaches create structured, personalized client plans.
+Use the provided client profile data to generate a wellness or nutrition plan tailored to the client’s goal, preferences, and metrics.
+Always return structured, sectioned content that can be exported to PDF (no conversational fluff).
+
+cpp
+Copy code
+
+**Example payload (JSON):**
+```json
+{
+  "client": {
+    "name": "Sarah L.",
+    "age": 29,
+    "gender": "Female",
+    "goal": "Gain muscle / strength",
+    "current_weight": 62.5,
+    "target_weight": 66,
+    "activity_level": "Moderate",
+    "diet_preferences": "High-protein, gluten-free",
+    "notes": "Prefers meal prep style plans"
+  }
+}
+The GPT session should use this context to generate a plan outline such as:
+
+7-Day Meal Plan
+
+Daily Calorie / Macro Targets
+
+Exercise & Recovery Recommendations
+
+Optional Shopping List
+
+4️⃣ Conversation Flow
+Step 1: Coach clicks Start Planning
+→ Opens GPT chat with client context automatically loaded.
+
+Step 2: Coach interacts naturally with AI
+Example prompts:
+
+“Create a 7-day high-protein plan around 1,700 calories per day.”
+
+“Add macro breakdown for each meal.”
+
+“Swap dinner on Day 3 for a vegetarian option.”
+
+Step 3: Plan builds dynamically
+Each GPT message returned should render in the chat thread, formatted for readability (Markdown or simple HTML).
+
+Step 4: When coach finalizes
+→ Clicks “Generate PDF” button
+→ System converts conversation content into formatted PDF (title, headers, line spacing, Wellio logo).
+
+Step 5: After generation
+Coach can:
+
+Attach plan to the Client Profile (Plans tab)
+
+Send to Client Chat directly
+
+Download locally
+
+5️⃣ Plans Tab
+Field	Description
+Plan Name	Auto-generated or editable (e.g., “Muscle Gain Plan v1”)
+Created Date	Auto-filled
+Status	Draft / Final
+Shared	Boolean (Yes/No)
+Actions	View / Edit / Delete / Resend
+
+⚙️ Technical Specs
+Data Model
+Table: ClientPlans
+
+Column	Type	Description
+plan_id	UUID	Unique plan identifier
+client_id	String	Linked client record
+coach_id	String	Linked coach record
+plan_name	String	User-defined name
+plan_content	JSON	Raw text content from GPT chat
+pdf_url	String	File location for exported PDF
+status	Enum	draft / final
+created_at	Timestamp	Creation date
+updated_at	Timestamp	Last modification date
+
+API / Backend Logic
+GET /clients/:id/context
+→ Returns full client JSON (goal, preferences, notes).
+
+POST /plans/start
+→ Initializes GPT session with context payload.
+
+POST /plans/message
+→ Sends chat message to GPT model, returns AI response.
+
+POST /plans/save
+→ Saves draft conversation as JSON.
+
+POST /plans/pdf
+→ Converts plan content to PDF and uploads to storage.
+
+POST /plans/share
+→ Sends PDF link in chat to client.
+
+PDF Generation
+Use reportlab or pdfkit
+
+Header: Wellio logo + plan name
+
+Footer: “Generated with Wellio AI”
+
+Each day’s plan displayed in clean sections (table or bullet format)
+
+Integration Notes for Replit
+Tools required:
+
+Frontend: React or Next.js (depending on environment)
+
+Backend: Node.js or Python Flask
+
+Storage: Firebase / Supabase / AWS S3
+
+AI: OpenAI API (custom GPT endpoint URL will be provided)
+
+Environment Variables:
+
+ini
+Copy code
+GPT_API_URL=https://api.customgpt.wellio.ai/generate
+PDF_STORAGE_PATH=/plans
+APP_BASE_URL=https://app.wellioai.com
+🧮 Non-Functional Requirements
+Requirement	Description
+Performance	GPT response < 10s, PDF generation < 5s
+Security	Client data anonymized before AI call
+Auto-Save	Save after every 3 messages or 60s idle
+Accessibility	WCAG 2.1 AA compliant chat interface
+Scalability	Handle multiple concurrent GPT sessions per coach
+Error Handling	Retry failed GPT requests gracefully, show fallback message
+
+✅ Acceptance Criteria
+ “Start Planning” button visible on all client profiles.
+
+ GPT chat initializes with client data and system prompt.
+
+ AI generates structured, readable plan text.
+
+ Coach can interact naturally with the AI.
+
+ Drafts auto-save during chat.
+
+ “Generate PDF” creates branded plan file.
+
+ Plan can be shared in chat and attached to the profile.
+
+ “Plans” tab shows history with status and sharing actions.
+
+ Works on desktop and mobile.
+
+🧭 Future Enhancements
+Predefined plan templates (e.g., “Weight Loss,” “Muscle Gain,” “Balanced Wellness”).
+
+AI “smart suggestions” to adjust plan length, intensity, or calorie goals.
+
+Automatic plan comparison: “Show differences from last plan.”
+
+Integration with Apple Health / MyFitnessPal for tracking progress.
+
+🚀 Developer Prompt (Replit Copy-Paste)
+Build a Start Planning feature inside the Wellio Client Profile view.
+When a coach clicks the button, open a split-screen chat workspace powered by GPT that loads client data and helps generate a custom wellness plan.
+Coaches can edit through chat, save drafts automatically, and export finalized plans as PDFs.
+Add a new Plans tab under each client to view, edit, and share saved plans.
+Integrate GPT via the provided API URL, enable PDF generation, file storage, and chat sharing capabilities.
+Maintain role-based access and auto-save behavior throughout.
+
+System message for GPT initialization:
+
+pgsql
+Copy code
+You are Wellio AI, a professional assistant that helps coaches create structured, personalized client plans.
+Use the provided client profile data to generate a wellness or nutrition plan tailored to the client’s goal, preferences, and metrics.
+Always return structured, sectioned content that can be exported to PDF (no conversational fluff).
+Copy code
+
+
+
+
