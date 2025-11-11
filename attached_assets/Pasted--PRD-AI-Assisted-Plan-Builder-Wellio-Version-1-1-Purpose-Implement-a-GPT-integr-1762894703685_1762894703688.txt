@@ -1,0 +1,70 @@
+# 🧭 PRD: AI-Assisted Plan Builder (Wellio)
+**Version:** 1.1  
+**Purpose:** Implement a GPT-integrated chat flow for coaches to create and share personalized wellness/nutrition plans directly from client profiles.  
+**Environment:** Replit  
+**Output:** Functional in-app “Start Planning” feature that connects client data → AI chat → PDF plan generation → client sharing.
+
+---
+
+## 🔧 Summary
+When a coach completes or views a **Client Profile**, they should be able to click **“Start Planning”** to open a **GPT-powered chat interface** that:
+1. Automatically loads the client’s data and goals.
+2. Allows the coach to converse with an AI assistant to craft a personalized plan.
+3. Saves the plan as a **PDF** that can be:
+   - Attached to the client profile, and  
+   - Shared via chat with the client.
+
+This replaces static templates with a flexible, AI-assisted workflow — keeping the coach in control while leveraging automation for speed and personalization.
+
+---
+
+## 🧠 Product Goals
+
+| Goal | Description |
+|------|--------------|
+| **1. Enable AI-guided plan creation** | Allow coaches to use a GPT chat workspace to build personalized plans. |
+| **2. Streamline workflow** | Move directly from profile → plan creation → sharing, no manual copy-paste. |
+| **3. Save and share easily** | Allow coaches to export, attach, and send plans from the same interface. |
+| **4. Ensure consistency** | All plans stored under the client’s “Plans” tab with version control. |
+
+---
+
+## 🧩 Feature Components
+
+### 1️⃣ UI Components
+
+**Client Profile Page**
+- Add a new button: **“Start Planning”**
+  - Appears once all required client information is filled.
+  - If a plan already exists → button reads **“Continue Planning”** or **“Edit Plan”**.
+- Add a new **“Plans” tab** next to “Forms” and “Chat.”
+  - Displays all past plans with metadata (name, date, status, shared).
+
+---
+
+### 2️⃣ Planning Interface (GPT Chat)
+When the coach clicks **Start Planning**, open a modal or full-page workspace with:
+
+#### Left Panel – Client Summary
+Auto-populated with:
+- Name, Age, Gender  
+- Height, Weight  
+- Goal (dropdown value)  
+- Dietary preferences  
+- Activity level  
+- Notes / medical considerations  
+
+#### Right Panel – AI Chat Interface
+A conversational GPT environment with:
+- Chat bubble layout (Coach on right, AI on left)
+- Text input with “Send” button
+- “Save Draft” and “Generate PDF” buttons above chat
+
+---
+
+### 3️⃣ GPT Integration
+
+#### System Prompt Template
+The system must send a **context payload** to the GPT endpoint every time the session starts.
+
+**Example system message:**
