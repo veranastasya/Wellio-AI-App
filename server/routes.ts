@@ -2,7 +2,8 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
-import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { z } from "zod";
+import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, parseObjectPath } from "./objectStorage";
 import { ObjectPermission, ObjectAccessGroupType } from "./objectAcl";
 import type { MessageAttachment } from "@shared/schema";
 
@@ -11,6 +12,7 @@ declare module 'express-session' {
   interface SessionData {
     clientId?: string;
     clientEmail?: string;
+    coachId?: string;
   }
 }
 
@@ -18,6 +20,14 @@ declare module 'express-session' {
 function requireClientAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.session || !req.session.clientId) {
     return res.status(401).json({ error: "Unauthorized - Please log in" });
+  }
+  next();
+}
+
+// Authentication middleware for coach routes (requires coach session)
+function requireCoachAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session || !req.session.coachId) {
+    return res.status(401).json({ error: "Unauthorized - Coach login required" });
   }
   next();
 }
@@ -42,6 +52,8 @@ import {
 } from "@shared/schema";
 import { analyzeClientData } from "./ai";
 import { syncAppleHealthData } from "./sync";
+import OpenAI from "openai";
+import PDFDocument from "pdfkit";
 import { 
   verifyRookWebhook, 
   mapRookNutritionToLog, 
@@ -52,8 +64,44 @@ import {
 import { sendInviteEmail } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Coach authentication routes
+  app.post("/api/coach/login", async (req, res) => {
+    try {
+      const { password } = req.body;
+      const coachPassword = process.env.COACH_PASSWORD;
+      
+      if (!coachPassword) {
+        console.error("COACH_PASSWORD environment variable not set");
+        return res.status(500).json({ error: "Server configuration error - coach authentication not configured" });
+      }
+      
+      if (password !== coachPassword) {
+        return res.status(401).json({ error: "Invalid password" });
+      }
+
+      req.session.coachId = "default-coach";
+      res.json({ success: true, coachId: "default-coach" });
+    } catch (error) {
+      console.error("Coach login error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  app.post("/api/coach/logout", async (req, res) => {
+    req.session.coachId = undefined;
+    res.json({ success: true });
+  });
+
+  app.get("/api/coach/session", async (req, res) => {
+    if (req.session?.coachId) {
+      res.json({ authenticated: true, coachId: req.session.coachId });
+    } else {
+      res.json({ authenticated: false });
+    }
+  });
+
   // Client routes
-  app.get("/api/clients", async (_req, res) => {
+  app.get("/api/clients", requireCoachAuth, async (_req, res) => {
     try {
       const clients = await storage.getClients();
       res.json(clients);
@@ -62,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/clients/:id", async (req, res) => {
+  app.get("/api/clients/:id", requireCoachAuth, async (req, res) => {
     try {
       const client = await storage.getClient(req.params.id);
       if (!client) {
@@ -74,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/clients", async (req, res) => {
+  app.post("/api/clients", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertClientSchema.parse(req.body);
       const client = await storage.createClient(validatedData);
@@ -84,7 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/clients/:id", async (req, res) => {
+  app.patch("/api/clients/:id", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = updateClientSchema.parse(req.body);
       const client = await storage.updateClient(req.params.id, validatedData);
@@ -97,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/clients/:id", async (req, res) => {
+  app.delete("/api/clients/:id", requireCoachAuth, async (req, res) => {
     try {
       const success = await storage.deleteClient(req.params.id);
       if (!success) {
@@ -194,7 +242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Session routes
-  app.get("/api/sessions", async (_req, res) => {
+  app.get("/api/sessions", requireCoachAuth, async (_req, res) => {
     try {
       const sessions = await storage.getSessions();
       res.json(sessions);
@@ -203,7 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/sessions/:id", async (req, res) => {
+  app.get("/api/sessions/:id", requireCoachAuth, async (req, res) => {
     try {
       const session = await storage.getSession(req.params.id);
       if (!session) {
@@ -215,7 +263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/sessions", async (req, res) => {
+  app.post("/api/sessions", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertSessionSchema.parse(req.body);
       const session = await storage.createSession(validatedData);
@@ -287,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Coach message routes (no client auth required - for coach access)
-  app.get("/api/coach/messages", async (_req, res) => {
+  app.get("/api/coach/messages", requireCoachAuth, async (_req, res) => {
     try {
       const messages = await storage.getMessages();
       res.json(messages);
@@ -296,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/coach/messages", async (req, res) => {
+  app.post("/api/coach/messages", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertMessageSchema.parse(req.body);
       const message = await storage.createMessage(validatedData);
@@ -358,6 +406,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get upload URL for attachments (both coach and client can upload)
   app.post("/api/attachments/upload", async (req, res) => {
     try {
+      // Require either coach or client session
+      if (!req.session || (!req.session.coachId && !req.session.clientId)) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       res.json({ uploadURL });
@@ -382,15 +435,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Client not found" });
       }
       
-      // Get userId - either coach (no session) or client (session.clientId)
-      // For coach: no client session means coach access
-      // For client: must have a session with clientId
-      const userId = req.session?.clientId || "coach";
+      // Require either coach or client session
+      if (!req.session || (!req.session.coachId && !req.session.clientId)) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      // Get userId - either coach or client
+      const userId = req.session.clientId || req.session.coachId || "";
       
       // Verify authorization:
+      // - Coaches can upload for any client (have coachId in session)
       // - Clients can only upload for their own conversations
-      // - Coach can upload for any client (when no client session exists)
-      if (userId !== "coach" && userId !== clientId) {
+      const isCoach = req.session.coachId !== undefined;
+      const isOwnClient = userId === clientId;
+      
+      if (!isCoach && !isOwnClient) {
         return res.status(403).json({ error: "Not authorized to upload for this conversation" });
       }
       
@@ -433,7 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Activity routes
-  app.get("/api/activities", async (_req, res) => {
+  app.get("/api/activities", requireCoachAuth, async (_req, res) => {
     try {
       const activities = await storage.getActivities();
       res.json(activities);
@@ -442,7 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/activities/:id", async (req, res) => {
+  app.get("/api/activities/:id", requireCoachAuth, async (req, res) => {
     try {
       const activity = await storage.getActivity(req.params.id);
       if (!activity) {
@@ -454,7 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/activities", async (req, res) => {
+  app.post("/api/activities", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertActivitySchema.parse(req.body);
       const activity = await storage.createActivity(validatedData);
@@ -465,7 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Questionnaire routes
-  app.get("/api/questionnaires", async (_req, res) => {
+  app.get("/api/questionnaires", requireCoachAuth, async (_req, res) => {
     try {
       const questionnaires = await storage.getQuestionnaires();
       res.json(questionnaires);
@@ -474,7 +533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/questionnaires/:id", async (req, res) => {
+  app.get("/api/questionnaires/:id", requireCoachAuth, async (req, res) => {
     try {
       const questionnaire = await storage.getQuestionnaire(req.params.id);
       if (!questionnaire) {
@@ -486,7 +545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/questionnaires", async (req, res) => {
+  app.post("/api/questionnaires", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertQuestionnaireSchema.parse(req.body);
       const questionnaire = await storage.createQuestionnaire(validatedData);
@@ -496,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/questionnaires/:id", async (req, res) => {
+  app.patch("/api/questionnaires/:id", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertQuestionnaireSchema.partial().parse(req.body);
       const questionnaire = await storage.updateQuestionnaire(req.params.id, validatedData);
@@ -509,7 +568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/questionnaires/:id", async (req, res) => {
+  app.delete("/api/questionnaires/:id", requireCoachAuth, async (req, res) => {
     try {
       const success = await storage.deleteQuestionnaire(req.params.id);
       if (!success) {
@@ -1405,8 +1464,217 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Plan Builder routes
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
+  app.get("/api/clients/:id/context", requireCoachAuth, async (req, res) => {
+    try {
+      const client = await storage.getClient(req.params.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const goals = await storage.getGoalsByClientId(req.params.id);
+      const allNutritionLogs = await storage.getNutritionLogs();
+      const allWorkoutLogs = await storage.getWorkoutLogs();
+      const allCheckIns = await storage.getCheckIns();
+
+      const nutritionLogs = allNutritionLogs.filter(n => n.clientId === req.params.id);
+      const workoutLogs = allWorkoutLogs.filter(w => w.clientId === req.params.id);
+      const checkIns = allCheckIns.filter(c => c.clientId === req.params.id);
+
+      const context = {
+        client: {
+          name: client.name,
+          email: client.email,
+          goal: client.goalType || null,
+          goalDescription: client.goalDescription || null,
+          current_weight: checkIns.length > 0 ? checkIns[checkIns.length - 1].weight : null,
+          notes: client.notes || null,
+        },
+        goals: goals.map(g => ({
+          type: g.goalType,
+          target: g.targetValue,
+          current: g.currentValue,
+          deadline: g.deadline,
+          status: g.status,
+        })),
+        recent_nutrition: nutritionLogs.slice(-7).map((n: any) => ({
+          date: n.date,
+          calories: n.calories,
+          protein: n.protein,
+          carbs: n.carbs,
+          fats: n.fats,
+        })),
+        recent_workouts: workoutLogs.slice(-7).map((w: any) => ({
+          date: w.date,
+          type: w.type,
+          duration: w.duration,
+          intensity: w.intensity,
+        })),
+      };
+
+      res.json(context);
+    } catch (error) {
+      console.error("Error getting client context:", error);
+      res.status(500).json({ error: "Failed to get client context" });
+    }
+  });
+
+  app.post("/api/plans/chat", requireCoachAuth, async (req, res) => {
+    try {
+      const chatRequestSchema = z.object({
+        messages: z.array(z.object({
+          role: z.enum(["system", "user", "assistant"]),
+          content: z.string(),
+        })),
+        clientContext: z.object({
+          client: z.object({
+            name: z.string(),
+            email: z.string().optional(),
+            goal: z.string().nullable(),
+            goalDescription: z.string().nullable(),
+            current_weight: z.number().nullable(),
+            notes: z.string().nullable(),
+          }),
+          goals: z.array(z.any()).optional(),
+          recent_nutrition: z.array(z.any()).optional(),
+          recent_workouts: z.array(z.any()).optional(),
+        }),
+      });
+
+      const validatedData = chatRequestSchema.parse(req.body);
+      const { messages, clientContext } = validatedData;
+
+      const systemPrompt = `You are Wellio AI, a professional assistant that helps coaches create structured, personalized client plans.
+Use the provided client profile data to generate a wellness or nutrition plan tailored to the client's goal, preferences, and metrics.
+Always return structured, sectioned content that can be exported to PDF (no conversational fluff).
+
+Client Context:
+${JSON.stringify(clientContext, null, 2)}
+
+When creating plans, include sections such as:
+- 7-Day Meal Plan
+- Daily Calorie / Macro Targets
+- Exercise & Recovery Recommendations
+- Optional Shopping List
+
+Be specific, actionable, and professional.`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages,
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      const response = completion.choices[0]?.message;
+      if (!response) {
+        return res.status(500).json({ error: "No response from AI" });
+      }
+
+      res.json({ message: response });
+    } catch (error) {
+      console.error("Error in GPT chat:", error);
+      res.status(500).json({ error: "Failed to get AI response" });
+    }
+  });
+
+  app.post("/api/plans/:id/generate-pdf", requireCoachAuth, async (req, res) => {
+    try {
+      const plan = await storage.getClientPlan(req.params.id);
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+
+      const client = await storage.getClient(plan.clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const doc = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+
+      doc.on('data', (chunk) => chunks.push(chunk));
+
+      const pdfPromise = new Promise<Buffer>((resolve) => {
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+      });
+
+      doc.fontSize(24).fillColor('#28A0AE').text('Wellio', { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(18).fillColor('#000000').text(plan.planName, { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(12).fillColor('#666666').text(`Client: ${client.name}`, { align: 'center' });
+      doc.fontSize(10).text(`Generated: ${new Date().toLocaleDateString()}`, { align: 'center' });
+      doc.moveDown(2);
+
+      const chatHistory = (plan.planContent as any).messages || [];
+      
+      doc.fontSize(14).fillColor('#000000');
+      for (const msg of chatHistory) {
+        if (msg.role === 'assistant') {
+          doc.fontSize(12).fillColor('#000000').text(msg.content, {
+            align: 'left',
+            lineGap: 4,
+          });
+          doc.moveDown(1);
+        }
+      }
+
+      doc.end();
+
+      const pdfBuffer = await pdfPromise;
+
+      const objectStorageService = new ObjectStorageService();
+      let privateDir: string;
+      try {
+        privateDir = objectStorageService.getPrivateObjectDir();
+      } catch (error) {
+        return res.status(500).json({ error: "Object storage not configured. Please set up PRIVATE_OBJECT_DIR." });
+      }
+      const fileName = `${privateDir}/plans/${plan.id}.pdf`;
+      
+      const { bucketName, objectName } = parseObjectPath(fileName);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      await file.save(pdfBuffer, {
+        contentType: 'application/pdf',
+        resumable: false,
+      });
+
+      const objectPath = `/objects/plans/${plan.id}.pdf`;
+      await objectStorageService.trySetObjectEntityAclPolicy(fileName, {
+        owner: plan.coachId,
+        visibility: 'private',
+        aclRules: [
+          {
+            group: {
+              type: 'clientId' as ObjectAccessGroupType,
+              id: plan.clientId,
+            },
+            permission: ObjectPermission.READ,
+          },
+        ],
+      });
+
+      await storage.updateClientPlan(plan.id, { pdfUrl: objectPath });
+
+      res.json({ pdfUrl: objectPath });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      res.status(500).json({ error: "Failed to generate PDF" });
+    }
+  });
+
   // Goals routes
-  app.get("/api/goals", async (_req, res) => {
+  app.get("/api/goals", requireCoachAuth, async (_req, res) => {
     try {
       const goals = await storage.getGoals();
       res.json(goals);
@@ -1415,7 +1683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/goals/client/:clientId", async (req, res) => {
+  app.get("/api/goals/client/:clientId", requireCoachAuth, async (req, res) => {
     try {
       const goals = await storage.getGoalsByClientId(req.params.clientId);
       res.json(goals);
@@ -1424,7 +1692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/goals/:id", async (req, res) => {
+  app.get("/api/goals/:id", requireCoachAuth, async (req, res) => {
     try {
       const goal = await storage.getGoal(req.params.id);
       if (!goal) {
@@ -1436,7 +1704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/goals", async (req, res) => {
+  app.post("/api/goals", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertGoalSchema.parse(req.body);
       const goal = await storage.createGoal(validatedData);
@@ -1447,7 +1715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/goals/:id", async (req, res) => {
+  app.patch("/api/goals/:id", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertGoalSchema.partial().parse(req.body);
       const goal = await storage.updateGoal(req.params.id, validatedData);
@@ -1461,7 +1729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/goals/:id", async (req, res) => {
+  app.delete("/api/goals/:id", requireCoachAuth, async (req, res) => {
     try {
       const success = await storage.deleteGoal(req.params.id);
       if (!success) {
