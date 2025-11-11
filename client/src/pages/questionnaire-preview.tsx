@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
 import type { Questionnaire } from "@shared/schema";
 
@@ -114,32 +115,65 @@ export default function QuestionnairePreview() {
             {questions.length > 0 && (
               <div className="pt-4 border-t space-y-4">
                 {questions.map((question) => (
-                  <div key={question.id} className="space-y-2">
+                  <div key={question.id} className="space-y-2" data-testid={`preview-question-${question.id}`}>
                     <Label>
                       {question.label}
                       {question.isRequired && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     {question.type === "short_text" && (
-                      <Input placeholder="Your answer" disabled />
+                      <Input placeholder="Your answer" disabled data-testid={`preview-input-${question.id}`} />
                     )}
                     {question.type === "paragraph" && (
-                      <Textarea placeholder="Your answer" rows={4} disabled />
+                      <Textarea placeholder="Your answer" rows={4} disabled data-testid={`preview-textarea-${question.id}`} />
                     )}
                     {question.type === "number" && (
-                      <Input type="number" placeholder="Enter a number" disabled />
+                      <Input type="number" placeholder="Enter a number" disabled data-testid={`preview-input-${question.id}`} />
                     )}
                     {question.type === "date" && (
-                      <Input type="date" disabled />
+                      <Input type="date" disabled data-testid={`preview-input-${question.id}`} />
                     )}
-                    {(question.type === "multiple_choice" || question.type === "checkboxes") && (
+                    {question.type === "multiple_choice" && (
                       <div className="space-y-2">
                         {question.options?.map((option, idx) => (
                           <div key={idx} className="flex items-center space-x-2">
-                            <Checkbox disabled />
-                            <Label>{option}</Label>
+                            <input
+                              type="radio"
+                              id={`${question.id}-${idx}`}
+                              name={question.id}
+                              disabled
+                              className="w-4 h-4"
+                              data-testid={`preview-radio-${question.id}-${idx}`}
+                            />
+                            <Label htmlFor={`${question.id}-${idx}`} className="font-normal">
+                              {option}
+                            </Label>
                           </div>
                         ))}
                       </div>
+                    )}
+                    {question.type === "checkboxes" && (
+                      <div className="space-y-2">
+                        {question.options?.map((option, idx) => (
+                          <div key={idx} className="flex items-center space-x-2">
+                            <Checkbox disabled data-testid={`preview-checkbox-${question.id}-${idx}`} />
+                            <Label className="font-normal">{option}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {question.type === "dropdown" && (
+                      <Select disabled>
+                        <SelectTrigger data-testid={`preview-select-${question.id}`}>
+                          <SelectValue placeholder="Select an option" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {question.options?.map((option, idx) => (
+                            <SelectItem key={idx} value={option} data-testid={`preview-select-option-${question.id}-${idx}`}>
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                   </div>
                 ))}
