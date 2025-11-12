@@ -87,16 +87,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/coach/logout", async (req, res) => {
-    req.session.coachId = undefined;
-    res.json({ success: true });
+  // Check coach session status
+  app.get("/api/coach/session", async (req, res) => {
+    try {
+      const isAuthenticated = !!req.session?.coachId;
+      res.json({ authenticated: isAuthenticated });
+    } catch (error) {
+      console.error("Coach session check error:", error);
+      res.status(500).json({ error: "Session check failed" });
+    }
   });
 
-  app.get("/api/coach/session", async (req, res) => {
-    if (req.session?.coachId) {
-      res.json({ authenticated: true, coachId: req.session.coachId });
-    } else {
-      res.json({ authenticated: false });
+  // Coach logout
+  app.post("/api/coach/logout", async (req, res) => {
+    try {
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Coach logout error:", err);
+          return res.status(500).json({ error: "Logout failed" });
+        }
+        res.json({ success: true });
+      });
+    } catch (error) {
+      console.error("Coach logout error:", error);
+      res.status(500).json({ error: "Logout failed" });
     }
   });
 
