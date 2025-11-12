@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus } from "lucide-react";
+import { Link } from "wouter";
+import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus, Sparkles } from "lucide-react";
 import type { Questionnaire } from "@shared/schema";
 import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel } from "@shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -416,6 +417,18 @@ export default function Clients() {
                     <span>{new Date(client.lastSession).toLocaleDateString()}</span>
                   </div>
                 )}
+                <div className="pt-3 border-t">
+                  <Link href={`/coach/plan-builder/${client.id}`}>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      data-testid={`button-create-plan-${index}`}
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Create AI Plan
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ))}
