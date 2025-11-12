@@ -1412,7 +1412,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Client Plans routes
-  app.post("/api/client-plans", async (req, res) => {
+  app.post("/api/client-plans", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertClientPlanSchema.parse(req.body);
       const plan = await storage.createClientPlan(validatedData);
@@ -1423,7 +1423,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/client-plans/client/:clientId", async (req, res) => {
+  // Client-facing endpoint to get their own plans
+  app.get("/api/client-plans/my-plans", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const plans = await storage.getClientPlansByClientId(clientId);
+      // Only return shared plans for clients
+      const sharedPlans = plans.filter(plan => plan.shared);
+      res.json(sharedPlans);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch plans" });
+    }
+  });
+
+  // Coach-facing endpoint to get all plans for a client
+  app.get("/api/client-plans/client/:clientId", requireCoachAuth, async (req, res) => {
     try {
       const plans = await storage.getClientPlansByClientId(req.params.clientId);
       res.json(plans);
@@ -1432,7 +1446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/client-plans/client/:clientId/active", async (req, res) => {
+  app.get("/api/client-plans/client/:clientId/active", requireCoachAuth, async (req, res) => {
     try {
       const plan = await storage.getActiveClientPlan(req.params.clientId);
       res.json(plan || null);
@@ -1441,7 +1455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/client-plans/:id", async (req, res) => {
+  app.get("/api/client-plans/:id", requireCoachAuth, async (req, res) => {
     try {
       const plan = await storage.getClientPlan(req.params.id);
       if (!plan) {
@@ -1453,7 +1467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/client-plans/:id", async (req, res) => {
+  app.patch("/api/client-plans/:id", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertClientPlanSchema.partial().parse(req.body);
       const plan = await storage.updateClientPlan(req.params.id, validatedData);
@@ -1466,7 +1480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/client-plans/:id", async (req, res) => {
+  app.delete("/api/client-plans/:id", requireCoachAuth, async (req, res) => {
     try {
       const success = await storage.deleteClientPlan(req.params.id);
       if (!success) {
@@ -1475,6 +1489,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete plan" });
+    }
+  });
+
+  // Share plan with client
+  app.post("/api/client-plans/:id/share", requireCoachAuth, async (req, res) => {
+    try {
+      const plan = await storage.updateClientPlan(req.params.id, { shared: true });
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+      res.json(plan);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to share plan" });
     }
   });
 

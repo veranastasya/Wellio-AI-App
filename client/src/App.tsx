@@ -19,6 +19,7 @@ import QuestionnaireBuilder from "@/pages/questionnaire-builder";
 import QuestionnairePreview from "@/pages/questionnaire-preview";
 import AIInsights from "@/pages/ai-insights";
 import ClientLogs from "@/pages/client-logs";
+import PlanBuilder from "@/pages/plan-builder";
 import ClientOnboard from "@/pages/client-onboard";
 import ClientPasswordSetup from "@/pages/client-password-setup";
 import ClientLogin from "@/pages/client-login";
@@ -180,6 +181,11 @@ export default function App() {
           <Route path="/ai-insights">
             <CoachProtectedLayout>
               <AIInsights />
+            </CoachProtectedLayout>
+          </Route>
+          <Route path="/coach/plan-builder/:clientId">
+            <CoachProtectedLayout>
+              <PlanBuilder />
             </CoachProtectedLayout>
           </Route>
           <Route path="/client-logs">
