@@ -248,7 +248,7 @@ export default function PlanBuilder() {
                 Client Context
               </CardTitle>
             </CardHeader>
-          <CardContent>
+            <CardContent>
             <ScrollArea className="h-[calc(100vh-200px)]">
               <div className="space-y-4">
                 <div>
@@ -433,6 +433,7 @@ export default function PlanBuilder() {
           </CardContent>
         </Card>
       </div>
+    </div>
     </div>
   );
 }
