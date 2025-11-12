@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useRoute } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Save, Share2, FileText, Target, Apple, Dumbbell, Activity, User } from "lucide-react";
+import { Loader2, Send, Save, Share2, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, Goal } from "@shared/schema";
 import { getGoalTypeLabel } from "@shared/schema";
@@ -46,6 +47,7 @@ interface ClientContext {
 export default function PlanBuilder() {
   const [, params] = useRoute("/coach/plan-builder/:clientId");
   const clientId = params?.clientId;
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   
   const [messages, setMessages] = useState<Message[]>([]);
@@ -53,6 +55,10 @@ export default function PlanBuilder() {
   const [planName, setPlanName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const { data: allClients } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
 
   const { data: clientContext, isLoading: isLoadingContext } = useQuery<ClientContext>({
     queryKey: ["/api/clients", clientId, "context"],
@@ -208,15 +214,40 @@ export default function PlanBuilder() {
   }
 
   return (
-    <div className="flex h-full gap-4 p-6">
-      <div className="w-80 flex-shrink-0">
-        <Card className="h-full">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
-              Client Context
-            </CardTitle>
-          </CardHeader>
+    <div className="flex flex-col h-full p-6 gap-4">
+      <div className="flex items-center gap-3">
+        <Link href="/clients">
+          <Button variant="ghost" size="icon" data-testid="button-back-to-clients">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+        </Link>
+        <div className="flex items-center gap-2 flex-1">
+          <h2 className="text-lg font-semibold">AI Plan Builder</h2>
+          <Separator orientation="vertical" className="h-6" />
+          <Select value={clientId} onValueChange={(value) => setLocation(`/coach/plan-builder/${value}`)}>
+            <SelectTrigger className="w-64" data-testid="select-client">
+              <SelectValue placeholder="Select a client" />
+            </SelectTrigger>
+            <SelectContent>
+              {allClients?.map((client) => (
+                <SelectItem key={client.id} value={client.id}>
+                  {client.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex flex-1 gap-4 min-h-0">
+        <div className="w-80 flex-shrink-0">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Client Context
+              </CardTitle>
+            </CardHeader>
           <CardContent>
             <ScrollArea className="h-[calc(100vh-200px)]">
               <div className="space-y-4">
