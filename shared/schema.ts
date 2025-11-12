@@ -87,7 +87,7 @@ export const messages = pgTable("messages", {
   sender: text("sender").notNull(),
   timestamp: text("timestamp").notNull(),
   read: boolean("read").notNull().default(false),
-  attachments: json("attachments"),
+  attachments: json("attachments").$type<MessageAttachment[] | null>(),
 });
 
 export const activities = pgTable("activities", {
@@ -465,6 +465,8 @@ export const insertSessionSchema = createInsertSchema(sessions).omit({
 
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
+}).extend({
+  attachments: z.custom<MessageAttachment[] | null>().optional(),
 });
 
 export const insertActivitySchema = createInsertSchema(activities).omit({
@@ -481,20 +483,14 @@ export const insertResponseSchema = createInsertSchema(responses).omit({
 
 export const insertNutritionLogSchema = createInsertSchema(nutritionLogs).omit({
   id: true,
-}).extend({
-  createdAt: z.string().optional(),
 });
 
 export const insertWorkoutLogSchema = createInsertSchema(workoutLogs).omit({
   id: true,
-}).extend({
-  createdAt: z.string().optional(),
 });
 
 export const insertCheckInSchema = createInsertSchema(checkIns).omit({
   id: true,
-}).extend({
-  createdAt: z.string().optional(),
 });
 
 export const insertDeviceConnectionSchema = createInsertSchema(deviceConnections).omit({
