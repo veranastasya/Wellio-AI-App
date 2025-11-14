@@ -214,18 +214,18 @@ export default function PlanBuilder() {
   }
 
   return (
-    <div className="flex flex-col h-full p-6 gap-4">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col h-full p-4 sm:p-6 gap-3 sm:gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <Link href="/clients">
           <Button variant="ghost" size="icon" data-testid="button-back-to-clients">
             <ArrowLeft className="w-4 h-4" />
           </Button>
         </Link>
-        <div className="flex items-center gap-2 flex-1">
-          <h2 className="text-lg font-semibold">AI Plan Builder</h2>
-          <Separator orientation="vertical" className="h-6" />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+          <h2 className="text-base sm:text-lg font-semibold">AI Plan Builder</h2>
+          <Separator orientation="vertical" className="hidden sm:block h-6" />
           <Select value={clientId} onValueChange={(value) => setLocation(`/coach/plan-builder/${value}`)}>
-            <SelectTrigger className="w-64" data-testid="select-client">
+            <SelectTrigger className="w-full sm:w-64 h-10" data-testid="select-client">
               <SelectValue placeholder="Select a client" />
             </SelectTrigger>
             <SelectContent>
@@ -239,9 +239,9 @@ export default function PlanBuilder() {
         </div>
       </div>
 
-      <div className="flex flex-1 gap-4 min-h-0">
-        <div className="w-80 flex-shrink-0">
-          <Card className="h-full">
+      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
+        <div className="w-full lg:w-80 flex-shrink-0">
+          <Card className="h-auto lg:h-full max-h-96 lg:max-h-none overflow-y-auto lg:overflow-visible">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="w-5 h-5" />
@@ -328,21 +328,21 @@ export default function PlanBuilder() {
         </Card>
       </div>
 
-      <div className="flex-1 flex flex-col gap-4">
+      <div className="flex-1 flex flex-col gap-3 sm:gap-4">
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                 <Activity className="w-5 h-5" />
                 AI Plan Builder
               </CardTitle>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <input
                   type="text"
                   placeholder="Plan name..."
                   value={planName}
                   onChange={(e) => setPlanName(e.target.value)}
-                  className="text-sm border rounded px-3 py-1.5 w-48"
+                  className="text-sm border rounded px-3 py-2 h-10 w-full sm:w-48"
                   data-testid="input-plan-name"
                 />
                 <Button

@@ -168,10 +168,10 @@ export default function Clients() {
   if (isLoading) {
     return (
       <div className="bg-background">
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Client Management</h1>
-            <p className="text-muted-foreground mt-1">Loading clients...</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Client Management</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Loading clients...</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -195,9 +195,9 @@ export default function Clients() {
   if (isError) {
     return (
       <div className="bg-background">
-        <div className="max-w-7xl mx-auto p-6">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6">
           <Card className="border-destructive">
-            <CardContent className="py-16 text-center">
+            <CardContent className="py-12 sm:py-16 text-center">
               <Users className="w-16 h-16 mx-auto text-destructive mb-4" />
               <p className="text-lg font-medium text-foreground">Failed to load clients</p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -212,13 +212,13 @@ export default function Clients() {
 
   return (
     <div className="bg-background">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-foreground" data-testid="text-clients-title">Client Management</h1>
-            <p className="text-muted-foreground mt-1">Manage your coaching clients and track their progress</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-clients-title">Client Management</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage your coaching clients and track their progress</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             <Dialog open={isInviteOpen} onOpenChange={(open) => {
               setIsInviteOpen(open);
               if (!open) {
@@ -342,7 +342,7 @@ export default function Clients() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search clients by name or email..."
-            className="pl-10"
+            className="pl-10 h-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             data-testid="input-search-clients"
