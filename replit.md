@@ -10,11 +10,12 @@ Wellio is an AI-powered fitness & wellness coaching platform MVP designed to hel
 - Modern, clean aesthetic with professional coaching platform feel
 - Questionnaire Builder positioned between Client Management and Progress Analytics in sidebar
 - AI Insights and Client Data Logs positioned after Communication in sidebar navigation
+- **Mobile-first responsive design** required across all pages with touch-friendly controls (≥40px targets)
 
 ## System Architecture
 
 ### UI/UX Decisions
-The platform utilizes a modern design with React, Tailwind CSS, and Shadcn UI components. It incorporates a teal (#28A0AE) and lime (#E2F9AD) color scheme, supports dark mode, and uses the Inter font family. Interaction patterns include subtle hover and active elevation states for components. The responsive design ensures usability across various viewports, featuring a collapsible sidebar navigation.
+The platform utilizes a modern design with React, Tailwind CSS, and Shadcn UI components. It incorporates a teal (#28A0AE) and lime (#E2F9AD) color scheme, supports dark mode, and uses the Inter font family. Interaction patterns include subtle hover and active elevation states for components. The responsive design ensures usability across various viewports, featuring a collapsible sidebar navigation. **Mobile-first responsive implementation** uses consistent Tailwind breakpoints (sm: 640px, md: 768px, lg: 1024px) with reusable layout primitives (StatGrid, ResponsiveSplit, StickyToolbar) for standardized responsive patterns. Touch targets meet ≥40px minimum (h-10) with responsive spacing (p-4 sm:p-6), typography scaling (text-2xl sm:text-3xl), and layouts that stack vertically on mobile (flex-col sm:flex-row).
 
 ### Technical Implementations
 Wellio is built with a React frontend and an Express.js backend. Data is persisted using PostgreSQL with Drizzle ORM. State management is handled by TanStack Query v5, and form handling uses React Hook Form with Zod validation. Data visualization is powered by Recharts. The system employs UUID primary keys, uses local timezones for date operations, and ensures robust form validation across all inputs. Loading skeletons and error states are implemented for improved user experience. All numeric health metrics (calories, macronutrients, weight, body fat) use the `real` data type to support decimal precision. **AI-Assisted Plan Builder** leverages OpenAI GPT-4 with streaming response support for real-time plan generation. PDF generation uses pdfkit library with custom professional layout, automatic branding, and object storage integration for public access. Plan data structure uses JSONB columns for flexible conversation storage while maintaining referential integrity through foreign keys to clients table.
