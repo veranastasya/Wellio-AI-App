@@ -4,6 +4,7 @@ import { Users, Video, Trophy, DollarSign, Lightbulb, TrendingUp } from "lucide-
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { Client, Session, Activity } from "@shared/schema";
 import { GoalsDashboardWidget } from "@/components/goals/goals-dashboard-widget";
+import { StatGrid } from "@/components/layout";
 
 export default function Dashboard() {
   const { data: clients = [], isLoading: clientsLoading, isError: clientsError } = useQuery<Client[]>({
@@ -124,10 +125,10 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div className="bg-background">
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Loading your dashboard...</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Loading your dashboard...</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (
@@ -170,9 +171,9 @@ export default function Dashboard() {
   if (isError) {
     return (
       <div className="bg-background">
-        <div className="max-w-7xl mx-auto p-6">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6">
           <Card className="border-destructive">
-            <CardContent className="py-16 text-center">
+            <CardContent className="py-12 sm:py-16 text-center">
               <TrendingUp className="w-16 h-16 mx-auto text-destructive mb-4" />
               <p className="text-lg font-medium text-foreground">Failed to load dashboard</p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -187,13 +188,13 @@ export default function Dashboard() {
 
   return (
     <div className="bg-background">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground" data-testid="text-dashboard-title">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back! Here's what's happening with your clients today.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-dashboard-title">Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Welcome back! Here's what's happening with your clients today.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatGrid columns={{ base: 1, md: 2, lg: 4 }} gapClass="gap-4">
           {statsCards.map((stat, index) => (
             <Card key={stat.title} className="border-t-2 border-t-primary" data-testid={`card-stat-${index}`}>
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -205,25 +206,25 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold tracking-tight" data-testid={`text-stat-${index}-value`}>{stat.value}</div>
+                <div className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid={`text-stat-${index}-value`}>{stat.value}</div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {stat.subtitle}
                 </p>
               </CardContent>
             </Card>
           ))}
-        </div>
+        </StatGrid>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <Card className="lg:col-span-2" data-testid="card-progress-overview">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Client Progress Distribution</CardTitle>
-                <p className="text-sm text-muted-foreground">Grouped by performance level</p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <CardTitle className="text-base sm:text-lg">Client Progress Distribution</CardTitle>
+                <p className="text-xs sm:text-sm text-muted-foreground">Grouped by performance level</p>
               </div>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+              <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={progressData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="group" stroke="hsl(var(--muted-foreground))" />
@@ -251,18 +252,18 @@ export default function Dashboard() {
 
           <Card data-testid="card-todays-schedule">
             <CardHeader>
-              <CardTitle>Today's Schedule</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Today's Schedule</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 sm:space-y-4">
               {todaysSessions.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">No sessions scheduled for today</p>
               ) : (
                 todaysSessions.map((session, index) => (
                   <div key={session.id} className="flex items-start gap-3" data-testid={`session-${index}`}>
-                    <div className="w-1 h-16 bg-primary rounded-full" />
+                    <div className="w-1 h-14 sm:h-16 bg-primary rounded-full flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground">{session.clientName}</p>
-                      <p className="text-sm text-muted-foreground">{session.sessionType}</p>
+                      <p className="font-medium text-sm sm:text-base text-foreground truncate">{session.clientName}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{session.sessionType}</p>
                       <p className="text-xs text-primary mt-1">
                         {session.startTime} - {session.endTime}
                       </p>
@@ -274,31 +275,31 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <Card className="lg:col-span-2" data-testid="card-recent-activities">
             <CardHeader>
-              <CardTitle>Recent Activities</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Recent Activities</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 sm:space-y-4">
               {recentActivities.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">No recent activities</p>
               ) : (
                 recentActivities.map((activity, index) => (
-                  <div key={activity.id} className="flex items-start gap-4" data-testid={`activity-${index}`}>
-                    <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-semibold text-accent-foreground">
+                  <div key={activity.id} className="flex items-start gap-3 sm:gap-4" data-testid={`activity-${index}`}>
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs sm:text-sm font-semibold text-accent-foreground">
                         {getInitials(activity.clientName)}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm">
+                      <p className="text-xs sm:text-sm">
                         <span className="font-medium text-primary">{activity.clientName}</span>{" "}
                         <span className="text-muted-foreground">{activity.description}</span>
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">{activity.timestamp}</p>
                     </div>
                     {activity.status === "completed" && (
-                      <span className="text-xs bg-chart-3/10 text-chart-3 px-2 py-1 rounded-full font-medium">
+                      <span className="text-xs bg-chart-3/10 text-chart-3 px-2 py-1 rounded-full font-medium flex-shrink-0">
                         Completed
                       </span>
                     )}

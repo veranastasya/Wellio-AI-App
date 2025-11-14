@@ -196,12 +196,12 @@ export default function Communication() {
   if (clientsLoading || messagesLoading) {
     return (
       <div className="bg-background">
-        <div className="max-w-7xl mx-auto p-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-foreground">Communication</h1>
-            <p className="text-muted-foreground mt-1">Loading conversations...</p>
+        <div className="max-w-7xl mx-auto p-4 sm:p-6">
+          <div className="mb-4 sm:mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Communication</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Loading conversations...</p>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             <Card>
               <CardHeader>
                 <div className="h-6 bg-muted rounded animate-pulse w-24" />
@@ -229,9 +229,9 @@ export default function Communication() {
   if (clientsError || messagesError) {
     return (
       <div className="bg-background">
-        <div className="max-w-7xl mx-auto p-6">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6">
           <Card className="border-destructive">
-            <CardContent className="py-16 text-center">
+            <CardContent className="py-12 sm:py-16 text-center">
               <p className="text-lg font-medium text-foreground">Failed to load conversations</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Please try refreshing the page
@@ -245,28 +245,28 @@ export default function Communication() {
 
   return (
     <div className="bg-background">
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground" data-testid="text-communication-title">Communication</h1>
-          <p className="text-muted-foreground mt-1">Message your clients and manage conversations</p>
+      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-communication-title">Communication</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Message your clients and manage conversations</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card data-testid="card-client-list">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <Card data-testid="card-client-list" className="lg:max-h-[calc(100vh-200px)]">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Clients</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Clients</CardTitle>
               <div className="relative mt-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search clients..."
-                  className="pl-10"
+                  className="pl-10 h-10"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   data-testid="input-search-conversations"
                 />
               </div>
             </CardHeader>
-            <CardContent className="p-4">
+            <CardContent className="p-3 sm:p-4 max-h-96 lg:max-h-[calc(100vh-340px)] overflow-y-auto">
                 <div className="space-y-1">
                   {filteredClients.map((client, index) => {
                     const lastMsg = getLastMessage(client.id);
