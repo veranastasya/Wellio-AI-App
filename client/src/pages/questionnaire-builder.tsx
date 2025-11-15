@@ -67,6 +67,12 @@ export default function QuestionnaireBuilder() {
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestionType, setNewQuestionType] = useState<QuestionType>("short_text");
+  const [standardFields, setStandardFields] = useState({
+    sex: false,
+    weight: false,
+    age: false,
+    height: false,
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -95,6 +101,15 @@ export default function QuestionnaireBuilder() {
       });
       const normalized = (questionnaire.questions as any[]).map(normalizeQuestion);
       setQuestions(normalized);
+      
+      if (questionnaire.standardFields) {
+        setStandardFields({
+          sex: questionnaire.standardFields.sex || false,
+          weight: questionnaire.standardFields.weight || false,
+          age: questionnaire.standardFields.age || false,
+          height: questionnaire.standardFields.height || false,
+        });
+      }
     }
   }, [questionnaire, form]);
 
@@ -112,6 +127,7 @@ export default function QuestionnaireBuilder() {
           consentText: formData.consentText,
           consentRequired: formData.consentRequired,
           confirmationMessage: formData.confirmationMessage,
+          standardFields,
           updatedAt: now,
         };
         await apiRequest("PATCH", `/api/questionnaires/${id}`, payload);
@@ -124,6 +140,7 @@ export default function QuestionnaireBuilder() {
           consentText: formData.consentText,
           consentRequired: formData.consentRequired,
           confirmationMessage: formData.confirmationMessage,
+          standardFields,
           createdAt: now,
           updatedAt: now,
         };
@@ -440,6 +457,39 @@ export default function QuestionnaireBuilder() {
                   <span className="font-medium">{field}</span>
                 </div>
                 <span className="text-sm text-muted-foreground">Required</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Standard Health Metrics</CardTitle>
+            <CardDescription>Enable optional health-related fields for your intake form</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {[
+              { key: "sex" as const, label: "Sex", description: "Gender identification (Male, Female, Other, Prefer not to say)" },
+              { key: "age" as const, label: "Age", description: "Client's current age in years" },
+              { key: "weight" as const, label: "Weight", description: "Current weight in pounds" },
+              { key: "height" as const, label: "Height", description: "Current height in inches" },
+            ].map((field) => (
+              <div
+                key={field.key}
+                className="flex items-center justify-between p-4 rounded-lg border"
+                data-testid={`standard-field-${field.key}`}
+              >
+                <div className="space-y-0.5">
+                  <div className="font-medium">{field.label}</div>
+                  <div className="text-sm text-muted-foreground">{field.description}</div>
+                </div>
+                <Switch
+                  checked={standardFields[field.key]}
+                  onCheckedChange={(checked) =>
+                    setStandardFields({ ...standardFields, [field.key]: checked })
+                  }
+                  data-testid={`switch-${field.key}`}
+                />
               </div>
             ))}
           </CardContent>
