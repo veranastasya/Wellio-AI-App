@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus, Sparkles } from "lucide-react";
@@ -329,7 +329,15 @@ export default function Clients() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredClients.map((client, index) => (
-            <Card key={client.id} className="hover-elevate" data-testid={`card-client-${index}`}>
+            <Card 
+              key={client.id} 
+              className="hover-elevate cursor-pointer" 
+              data-testid={`card-client-${index}`}
+              onClick={() => {
+                setSelectedClient(client);
+                setIsEditOpen(true);
+              }}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -345,13 +353,19 @@ export default function Clients() {
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" data-testid={`button-client-menu-${index}`}>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        data-testid={`button-client-menu-${index}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSelectedClient(client);
                           setIsEditOpen(true);
                         }}
@@ -361,7 +375,10 @@ export default function Clients() {
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => deleteClientMutation.mutate(client.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteClientMutation.mutate(client.id);
+                        }}
                         className="text-destructive"
                         data-testid={`button-delete-client-${index}`}
                       >
@@ -395,7 +412,7 @@ export default function Clients() {
                     <span>{new Date(client.lastSession).toLocaleDateString()}</span>
                   </div>
                 )}
-                <div className="pt-3 border-t">
+                <div className="pt-3 border-t" onClick={(e) => e.stopPropagation()}>
                   <Link href={`/coach/plan-builder/${client.id}`}>
                     <Button
                       variant="outline"
@@ -470,6 +487,23 @@ function ClientForm({
       notes: client?.notes || "",
     },
   });
+
+  useEffect(() => {
+    if (client) {
+      form.reset({
+        name: client.name,
+        email: client.email,
+        phone: client.phone || "",
+        status: client.status,
+        goalType: client.goalType || undefined,
+        goalDescription: client.goalDescription || "",
+        progressScore: client.progressScore || 0,
+        joinedDate: client.joinedDate,
+        lastSession: client.lastSession || "",
+        notes: client.notes || "",
+      });
+    }
+  }, [client, form]);
 
   const selectedGoalType = form.watch("goalType");
 
