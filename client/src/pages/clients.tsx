@@ -50,7 +50,6 @@ export default function Clients() {
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [creationMode, setCreationMode] = useState<"manual" | "questionnaire">("manual");
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
@@ -280,12 +279,7 @@ export default function Clients() {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={isNewClientOpen} onOpenChange={(open) => {
-              setIsNewClientOpen(open);
-              if (!open) {
-                setCreationMode("manual");
-              }
-            }}>
+            <Dialog open={isNewClientOpen} onOpenChange={setIsNewClientOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2" data-testid="button-new-client">
                   <Plus className="w-4 h-4" />
@@ -296,43 +290,27 @@ export default function Clients() {
                 <DialogHeader>
                   <DialogTitle>Add New Client</DialogTitle>
                   <DialogDescription>
-                    Choose how you want to onboard this client
+                    Enter client details to add them to your roster
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    variant={creationMode === "manual" ? "default" : "outline"}
-                    onClick={() => setCreationMode("manual")}
-                    className="flex-1"
-                    data-testid="button-mode-manual"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Manually
-                  </Button>
-                  <Button
-                    variant={creationMode === "questionnaire" ? "default" : "outline"}
-                    onClick={() => setCreationMode("questionnaire")}
-                    className="flex-1"
-                    data-testid="button-mode-questionnaire"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    Send Questionnaire
-                  </Button>
-                </div>
+                <ClientForm
+                  onSubmit={(data) => createClientMutation.mutate(data)}
+                  isLoading={createClientMutation.isPending}
+                />
 
-                {creationMode === "manual" ? (
-                  <ClientForm
-                    onSubmit={(data) => createClientMutation.mutate(data)}
-                    isLoading={createClientMutation.isPending}
-                  />
-                ) : (
-                  <QuestionnaireForm
-                    questionnaires={questionnaires.filter(q => q.status === "published")}
-                    onSubmit={(data) => createClientMutation.mutate(data)}
-                    isLoading={createClientMutation.isPending}
-                  />
-                )}
+                <div className="pt-2 border-t text-center">
+                  <button
+                    onClick={() => {
+                      setIsNewClientOpen(false);
+                      setIsInviteOpen(true);
+                    }}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid="link-send-questionnaire-instead"
+                  >
+                    Or send questionnaire invite instead →
+                  </button>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
