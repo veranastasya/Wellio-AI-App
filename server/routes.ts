@@ -663,6 +663,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             phone: answers.phone || answers.phoneNumber || "",
             goalType: answers.goalType || answers.goal || answers.primaryGoal || "",
             notes: answers.notes || answers.additionalInfo || "",
+            // Extract standard health metrics from answers
+            sex: answers.sex || null,
+            age: (answers.age !== undefined && answers.age !== "") ? parseInt(answers.age) : null,
+            weight: (answers.weight !== undefined && answers.weight !== "") ? parseFloat(answers.weight) : null,
+            height: (answers.height !== undefined && answers.height !== "") ? parseFloat(answers.height) : null,
           };
 
           client = await storage.createClient(clientData);

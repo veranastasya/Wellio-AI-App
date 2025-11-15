@@ -625,6 +625,8 @@ function ClientForm({
                   <FormControl>
                     <Input
                       type="number"
+                      min="0"
+                      max="120"
                       placeholder="25"
                       {...field}
                       value={field.value ?? ""}
@@ -649,6 +651,8 @@ function ClientForm({
                     <Input
                       type="number"
                       step="0.1"
+                      min="0"
+                      max="1000"
                       placeholder="155.5"
                       {...field}
                       value={field.value ?? ""}
@@ -670,6 +674,8 @@ function ClientForm({
                     <Input
                       type="number"
                       step="0.1"
+                      min="0"
+                      max="120"
                       placeholder="68"
                       {...field}
                       value={field.value ?? ""}

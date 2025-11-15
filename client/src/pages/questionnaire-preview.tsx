@@ -282,6 +282,43 @@ export default function QuestionnairePreview() {
                 </Label>
                 <Input type="tel" placeholder="Enter your phone number" disabled />
               </div>
+              
+              {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height) && (
+                <>
+                  {questionnaire.standardFields.sex && (
+                    <div className="space-y-2" data-testid="standard-field-sex-preview">
+                      <Label>Sex</Label>
+                      <div 
+                        className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-muted px-3 py-2 text-sm shadow-sm cursor-not-allowed opacity-50"
+                        aria-label="Sex (preview only)"
+                      >
+                        <span className="text-muted-foreground">Select sex</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {questionnaire.standardFields.age && (
+                    <div className="space-y-2" data-testid="standard-field-age-preview">
+                      <Label>Age</Label>
+                      <Input type="number" placeholder="Enter your age" disabled />
+                    </div>
+                  )}
+                  
+                  {questionnaire.standardFields.weight && (
+                    <div className="space-y-2" data-testid="standard-field-weight-preview">
+                      <Label>Weight (lbs)</Label>
+                      <Input type="number" step="0.1" placeholder="Enter your weight" disabled />
+                    </div>
+                  )}
+                  
+                  {questionnaire.standardFields.height && (
+                    <div className="space-y-2" data-testid="standard-field-height-preview">
+                      <Label>Height (inches)</Label>
+                      <Input type="number" step="0.1" placeholder="Enter your height" disabled />
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {questions.length > 0 && (

@@ -610,6 +610,80 @@ export default function ClientOnboard() {
                     required
                   />
                 </div>
+                
+                {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height) && (
+                  <>
+                    {questionnaire.standardFields.sex && (
+                      <div className="space-y-2" data-testid="standard-field-sex">
+                        <Label htmlFor="sex">Sex</Label>
+                        <Select
+                          value={answers.sex || ""}
+                          onValueChange={(value) => handleAnswerChange("sex", value)}
+                        >
+                          <SelectTrigger data-testid="select-sex">
+                            <SelectValue placeholder="Select sex" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="male">Male</SelectItem>
+                            <SelectItem value="female">Female</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                            <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
+                    {questionnaire.standardFields.age && (
+                      <div className="space-y-2" data-testid="standard-field-age">
+                        <Label htmlFor="age">Age</Label>
+                        <Input
+                          id="age"
+                          type="number"
+                          min="0"
+                          max="120"
+                          data-testid="input-age"
+                          value={answers.age || ""}
+                          onChange={(e) => handleAnswerChange("age", e.target.value)}
+                          placeholder="Enter your age"
+                        />
+                      </div>
+                    )}
+                    
+                    {questionnaire.standardFields.weight && (
+                      <div className="space-y-2" data-testid="standard-field-weight">
+                        <Label htmlFor="weight">Weight (lbs)</Label>
+                        <Input
+                          id="weight"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="1000"
+                          data-testid="input-weight"
+                          value={answers.weight || ""}
+                          onChange={(e) => handleAnswerChange("weight", e.target.value)}
+                          placeholder="Enter your weight"
+                        />
+                      </div>
+                    )}
+                    
+                    {questionnaire.standardFields.height && (
+                      <div className="space-y-2" data-testid="standard-field-height">
+                        <Label htmlFor="height">Height (inches)</Label>
+                        <Input
+                          id="height"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="120"
+                          data-testid="input-height"
+                          value={answers.height || ""}
+                          onChange={(e) => handleAnswerChange("height", e.target.value)}
+                          placeholder="Enter your height"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
 
               {normalizedQuestions.length > 0 && (
