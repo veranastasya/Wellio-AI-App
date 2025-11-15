@@ -65,6 +65,10 @@ export const clients = pgTable("clients", {
   notes: text("notes"),
   intakeSource: text("intake_source"),
   questionnaireId: varchar("questionnaire_id"),
+  sex: text("sex"),
+  weight: real("weight"),
+  age: integer("age"),
+  height: real("height"),
 });
 
 export const sessions = pgTable("sessions", {
@@ -109,6 +113,12 @@ export const questionnaires = pgTable("questionnaires", {
   consentText: text("consent_text"),
   consentRequired: boolean("consent_required").notNull().default(false),
   confirmationMessage: text("confirmation_message"),
+  standardFields: json("standard_fields").$type<{
+    sex?: boolean;
+    weight?: boolean;
+    age?: boolean;
+    height?: boolean;
+  }>(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
