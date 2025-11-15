@@ -170,7 +170,12 @@ export default function Questionnaires() {
                 </TableHeader>
                 <TableBody>
                   {questionnaires.map((questionnaire) => (
-                    <TableRow key={questionnaire.id} data-testid={`row-questionnaire-${questionnaire.id}`}>
+                    <TableRow 
+                      key={questionnaire.id} 
+                      data-testid={`row-questionnaire-${questionnaire.id}`}
+                      className="cursor-pointer hover-elevate"
+                      onClick={() => setLocation(`/questionnaires/${questionnaire.id}/edit`)}
+                    >
                       <TableCell className="font-medium">
                         {questionnaire.name}
                       </TableCell>
@@ -188,7 +193,7 @@ export default function Questionnaires() {
                       <TableCell data-testid={`text-updated-${questionnaire.id}`}>
                         {new Date(questionnaire.updatedAt).toLocaleDateString()}
                       </TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -201,28 +206,40 @@ export default function Questionnaires() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => setLocation(`/questionnaires/${questionnaire.id}/edit`)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLocation(`/questionnaires/${questionnaire.id}/edit`);
+                              }}
                               data-testid={`action-edit-${questionnaire.id}`}
                             >
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => setLocation(`/questionnaires/${questionnaire.id}/preview`)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLocation(`/questionnaires/${questionnaire.id}/preview`);
+                              }}
                               data-testid={`action-preview-${questionnaire.id}`}
                             >
                               <Eye className="h-4 w-4 mr-2" />
                               Preview
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => duplicateMutation.mutate(questionnaire)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                duplicateMutation.mutate(questionnaire);
+                              }}
                               data-testid={`action-duplicate-${questionnaire.id}`}
                             >
                               <Copy className="h-4 w-4 mr-2" />
                               Duplicate
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleDelete(questionnaire.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(questionnaire.id);
+                              }}
                               className="text-destructive"
                               data-testid={`action-delete-${questionnaire.id}`}
                             >
