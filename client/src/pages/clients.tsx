@@ -485,6 +485,10 @@ function ClientForm({
       joinedDate: client?.joinedDate || new Date().toISOString().split("T")[0],
       lastSession: client?.lastSession || "",
       notes: client?.notes || "",
+      sex: client?.sex || undefined,
+      weight: client?.weight || undefined,
+      age: client?.age || undefined,
+      height: client?.height || undefined,
     },
   });
 
@@ -501,6 +505,10 @@ function ClientForm({
         joinedDate: client.joinedDate,
         lastSession: client.lastSession || "",
         notes: client.notes || "",
+        sex: client.sex || undefined,
+        weight: client.weight || undefined,
+        age: client.age || undefined,
+        height: client.height || undefined,
       });
     }
   }, [client, form]);
@@ -580,6 +588,100 @@ function ClientForm({
               </FormItem>
             )}
           />
+        </div>
+
+        <div className="space-y-3 pt-2">
+          <h3 className="text-sm font-semibold text-foreground">Health Metrics (Optional)</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="sex"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sex</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-client-sex">
+                        <SelectValue placeholder="Select sex" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="age"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Age</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="25"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                      data-testid="input-client-age"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="weight"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Weight (lbs)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      placeholder="155.5"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                      data-testid="input-client-weight"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="height"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Height (inches)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      placeholder="68"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                      data-testid="input-client-height"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
