@@ -13,6 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, AlertCircle, Upload, X } from "lucide-react";
 import type { Question, Questionnaire } from "@shared/schema";
 import { normalizeQuestion } from "@shared/schema";
+import { type UnitsPreference, UNITS_LABELS, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 
 export default function ClientOnboard() {
   const [, setLocation] = useLocation();
@@ -22,6 +23,7 @@ export default function ClientOnboard() {
   const [isVerifying, setIsVerifying] = useState(true);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [consentGiven, setConsentGiven] = useState(false);
+  const [unitsPreference, setUnitsPreference] = useState<UnitsPreference>("us");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -78,10 +80,18 @@ export default function ClientOnboard() {
 
   const submitMutation = useMutation({
     mutationFn: async (formAnswers: Record<string, any>) => {
+      const { weightCanonical, heightCanonical, heightFeet, heightInches, ...otherAnswers } = formAnswers;
+      const submissionAnswers: Record<string, any> = {
+        ...otherAnswers,
+        weight: weightCanonical,
+        height: heightCanonical,
+        unitsPreference,
+      };
+      
       return await apiRequest("POST", "/api/responses", {
         questionnaireId: tokenData.invite.questionnaireId,
         clientId: "",
-        answers: formAnswers,
+        answers: submissionAnswers,
         submittedAt: new Date().toISOString(),
         token,
       });
@@ -613,6 +623,22 @@ export default function ClientOnboard() {
                 
                 {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height || questionnaire.standardFields.activityLevel || questionnaire.standardFields.bodyFatPercentage) && (
                   <>
+                    <div className="space-y-2" data-testid="standard-field-units">
+                      <Label htmlFor="units">Units</Label>
+                      <Select
+                        value={unitsPreference}
+                        onValueChange={(value: UnitsPreference) => setUnitsPreference(value)}
+                      >
+                        <SelectTrigger data-testid="select-units">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
+                          <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
                     {questionnaire.standardFields.sex && (
                       <div className="space-y-2" data-testid="standard-field-sex">
                         <Label htmlFor="sex">Sex</Label>
@@ -651,7 +677,7 @@ export default function ClientOnboard() {
                     
                     {questionnaire.standardFields.weight && (
                       <div className="space-y-2" data-testid="standard-field-weight">
-                        <Label htmlFor="weight">Weight (lbs)</Label>
+                        <Label htmlFor="weight">Weight ({unitsPreference === "us" ? "lbs" : "kg"})</Label>
                         <Input
                           id="weight"
                           type="number"
@@ -659,26 +685,89 @@ export default function ClientOnboard() {
                           min="0"
                           max="1000"
                           data-testid="input-weight"
-                          value={answers.weight || ""}
-                          onChange={(e) => handleAnswerChange("weight", e.target.value)}
-                          placeholder="Enter your weight"
+                          value={
+                            unitsPreference === "metric" && answers.weightCanonical
+                              ? lbsToKg(parseFloat(answers.weightCanonical))
+                              : answers.weightCanonical || ""
+                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            const canonicalValue = unitsPreference === "metric" && value
+                              ? kgToLbs(parseFloat(value)).toString()
+                              : value;
+                            handleAnswerChange("weightCanonical", canonicalValue);
+                          }}
+                          placeholder={`Enter your weight in ${unitsPreference === "us" ? "lbs" : "kg"}`}
                         />
                       </div>
                     )}
                     
-                    {questionnaire.standardFields.height && (
+                    {questionnaire.standardFields.height && unitsPreference === "us" && (
                       <div className="space-y-2" data-testid="standard-field-height">
-                        <Label htmlFor="height">Height (inches)</Label>
+                        <Label>Height</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Input
+                              id="heightFeet"
+                              type="number"
+                              min="0"
+                              max="8"
+                              data-testid="input-height-feet"
+                              value={answers.heightFeet || ""}
+                              onChange={(e) => {
+                                const feet = parseFloat(e.target.value) || 0;
+                                const inches = parseFloat(answers.heightInches || "0");
+                                const totalInches = feetAndInchesToInches(feet, inches);
+                                handleAnswerChange("heightFeet", e.target.value);
+                                handleAnswerChange("heightCanonical", totalInches.toString());
+                              }}
+                              placeholder="0 ft"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Input
+                              id="heightInches"
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              max="11.9"
+                              data-testid="input-height-inches"
+                              value={answers.heightInches || ""}
+                              onChange={(e) => {
+                                const feet = parseFloat(answers.heightFeet || "0");
+                                const inches = parseFloat(e.target.value) || 0;
+                                const totalInches = feetAndInchesToInches(feet, inches);
+                                handleAnswerChange("heightInches", e.target.value);
+                                handleAnswerChange("heightCanonical", totalInches.toString());
+                              }}
+                              placeholder="0 in"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {questionnaire.standardFields.height && unitsPreference === "metric" && (
+                      <div className="space-y-2" data-testid="standard-field-height">
+                        <Label htmlFor="height">Height (cm)</Label>
                         <Input
                           id="height"
                           type="number"
                           step="0.1"
                           min="0"
-                          max="120"
-                          data-testid="input-height"
-                          value={answers.height || ""}
-                          onChange={(e) => handleAnswerChange("height", e.target.value)}
-                          placeholder="Enter your height"
+                          max="300"
+                          data-testid="input-height-cm"
+                          value={
+                            answers.heightCanonical
+                              ? inchesToCm(parseFloat(answers.heightCanonical))
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            const canonicalValue = value ? cmToInches(parseFloat(value)).toString() : "";
+                            handleAnswerChange("heightCanonical", canonicalValue);
+                          }}
+                          placeholder="Enter your height in cm"
                         />
                       </div>
                     )}

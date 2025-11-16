@@ -649,21 +649,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (answers.sex) updateData.sex = answers.sex;
           if (answers.age !== undefined && answers.age !== "") {
             const parsedAge = parseInt(answers.age);
-            if (!isNaN(parsedAge)) updateData.age = parsedAge;
+            if (isFinite(parsedAge)) updateData.age = parsedAge;
           }
           if (answers.weight !== undefined && answers.weight !== "") {
             const parsedWeight = parseFloat(answers.weight);
-            if (!isNaN(parsedWeight)) updateData.weight = parsedWeight;
+            if (isFinite(parsedWeight)) updateData.weight = parsedWeight;
           }
           if (answers.height !== undefined && answers.height !== "") {
             const parsedHeight = parseFloat(answers.height);
-            if (!isNaN(parsedHeight)) updateData.height = parsedHeight;
+            if (isFinite(parsedHeight)) updateData.height = parsedHeight;
           }
           if (answers.activityLevel) updateData.activityLevel = answers.activityLevel;
           if (answers.bodyFatPercentage !== undefined && answers.bodyFatPercentage !== "") {
             const parsedBodyFat = parseFloat(answers.bodyFatPercentage);
-            if (!isNaN(parsedBodyFat)) updateData.bodyFatPercentage = parsedBodyFat;
+            if (isFinite(parsedBodyFat)) updateData.bodyFatPercentage = parsedBodyFat;
           }
+          if (answers.unitsPreference) updateData.unitsPreference = answers.unitsPreference;
           
           // Also update basic info if provided
           if (answers.phone || answers.phoneNumber) updateData.phone = answers.phone || answers.phoneNumber;
@@ -704,6 +705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             height: (answers.height !== undefined && answers.height !== "") ? parseFloat(answers.height) : null,
             activityLevel: answers.activityLevel || null,
             bodyFatPercentage: (answers.bodyFatPercentage !== undefined && answers.bodyFatPercentage !== "") ? parseFloat(answers.bodyFatPercentage) : null,
+            unitsPreference: answers.unitsPreference || "us",
           };
 
           client = await storage.createClient(clientData);
