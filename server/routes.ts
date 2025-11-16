@@ -541,7 +541,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/questionnaires", requireCoachAuth, async (_req, res) => {
     try {
       const questionnaires = await storage.getQuestionnaires();
-      res.json(questionnaires);
+      const activeQuestionnaires = questionnaires.filter(q => !q.deleted);
+      res.json(activeQuestionnaires);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch questionnaires" });
     }
