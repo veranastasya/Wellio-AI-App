@@ -666,6 +666,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           if (answers.unitsPreference) updateData.unitsPreference = answers.unitsPreference;
           
+          // Extract conditional goal-based fields
+          if (answers.targetWeight !== undefined && answers.targetWeight !== "") {
+            const parsedTargetWeight = parseFloat(answers.targetWeight);
+            if (isFinite(parsedTargetWeight)) updateData.targetWeight = parsedTargetWeight;
+          }
+          if (answers.targetBodyFat !== undefined && answers.targetBodyFat !== "") {
+            const parsedTargetBodyFat = parseFloat(answers.targetBodyFat);
+            if (isFinite(parsedTargetBodyFat)) updateData.targetBodyFat = parsedTargetBodyFat;
+          }
+          if (answers.goalWeight !== undefined && answers.goalWeight !== "") {
+            const parsedGoalWeight = parseFloat(answers.goalWeight);
+            if (isFinite(parsedGoalWeight)) updateData.goalWeight = parsedGoalWeight;
+          }
+          
           // Also update basic info if provided
           if (answers.phone || answers.phoneNumber) updateData.phone = answers.phone || answers.phoneNumber;
           if (answers.goalType || answers.goal || answers.primaryGoal) updateData.goalType = answers.goalType || answers.goal || answers.primaryGoal;
@@ -706,6 +720,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             activityLevel: answers.activityLevel || null,
             bodyFatPercentage: (answers.bodyFatPercentage !== undefined && answers.bodyFatPercentage !== "") ? parseFloat(answers.bodyFatPercentage) : null,
             unitsPreference: answers.unitsPreference || "us",
+            // Extract conditional goal-based fields
+            targetWeight: (answers.targetWeight !== undefined && answers.targetWeight !== "") ? parseFloat(answers.targetWeight) : null,
+            targetBodyFat: (answers.targetBodyFat !== undefined && answers.targetBodyFat !== "") ? parseFloat(answers.targetBodyFat) : null,
+            goalWeight: (answers.goalWeight !== undefined && answers.goalWeight !== "") ? parseFloat(answers.goalWeight) : null,
           };
 
           client = await storage.createClient(clientData);
