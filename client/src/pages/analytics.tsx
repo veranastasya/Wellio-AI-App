@@ -143,18 +143,18 @@ export default function Analytics() {
   const monthlyData = generateMonthlyData();
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="heading-analytics">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-analytics">
             Progress Analytics
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Comprehensive client performance insights and metrics
           </p>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-48" data-testid="select-timerange">
+          <SelectTrigger className="w-full sm:w-48" data-testid="select-timerange">
             <SelectValue placeholder="Select time range" />
           </SelectTrigger>
           <SelectContent>

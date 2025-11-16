@@ -316,10 +316,10 @@ export default function QuestionnaireBuilder() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+        <div className="flex flex-col gap-4 sm:gap-0 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Button
               variant="ghost"
               size="icon"
@@ -329,28 +329,31 @@ export default function QuestionnaireBuilder() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold">
+              <h1 className="text-2xl sm:text-3xl font-bold">
                 {isEditMode ? "Edit Questionnaire" : "New Questionnaire"}
               </h1>
-              <p className="text-muted-foreground mt-1">
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">
                 Create a custom intake form for your clients
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:flex-shrink-0">
             <Button
               variant="outline"
               onClick={() => handleSave("draft")}
               disabled={saveMutation.isPending}
               data-testid="button-save-draft"
+              className="flex-1 sm:flex-initial"
             >
               <Save className="h-4 w-4 mr-2" />
-              Save Draft
+              <span className="hidden sm:inline">Save Draft</span>
+              <span className="sm:hidden">Draft</span>
             </Button>
             <Button
               onClick={() => handleSave("published")}
               disabled={saveMutation.isPending}
               data-testid="button-publish"
+              className="flex-1 sm:flex-initial"
             >
               Publish
             </Button>
@@ -359,10 +362,10 @@ export default function QuestionnaireBuilder() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Form Settings</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">Form Settings</CardTitle>
             <CardDescription>Configure your questionnaire details</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-4 sm:p-6">
             <Form {...form}>
               <FormField
                 control={form.control}
@@ -466,10 +469,10 @@ export default function QuestionnaireBuilder() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Default Client Information</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">Default Client Information</CardTitle>
             <CardDescription>These fields are required and cannot be removed</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 p-4 sm:p-6">
             {["Client Name", "Email", "Phone"].map((field) => (
               <div
                 key={field}
@@ -488,18 +491,18 @@ export default function QuestionnaireBuilder() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="flex-1">
-                <CardTitle>Standard Health Metrics</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">Standard Health Metrics</CardTitle>
                 <CardDescription>Enable optional health-related fields for your intake form</CardDescription>
               </div>
-              <div className="flex-shrink-0">
+              <div className="w-full sm:w-auto sm:flex-shrink-0">
                 <FormField
                   control={form.control}
                   name="defaultUnitsPreference"
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="w-[140px]" data-testid="select-default-units-top">
+                      <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-default-units-top">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -512,7 +515,7 @@ export default function QuestionnaireBuilder() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 p-4 sm:p-6">
             {[
               { key: "sex" as const, label: "Sex", description: "Gender identification (Male, Female, Other, Prefer not to say)" },
               { key: "age" as const, label: "Age", description: "Client's current age in years" },
@@ -545,10 +548,10 @@ export default function QuestionnaireBuilder() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Custom Questions</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">Custom Questions</CardTitle>
             <CardDescription>Add additional questions to your form</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-4 sm:p-6">
             <Accordion type="multiple" className="w-full">
               {questions.map((question, index) => (
                 <QuestionEditor
@@ -563,9 +566,9 @@ export default function QuestionnaireBuilder() {
               ))}
             </Accordion>
 
-            <div className="flex items-center gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4">
               <Select value={newQuestionType} onValueChange={(v) => setNewQuestionType(v as QuestionType)}>
-                <SelectTrigger className="w-[200px]" data-testid="select-new-question-type">
+                <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-new-question-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -576,7 +579,7 @@ export default function QuestionnaireBuilder() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button onClick={addQuestion} variant="outline" data-testid="button-add-question">
+              <Button onClick={addQuestion} variant="outline" data-testid="button-add-question" className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Question
               </Button>

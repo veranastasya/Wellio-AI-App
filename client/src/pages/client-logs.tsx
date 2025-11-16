@@ -202,13 +202,13 @@ export default function ClientLogs() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-6 border-b border-border bg-background">
+      <div className="p-4 sm:p-6 border-b border-border bg-background">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <ClipboardList className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground" data-testid="heading-client-logs">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground" data-testid="heading-client-logs">
               Client Data Logs
             </h1>
             <p className="text-sm text-muted-foreground">
@@ -218,7 +218,7 @@ export default function ClientLogs() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="max-w-4xl mx-auto space-y-6">
           <Card data-testid="card-client-selector">
             <CardHeader>
@@ -250,22 +250,26 @@ export default function ClientLogs() {
               />
               
               <Tabs defaultValue="nutrition" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="nutrition" data-testid="tab-nutrition">
-                  <Apple className="w-4 h-4 mr-2" />
-                  Nutrition
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
+                <TabsTrigger value="nutrition" data-testid="tab-nutrition" className="text-xs sm:text-sm">
+                  <Apple className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Nutrition</span>
+                  <span className="sm:hidden">Nutr</span>
                 </TabsTrigger>
-                <TabsTrigger value="workout" data-testid="tab-workout">
-                  <Dumbbell className="w-4 h-4 mr-2" />
-                  Workout
+                <TabsTrigger value="workout" data-testid="tab-workout" className="text-xs sm:text-sm">
+                  <Dumbbell className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Workout</span>
+                  <span className="sm:hidden">Work</span>
                 </TabsTrigger>
-                <TabsTrigger value="checkin" data-testid="tab-checkin">
-                  <Scale className="w-4 h-4 mr-2" />
-                  Check-in
+                <TabsTrigger value="checkin" data-testid="tab-checkin" className="text-xs sm:text-sm">
+                  <Scale className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Check-in</span>
+                  <span className="sm:hidden">Check</span>
                 </TabsTrigger>
-                <TabsTrigger value="goals" data-testid="tab-goals">
-                  <Target className="w-4 h-4 mr-2" />
-                  Goals
+                <TabsTrigger value="goals" data-testid="tab-goals" className="text-xs sm:text-sm">
+                  <Target className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Goals</span>
+                  <span className="sm:hidden">Goals</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -294,7 +298,7 @@ export default function ClientLogs() {
                           )}
                         />
 
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                           <FormField
                             control={nutritionForm.control}
                             name="calories"
@@ -433,7 +437,7 @@ export default function ClientLogs() {
                           )}
                         />
 
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                           <FormField
                             control={workoutForm.control}
                             name="workoutType"
@@ -568,7 +572,7 @@ export default function ClientLogs() {
                           )}
                         />
 
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                           <FormField
                             control={checkInForm.control}
                             name="weight"

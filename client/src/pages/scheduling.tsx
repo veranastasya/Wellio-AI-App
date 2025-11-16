@@ -166,22 +166,22 @@ export default function Scheduling() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight" data-testid="heading-scheduling">Smart Scheduling</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-scheduling">Smart Scheduling</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
             Manage your coaching sessions and availability
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="button-book-session">
+            <Button data-testid="button-book-session" className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Book Session
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Book New Session</DialogTitle>
             </DialogHeader>
@@ -250,7 +250,7 @@ export default function Scheduling() {
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="startTime"
@@ -348,16 +348,16 @@ export default function Scheduling() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-7 gap-2">
+          <CardContent className="overflow-x-auto">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-full">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div key={day} className="text-center text-xs font-medium text-muted-foreground p-2">
+                <div key={day} className="text-center text-xs font-medium text-muted-foreground p-1 sm:p-2">
                   {day}
                 </div>
               ))}
               
               {Array.from({ length: startingDayOfWeek }).map((_, i) => (
-                <div key={`empty-${i}`} className="p-2" />
+                <div key={`empty-${i}`} className="p-1 sm:p-2" />
               ))}
               
               {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -371,14 +371,14 @@ export default function Scheduling() {
                 return (
                   <div
                     key={day}
-                    className={`min-h-20 p-2 rounded-lg border ${
+                    className={`min-h-16 sm:min-h-20 p-1 sm:p-2 rounded-lg border ${
                       isToday
                         ? "border-primary bg-primary/5"
                         : "border-border hover-elevate"
                     }`}
                     data-testid={`calendar-day-${day}`}
                   >
-                    <div className={`text-sm font-medium mb-1 ${isToday ? "text-primary" : ""}`}>
+                    <div className={`text-xs sm:text-sm font-medium mb-1 ${isToday ? "text-primary" : ""}`}>
                       {day}
                     </div>
                     <div className="space-y-1">

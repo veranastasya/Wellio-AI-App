@@ -109,18 +109,19 @@ export default function Questionnaires() {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Questionnaires</h1>
-            <p className="text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold">Questionnaires</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               Create and manage client intake forms
             </p>
           </div>
           <Button
             onClick={() => setLocation("/questionnaires/new")}
             data-testid="button-new-questionnaire"
+            className="w-full sm:w-auto"
           >
             <Plus className="h-4 w-4 mr-2" />
             New Questionnaire
@@ -154,53 +155,144 @@ export default function Questionnaires() {
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>All Questionnaires</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Responses</TableHead>
-                    <TableHead>Last Updated</TableHead>
-                    <TableHead className="w-[80px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {questionnaires.map((questionnaire) => (
-                    <TableRow 
-                      key={questionnaire.id} 
-                      data-testid={`row-questionnaire-${questionnaire.id}`}
-                      className="cursor-pointer hover-elevate"
-                      onClick={() => setLocation(`/questionnaires/${questionnaire.id}/edit`)}
-                    >
-                      <TableCell className="font-medium">
-                        {questionnaire.name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={questionnaire.status === "published" ? "default" : "secondary"}
-                          data-testid={`badge-status-${questionnaire.id}`}
-                        >
-                          {questionnaire.status === "published" ? "Published" : "Draft"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell data-testid={`text-responses-${questionnaire.id}`}>
-                        0
-                      </TableCell>
-                      <TableCell data-testid={`text-updated-${questionnaire.id}`}>
-                        {new Date(questionnaire.updatedAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+          <>
+            {/* Desktop Table View */}
+            <Card className="hidden md:block">
+              <CardHeader>
+                <CardTitle>All Questionnaires</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Responses</TableHead>
+                      <TableHead>Last Updated</TableHead>
+                      <TableHead className="w-[80px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {questionnaires.map((questionnaire) => (
+                      <TableRow 
+                        key={questionnaire.id} 
+                        data-testid={`row-questionnaire-${questionnaire.id}`}
+                        className="cursor-pointer hover-elevate"
+                        onClick={() => setLocation(`/questionnaires/${questionnaire.id}/edit`)}
+                      >
+                        <TableCell className="font-medium">
+                          {questionnaire.name}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={questionnaire.status === "published" ? "default" : "secondary"}
+                            data-testid={`badge-status-${questionnaire.id}`}
+                          >
+                            {questionnaire.status === "published" ? "Published" : "Draft"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell data-testid={`text-responses-${questionnaire.id}`}>
+                          0
+                        </TableCell>
+                        <TableCell data-testid={`text-updated-${questionnaire.id}`}>
+                          {new Date(questionnaire.updatedAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                data-testid={`button-actions-${questionnaire.id}`}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLocation(`/questionnaires/${questionnaire.id}/edit`);
+                                }}
+                                data-testid={`action-edit-${questionnaire.id}`}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLocation(`/questionnaires/${questionnaire.id}/preview`);
+                                }}
+                                data-testid={`action-preview-${questionnaire.id}`}
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                Preview
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  duplicateMutation.mutate(questionnaire);
+                                }}
+                                data-testid={`action-duplicate-${questionnaire.id}`}
+                              >
+                                <Copy className="h-4 w-4 mr-2" />
+                                Duplicate
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDelete(questionnaire.id);
+                                }}
+                                className="text-destructive"
+                                data-testid={`action-delete-${questionnaire.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {questionnaires.map((questionnaire) => (
+                <Card
+                  key={questionnaire.id}
+                  className="hover-elevate cursor-pointer"
+                  onClick={() => setLocation(`/questionnaires/${questionnaire.id}/edit`)}
+                  data-testid={`card-questionnaire-${questionnaire.id}`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-base mb-2">{questionnaire.name}</h3>
+                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                          <Badge
+                            variant={questionnaire.status === "published" ? "default" : "secondary"}
+                            data-testid={`badge-status-mobile-${questionnaire.id}`}
+                          >
+                            {questionnaire.status === "published" ? "Published" : "Draft"}
+                          </Badge>
+                          <span>•</span>
+                          <span>0 responses</span>
+                          <span>•</span>
+                          <span>{new Date(questionnaire.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              data-testid={`button-actions-${questionnaire.id}`}
+                              data-testid={`button-actions-mobile-${questionnaire.id}`}
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
@@ -211,7 +303,6 @@ export default function Questionnaires() {
                                 e.stopPropagation();
                                 setLocation(`/questionnaires/${questionnaire.id}/edit`);
                               }}
-                              data-testid={`action-edit-${questionnaire.id}`}
                             >
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
@@ -221,7 +312,6 @@ export default function Questionnaires() {
                                 e.stopPropagation();
                                 setLocation(`/questionnaires/${questionnaire.id}/preview`);
                               }}
-                              data-testid={`action-preview-${questionnaire.id}`}
                             >
                               <Eye className="h-4 w-4 mr-2" />
                               Preview
@@ -231,7 +321,6 @@ export default function Questionnaires() {
                                 e.stopPropagation();
                                 duplicateMutation.mutate(questionnaire);
                               }}
-                              data-testid={`action-duplicate-${questionnaire.id}`}
                             >
                               <Copy className="h-4 w-4 mr-2" />
                               Duplicate
@@ -242,20 +331,19 @@ export default function Questionnaires() {
                                 handleDelete(questionnaire.id);
                               }}
                               className="text-destructive"
-                              data-testid={`action-delete-${questionnaire.id}`}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
