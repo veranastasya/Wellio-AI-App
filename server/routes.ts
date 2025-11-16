@@ -861,8 +861,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Response not found" });
       }
       
+      // Fetch the questionnaire to get actual question text
+      const questionnaire = await storage.getQuestionnaire(response.questionnaireId);
+      const questions = questionnaire?.questions || [];
+      
       // Create PDF document
-      const doc = new PDFDocument({ margin: 50 });
+      const doc = new PDFDocument({ 
+        margin: 50,
+        size: 'LETTER',
+        bufferPages: true
+      });
       
       // Set response headers for PDF download
       const filename = `response-${response.clientName || 'client'}-${new Date(response.submittedAt).toISOString().split('T')[0]}.pdf`;
@@ -872,43 +880,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Pipe PDF to response
       doc.pipe(res);
       
-      // Add content to PDF
-      doc.fontSize(20).text('Questionnaire Response', { align: 'center' });
-      doc.moveDown();
+      // Add Wellio branding header
+      doc.fontSize(24).fillColor('#28A0AE').text('Wellio', { align: 'center' });
+      doc.moveDown(0.3);
+      doc.fontSize(18).fillColor('#000000').text('Questionnaire Response', { align: 'center' });
+      doc.moveDown(1);
       
-      // Add metadata
-      doc.fontSize(12);
-      doc.text(`Client: ${response.clientName || 'N/A'}`, { continued: false });
-      doc.text(`Questionnaire: ${response.questionnaireName || 'N/A'}`, { continued: false });
-      doc.text(`Submitted: ${new Date(response.submittedAt).toLocaleString()}`, { continued: false });
-      doc.moveDown();
+      // Add metadata section
+      doc.fontSize(12).fillColor('#666666');
+      doc.text(`Client: ${response.clientName || 'N/A'}`, { align: 'left' });
+      doc.text(`Questionnaire: ${response.questionnaireName || 'N/A'}`, { align: 'left' });
+      doc.text(`Submitted: ${new Date(response.submittedAt).toLocaleString()}`, { align: 'left' });
+      doc.moveDown(1.5);
       
-      // Add answers
-      doc.fontSize(14).text('Responses:', { underline: true });
-      doc.moveDown();
+      // Add separator line
+      doc.strokeColor('#28A0AE').lineWidth(2).moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+      doc.moveDown(1);
       
+      // Add responses section
       const answers = response.answers as any;
       if (answers && typeof answers === 'object') {
-        doc.fontSize(11);
-        Object.entries(answers).forEach(([key, value]) => {
-          // Format the key (convert camelCase to Title Case)
-          const formattedKey = key
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, str => str.toUpperCase())
-            .trim();
-          
-          // Format the value
-          let formattedValue = String(value);
-          if (Array.isArray(value)) {
-            formattedValue = value.join(', ');
-          } else if (typeof value === 'object' && value !== null) {
-            formattedValue = JSON.stringify(value, null, 2);
+        Object.entries(answers).forEach(([key, value], index) => {
+          // Skip empty or null values and internal fields
+          if (value === null || value === undefined || value === '' || 
+              key === 'consent' || key === 'consentGiven') {
+            return;
           }
           
-          doc.text(`${formattedKey}:`, { continued: true });
-          doc.text(` ${formattedValue}`);
-          doc.moveDown(0.5);
+          // Find the actual question text from questionnaire definition
+          const questionObj = (questions as any[]).find((q: any) => q.id === key);
+          const questionText = questionObj?.label || questionObj?.text || 
+            key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
+          
+          // Format the answer value
+          let formattedAnswer = '';
+          if (typeof value === 'boolean') {
+            formattedAnswer = value ? 'Yes' : 'No';
+          } else if (Array.isArray(value)) {
+            formattedAnswer = value.join(', ');
+          } else if (typeof value === 'object' && value !== null) {
+            formattedAnswer = JSON.stringify(value, null, 2);
+          } else {
+            formattedAnswer = String(value);
+          }
+          
+          // Question text (bold, primary color)
+          doc.fontSize(11).fillColor('#28A0AE').font('Helvetica-Bold');
+          doc.text(questionText, { continued: false });
+          doc.moveDown(0.3);
+          
+          // Answer text (normal, black)
+          doc.fontSize(10).fillColor('#000000').font('Helvetica');
+          doc.text(formattedAnswer, { 
+            align: 'left',
+            indent: 20
+          });
+          doc.moveDown(0.8);
+          
+          // Add subtle separator between questions
+          if (index < Object.keys(answers).length - 1) {
+            doc.strokeColor('#E0E0E0').lineWidth(0.5)
+              .moveTo(70, doc.y).lineTo(542, doc.y).stroke();
+            doc.moveDown(0.5);
+          }
         });
+      }
+      
+      // Add footer
+      const pageCount = doc.bufferedPageRange().count;
+      for (let i = 0; i < pageCount; i++) {
+        doc.switchToPage(i);
+        doc.fontSize(8).fillColor('#999999');
+        doc.text(
+          `Page ${i + 1} of ${pageCount}`,
+          50,
+          doc.page.height - 50,
+          { align: 'center' }
+        );
       }
       
       // Finalize the PDF
