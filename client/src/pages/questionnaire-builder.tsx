@@ -68,10 +68,10 @@ export default function QuestionnaireBuilder() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestionType, setNewQuestionType] = useState<QuestionType>("short_text");
   const [standardFields, setStandardFields] = useState({
-    sex: false,
-    weight: false,
-    age: false,
-    height: false,
+    sex: true,
+    weight: true,
+    age: true,
+    height: true,
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -104,10 +104,18 @@ export default function QuestionnaireBuilder() {
       
       if (questionnaire.standardFields) {
         setStandardFields({
-          sex: questionnaire.standardFields.sex || false,
-          weight: questionnaire.standardFields.weight || false,
-          age: questionnaire.standardFields.age || false,
-          height: questionnaire.standardFields.height || false,
+          sex: questionnaire.standardFields.sex !== false,
+          weight: questionnaire.standardFields.weight !== false,
+          age: questionnaire.standardFields.age !== false,
+          height: questionnaire.standardFields.height !== false,
+        });
+      } else {
+        // Default to all enabled for questionnaires without standardFields
+        setStandardFields({
+          sex: true,
+          weight: true,
+          age: true,
+          height: true,
         });
       }
     }
