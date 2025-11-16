@@ -51,6 +51,11 @@ interface ClientContext {
     duration: number | null;
     intensity: string | null;
   }>;
+  questionnaire_data?: Array<{
+    questionnaire_name: string;
+    submitted_at: string;
+    data: Record<string, any>;
+  }>;
 }
 
 function generateInitialPrompt(context: ClientContext): string {
@@ -486,6 +491,31 @@ export default function PlanBuilder() {
                             <div className="text-muted-foreground">
                               {workout.type} • {workout.duration}min • {workout.intensity}
                             </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {clientContext.questionnaire_data && clientContext.questionnaire_data.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4" />
+                        <h4 className="font-semibold text-sm">Questionnaire Data</h4>
+                      </div>
+                      <div className="space-y-2">
+                        {clientContext.questionnaire_data.map((response, idx) => (
+                          <div key={idx} className="text-xs">
+                            <div className="font-medium">{response.questionnaire_name}</div>
+                            <div className="text-muted-foreground">
+                              {new Date(response.submitted_at).toLocaleDateString()}
+                            </div>
+                            <Badge variant="secondary" className="mt-1 text-xs">
+                              Pinned for AI
+                            </Badge>
                           </div>
                         ))}
                       </div>

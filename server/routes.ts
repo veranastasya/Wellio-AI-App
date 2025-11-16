@@ -1723,10 +1723,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allNutritionLogs = await storage.getNutritionLogs();
       const allWorkoutLogs = await storage.getWorkoutLogs();
       const allCheckIns = await storage.getCheckIns();
+      const allResponses = await storage.getQuestionnaireResponses();
 
       const nutritionLogs = allNutritionLogs.filter(n => n.clientId === req.params.id);
       const workoutLogs = allWorkoutLogs.filter(w => w.clientId === req.params.id);
       const checkIns = allCheckIns.filter(c => c.clientId === req.params.id);
+      const pinnedResponses = allResponses.filter(r => r.clientId === req.params.id && r.pinnedForAI);
 
       const context = {
         client: {
@@ -1768,6 +1770,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           duration: w.duration,
           intensity: w.intensity,
         })),
+        questionnaire_data: pinnedResponses.map(r => ({
+          questionnaire_name: r.questionnaireName,
+          submitted_at: r.submittedAt,
+          data: r.data,
+        })),
       };
 
       res.json(context);
@@ -1802,6 +1809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           goals: z.array(z.any()).optional(),
           recent_nutrition: z.array(z.any()).optional(),
           recent_workouts: z.array(z.any()).optional(),
+          questionnaire_data: z.array(z.any()).optional(),
         }),
       });
 
