@@ -513,8 +513,8 @@ export default function QuestionnaireBuilder() {
             {[
               { key: "sex" as const, label: "Sex", description: "Gender identification (Male, Female, Other, Prefer not to say)" },
               { key: "age" as const, label: "Age", description: "Client's current age in years" },
-              { key: "weight" as const, label: "Weight", description: "Current weight in pounds" },
-              { key: "height" as const, label: "Height", description: "Current height in inches" },
+              { key: "weight" as const, label: "Weight", description: "Current weight in kg or lbs" },
+              { key: "height" as const, label: "Height", description: "Current height in cm or ft/in" },
               { key: "activityLevel" as const, label: "Activity Level", description: "Physical activity level (Sedentary to Extra Active)" },
               { key: "bodyFatPercentage" as const, label: "Body Fat %", description: "Body fat percentage (0-100%)" },
             ].map((field) => (
