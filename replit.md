@@ -30,7 +30,7 @@ Wellio is built with a React frontend and an Express.js backend. Data is stored 
 - **AI Insights Dashboard**: Provides AI-powered trend analysis for nutrition, activity, and progress, with actionable recommendations from OpenAI GPT-4 and integration of active goals progress.
 - **Goal Setting & Progress Tracking**: CRUD for client goals with types, target/current value tracking, deadlines, status, and priority levels.
 - **Client Data Logs**: Tabbed interface for recording nutrition, workout, check-in data, and managing client goals.
-- **AI-Assisted Plan Builder**: Interactive plan creation using OpenAI GPT-4 with client context display, conversation memory, streaming responses, plan preview, save/publish workflow, and professional PDF generation.
+- **AI-Assisted Plan Builder**: Interactive plan creation using OpenAI GPT-4 with client context display, conversation memory, streaming responses, plan preview, save/publish workflow, and professional PDF generation. Implements optimistic UI updates for instant message display with full race-condition protection during cross-client navigation.
 - **Wearables Integration (ROOK API)**: Two-tier architecture for 400+ devices (Garmin, Fitbit, Oura, Whoop) via web API and Apple Health via native iOS app (ROOK iOS SDK). Data delivered via webhooks with HMAC signature verification.
 - **Client Portal**: Secure password-based authentication, client dashboard with Home, Forms, Chat, and Plan sections, and fully responsive design.
 
