@@ -1602,6 +1602,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           height: client.height || null,
           activityLevel: client.activityLevel || null,
           bodyFatPercentage: client.bodyFatPercentage || null,
+          // Conditional goal-based fields
+          targetWeight: client.targetWeight || null,
+          targetBodyFat: client.targetBodyFat || null,
+          goalWeight: client.goalWeight || null,
         },
         goals: goals.map(g => ({
           type: g.goalType,

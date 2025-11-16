@@ -33,6 +33,9 @@ interface ClientContext {
     height?: number | null;
     activityLevel?: string | null;
     bodyFatPercentage?: number | null;
+    targetWeight?: number | null;
+    targetBodyFat?: number | null;
+    goalWeight?: number | null;
   };
   goals?: Goal[];
   recent_nutrition?: Array<{
@@ -86,6 +89,17 @@ function generateInitialPrompt(context: ClientContext): string {
     prompt += `\n- Primary Goal: ${getGoalTypeLabel(client.goal)}`;
     if (client.goalDescription) {
       prompt += ` - ${client.goalDescription}`;
+    }
+    
+    // Add target values based on goal type
+    if (client.goal === 'lose_weight' && client.targetWeight) {
+      prompt += `\n  - Target Weight: ${client.targetWeight} lbs`;
+    }
+    if (client.goal === 'improve_body_composition' && client.targetBodyFat) {
+      prompt += `\n  - Target Body Fat: ${client.targetBodyFat}%`;
+    }
+    if (client.goal === 'maintain_weight' && client.goalWeight) {
+      prompt += `\n  - Goal Weight: ${client.goalWeight} lbs`;
     }
   }
 
