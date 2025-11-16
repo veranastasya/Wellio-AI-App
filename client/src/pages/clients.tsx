@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus, Sparkles } from "lucide-react";
 import type { Questionnaire } from "@shared/schema";
 import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel } from "@shared/schema";
+import { type UnitsPreference, UNITS_LABELS, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -472,6 +473,12 @@ function ClientForm({
   onSubmit: (data: InsertClient) => void;
   isLoading: boolean;
 }) {
+  const [unitsPreference, setUnitsPreference] = useState<UnitsPreference>(
+    (client?.unitsPreference as UnitsPreference) || "us"
+  );
+  const [heightFeet, setHeightFeet] = useState<string>("");
+  const [heightInches, setHeightInches] = useState<string>("");
+  
   const form = useForm<InsertClient>({
     resolver: zodResolver(insertClientSchema),
     defaultValues: {
@@ -489,6 +496,7 @@ function ClientForm({
       weight: client?.weight || undefined,
       age: client?.age || undefined,
       height: client?.height || undefined,
+      unitsPreference: (client?.unitsPreference as UnitsPreference) || "us",
     },
   });
 
@@ -509,7 +517,15 @@ function ClientForm({
         weight: client.weight || undefined,
         age: client.age || undefined,
         height: client.height || undefined,
+        unitsPreference: (client.unitsPreference as UnitsPreference) || "us",
       });
+      setUnitsPreference((client.unitsPreference as UnitsPreference) || "us");
+      
+      if (client.height && isFinite(client.height)) {
+        const { feet, inches } = inchesToFeetAndInches(client.height);
+        setHeightFeet(feet.toString());
+        setHeightInches(inches.toString());
+      }
     }
   }, [client, form]);
 
@@ -592,6 +608,35 @@ function ClientForm({
 
         <div className="space-y-3 pt-2">
           <h3 className="text-sm font-semibold text-foreground">Health Metrics (Optional)</h3>
+          
+          <FormField
+            control={form.control}
+            name="unitsPreference"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Units</FormLabel>
+                <Select
+                  onValueChange={(value: UnitsPreference) => {
+                    field.onChange(value);
+                    setUnitsPreference(value);
+                  }}
+                  value={unitsPreference}
+                >
+                  <FormControl>
+                    <SelectTrigger data-testid="select-units">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
+                    <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -640,54 +685,131 @@ function ClientForm({
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="weight"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Weight (lbs)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      max="1000"
-                      placeholder="155.5"
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                      data-testid="input-client-weight"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <FormField
+            control={form.control}
+            name="weight"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Weight ({unitsPreference === "us" ? "lbs" : "kg"})</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="1000"
+                    placeholder={unitsPreference === "us" ? "155.5" : "70.5"}
+                    value={
+                      unitsPreference === "metric" && field.value != null && isFinite(field.value)
+                        ? lbsToKg(field.value)
+                        : field.value ?? ""
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (!value) {
+                        field.onChange(undefined);
+                        return;
+                      }
+                      const numValue = parseFloat(value);
+                      const canonicalValue = unitsPreference === "metric" && isFinite(numValue)
+                        ? kgToLbs(numValue)
+                        : numValue;
+                      field.onChange(isFinite(canonicalValue) ? canonicalValue : undefined);
+                    }}
+                    data-testid="input-client-weight"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          
+          {unitsPreference === "us" && (
             <FormField
               control={form.control}
               name="height"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Height (inches)</FormLabel>
+                  <FormLabel>Height</FormLabel>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="8"
+                        placeholder="5 ft"
+                        value={heightFeet}
+                        onChange={(e) => {
+                          const feet = parseFloat(e.target.value) || 0;
+                          const inches = parseFloat(heightInches) || 0;
+                          const totalInches = feetAndInchesToInches(feet, inches);
+                          setHeightFeet(e.target.value);
+                          field.onChange(isFinite(totalInches) ? totalInches : undefined);
+                        }}
+                        data-testid="input-client-height-feet"
+                      />
+                    </FormControl>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="11.9"
+                        placeholder="8 in"
+                        value={heightInches}
+                        onChange={(e) => {
+                          const feet = parseFloat(heightFeet) || 0;
+                          const inches = parseFloat(e.target.value) || 0;
+                          const totalInches = feetAndInchesToInches(feet, inches);
+                          setHeightInches(e.target.value);
+                          field.onChange(isFinite(totalInches) ? totalInches : undefined);
+                        }}
+                        data-testid="input-client-height-inches"
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+          
+          {unitsPreference === "metric" && (
+            <FormField
+              control={form.control}
+              name="height"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Height (cm)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       step="0.1"
                       min="0"
-                      max="120"
-                      placeholder="68"
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                      data-testid="input-client-height"
+                      max="300"
+                      placeholder="173"
+                      value={
+                        field.value != null && isFinite(field.value)
+                          ? inchesToCm(field.value)
+                          : ""
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (!value) {
+                          field.onChange(undefined);
+                          return;
+                        }
+                        const numValue = parseFloat(value);
+                        const canonicalValue = isFinite(numValue) ? cmToInches(numValue) : undefined;
+                        field.onChange(canonicalValue);
+                      }}
+                      data-testid="input-client-height-cm"
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-          </div>
+          )}
           
           <div className="grid grid-cols-2 gap-4">
             <FormField
