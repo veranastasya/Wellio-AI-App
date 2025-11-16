@@ -96,7 +96,7 @@ export default function ClientOnboard() {
 
   const submitMutation = useMutation({
     mutationFn: async (formAnswers: Record<string, any>) => {
-      const { weightCanonical, heightCanonical, heightFeet, heightInches, ...otherAnswers } = formAnswers;
+      const { weightCanonical, heightCanonical, heightFeet, heightInches, heightCm, ...otherAnswers } = formAnswers;
       const submissionAnswers: Record<string, any> = {
         ...otherAnswers,
         weight: weightCanonical,
@@ -764,14 +764,11 @@ export default function ClientOnboard() {
                           min="0"
                           max="300"
                           data-testid="input-height-cm"
-                          value={
-                            answers.heightCanonical
-                              ? inchesToCm(parseFloat(answers.heightCanonical))
-                              : ""
-                          }
+                          value={answers.heightCm || ""}
                           onChange={(e) => {
                             const value = e.target.value;
                             const canonicalValue = value ? cmToInches(parseFloat(value)).toString() : "";
+                            handleAnswerChange("heightCm", value);
                             handleAnswerChange("heightCanonical", canonicalValue);
                           }}
                           placeholder="Enter your height in cm"
