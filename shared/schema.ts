@@ -116,6 +116,7 @@ export const questionnaires = pgTable("questionnaires", {
   consentText: text("consent_text"),
   consentRequired: boolean("consent_required").notNull().default(false),
   confirmationMessage: text("confirmation_message"),
+  defaultUnitsPreference: text("default_units_preference").notNull().default("us"),
   standardFields: json("standard_fields").$type<{
     sex?: boolean;
     weight?: boolean;
