@@ -547,12 +547,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/questionnaires/:id", requireCoachAuth, async (req, res) => {
+  app.get("/api/questionnaires/:id", async (req, res) => {
     try {
       const questionnaire = await storage.getQuestionnaire(req.params.id);
       if (!questionnaire) {
         return res.status(404).json({ error: "Questionnaire not found" });
       }
+      
+      // Allow public access to published questionnaires (for client onboarding)
+      // Require coach authentication for draft questionnaires
+      if (questionnaire.status === 'draft' && !req.session?.coachId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
       res.json(questionnaire);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch questionnaire" });
