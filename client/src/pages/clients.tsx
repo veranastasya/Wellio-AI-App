@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus, Sparkles, User, Scale, Ruler, Activity as ActivityIcon } from "lucide-react";
-import type { Questionnaire } from "@shared/schema";
+import type { Questionnaire, GoalType } from "@shared/schema";
 import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +47,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Clients() {
+  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -334,10 +335,7 @@ export default function Clients() {
               key={client.id} 
               className="hover-elevate cursor-pointer" 
               data-testid={`card-client-${index}`}
-              onClick={() => {
-                setSelectedClient(client);
-                setIsEditOpen(true);
-              }}
+              onClick={() => setLocation(`/coach/clients/${client.id}`)}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
