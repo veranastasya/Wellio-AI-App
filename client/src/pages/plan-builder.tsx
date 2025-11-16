@@ -27,6 +27,12 @@ interface ClientContext {
     goalDescription: string | null;
     current_weight: number | null;
     notes: string | null;
+    sex?: string | null;
+    age?: number | null;
+    weight?: number | null;
+    height?: number | null;
+    activityLevel?: string | null;
+    bodyFatPercentage?: number | null;
   };
   goals?: Goal[];
   recent_nutrition?: Array<{
@@ -44,6 +50,102 @@ interface ClientContext {
   }>;
 }
 
+function generateInitialPrompt(context: ClientContext): string {
+  const { client, goals, recent_nutrition, recent_workouts } = context;
+  
+  let prompt = `Create a comprehensive wellness plan for ${client.name}.
+
+**Client Profile:**`;
+
+  // Demographics
+  if (client.sex || client.age) {
+    prompt += `\n- Demographics: `;
+    const demo = [];
+    if (client.sex) demo.push(client.sex);
+    if (client.age) demo.push(`${client.age} years old`);
+    prompt += demo.join(', ');
+  }
+
+  // Physical metrics
+  const metrics = [];
+  if (client.weight) metrics.push(`Weight: ${client.weight} lbs`);
+  if (client.height) {
+    const feet = Math.floor(client.height / 12);
+    const inches = client.height % 12;
+    metrics.push(`Height: ${feet}'${inches}"`);
+  }
+  if (client.bodyFatPercentage) metrics.push(`Body Fat: ${client.bodyFatPercentage}%`);
+  if (client.activityLevel) metrics.push(`Activity Level: ${client.activityLevel}`);
+  
+  if (metrics.length > 0) {
+    prompt += `\n- Physical Metrics: ${metrics.join(' | ')}`;
+  }
+
+  // Primary goal
+  if (client.goal) {
+    prompt += `\n- Primary Goal: ${getGoalTypeLabel(client.goal)}`;
+    if (client.goalDescription) {
+      prompt += ` - ${client.goalDescription}`;
+    }
+  }
+
+  // Specific goals
+  if (goals && goals.length > 0) {
+    const activeGoals = goals.filter(g => g.status === 'active');
+    if (activeGoals.length > 0) {
+      prompt += `\n\n**Active Goals:**`;
+      activeGoals.forEach(g => {
+        prompt += `\n- ${getGoalTypeLabel(g.goalType)}: `;
+        if (g.currentValue && g.targetValue) {
+          prompt += `Current ${g.currentValue} → Target ${g.targetValue}`;
+        } else if (g.targetValue) {
+          prompt += `Target ${g.targetValue}`;
+        }
+        if (g.deadline) {
+          prompt += ` (Deadline: ${g.deadline})`;
+        }
+      });
+    }
+  }
+
+  // Recent nutrition data
+  if (recent_nutrition && recent_nutrition.length > 0) {
+    const validNutrition = recent_nutrition.filter(n => n.calories || n.protein || n.carbs || n.fats);
+    if (validNutrition.length > 0) {
+      prompt += `\n\n**Recent Nutrition (Last ${validNutrition.length} days):**`;
+      const avgCalories = validNutrition.reduce((sum, n) => sum + (n.calories || 0), 0) / validNutrition.length;
+      const avgProtein = validNutrition.reduce((sum, n) => sum + (n.protein || 0), 0) / validNutrition.length;
+      const avgCarbs = validNutrition.reduce((sum, n) => sum + (n.carbs || 0), 0) / validNutrition.length;
+      const avgFats = validNutrition.reduce((sum, n) => sum + (n.fats || 0), 0) / validNutrition.length;
+      
+      prompt += `\n- Average Daily: ${Math.round(avgCalories)} cal | ${Math.round(avgProtein)}g protein | ${Math.round(avgCarbs)}g carbs | ${Math.round(avgFats)}g fats`;
+    }
+  }
+
+  // Recent workout data
+  if (recent_workouts && recent_workouts.length > 0) {
+    const validWorkouts = recent_workouts.filter(w => w.type);
+    if (validWorkouts.length > 0) {
+      prompt += `\n\n**Recent Workouts (Last ${validWorkouts.length} days):**`;
+      const workoutTypes = Array.from(new Set(validWorkouts.map(w => w.type)));
+      prompt += `\n- Activity Types: ${workoutTypes.join(', ')}`;
+      const avgDuration = validWorkouts.reduce((sum, w) => sum + (w.duration || 0), 0) / validWorkouts.length;
+      if (avgDuration > 0) {
+        prompt += `\n- Average Duration: ${Math.round(avgDuration)} minutes`;
+      }
+    }
+  }
+
+  // Coach notes
+  if (client.notes) {
+    prompt += `\n\n**Coach Notes:**\n${client.notes}`;
+  }
+
+  prompt += `\n\n---\n\nBased on this comprehensive profile, please create a personalized wellness plan that addresses their goals, current fitness level, and activity patterns. Include specific recommendations for nutrition, exercise, and lifestyle adjustments.`;
+
+  return prompt;
+}
+
 export default function PlanBuilder() {
   const [, params] = useRoute("/coach/plan-builder/:clientId");
   const clientId = params?.clientId;
@@ -54,6 +156,7 @@ export default function PlanBuilder() {
   const [input, setInput] = useState("");
   const [planName, setPlanName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: allClients } = useQuery<Client[]>({
@@ -71,27 +174,38 @@ export default function PlanBuilder() {
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
+      if (!clientContext || !clientContext.client) {
+        throw new Error("Client context not loaded");
+      }
+
       const newMessages = [...messages, { role: "user" as const, content: userMessage }];
-      setMessages(newMessages);
       setInput("");
 
       const response = await apiRequest("POST", "/api/plans/chat", {
         messages: newMessages,
         clientContext,
       });
-      return response.json();
+      const data = await response.json();
+      return { newMessages, aiMessage: data.message };
     },
     onSuccess: (data) => {
-      if (data.message) {
-        setMessages(prev => [...prev, data.message]);
-      }
+      // Update messages with both user message and AI response
+      setMessages(prev => {
+        // Add user message if not already there
+        const hasUserMessage = prev.some(m => m.content === data.newMessages[data.newMessages.length - 1].content);
+        const updated = hasUserMessage ? prev : [...prev, data.newMessages[data.newMessages.length - 1]];
+        // Add AI message
+        return data.aiMessage ? [...updated, data.aiMessage] : updated;
+      });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to get AI response. Please try again.",
+        description: error.message || "Failed to get AI response. Please try again.",
         variant: "destructive",
       });
+      // Reset initialization flag if auto-prompt fails so it can retry
+      setHasInitialized(false);
     },
   });
 
@@ -200,6 +314,22 @@ export default function PlanBuilder() {
       setIsSaving(false);
     }
   };
+
+  // Auto-generate and send initial prompt when context loads
+  useEffect(() => {
+    if (clientContext && clientContext.client && !hasInitialized && messages.length === 0 && !chatMutation.isPending) {
+      const initialPrompt = generateInitialPrompt(clientContext);
+      setHasInitialized(true);
+      chatMutation.mutate(initialPrompt);
+    }
+  }, [clientContext, hasInitialized, messages.length, chatMutation.isPending]);
+
+  // Reset initialization when client changes
+  useEffect(() => {
+    setHasInitialized(false);
+    setMessages([]);
+    setPlanName("");
+  }, [clientId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
