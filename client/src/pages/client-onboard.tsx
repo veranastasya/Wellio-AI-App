@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, AlertCircle, Upload, X } from "lucide-react";
 import type { Question, Questionnaire } from "@shared/schema";
-import { normalizeQuestion, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS } from "@shared/schema";
+import { normalizeQuestion, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, GOAL_TYPES, GOAL_TYPE_LABELS } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 
 export default function ClientOnboard() {
@@ -644,7 +644,7 @@ export default function ClientOnboard() {
                   />
                 </div>
                 
-                {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height || questionnaire.standardFields.activityLevel || questionnaire.standardFields.bodyFatPercentage) && (
+                {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height || questionnaire.standardFields.activityLevel || questionnaire.standardFields.bodyFatPercentage || questionnaire.standardFields.goal) && (
                   <>
                     {questionnaire.standardFields.sex && (
                       <div className="space-y-2" data-testid="standard-field-sex">
@@ -811,6 +811,27 @@ export default function ClientOnboard() {
                           onChange={(e) => handleAnswerChange("bodyFatPercentage", e.target.value)}
                           placeholder="Enter your body fat percentage"
                         />
+                      </div>
+                    )}
+                    
+                    {questionnaire.standardFields.goal && (
+                      <div className="space-y-2" data-testid="standard-field-goal">
+                        <Label htmlFor="goalType">Primary Goal</Label>
+                        <Select
+                          value={answers.goalType || ""}
+                          onValueChange={(value) => handleAnswerChange("goalType", value)}
+                        >
+                          <SelectTrigger data-testid="select-goal-type">
+                            <SelectValue placeholder="Select your primary goal" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {GOAL_TYPES.map((goal) => (
+                              <SelectItem key={goal} value={goal}>
+                                {GOAL_TYPE_LABELS[goal]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
                   </>
