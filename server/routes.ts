@@ -858,6 +858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the response
       const response = await storage.getResponse(id);
       if (!response) {
+        console.error(`PDF generation failed: Response not found for id ${id}`);
         return res.status(404).json({ error: "Response not found" });
       }
       
@@ -865,11 +866,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const questionnaire = await storage.getQuestionnaire(response.questionnaireId);
       const questions = questionnaire?.questions || [];
       
-      // Create PDF document
+      console.log(`Generating PDF for response ${id}, client: ${response.clientName}`);
+      
+      // Create PDF document without buffering
       const doc = new PDFDocument({ 
         margin: 50,
-        size: 'LETTER',
-        bufferPages: true
+        size: 'LETTER'
       });
       
       // Set response headers for PDF download
@@ -879,6 +881,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Pipe PDF to response
       doc.pipe(res);
+      
+      // Handle stream errors
+      doc.on('error', (err) => {
+        console.error('PDF generation stream error:', err);
+      });
       
       // Add Wellio branding header
       doc.fontSize(24).fillColor('#28A0AE').text('Wellio', { align: 'center' });
@@ -946,23 +953,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Add footer
-      const pageCount = doc.bufferedPageRange().count;
-      for (let i = 0; i < pageCount; i++) {
-        doc.switchToPage(i);
-        doc.fontSize(8).fillColor('#999999');
-        doc.text(
-          `Page ${i + 1} of ${pageCount}`,
-          50,
-          doc.page.height - 50,
-          { align: 'center' }
-        );
-      }
+      // Add simple footer with generation date
+      doc.moveDown(2);
+      doc.fontSize(8).fillColor('#999999');
+      doc.text(
+        `Generated on ${new Date().toLocaleString()}`,
+        50,
+        doc.page.height - 50,
+        { align: 'center' }
+      );
       
-      // Finalize the PDF
+      // Finalize the PDF and close the stream
       doc.end();
+      
+      console.log(`PDF generation completed successfully for response ${id}`);
     } catch (error) {
-      console.error("Error generating PDF:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`Error generating PDF for response ${req.params.id}:`, errorMessage);
       if (!res.headersSent) {
         res.status(500).json({ error: "Failed to generate PDF" });
       }
