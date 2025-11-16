@@ -807,7 +807,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all responses for this client
       const clientResponses = await storage.getResponsesByClient(clientId);
-      res.json(clientResponses);
+      
+      // Fetch questionnaire definitions for each response to include question text
+      const responsesWithQuestions = await Promise.all(
+        clientResponses.map(async (response) => {
+          const questionnaire = await storage.getQuestionnaire(response.questionnaireId);
+          return {
+            ...response,
+            questionnaireQuestions: questionnaire?.questions || [],
+          };
+        })
+      );
+      
+      res.json(responsesWithQuestions);
     } catch (error) {
       console.error("Error fetching client responses:", error);
       res.status(500).json({ error: "Failed to fetch client responses" });
@@ -1723,7 +1735,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allNutritionLogs = await storage.getNutritionLogs();
       const allWorkoutLogs = await storage.getWorkoutLogs();
       const allCheckIns = await storage.getCheckIns();
-      const allResponses = await storage.getQuestionnaireResponses();
+      const allResponses = await storage.getResponses();
 
       const nutritionLogs = allNutritionLogs.filter(n => n.clientId === req.params.id);
       const workoutLogs = allWorkoutLogs.filter(w => w.clientId === req.params.id);

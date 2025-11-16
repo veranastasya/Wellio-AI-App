@@ -480,8 +480,12 @@ export default function CoachClientDetail() {
                                   return null;
                                 }
 
-                                // Format the question key to be readable
-                                const question = key
+                                // Find the actual question text from the questionnaire definition
+                                const questionnaireQuestions = (response as any).questionnaireQuestions || [];
+                                const questionObj = questionnaireQuestions.find((q: any) => q.id === key);
+                                
+                                // Use actual question label if found, otherwise format the key
+                                const questionText = questionObj?.label || questionObj?.text || key
                                   .replace(/([A-Z])/g, ' $1')
                                   .replace(/^./, (str) => str.toUpperCase())
                                   .replace(/_/g, ' ');
@@ -503,7 +507,7 @@ export default function CoachClientDetail() {
                                     data-testid={`answer-${response.id}-${key}`}
                                   >
                                     <div className="text-sm font-medium text-foreground mb-1">
-                                      {question}
+                                      {questionText}
                                     </div>
                                     <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                                       {formattedAnswer}
