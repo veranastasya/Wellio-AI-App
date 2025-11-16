@@ -52,17 +52,45 @@ export default function CoachClientDetail() {
 
   const generatePdfMutation = useMutation({
     mutationFn: async (responseId: string) => {
-      return await apiRequest("POST", `/api/responses/${responseId}/generate-pdf`);
+      const response = await fetch(`/api/responses/${responseId}/generate-pdf`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+      
+      // Get the blob
+      const blob = await response.blob();
+      
+      // Extract filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'questionnaire-response.pdf';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      // Create blob URL and trigger download
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+      
+      return { success: true };
     },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "responses"] });
+    onSuccess: () => {
       toast({
         title: "Success",
-        description: "PDF generated successfully",
+        description: "PDF downloaded successfully",
       });
-      if (data.pdfUrl) {
-        window.open(data.pdfUrl, '_blank');
-      }
     },
     onError: () => {
       toast({
