@@ -192,27 +192,53 @@ export default function PlanBuilder() {
         throw new Error("Client context not loaded");
       }
 
-      const newMessages = [...messages, { role: "user" as const, content: userMessage }];
+      const userMsg = { role: "user" as const, content: userMessage };
+      const currentClientId = clientId;
+      
+      // Optimistic update: Add user message immediately to UI
+      setMessages(prev => [...prev, userMsg]);
       setInput("");
 
+      const newMessages = [...messages, userMsg];
       const response = await apiRequest("POST", "/api/plans/chat", {
         messages: newMessages,
         clientContext,
       });
       const data = await response.json();
-      return { newMessages, aiMessage: data.message };
+      return { userMsg, aiMessage: data.message, requestClientId: currentClientId };
+    },
+    onMutate: (userMessage) => {
+      // Store context for error rollback
+      return { requestClientId: clientId, userMessage };
     },
     onSuccess: (data) => {
-      // Update messages with both user message and AI response
+      // Guard against cross-client state pollution
+      if (data.requestClientId !== clientId) {
+        return;
+      }
+
+      // Ensure user message is present before adding AI response
       setMessages(prev => {
-        // Add user message if not already there
-        const hasUserMessage = prev.some(m => m.content === data.newMessages[data.newMessages.length - 1].content);
-        const updated = hasUserMessage ? prev : [...prev, data.newMessages[data.newMessages.length - 1]];
-        // Add AI message
-        return data.aiMessage ? [...updated, data.aiMessage] : updated;
+        const hasUserMessage = prev.some(m => m.role === "user" && m.content === data.userMsg.content);
+        const withUser = hasUserMessage ? prev : [...prev, data.userMsg];
+        return data.aiMessage ? [...withUser, data.aiMessage] : withUser;
       });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      // Guard against cross-client state pollution during error rollback
+      if (context?.requestClientId !== clientId) {
+        return;
+      }
+
+      // Remove the specific optimistically added user message
+      if (context?.userMessage) {
+        setMessages(prev => prev.filter((m, idx, arr) => {
+          // Remove the last user message that matches the failed request
+          const isLastMatch = m.role === "user" && m.content === context.userMessage && idx === arr.length - 1;
+          return !isLastMatch;
+        }));
+      }
+      
       toast({
         title: "Error",
         description: error.message || "Failed to get AI response. Please try again.",
