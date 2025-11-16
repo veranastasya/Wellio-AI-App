@@ -97,6 +97,7 @@ export default function Questionnaires() {
   });
 
   const handleDelete = (id: string) => {
+    const questionnaire = questionnaires.find(q => q.id === id);
     setSelectedQuestionnaire(id);
     setDeleteDialogOpen(true);
   };
@@ -262,8 +263,23 @@ export default function Questionnaires() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Questionnaire</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this questionnaire? This action cannot be undone.
+            <AlertDialogDescription className="space-y-2">
+              {selectedQuestionnaire && (() => {
+                const questionnaire = questionnaires.find(q => q.id === selectedQuestionnaire);
+                const isPublished = questionnaire?.status === 'published';
+                return (
+                  <>
+                    <p>
+                      Are you sure you want to delete this questionnaire? The questionnaire will be removed from your list but all submitted responses will be preserved.
+                    </p>
+                    {isPublished && (
+                      <p className="text-amber-600 dark:text-amber-500 font-medium">
+                        ⚠️ This questionnaire is currently published. Clients will no longer be able to access it after deletion.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
