@@ -49,6 +49,47 @@ export function getGoalTypeLabel(goalType: string | null | undefined, goalDescri
   return goalDescription || goalType;
 }
 
+export const ACTIVITY_LEVELS = [
+  "sedentary",
+  "lightly_active",
+  "moderately_active",
+  "very_active",
+  "extra_active",
+] as const;
+
+export type ActivityLevel = typeof ACTIVITY_LEVELS[number];
+
+export const ACTIVITY_LEVEL_LABELS: Record<ActivityLevel, string> = {
+  sedentary: "Sedentary (little to no exercise)",
+  lightly_active: "Lightly Active (light exercise 1-3 days/week)",
+  moderately_active: "Moderately Active (moderate exercise 3-5 days/week)",
+  very_active: "Very Active (hard exercise 6-7 days/week)",
+  extra_active: "Extremely Active (hard exercise & work in a physical job)",
+};
+
+export const ACTIVITY_LEVEL_MULTIPLIERS: Record<ActivityLevel, number> = {
+  sedentary: 1.2,
+  lightly_active: 1.375,
+  moderately_active: 1.55,
+  very_active: 1.725,
+  extra_active: 1.9,
+};
+
+export function getActivityLevelLabel(activityLevel: string | null | undefined): string {
+  if (!activityLevel) return "Not set";
+  if (activityLevel in ACTIVITY_LEVEL_LABELS) {
+    return ACTIVITY_LEVEL_LABELS[activityLevel as ActivityLevel];
+  }
+  return activityLevel;
+}
+
+export function getActivityLevelMultiplier(activityLevel: string | null | undefined): number {
+  if (!activityLevel || !(activityLevel in ACTIVITY_LEVEL_MULTIPLIERS)) {
+    return 1.2;
+  }
+  return ACTIVITY_LEVEL_MULTIPLIERS[activityLevel as ActivityLevel];
+}
+
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),

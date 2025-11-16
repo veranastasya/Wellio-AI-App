@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, AlertCircle, Upload, X } from "lucide-react";
 import type { Question, Questionnaire } from "@shared/schema";
-import { normalizeQuestion } from "@shared/schema";
+import { normalizeQuestion, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 
 export default function ClientOnboard() {
@@ -83,6 +83,16 @@ export default function ClientOnboard() {
       setUnitsPreference(questionnaire.defaultUnitsPreference as UnitsPreference);
     }
   }, [questionnaire]);
+
+  useEffect(() => {
+    if (tokenData?.invite) {
+      setAnswers(prev => ({
+        ...prev,
+        name: tokenData.invite.name || prev.name,
+        email: tokenData.invite.email || prev.email,
+      }));
+    }
+  }, [tokenData]);
 
   const submitMutation = useMutation({
     mutationFn: async (formAnswers: Record<string, any>) => {
@@ -563,38 +573,45 @@ export default function ClientOnboard() {
       <div className="max-w-2xl mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle>{questionnaire.name}</CardTitle>
-            {questionnaire.welcomeText && (
-              <CardDescription className="text-base">
-                {questionnaire.welcomeText}
-              </CardDescription>
-            )}
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <CardTitle>{questionnaire.name}</CardTitle>
+                {questionnaire.welcomeText && (
+                  <CardDescription className="text-base">
+                    {questionnaire.welcomeText}
+                  </CardDescription>
+                )}
+              </div>
+              {questionnaire.standardFields && (questionnaire.standardFields.weight || questionnaire.standardFields.height) && (
+                <div className="flex-shrink-0">
+                  <Select
+                    value={unitsPreference}
+                    onValueChange={(value: UnitsPreference) => setUnitsPreference(value)}
+                  >
+                    <SelectTrigger className="w-[140px]" data-testid="select-units-top">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
+                      <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="overflow-y-auto max-h-[calc(100vh-200px)]">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName" data-testid="label-firstName">
-                    First Name <span className="text-destructive">*</span>
+                  <Label htmlFor="name" data-testid="label-name">
+                    Client Name <span className="text-destructive">*</span>
                   </Label>
                   <Input
-                    id="firstName"
-                    data-testid="input-firstName"
-                    value={answers.firstName || ""}
-                    onChange={(e) => handleAnswerChange("firstName", e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lastName" data-testid="label-lastName">
-                    Last Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="lastName"
-                    data-testid="input-lastName"
-                    value={answers.lastName || ""}
-                    onChange={(e) => handleAnswerChange("lastName", e.target.value)}
+                    id="name"
+                    data-testid="input-name"
+                    value={answers.name || ""}
+                    onChange={(e) => handleAnswerChange("name", e.target.value)}
                     required
                   />
                 </div>
@@ -629,22 +646,6 @@ export default function ClientOnboard() {
                 
                 {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height || questionnaire.standardFields.activityLevel || questionnaire.standardFields.bodyFatPercentage) && (
                   <>
-                    <div className="space-y-2" data-testid="standard-field-units">
-                      <Label htmlFor="units">Units</Label>
-                      <Select
-                        value={unitsPreference}
-                        onValueChange={(value: UnitsPreference) => setUnitsPreference(value)}
-                      >
-                        <SelectTrigger data-testid="select-units">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
-                          <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
                     {questionnaire.standardFields.sex && (
                       <div className="space-y-2" data-testid="standard-field-sex">
                         <Label htmlFor="sex">Sex</Label>
@@ -789,11 +790,11 @@ export default function ClientOnboard() {
                             <SelectValue placeholder="Select activity level" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="sedentary">Sedentary (1.2)</SelectItem>
-                            <SelectItem value="lightly_active">Lightly Active (1.375)</SelectItem>
-                            <SelectItem value="moderately_active">Moderately Active (1.55)</SelectItem>
-                            <SelectItem value="very_active">Very Active (1.725)</SelectItem>
-                            <SelectItem value="extra_active">Extra Active (1.9)</SelectItem>
+                            {ACTIVITY_LEVELS.map((level) => (
+                              <SelectItem key={level} value={level}>
+                                {ACTIVITY_LEVEL_LABELS[level]}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>

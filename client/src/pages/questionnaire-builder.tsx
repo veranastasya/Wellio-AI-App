@@ -457,30 +457,6 @@ export default function QuestionnaireBuilder() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="defaultUnitsPreference"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Default Units</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-default-units">
-                          <SelectValue placeholder="Select default units" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
-                        <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Default measurement units for weight and height in this questionnaire
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </Form>
           </CardContent>
         </Card>
@@ -491,7 +467,7 @@ export default function QuestionnaireBuilder() {
             <CardDescription>These fields are required and cannot be removed</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {["First Name", "Last Name", "Email", "Phone"].map((field) => (
+            {["Client Name", "Email", "Phone"].map((field) => (
               <div
                 key={field}
                 className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
@@ -509,8 +485,29 @@ export default function QuestionnaireBuilder() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Standard Health Metrics</CardTitle>
-            <CardDescription>Enable optional health-related fields for your intake form</CardDescription>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <CardTitle>Standard Health Metrics</CardTitle>
+                <CardDescription>Enable optional health-related fields for your intake form</CardDescription>
+              </div>
+              <div className="flex-shrink-0">
+                <FormField
+                  control={form.control}
+                  name="defaultUnitsPreference"
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="w-[140px]" data-testid="select-default-units-top">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
+                        <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {[

@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus, Sparkles } from "lucide-react";
 import type { Questionnaire } from "@shared/schema";
-import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel } from "@shared/schema";
+import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -825,11 +825,11 @@ function ClientForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="sedentary">Sedentary (1.2)</SelectItem>
-                      <SelectItem value="lightly_active">Lightly Active (1.375)</SelectItem>
-                      <SelectItem value="moderately_active">Moderately Active (1.55)</SelectItem>
-                      <SelectItem value="very_active">Very Active (1.725)</SelectItem>
-                      <SelectItem value="extra_active">Extra Active (1.9)</SelectItem>
+                      {ACTIVITY_LEVELS.map((level) => (
+                        <SelectItem key={level} value={level}>
+                          {ACTIVITY_LEVEL_LABELS[level]}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
