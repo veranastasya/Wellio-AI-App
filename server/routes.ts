@@ -1785,7 +1785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         questionnaire_data: pinnedResponses.map(r => ({
           questionnaire_name: r.questionnaireName,
           submitted_at: r.submittedAt,
-          data: r.data,
+          data: r.answers,
         })),
       };
 
