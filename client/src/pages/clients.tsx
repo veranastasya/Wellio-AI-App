@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus, Sparkles } from "lucide-react";
+import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus, Sparkles, User, Scale, Ruler, Activity as ActivityIcon } from "lucide-react";
 import type { Questionnaire } from "@shared/schema";
-import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS } from "@shared/schema";
-import { type UnitsPreference, UNITS_LABELS, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
+import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel } from "@shared/schema";
+import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -405,6 +405,49 @@ export default function Clients() {
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <TrendingUp className="w-4 h-4" />
                     <span>{getGoalTypeLabel(client.goalType, client.goalDescription)}</span>
+                  </div>
+                )}
+                {(client.sex || client.age || client.weight || client.height || client.activityLevel || client.bodyFatPercentage) && (
+                  <div className="pt-2 border-t space-y-1">
+                    <div className="text-xs font-semibold text-muted-foreground mb-1.5">Health Metrics</div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                      {client.sex && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <User className="w-3 h-3" />
+                          <span className="capitalize">{client.sex.replace('_', ' ')}</span>
+                        </div>
+                      )}
+                      {client.age && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          <span>{client.age} yrs</span>
+                        </div>
+                      )}
+                      {client.weight && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Scale className="w-3 h-3" />
+                          <span>{formatWeight(client.weight, (client.unitsPreference as UnitsPreference) || "us")}</span>
+                        </div>
+                      )}
+                      {client.height && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Ruler className="w-3 h-3" />
+                          <span>{formatHeight(client.height, (client.unitsPreference as UnitsPreference) || "us")}</span>
+                        </div>
+                      )}
+                      {client.activityLevel && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                          <ActivityIcon className="w-3 h-3" />
+                          <span className="truncate">{getActivityLevelLabel(client.activityLevel)}</span>
+                        </div>
+                      )}
+                      {client.bodyFatPercentage && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                          <TrendingUp className="w-3 h-3" />
+                          <span>Body Fat: {client.bodyFatPercentage}%</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 {client.lastSession && (
