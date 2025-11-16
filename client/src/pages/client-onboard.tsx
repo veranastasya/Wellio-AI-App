@@ -688,7 +688,7 @@ export default function ClientOnboard() {
                         <Input
                           id="weight"
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
                           max="1000"
                           data-testid="input-weight"
@@ -735,9 +735,9 @@ export default function ClientOnboard() {
                             <Input
                               id="heightInches"
                               type="number"
-                              step="0.1"
+                              step="0.01"
                               min="0"
-                              max="11.9"
+                              max="11.99"
                               data-testid="input-height-inches"
                               value={answers.heightInches || ""}
                               onChange={(e) => {
@@ -760,7 +760,7 @@ export default function ClientOnboard() {
                         <Input
                           id="height"
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
                           max="300"
                           data-testid="input-height-cm"
@@ -806,7 +806,7 @@ export default function ClientOnboard() {
                         <Input
                           id="bodyFatPercentage"
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
                           max="100"
                           data-testid="input-body-fat"
