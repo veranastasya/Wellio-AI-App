@@ -213,6 +213,30 @@ export default function ClientProfile() {
                     </div>
                   </div>
                 )}
+                
+                {clientData.targetWeight && clientData.goalType === "lose_weight" && (
+                  <div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Target className="w-4 h-4" />
+                      Target Weight
+                    </div>
+                    <div className="text-base font-medium">
+                      {formatWeight(clientData.targetWeight, unitsPreference)}
+                    </div>
+                  </div>
+                )}
+                
+                {clientData.goalWeight && clientData.goalType === "maintain_weight" && (
+                  <div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Target className="w-4 h-4" />
+                      Goal Weight
+                    </div>
+                    <div className="text-base font-medium">
+                      {formatWeight(clientData.goalWeight, unitsPreference)}
+                    </div>
+                  </div>
+                )}
 
                 {clientData.height && (
                   <div>
@@ -244,6 +268,16 @@ export default function ClientProfile() {
                       <Badge variant="outline" className="ml-1 text-xs">Optional</Badge>
                     </div>
                     <div className="text-base font-medium">{clientData.bodyFatPercentage}%</div>
+                  </div>
+                )}
+                
+                {clientData.targetBodyFat && clientData.goalType === "improve_body_composition" && (
+                  <div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <Target className="w-4 h-4" />
+                      Target Body Fat %
+                    </div>
+                    <div className="text-base font-medium">{clientData.targetBodyFat}%</div>
                   </div>
                 )}
               </div>
