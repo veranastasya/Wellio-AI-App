@@ -113,6 +113,9 @@ export const clients = pgTable("clients", {
   activityLevel: text("activity_level"),
   bodyFatPercentage: real("body_fat_percentage"),
   unitsPreference: text("units_preference").notNull().default("us"),
+  targetWeight: real("target_weight"),
+  targetBodyFat: real("target_body_fat"),
+  goalWeight: real("goal_weight"),
 });
 
 export const sessions = pgTable("sessions", {
