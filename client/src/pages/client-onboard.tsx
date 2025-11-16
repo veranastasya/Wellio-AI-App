@@ -611,7 +611,7 @@ export default function ClientOnboard() {
                   />
                 </div>
                 
-                {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height) && (
+                {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height || questionnaire.standardFields.activityLevel || questionnaire.standardFields.bodyFatPercentage) && (
                   <>
                     {questionnaire.standardFields.sex && (
                       <div className="space-y-2" data-testid="standard-field-sex">
@@ -679,6 +679,44 @@ export default function ClientOnboard() {
                           value={answers.height || ""}
                           onChange={(e) => handleAnswerChange("height", e.target.value)}
                           placeholder="Enter your height"
+                        />
+                      </div>
+                    )}
+                    
+                    {questionnaire.standardFields.activityLevel && (
+                      <div className="space-y-2" data-testid="standard-field-activity-level">
+                        <Label htmlFor="activityLevel">Activity Level</Label>
+                        <Select
+                          value={answers.activityLevel || ""}
+                          onValueChange={(value) => handleAnswerChange("activityLevel", value)}
+                        >
+                          <SelectTrigger data-testid="select-activity-level">
+                            <SelectValue placeholder="Select activity level" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="sedentary">Sedentary (1.2)</SelectItem>
+                            <SelectItem value="lightly_active">Lightly Active (1.375)</SelectItem>
+                            <SelectItem value="moderately_active">Moderately Active (1.55)</SelectItem>
+                            <SelectItem value="very_active">Very Active (1.725)</SelectItem>
+                            <SelectItem value="extra_active">Extra Active (1.9)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
+                    {questionnaire.standardFields.bodyFatPercentage && (
+                      <div className="space-y-2" data-testid="standard-field-body-fat">
+                        <Label htmlFor="bodyFatPercentage">Body Fat %</Label>
+                        <Input
+                          id="bodyFatPercentage"
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          data-testid="input-body-fat"
+                          value={answers.bodyFatPercentage || ""}
+                          onChange={(e) => handleAnswerChange("bodyFatPercentage", e.target.value)}
+                          placeholder="Enter your body fat percentage"
                         />
                       </div>
                     )}

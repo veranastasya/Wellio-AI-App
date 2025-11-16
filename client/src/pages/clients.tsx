@@ -688,6 +688,56 @@ function ClientForm({
               )}
             />
           </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="activityLevel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Activity Level</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-client-activity-level">
+                        <SelectValue placeholder="Select activity level" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="sedentary">Sedentary (1.2)</SelectItem>
+                      <SelectItem value="lightly_active">Lightly Active (1.375)</SelectItem>
+                      <SelectItem value="moderately_active">Moderately Active (1.55)</SelectItem>
+                      <SelectItem value="very_active">Very Active (1.725)</SelectItem>
+                      <SelectItem value="extra_active">Extra Active (1.9)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="bodyFatPercentage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Body Fat %</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      placeholder="18.5"
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                      data-testid="input-client-body-fat"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

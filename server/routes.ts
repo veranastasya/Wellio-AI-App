@@ -640,6 +640,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let client;
         if (clientToken.clientId) {
           client = await storage.getClient(clientToken.clientId);
+          
+          // Update existing client with new health metrics from questionnaire
+          const answers = responseData.answers as any;
+          const updateData: any = {};
+          
+          // Extract standard health metrics if present
+          if (answers.sex) updateData.sex = answers.sex;
+          if (answers.age !== undefined && answers.age !== "") {
+            const parsedAge = parseInt(answers.age);
+            if (!isNaN(parsedAge)) updateData.age = parsedAge;
+          }
+          if (answers.weight !== undefined && answers.weight !== "") {
+            const parsedWeight = parseFloat(answers.weight);
+            if (!isNaN(parsedWeight)) updateData.weight = parsedWeight;
+          }
+          if (answers.height !== undefined && answers.height !== "") {
+            const parsedHeight = parseFloat(answers.height);
+            if (!isNaN(parsedHeight)) updateData.height = parsedHeight;
+          }
+          if (answers.activityLevel) updateData.activityLevel = answers.activityLevel;
+          if (answers.bodyFatPercentage !== undefined && answers.bodyFatPercentage !== "") {
+            const parsedBodyFat = parseFloat(answers.bodyFatPercentage);
+            if (!isNaN(parsedBodyFat)) updateData.bodyFatPercentage = parsedBodyFat;
+          }
+          
+          // Also update basic info if provided
+          if (answers.phone || answers.phoneNumber) updateData.phone = answers.phone || answers.phoneNumber;
+          if (answers.goalType || answers.goal || answers.primaryGoal) updateData.goalType = answers.goalType || answers.goal || answers.primaryGoal;
+          if (answers.notes || answers.additionalInfo) updateData.notes = answers.notes || answers.additionalInfo;
+          
+          // Update client if we have any new data
+          if (Object.keys(updateData).length > 0) {
+            await storage.updateClient(clientToken.clientId, updateData);
+          }
         } else {
           // Create new client from questionnaire response
           // Use tokenId to look up the specific invite, not email (which may have multiple invites)
@@ -668,6 +702,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             age: (answers.age !== undefined && answers.age !== "") ? parseInt(answers.age) : null,
             weight: (answers.weight !== undefined && answers.weight !== "") ? parseFloat(answers.weight) : null,
             height: (answers.height !== undefined && answers.height !== "") ? parseFloat(answers.height) : null,
+            activityLevel: answers.activityLevel || null,
+            bodyFatPercentage: (answers.bodyFatPercentage !== undefined && answers.bodyFatPercentage !== "") ? parseFloat(answers.bodyFatPercentage) : null,
           };
 
           client = await storage.createClient(clientData);

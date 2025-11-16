@@ -69,6 +69,8 @@ export const clients = pgTable("clients", {
   weight: real("weight"),
   age: integer("age"),
   height: real("height"),
+  activityLevel: text("activity_level"),
+  bodyFatPercentage: real("body_fat_percentage"),
 });
 
 export const sessions = pgTable("sessions", {
@@ -118,6 +120,8 @@ export const questionnaires = pgTable("questionnaires", {
     weight?: boolean;
     age?: boolean;
     height?: boolean;
+    activityLevel?: boolean;
+    bodyFatPercentage?: boolean;
   }>(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

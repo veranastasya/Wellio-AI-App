@@ -283,7 +283,7 @@ export default function QuestionnairePreview() {
                 <Input type="tel" placeholder="Enter your phone number" disabled />
               </div>
               
-              {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height) && (
+              {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height || questionnaire.standardFields.activityLevel || questionnaire.standardFields.bodyFatPercentage) && (
                 <>
                   {questionnaire.standardFields.sex && (
                     <div className="space-y-2" data-testid="standard-field-sex-preview">
@@ -315,6 +315,25 @@ export default function QuestionnairePreview() {
                     <div className="space-y-2" data-testid="standard-field-height-preview">
                       <Label>Height (inches)</Label>
                       <Input type="number" step="0.1" placeholder="Enter your height" disabled />
+                    </div>
+                  )}
+                  
+                  {questionnaire.standardFields.activityLevel && (
+                    <div className="space-y-2" data-testid="standard-field-activity-level-preview">
+                      <Label>Activity Level</Label>
+                      <div 
+                        className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-muted px-3 py-2 text-sm shadow-sm cursor-not-allowed opacity-50"
+                        aria-label="Activity Level (preview only)"
+                      >
+                        <span className="text-muted-foreground">Select activity level</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {questionnaire.standardFields.bodyFatPercentage && (
+                    <div className="space-y-2" data-testid="standard-field-body-fat-preview">
+                      <Label>Body Fat %</Label>
+                      <Input type="number" step="0.1" placeholder="Enter your body fat percentage" disabled />
                     </div>
                   )}
                 </>
