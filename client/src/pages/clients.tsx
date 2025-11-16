@@ -540,6 +540,9 @@ function ClientForm({
       age: client?.age || undefined,
       height: client?.height || undefined,
       unitsPreference: (client?.unitsPreference as UnitsPreference) || "us",
+      targetWeight: client?.targetWeight || undefined,
+      targetBodyFat: client?.targetBodyFat || undefined,
+      goalWeight: client?.goalWeight || undefined,
     },
   });
 
@@ -561,6 +564,9 @@ function ClientForm({
         age: client.age || undefined,
         height: client.height || undefined,
         unitsPreference: (client.unitsPreference as UnitsPreference) || "us",
+        targetWeight: client.targetWeight || undefined,
+        targetBodyFat: client.targetBodyFat || undefined,
+        goalWeight: client.goalWeight || undefined,
       });
       setUnitsPreference((client.unitsPreference as UnitsPreference) || "us");
       
@@ -958,6 +964,116 @@ function ClientForm({
                     {...field}
                     value={field.value || ""}
                     data-testid="input-client-goal-description"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+        
+        {selectedGoalType === "lose_weight" && (
+          <FormField
+            control={form.control}
+            name="targetWeight"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Target Weight ({unitsPreference === "us" ? "lbs" : "kg"})</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="1000"
+                    placeholder={unitsPreference === "us" ? "180" : "82"}
+                    value={
+                      unitsPreference === "metric" && field.value != null && isFinite(field.value)
+                        ? lbsToKg(field.value)
+                        : field.value ?? ""
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (!value) {
+                        field.onChange(undefined);
+                        return;
+                      }
+                      const numValue = parseFloat(value);
+                      if (unitsPreference === "metric") {
+                        const canonicalValue = isFinite(numValue) ? kgToLbs(numValue) : undefined;
+                        field.onChange(canonicalValue);
+                      } else {
+                        field.onChange(isFinite(numValue) ? numValue : undefined);
+                      }
+                    }}
+                    data-testid="input-client-target-weight"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+        
+        {selectedGoalType === "improve_body_composition" && (
+          <FormField
+            control={form.control}
+            name="targetBodyFat"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Target Body Fat %</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    placeholder="18"
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                    data-testid="input-client-target-body-fat"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+        
+        {selectedGoalType === "maintain_weight" && (
+          <FormField
+            control={form.control}
+            name="goalWeight"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Goal Weight ({unitsPreference === "us" ? "lbs" : "kg"})</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="1000"
+                    placeholder={unitsPreference === "us" ? "165" : "75"}
+                    value={
+                      unitsPreference === "metric" && field.value != null && isFinite(field.value)
+                        ? lbsToKg(field.value)
+                        : field.value ?? ""
+                    }
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (!value) {
+                        field.onChange(undefined);
+                        return;
+                      }
+                      const numValue = parseFloat(value);
+                      if (unitsPreference === "metric") {
+                        const canonicalValue = isFinite(numValue) ? kgToLbs(numValue) : undefined;
+                        field.onChange(canonicalValue);
+                      } else {
+                        field.onChange(isFinite(numValue) ? numValue : undefined);
+                      }
+                    }}
+                    data-testid="input-client-goal-weight"
                   />
                 </FormControl>
                 <FormMessage />
