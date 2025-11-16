@@ -78,6 +78,12 @@ export default function ClientOnboard() {
     enabled: !!questionnaireId,
   });
 
+  useEffect(() => {
+    if (questionnaire?.defaultUnitsPreference) {
+      setUnitsPreference(questionnaire.defaultUnitsPreference as UnitsPreference);
+    }
+  }, [questionnaire]);
+
   const submitMutation = useMutation({
     mutationFn: async (formAnswers: Record<string, any>) => {
       const { weightCanonical, heightCanonical, heightFeet, heightInches, ...otherAnswers } = formAnswers;
