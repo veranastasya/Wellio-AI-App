@@ -178,11 +178,15 @@ export const questionnaires = pgTable("questionnaires", {
 export const responses = pgTable("responses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   questionnaireId: varchar("questionnaire_id").notNull(),
+  questionnaireName: text("questionnaire_name"),
   clientId: varchar("client_id"),
+  clientName: text("client_name"),
   answers: json("answers").notNull(),
   submittedAt: text("submitted_at").notNull(),
   isDraft: boolean("is_draft").notNull().default(false),
   lastSavedAt: text("last_saved_at"),
+  pinnedForAI: boolean("pinned_for_ai").notNull().default(false),
+  pdfUrl: text("pdf_url"),
 });
 
 export const nutritionLogs = pgTable("nutrition_logs", {

@@ -752,6 +752,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Link response to client (client is guaranteed to exist at this point)
         if (client) {
           validatedData.clientId = client.id;
+          validatedData.clientName = client.name;
+        }
+        
+        // Fetch questionnaire to get its name
+        const questionnaire = await storage.getQuestionnaire(validatedData.questionnaireId);
+        if (questionnaire) {
+          validatedData.questionnaireName = questionnaire.name;
         }
         
         const response = await storage.createResponse(validatedData);
@@ -767,12 +774,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const sanitizedData = { ...responseData, clientId };
         const validatedData = insertResponseSchema.parse(sanitizedData);
         
+        // Fetch client and questionnaire to get metadata
+        const client = await storage.getClient(clientId);
+        if (client) {
+          validatedData.clientName = client.name;
+        }
+        
+        const questionnaire = await storage.getQuestionnaire(validatedData.questionnaireId);
+        if (questionnaire) {
+          validatedData.questionnaireName = questionnaire.name;
+        }
+        
         const response = await storage.createResponse(validatedData);
         res.status(201).json(response);
       }
     } catch (error) {
       console.error("Error creating response:", error);
       res.status(400).json({ error: "Invalid response data" });
+    }
+  });
+
+  // Coach-facing response routes
+  app.get("/api/clients/:clientId/responses", requireCoachAuth, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      
+      // Validate client exists
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Get all responses for this client
+      const clientResponses = await storage.getResponsesByClient(clientId);
+      res.json(clientResponses);
+    } catch (error) {
+      console.error("Error fetching client responses:", error);
+      res.status(500).json({ error: "Failed to fetch client responses" });
+    }
+  });
+
+  app.post("/api/responses/:id/pin", requireCoachAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get the current response
+      const response = await storage.getResponse(id);
+      if (!response) {
+        return res.status(404).json({ error: "Response not found" });
+      }
+      
+      // Toggle the pinned status
+      const newPinnedStatus = !response.pinnedForAI;
+      const updatedResponse = await storage.toggleResponsePin(id, newPinnedStatus);
+      
+      if (!updatedResponse) {
+        return res.status(500).json({ error: "Failed to update response" });
+      }
+      
+      res.json(updatedResponse);
+    } catch (error) {
+      console.error("Error toggling response pin:", error);
+      res.status(500).json({ error: "Failed to toggle response pin status" });
+    }
+  });
+
+  app.post("/api/responses/:id/generate-pdf", requireCoachAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Get the response
+      const response = await storage.getResponse(id);
+      if (!response) {
+        return res.status(404).json({ error: "Response not found" });
+      }
+      
+      // Create PDF document
+      const doc = new PDFDocument({ margin: 50 });
+      
+      // Set response headers for PDF download
+      const filename = `response-${response.clientName || 'client'}-${new Date(response.submittedAt).toISOString().split('T')[0]}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      // Pipe PDF to response
+      doc.pipe(res);
+      
+      // Add content to PDF
+      doc.fontSize(20).text('Questionnaire Response', { align: 'center' });
+      doc.moveDown();
+      
+      // Add metadata
+      doc.fontSize(12);
+      doc.text(`Client: ${response.clientName || 'N/A'}`, { continued: false });
+      doc.text(`Questionnaire: ${response.questionnaireName || 'N/A'}`, { continued: false });
+      doc.text(`Submitted: ${new Date(response.submittedAt).toLocaleString()}`, { continued: false });
+      doc.moveDown();
+      
+      // Add answers
+      doc.fontSize(14).text('Responses:', { underline: true });
+      doc.moveDown();
+      
+      const answers = response.answers as any;
+      if (answers && typeof answers === 'object') {
+        doc.fontSize(11);
+        Object.entries(answers).forEach(([key, value]) => {
+          // Format the key (convert camelCase to Title Case)
+          const formattedKey = key
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/^./, str => str.toUpperCase())
+            .trim();
+          
+          // Format the value
+          let formattedValue = String(value);
+          if (Array.isArray(value)) {
+            formattedValue = value.join(', ');
+          } else if (typeof value === 'object' && value !== null) {
+            formattedValue = JSON.stringify(value, null, 2);
+          }
+          
+          doc.text(`${formattedKey}:`, { continued: true });
+          doc.text(` ${formattedValue}`);
+          doc.moveDown(0.5);
+        });
+      }
+      
+      // Finalize the PDF
+      doc.end();
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to generate PDF" });
+      }
     }
   });
 

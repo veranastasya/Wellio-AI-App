@@ -46,7 +46,7 @@ import {
   goals,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Clients
@@ -83,6 +83,8 @@ export interface IStorage {
   getResponses(): Promise<Response[]>;
   getResponse(id: string): Promise<Response | undefined>;
   createResponse(response: InsertResponse): Promise<Response>;
+  getResponsesByClient(clientId: string): Promise<Response[]>;
+  toggleResponsePin(responseId: string, pinned: boolean): Promise<Response | undefined>;
 
   // Nutrition Logs
   getNutritionLogs(): Promise<NutritionLog[]>;
@@ -584,6 +586,22 @@ export class DatabaseStorage implements IStorage {
   async createResponse(insertResponse: InsertResponse): Promise<Response> {
     const [response] = await db.insert(responses).values(insertResponse).returning();
     return response;
+  }
+
+  async getResponsesByClient(clientId: string): Promise<Response[]> {
+    return await db.select()
+      .from(responses)
+      .where(eq(responses.clientId, clientId))
+      .orderBy(desc(responses.submittedAt));
+  }
+
+  async toggleResponsePin(responseId: string, pinned: boolean): Promise<Response | undefined> {
+    const [updatedResponse] = await db
+      .update(responses)
+      .set({ pinnedForAI: pinned })
+      .where(eq(responses.id, responseId))
+      .returning();
+    return updatedResponse || undefined;
   }
 
   // Nutrition Log methods
