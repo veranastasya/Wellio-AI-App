@@ -170,6 +170,7 @@ export const questionnaires = pgTable("questionnaires", {
     bodyFatPercentage?: boolean;
     goal?: boolean;
   }>(),
+  deleted: boolean("deleted").notNull().default(false),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
