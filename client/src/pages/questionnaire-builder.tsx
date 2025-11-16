@@ -37,6 +37,7 @@ import {
 import { Plus, Trash2, GripVertical, ArrowLeft, Save, X } from "lucide-react";
 import type { Questionnaire, Question, QuestionType, QUESTION_TYPES } from "@shared/schema";
 import { normalizeQuestion } from "@shared/schema";
+import { type UnitsPreference, UNITS_LABELS } from "@shared/units";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -44,6 +45,7 @@ const formSchema = z.object({
   consentText: z.string().optional(),
   consentRequired: z.boolean(),
   confirmationMessage: z.string().optional(),
+  defaultUnitsPreference: z.enum(["us", "metric"]),
 });
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
@@ -84,6 +86,7 @@ export default function QuestionnaireBuilder() {
       consentText: "",
       consentRequired: false,
       confirmationMessage: "Thank you for completing the questionnaire!",
+      defaultUnitsPreference: "us" as UnitsPreference,
     },
   });
 
@@ -100,6 +103,7 @@ export default function QuestionnaireBuilder() {
         consentText: questionnaire.consentText || "",
         consentRequired: questionnaire.consentRequired,
         confirmationMessage: questionnaire.confirmationMessage || "",
+        defaultUnitsPreference: (questionnaire.defaultUnitsPreference as UnitsPreference) || "us",
       });
       const normalized = (questionnaire.questions as any[]).map(normalizeQuestion);
       setQuestions(normalized);
@@ -141,6 +145,7 @@ export default function QuestionnaireBuilder() {
           consentText: formData.consentText,
           consentRequired: formData.consentRequired,
           confirmationMessage: formData.confirmationMessage,
+          defaultUnitsPreference: formData.defaultUnitsPreference,
           standardFields,
           updatedAt: now,
         };
@@ -154,6 +159,7 @@ export default function QuestionnaireBuilder() {
           consentText: formData.consentText,
           consentRequired: formData.consentRequired,
           confirmationMessage: formData.confirmationMessage,
+          defaultUnitsPreference: formData.defaultUnitsPreference,
           standardFields,
           createdAt: now,
           updatedAt: now,
@@ -446,6 +452,31 @@ export default function QuestionnaireBuilder() {
                         data-testid="input-confirmation-message"
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="defaultUnitsPreference"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Default Units</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-default-units">
+                          <SelectValue placeholder="Select default units" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
+                        <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Default measurement units for weight and height in this questionnaire
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
