@@ -1,0 +1,65 @@
+Goal:
+Ensure that default client fields remain fully consistent across the Client Profile, Questionnaire Builder, Client View, and AI Plan Generation.
+All fields listed below must flow seamlessly through the entire system: created → filled out → displayed → stored → synced → passed to AI.
+
+1. Required Default Fields (must exist in BOTH Client Profile Card and Questionnaire Builder)
+
+Each field can be turned ON/OFF in the Questionnaire Builder, but they are part of the default schema.
+
+Unit Selector
+
+Sex (default)
+
+Age (default; can be disabled in the questionnaire)
+
+Weight (default; can be disabled in the questionnaire)
+
+Height (default; can be disabled in the questionnaire)
+
+Activity Level (default; can be disabled in the questionnaire)
+
+Goal (default; can be disabled in the questionnaire)
+
+2. Conditional Goal-Based Fields
+
+Displayed only if a specific goal is selected:
+
+Lose weight → Target Weight (optional)
+
+Improve body composition → Target Body Fat % (optional)
+
+Maintain current weight → Confirm goal weight (auto-prefilled with current; optional)
+
+3. Optional Fields
+
+Body Fat %
+
+Must explicitly display as “Optional” in the Client View.
+
+4. Data Flow Requirements (must be enforced)
+
+The system must support a consistent, lossless data flow:
+
+Questionnaire Builder defines the fields.
+
+Client fills out questionnaire with these fields.
+
+Client View displays the exact same fields, with correct labels and optional flags.
+
+All submitted values sync back into the Client Profile database.
+
+When a coach starts an AI-assisted plan, all synced fields must be passed into the AI model as part of the client context.
+
+5. Acceptance Criteria
+
+Activity Level must sync correctly between Questionnaire → Client View → Client Profile.
+
+All default fields appear in both Client Profile and Questionnaire Builder by default.
+
+Conditional goal fields render only when relevant.
+
+Optional Body Fat % is clearly marked as optional.
+
+No field should exist in one place and not the others.
+
+AI model receives complete, unified client data each time a plan is generated.

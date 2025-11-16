@@ -165,6 +165,7 @@ export const questionnaires = pgTable("questionnaires", {
     height?: boolean;
     activityLevel?: boolean;
     bodyFatPercentage?: boolean;
+    goal?: boolean;
   }>(),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

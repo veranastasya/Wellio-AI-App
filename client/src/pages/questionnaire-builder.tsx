@@ -76,6 +76,7 @@ export default function QuestionnaireBuilder() {
     height: true,
     activityLevel: true,
     bodyFatPercentage: true,
+    goal: true,
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -116,6 +117,7 @@ export default function QuestionnaireBuilder() {
           height: questionnaire.standardFields.height !== false,
           activityLevel: questionnaire.standardFields.activityLevel !== false,
           bodyFatPercentage: questionnaire.standardFields.bodyFatPercentage !== false,
+          goal: questionnaire.standardFields.goal !== false,
         });
       } else {
         // Default to all enabled for questionnaires without standardFields
@@ -126,6 +128,7 @@ export default function QuestionnaireBuilder() {
           height: true,
           activityLevel: true,
           bodyFatPercentage: true,
+          goal: true,
         });
       }
     }
@@ -517,6 +520,7 @@ export default function QuestionnaireBuilder() {
               { key: "height" as const, label: "Height", description: "Current height in cm or ft/in" },
               { key: "activityLevel" as const, label: "Activity Level", description: "Physical activity level (Sedentary to Extra Active)" },
               { key: "bodyFatPercentage" as const, label: "Body Fat %", description: "Body fat percentage (0-100%)" },
+              { key: "goal" as const, label: "Goal", description: "Client's primary fitness or wellness goal" },
             ].map((field) => (
               <div
                 key={field.key}
