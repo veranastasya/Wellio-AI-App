@@ -74,16 +74,16 @@ export default function ClientLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
+        <CardHeader className="space-y-1 p-4 sm:p-6">
           <div className="flex items-baseline gap-3 mb-4">
             <Link
               href="/"
               aria-label="Wellio home"
               data-testid="brand-icon-link"
               onKeyDown={handleBrandKeyDown}
-              className="flex items-center justify-center w-10 h-10 p-2 rounded-lg overflow-visible hover-elevate active-elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="flex items-center justify-center min-h-10 min-w-10 p-2 rounded-lg overflow-visible hover-elevate active-elevate-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <img 
                 src={logoImage} 
@@ -91,13 +91,13 @@ export default function ClientLogin() {
                 className="w-6 h-6 object-contain"
               />
             </Link>
-            <CardTitle className="text-2xl">Welcome to Wellio</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl">Welcome to Wellio</CardTitle>
           </div>
-          <CardDescription>
+          <CardDescription className="text-sm sm:text-base">
             Sign in to access your coaching dashboard
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6 pt-0">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -145,7 +145,7 @@ export default function ClientLogin() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full min-h-10"
               disabled={isSubmitting || !email || !password}
               data-testid="button-submit"
             >
@@ -160,7 +160,7 @@ export default function ClientLogin() {
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
+          <div className="mt-6 text-center text-xs sm:text-sm text-muted-foreground">
             <p>First time here? Check your email for an invite link from your coach.</p>
           </div>
         </CardContent>

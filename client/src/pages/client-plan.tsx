@@ -69,18 +69,18 @@ export default function ClientPlan() {
 
   return (
     <div className="bg-background min-h-screen">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2" data-testid="text-plan-title">
-              <Sparkles className="w-8 h-8" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2" data-testid="text-plan-title">
+              <Sparkles className="w-7 h-7 sm:w-8 sm:h-8" />
               My Wellness Plans
             </h1>
-            <p className="text-muted-foreground mt-1">View your personalized plans from your coach</p>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">View your personalized plans from your coach</p>
           </div>
           {sharedPlans.length > 0 && (
             <div className="flex items-center gap-2">
-              <Badge variant="default" className="text-sm">
+              <Badge variant="default" className="text-xs sm:text-sm">
                 {sharedPlans.length} {sharedPlans.length === 1 ? "Plan" : "Plans"}
               </Badge>
             </div>
@@ -105,16 +105,16 @@ export default function ClientPlan() {
               
               return (
                 <Card key={plan.id} data-testid={`plan-${plan.id}`}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
+                  <CardHeader className="p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                       <div className="flex-1">
-                        <CardTitle className="text-xl mb-2">{plan.planName}</CardTitle>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <CardTitle className="text-lg sm:text-xl mb-2">{plan.planName}</CardTitle>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
+                            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                             Created {new Date(plan.createdAt).toLocaleDateString()}
                           </div>
-                          <Badge variant="outline">
+                          <Badge variant="outline" className="text-xs">
                             {plan.status}
                           </Badge>
                         </div>
@@ -125,6 +125,7 @@ export default function ClientPlan() {
                           size="sm"
                           onClick={() => window.open(plan.pdfUrl!, "_blank")}
                           data-testid="button-download-pdf"
+                          className="w-full sm:w-auto min-h-10"
                         >
                           <Download className="w-4 h-4 mr-2" />
                           Download PDF
@@ -132,8 +133,8 @@ export default function ClientPlan() {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[400px] pr-4">
+                  <CardContent className="p-4 sm:p-6 pt-0">
+                    <ScrollArea className="h-[300px] sm:h-[400px] pr-2 sm:pr-4">
                       <div className="space-y-4">
                         {assistantMessages.length > 0 ? (
                           assistantMessages.map((message: any, idx: number) => (
@@ -163,10 +164,10 @@ export default function ClientPlan() {
         )}
 
         <Card>
-          <CardHeader>
-            <CardTitle>Your Progress</CardTitle>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Your Progress</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">

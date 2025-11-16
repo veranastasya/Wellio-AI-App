@@ -571,26 +571,26 @@ export default function ClientOnboard() {
   const normalizedQuestions = (questionnaire.questions as any[]).map(normalizeQuestion);
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-background p-4 sm:p-6">
       <div className="max-w-2xl mx-auto">
         <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between gap-4">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
               <div className="flex-1">
-                <CardTitle>{questionnaire.name}</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">{questionnaire.name}</CardTitle>
                 {questionnaire.welcomeText && (
-                  <CardDescription className="text-base">
+                  <CardDescription className="text-sm sm:text-base mt-2">
                     {questionnaire.welcomeText}
                   </CardDescription>
                 )}
               </div>
               {questionnaire.standardFields && (questionnaire.standardFields.weight || questionnaire.standardFields.height) && (
-                <div className="flex-shrink-0">
+                <div className="w-full sm:w-auto sm:flex-shrink-0">
                   <Select
                     value={unitsPreference}
                     onValueChange={(value: UnitsPreference) => setUnitsPreference(value)}
                   >
-                    <SelectTrigger className="w-[140px]" data-testid="select-units-top">
+                    <SelectTrigger className="w-full sm:w-[140px] min-h-10" data-testid="select-units-top">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -602,9 +602,9 @@ export default function ClientOnboard() {
               )}
             </div>
           </CardHeader>
-          <CardContent className="overflow-y-auto max-h-[calc(100vh-200px)]">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-4">
+          <CardContent className="overflow-y-auto max-h-[calc(100vh-200px)] p-4 sm:p-6 pt-0">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name" data-testid="label-name">
                     Client Name <span className="text-destructive">*</span>
@@ -714,7 +714,7 @@ export default function ClientOnboard() {
                     {questionnaire.standardFields.height && unitsPreference === "us" && (
                       <div className="space-y-2" data-testid="standard-field-height">
                         <Label>Height</Label>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
                           <div className="space-y-2">
                             <Input
                               id="heightFeet"
@@ -730,7 +730,8 @@ export default function ClientOnboard() {
                                 handleAnswerChange("heightFeet", e.target.value);
                                 handleAnswerChange("heightCanonical", totalInches.toString());
                               }}
-                              placeholder="0 ft"
+                              placeholder="Feet"
+                              className="min-h-10"
                             />
                           </div>
                           <div className="space-y-2">
@@ -749,7 +750,8 @@ export default function ClientOnboard() {
                                 handleAnswerChange("heightInches", e.target.value);
                                 handleAnswerChange("heightCanonical", totalInches.toString());
                               }}
-                              placeholder="0 in"
+                              placeholder="Inches"
+                              className="min-h-10"
                             />
                           </div>
                         </div>
@@ -945,11 +947,12 @@ export default function ClientOnboard() {
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-4">
+              <div className="flex justify-end gap-2 sm:gap-3 pt-4">
                 <Button
                   type="submit"
                   disabled={submitMutation.isPending}
                   data-testid="button-submit"
+                  className="w-full sm:w-auto min-h-10"
                 >
                   {submitMutation.isPending ? (
                     <>

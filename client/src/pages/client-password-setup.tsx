@@ -158,18 +158,18 @@ export default function ClientPasswordSetup() {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
+        <CardHeader className="space-y-1 p-4 sm:p-6">
           <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4">
             <Lock className="w-6 h-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Set Your Password</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-xl sm:text-2xl">Set Your Password</CardTitle>
+          <CardDescription className="text-sm sm:text-base">
             Welcome, {clientData.name}! Create a secure password to access your coaching dashboard.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6 pt-0">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -248,7 +248,7 @@ export default function ClientPasswordSetup() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full min-h-10"
               disabled={isSubmitting || password.length < 8 || password !== confirmPassword}
               data-testid="button-submit"
             >

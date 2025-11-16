@@ -193,18 +193,18 @@ export default function ClientChat() {
 
   return (
     <div className="bg-background min-h-screen">
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground" data-testid="text-chat-title">Chat with Coach</h1>
-          <p className="text-muted-foreground mt-1">Message your coach for support and guidance</p>
+      <div className="max-w-4xl mx-auto p-4 sm:p-6">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-chat-title">Chat with Coach</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Message your coach for support and guidance</p>
         </div>
 
-        <Card className="h-[600px] flex flex-col">
-          <CardHeader className="border-b">
-            <CardTitle className="text-lg">Messages</CardTitle>
+        <Card className="h-[500px] sm:h-[600px] flex flex-col">
+          <CardHeader className="border-b p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Messages</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col p-0">
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               {clientMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
                   <MessageSquare className="w-16 h-16 text-muted-foreground/50" />
@@ -237,7 +237,7 @@ export default function ClientChat() {
                         data-testid={`message-${message.id}`}
                       >
                         <div
-                          className={`max-w-[70%] rounded-lg p-3 ${
+                          className={`max-w-[85%] sm:max-w-[70%] rounded-lg p-3 ${
                             message.sender === "client"
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted text-foreground"
@@ -331,7 +331,7 @@ export default function ClientChat() {
               maxFiles={5}
               maxFileSize={25 * 1024 * 1024}
             >
-              <div className="border-t p-4 space-y-3">
+              <div className="border-t p-3 sm:p-4 space-y-3">
                 {/* Pending attachments display */}
                 {pendingAttachments.length > 0 && (
                   <div className="space-y-2">
@@ -345,14 +345,14 @@ export default function ClientChat() {
                         >
                           <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{attachment.fileName}</p>
+                            <p className="text-xs sm:text-sm font-medium truncate">{attachment.fileName}</p>
                             <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
                           </div>
                           <Button
                             size="icon"
                             variant="ghost"
                             onClick={() => removeAttachment(attachment.id)}
-                            className="flex-shrink-0 h-8 w-8"
+                            className="flex-shrink-0 min-h-8 min-w-8"
                             data-testid={`button-remove-attachment-${attachment.id}`}
                           >
                             <X className="w-4 h-4" />
@@ -363,7 +363,7 @@ export default function ClientChat() {
                   </div>
                 )}
                 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     placeholder="Type your message..."
                     value={messageText}
@@ -371,8 +371,9 @@ export default function ClientChat() {
                     onKeyDown={handleKeyPress}
                     disabled={sendMessageMutation.isPending}
                     data-testid="input-message"
+                    className="flex-1 min-h-10"
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 justify-end sm:justify-start">
                     <InlineFileAttachment
                       onAttachmentsAdded={handleAttachmentsAdded}
                       clientId={clientData?.id || ""}
@@ -385,6 +386,7 @@ export default function ClientChat() {
                       onClick={handleSendMessage}
                       disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending}
                       data-testid="button-send"
+                      className="min-h-10"
                     >
                       {sendMessageMutation.isPending ? (
                         <Loader2 className="w-4 h-4 animate-spin" />

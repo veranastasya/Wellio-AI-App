@@ -73,20 +73,20 @@ export default function ClientForms() {
 
   return (
     <div className="bg-background min-h-screen">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-foreground" data-testid="text-forms-title">My Forms</h1>
-          <p className="text-muted-foreground mt-1">View and complete questionnaires from your coach</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-forms-title">My Forms</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">View and complete questionnaires from your coach</p>
         </div>
 
         <Card>
-          <CardHeader className="border-b gap-1 space-y-0 pb-2">
-            <CardTitle className="text-lg">Completed Forms</CardTitle>
-            <p className="text-sm text-muted-foreground">
+          <CardHeader className="border-b gap-1 space-y-0 pb-2 p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Completed Forms</CardTitle>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {responses.length} form{responses.length !== 1 ? "s" : ""} completed
             </p>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             {responses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
                 <FileText className="w-16 h-16 text-muted-foreground/50" />
@@ -132,13 +132,13 @@ export default function ClientForms() {
         </Card>
 
         <Card>
-          <CardHeader className="border-b gap-1 space-y-0 pb-2">
-            <CardTitle className="text-lg">Available Forms</CardTitle>
-            <p className="text-sm text-muted-foreground">
+          <CardHeader className="border-b gap-1 space-y-0 pb-2 p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">Available Forms</CardTitle>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               New questionnaires from your coach
             </p>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
               <FileText className="w-16 h-16 text-muted-foreground/50" />
               <div>
