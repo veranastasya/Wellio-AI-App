@@ -96,11 +96,13 @@ export default function ClientOnboard() {
 
   const submitMutation = useMutation({
     mutationFn: async (formAnswers: Record<string, any>) => {
-      const { weightCanonical, heightCanonical, heightFeet, heightInches, heightCm, ...otherAnswers } = formAnswers;
+      const { weightCanonical, heightCanonical, heightFeet, heightInches, heightCm, targetWeightCanonical, goalWeightCanonical, ...otherAnswers } = formAnswers;
       const submissionAnswers: Record<string, any> = {
         ...otherAnswers,
         weight: weightCanonical,
         height: heightCanonical,
+        targetWeight: targetWeightCanonical,
+        goalWeight: goalWeightCanonical,
         unitsPreference,
       };
       
@@ -815,24 +817,101 @@ export default function ClientOnboard() {
                     )}
                     
                     {questionnaire.standardFields.goal && (
-                      <div className="space-y-2" data-testid="standard-field-goal">
-                        <Label htmlFor="goalType">Primary Goal</Label>
-                        <Select
-                          value={answers.goalType || ""}
-                          onValueChange={(value) => handleAnswerChange("goalType", value)}
-                        >
-                          <SelectTrigger data-testid="select-goal-type">
-                            <SelectValue placeholder="Select your primary goal" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {GOAL_TYPES.map((goal) => (
-                              <SelectItem key={goal} value={goal}>
-                                {GOAL_TYPE_LABELS[goal]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <>
+                        <div className="space-y-2" data-testid="standard-field-goal">
+                          <Label htmlFor="goalType">Primary Goal</Label>
+                          <Select
+                            value={answers.goalType || ""}
+                            onValueChange={(value) => handleAnswerChange("goalType", value)}
+                          >
+                            <SelectTrigger data-testid="select-goal-type">
+                              <SelectValue placeholder="Select your primary goal" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {GOAL_TYPES.map((goal) => (
+                                <SelectItem key={goal} value={goal}>
+                                  {GOAL_TYPE_LABELS[goal]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {answers.goalType === "lose_weight" && (
+                          <div className="space-y-2" data-testid="conditional-field-target-weight">
+                            <Label htmlFor="targetWeight">Target Weight (optional) - {unitsPreference === "us" ? "lbs" : "kg"}</Label>
+                            <Input
+                              id="targetWeight"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="1000"
+                              data-testid="input-target-weight"
+                              value={
+                                unitsPreference === "metric" && answers.targetWeightCanonical
+                                  ? lbsToKg(parseFloat(answers.targetWeightCanonical))
+                                  : answers.targetWeightCanonical || ""
+                              }
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (unitsPreference === "metric") {
+                                  const canonicalValue = value ? kgToLbs(parseFloat(value)).toString() : "";
+                                  handleAnswerChange("targetWeightCanonical", canonicalValue);
+                                } else {
+                                  handleAnswerChange("targetWeightCanonical", value);
+                                }
+                              }}
+                              placeholder={`Enter your target weight in ${unitsPreference === "us" ? "lbs" : "kg"}`}
+                            />
+                          </div>
+                        )}
+                        
+                        {answers.goalType === "improve_body_composition" && (
+                          <div className="space-y-2" data-testid="conditional-field-target-body-fat">
+                            <Label htmlFor="targetBodyFat">Target Body Fat % (optional)</Label>
+                            <Input
+                              id="targetBodyFat"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="100"
+                              data-testid="input-target-body-fat"
+                              value={answers.targetBodyFat || ""}
+                              onChange={(e) => handleAnswerChange("targetBodyFat", e.target.value)}
+                              placeholder="Enter your target body fat percentage"
+                            />
+                          </div>
+                        )}
+                        
+                        {answers.goalType === "maintain_weight" && (
+                          <div className="space-y-2" data-testid="conditional-field-goal-weight">
+                            <Label htmlFor="goalWeight">Confirm Goal Weight (optional) - {unitsPreference === "us" ? "lbs" : "kg"}</Label>
+                            <Input
+                              id="goalWeight"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max="1000"
+                              data-testid="input-goal-weight"
+                              value={
+                                unitsPreference === "metric" && (answers.goalWeightCanonical || answers.weightCanonical)
+                                  ? lbsToKg(parseFloat(answers.goalWeightCanonical || answers.weightCanonical))
+                                  : answers.goalWeightCanonical || answers.weightCanonical || ""
+                              }
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (unitsPreference === "metric") {
+                                  const canonicalValue = value ? kgToLbs(parseFloat(value)).toString() : "";
+                                  handleAnswerChange("goalWeightCanonical", canonicalValue);
+                                } else {
+                                  handleAnswerChange("goalWeightCanonical", value);
+                                }
+                              }}
+                              placeholder={`Confirm weight to maintain in ${unitsPreference === "us" ? "lbs" : "kg"}`}
+                            />
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
