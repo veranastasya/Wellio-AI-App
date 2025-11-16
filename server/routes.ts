@@ -591,8 +591,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/questionnaires/:id", requireCoachAuth, async (req, res) => {
     try {
-      const success = await storage.deleteQuestionnaire(req.params.id);
-      if (!success) {
+      const questionnaire = await storage.updateQuestionnaire(req.params.id, { deleted: true });
+      if (!questionnaire) {
         return res.status(404).json({ error: "Questionnaire not found" });
       }
       res.status(204).send();
