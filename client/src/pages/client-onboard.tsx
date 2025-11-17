@@ -634,7 +634,7 @@ export default function ClientOnboard() {
 
                 <div className="space-y-2">
                   <Label htmlFor="phone" data-testid="label-phone">
-                    Phone <span className="text-destructive">*</span>
+                    Phone
                   </Label>
                   <Input
                     id="phone"
@@ -642,7 +642,6 @@ export default function ClientOnboard() {
                     data-testid="input-phone"
                     value={answers.phone || ""}
                     onChange={(e) => handleAnswerChange("phone", e.target.value)}
-                    required
                   />
                 </div>
                 

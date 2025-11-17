@@ -470,20 +470,26 @@ export default function QuestionnaireBuilder() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg sm:text-xl">Default Client Information</CardTitle>
-            <CardDescription>These fields are required and cannot be removed</CardDescription>
+            <CardDescription>Name and Email are required. Phone is optional.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 p-4 sm:p-6">
-            {["Client Name", "Email", "Phone"].map((field) => (
+            {[
+              { name: "Client Name", required: true },
+              { name: "Email", required: true },
+              { name: "Phone", required: false }
+            ].map((field) => (
               <div
-                key={field}
+                key={field.name}
                 className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
-                data-testid={`default-field-${field.toLowerCase().replace(" ", "-")}`}
+                data-testid={`default-field-${field.name.toLowerCase().replace(" ", "-")}`}
               >
                 <div className="flex items-center gap-3">
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{field}</span>
+                  <span className="font-medium">{field.name}</span>
                 </div>
-                <span className="text-sm text-muted-foreground">Required</span>
+                <span className="text-sm text-muted-foreground">
+                  {field.required ? "Required" : "Optional"}
+                </span>
               </div>
             ))}
           </CardContent>
