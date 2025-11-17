@@ -590,10 +590,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/questionnaires/:id/publish", requireCoachAuth, async (req, res) => {
+    try {
+      const questionnaire = await storage.publishQuestionnaire(req.params.id);
+      if (!questionnaire) {
+        return res.status(404).json({ error: "Questionnaire not found" });
+      }
+      res.json(questionnaire);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to publish questionnaire" });
+    }
+  });
+
+  app.patch("/api/questionnaires/:id/archive", requireCoachAuth, async (req, res) => {
+    try {
+      const questionnaire = await storage.archiveQuestionnaire(req.params.id);
+      if (!questionnaire) {
+        return res.status(404).json({ error: "Questionnaire not found" });
+      }
+      res.json(questionnaire);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to archive questionnaire" });
+    }
+  });
+
+  app.patch("/api/questionnaires/:id/restore", requireCoachAuth, async (req, res) => {
+    try {
+      const questionnaire = await storage.restoreQuestionnaire(req.params.id);
+      if (!questionnaire) {
+        return res.status(404).json({ error: "Questionnaire not found" });
+      }
+      res.json(questionnaire);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to restore questionnaire" });
+    }
+  });
+
   app.delete("/api/questionnaires/:id", requireCoachAuth, async (req, res) => {
     try {
-      const questionnaire = await storage.updateQuestionnaire(req.params.id, { deleted: true });
+      const questionnaire = await storage.getQuestionnaire(req.params.id);
       if (!questionnaire) {
+        return res.status(404).json({ error: "Questionnaire not found" });
+      }
+
+      // Smart delete: if usageCount > 0, archive instead of hard delete
+      if (questionnaire.usageCount && questionnaire.usageCount > 0) {
+        const archived = await storage.archiveQuestionnaire(req.params.id);
+        return res.json({ 
+          message: "Questionnaire archived (has been sent to clients)",
+          questionnaire: archived,
+          archived: true
+        });
+      }
+
+      // Hard delete if never used
+      const deleted = await storage.deleteQuestionnaire(req.params.id);
+      if (!deleted) {
         return res.status(404).json({ error: "Questionnaire not found" });
       }
       res.status(204).send();

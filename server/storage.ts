@@ -46,7 +46,7 @@ import {
   goals,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Clients
@@ -78,6 +78,10 @@ export interface IStorage {
   createQuestionnaire(questionnaire: InsertQuestionnaire): Promise<Questionnaire>;
   updateQuestionnaire(id: string, questionnaire: Partial<InsertQuestionnaire>): Promise<Questionnaire | undefined>;
   deleteQuestionnaire(id: string): Promise<boolean>;
+  incrementQuestionnaireUsage(id: string): Promise<void>;
+  publishQuestionnaire(id: string): Promise<Questionnaire | undefined>;
+  archiveQuestionnaire(id: string): Promise<Questionnaire | undefined>;
+  restoreQuestionnaire(id: string): Promise<Questionnaire | undefined>;
 
   // Responses
   getResponses(): Promise<Response[]>;
@@ -571,6 +575,48 @@ export class DatabaseStorage implements IStorage {
   async deleteQuestionnaire(id: string): Promise<boolean> {
     const result = await db.delete(questionnaires).where(eq(questionnaires.id, id));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async incrementQuestionnaireUsage(id: string): Promise<void> {
+    await db
+      .update(questionnaires)
+      .set({ usageCount: sql`${questionnaires.usageCount} + 1` })
+      .where(eq(questionnaires.id, id));
+  }
+
+  async publishQuestionnaire(id: string): Promise<Questionnaire | undefined> {
+    const [published] = await db
+      .update(questionnaires)
+      .set({ status: 'published', updatedAt: new Date().toISOString() })
+      .where(eq(questionnaires.id, id))
+      .returning();
+    return published || undefined;
+  }
+
+  async archiveQuestionnaire(id: string): Promise<Questionnaire | undefined> {
+    const [archived] = await db
+      .update(questionnaires)
+      .set({ 
+        status: 'archived', 
+        deletedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString() 
+      })
+      .where(eq(questionnaires.id, id))
+      .returning();
+    return archived || undefined;
+  }
+
+  async restoreQuestionnaire(id: string): Promise<Questionnaire | undefined> {
+    const [restored] = await db
+      .update(questionnaires)
+      .set({ 
+        status: 'published', 
+        deletedAt: null,
+        updatedAt: new Date().toISOString() 
+      })
+      .where(eq(questionnaires.id, id))
+      .returning();
+    return restored || undefined;
   }
 
   // Response methods
