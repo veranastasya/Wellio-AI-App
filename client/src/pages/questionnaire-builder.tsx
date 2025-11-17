@@ -343,7 +343,7 @@ export default function QuestionnaireBuilder() {
               onClick={() => handleSave("draft")}
               disabled={saveMutation.isPending}
               data-testid="button-save-draft"
-              className="flex-1 sm:flex-initial"
+              className="min-h-10"
             >
               <Save className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Save Draft</span>
@@ -353,7 +353,7 @@ export default function QuestionnaireBuilder() {
               onClick={() => handleSave("published")}
               disabled={saveMutation.isPending}
               data-testid="button-publish"
-              className="flex-1 sm:flex-initial"
+              className="min-h-10"
             >
               Publish
             </Button>
