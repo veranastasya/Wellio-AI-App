@@ -963,10 +963,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { align: 'center' }
       );
       
-      // Finalize the PDF and close the stream
-      doc.end();
-      
-      console.log(`PDF generation completed successfully for response ${id}`);
+      // Finalize the PDF and wait for stream to finish
+      await new Promise<void>((resolve, reject) => {
+        doc.on('end', () => {
+          console.log(`PDF stream ended for response ${id}`);
+        });
+        
+        // Wait for the pipe to finish writing to response
+        res.on('finish', () => {
+          console.log(`PDF generation completed successfully for response ${id}`);
+          resolve();
+        });
+        
+        res.on('error', (err) => {
+          console.error(`Response stream error for response ${id}:`, err);
+          reject(err);
+        });
+        
+        doc.end();
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error(`Error generating PDF for response ${req.params.id}:`, errorMessage);
