@@ -19,7 +19,9 @@ export function CoachAuthProvider({ children }: { children: ReactNode }) {
   const { data: session, isLoading } = useQuery<{ authenticated: boolean }>({
     queryKey: ["coach-session"],
     queryFn: async () => {
-      const res = await fetch("/api/coach/session");
+      const res = await fetch("/api/coach/session", {
+        credentials: "include",
+      });
       if (!res.ok) {
         return { authenticated: false };
       }
@@ -35,6 +37,7 @@ export function CoachAuthProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
+        credentials: "include",
       });
       if (!res.ok) {
         const error = await res.json();
@@ -42,15 +45,18 @@ export function CoachAuthProvider({ children }: { children: ReactNode }) {
       }
       return res.json();
     },
-    onSuccess: () => {
-      // Invalidate session query to update auth state
-      queryClient.invalidateQueries({ queryKey: ["coach-session"] });
+    onSuccess: async () => {
+      // Refetch session query and wait for it to complete
+      await queryClient.refetchQueries({ queryKey: ["coach-session"] });
     },
   });
 
   const signOutMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/coach/logout", { method: "POST" });
+      const res = await fetch("/api/coach/logout", {
+        method: "POST",
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Logout failed");
       return res.json();
     },
