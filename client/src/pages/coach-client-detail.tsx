@@ -61,8 +61,9 @@ export default function CoachClientDetail() {
         throw new Error('Failed to generate PDF');
       }
       
-      // Get the blob
-      const blob = await response.blob();
+      // Get the array buffer and create blob with explicit MIME type
+      const arrayBuffer = await response.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
       
       // Extract filename from Content-Disposition header
       const contentDisposition = response.headers.get('Content-Disposition');
