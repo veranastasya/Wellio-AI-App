@@ -1500,6 +1500,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const invite = await storage.createClientInvite(inviteData);
 
+      // Increment questionnaire usage count
+      if (questionnaireId) {
+        await storage.incrementQuestionnaireUsage(questionnaireId);
+      }
+
       const inviteLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/onboard?token=${clientToken.token}`;
       console.log("[DEBUG] Returning invite link:", inviteLink);
 
