@@ -171,6 +171,8 @@ export const questionnaires = pgTable("questionnaires", {
     goal?: boolean;
   }>(),
   deleted: boolean("deleted").notNull().default(false),
+  usageCount: integer("usage_count").notNull().default(0),
+  deletedAt: text("deleted_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
