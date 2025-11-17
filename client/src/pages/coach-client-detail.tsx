@@ -61,11 +61,7 @@ export default function CoachClientDetail() {
         throw new Error('Failed to generate PDF');
       }
       
-      // Get the array buffer and create blob with explicit MIME type
-      const arrayBuffer = await response.arrayBuffer();
-      const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
-      
-      // Extract filename from Content-Disposition header
+      // Extract filename from Content-Disposition header BEFORE consuming body
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = 'questionnaire-response.pdf';
       if (contentDisposition) {
@@ -74,6 +70,9 @@ export default function CoachClientDetail() {
           filename = filenameMatch[1];
         }
       }
+      
+      // Use response.blob() directly - it correctly handles MIME type
+      const blob = await response.blob();
       
       // Create blob URL and trigger download
       const blobUrl = URL.createObjectURL(blob);
