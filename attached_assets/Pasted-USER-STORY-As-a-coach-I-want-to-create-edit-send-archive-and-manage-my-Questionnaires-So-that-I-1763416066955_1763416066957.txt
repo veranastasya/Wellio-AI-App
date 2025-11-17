@@ -1,0 +1,246 @@
+USER STORY
+
+As a coach
+I want to create, edit, send, archive, and manage my Questionnaires
+So that I can collect client data without breaking existing workflows, keep my workspace organized, and avoid losing forms that were already sent to clients.
+
+GOALS
+
+Support full CRUD (Create, Read, Update, Archive/Delete) for Questionnaires
+
+Prevent breaking the workflow if a Questionnaire was already sent to a client
+
+Show coaches a clean dashboard of active Questionnaires
+
+Provide a separate space for archived/removed Questionnaires
+
+Give coaches filters and clear visibility into statuses
+
+Maintain safety: client responses must never be lost
+
+Ensure that archived forms cannot be used for new clients unless restored
+
+Automate cleanup for unused archived forms
+
+QUESTIONNAIRE OBJECT MODEL (High-level)
+
+Do NOT include SQL tables; use internal simple models.
+
+QuestionnaireTemplate
+
+id
+
+title
+
+status (Draft, Published, Archived)
+
+createdAt
+
+updatedAt
+
+deletedAt (only if Archived)
+
+usageCount (how many clients received it)
+
+QuestionnaireInstance (Responses)
+
+id
+
+templateId
+
+clientId
+
+responses
+
+Important:
+A template may be Archived, but Instances and client responses must remain accessible.
+
+STATUS LOGIC
+
+Use a status field to control visibility.
+
+Draft: editable, can be published or sent
+
+Published: visible on main dashboard, can be sent
+
+Archived: cannot be used, cannot be sent, hidden from main dashboard
+
+Hard delete is ONLY allowed when:
+
+the QuestionnaireTemplate has never been sent
+
+usageCount = 0
+
+Otherwise, “Delete” becomes an Archive.
+
+EXPECTED BEHAVIOR
+1. CREATE
+
+Coach can create a new Questionnaire (Draft state)
+
+Add/edit title and fields
+
+Can Publish or Save Draft
+
+2. READ
+
+Main dashboard shows only:
+
+Draft
+
+Published
+
+Each row displays:
+
+title
+
+status
+
+usageCount
+
+last updated date
+
+actions: Edit, Send, Duplicate, Archive/Delete
+
+3. UPDATE
+
+Coach edits Draft or Published
+
+Autosave allowed
+
+Publishing moves status to Published
+
+4. ARCHIVE (Soft Delete)
+
+Instead of permanently deleting:
+
+If Questionnaire was EVER used (usageCount > 0):
+
+Clicking Delete = move to Archived tab
+
+Cannot be used for sending
+
+Existing clients retain their responses and workflow
+
+If Questionnaire has never been used:
+
+Allow full hard delete
+
+5. ARCHIVED TAB
+
+Create a second tab called Archived.
+
+Display:
+
+title
+
+status
+
+usageCount
+
+archivedAt
+
+actions: Restore, Duplicate
+
+Hard delete only if usageCount = 0
+
+6. FILTERS
+
+Add a filter panel on the main dashboard:
+
+All
+
+Draft
+
+Published
+
+Archived (only when in the Archived tab)
+
+7. AUTO-CLEANUP
+
+Implement an automated cleanup rule:
+
+Every 3 months
+
+Hard delete archived questionnaires that were never used
+
+Leave archived questionnaires that have usageCount > 0 (needed for historical responses)
+
+WORKFLOW EXAMPLES
+Sending a Questionnaire
+
+Coach clicks "Send"
+
+Enters client name and email
+
+System creates a QuestionnaireInstance linked to the template
+
+Client fills the form
+
+Their responses automatically appear in their profile
+
+If the template is later archived:
+
+Previously sent links can still complete the workflow
+
+But new clients cannot receive it
+
+Archiving
+
+If coach tries to delete a used Questionnaire:
+
+System shows message:
+“This questionnaire was already sent to clients. We will move it to Archive. It will no longer be available for new clients, but previous responses will remain.”
+
+UI REQUIREMENTS
+Main Dashboard
+
+Table layout
+
+Draft + Published only
+
+Filters
+
+CTA: Create Questionnaire
+
+Archived Tab
+
+Separate tab
+
+List of archived templates
+
+Restore and Duplicate actions
+
+Questionnaire Editor
+
+Title
+
+Fields section
+
+Save Draft
+
+Publish
+
+Handle internal UI yourself; follow modern patterns.
+
+DELIVERABLE
+
+Generate:
+
+UI components
+
+State management
+
+Status logic (Draft, Published, Archived)
+
+Sending workflow
+
+QuestionnaireInstance creation
+
+Archive behavior
+
+Dashboard + Archive tab
+
+Auto-cleanup job (high level)
+
+Everything should be functional inside the Replit project.
