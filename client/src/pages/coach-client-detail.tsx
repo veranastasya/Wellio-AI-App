@@ -65,7 +65,7 @@ export default function CoachClientDetail() {
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = 'questionnaire-response.pdf';
       if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
         if (filenameMatch) {
           filename = filenameMatch[1];
         }
