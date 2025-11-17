@@ -63,13 +63,13 @@ export default function Questionnaires() {
     (q) => q.status === "archived"
   );
 
-  const filteredQuestionnaires = (activeTab === "active" ? activeQuestionnaires : archivedQuestionnaires).filter(
-    (q) => statusFilter === "all" || q.status === statusFilter
-  );
+  const filteredQuestionnaires = activeTab === "active" 
+    ? activeQuestionnaires.filter((q) => statusFilter === "all" || q.status === statusFilter)
+    : archivedQuestionnaires;
 
   const publishMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/questionnaires/${id}/publish`, "PATCH");
+      return await apiRequest("PATCH", `/api/questionnaires/${id}/publish`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/questionnaires"] });
@@ -89,7 +89,7 @@ export default function Questionnaires() {
 
   const archiveMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/questionnaires/${id}/archive`, "PATCH");
+      return await apiRequest("PATCH", `/api/questionnaires/${id}/archive`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/questionnaires"] });
@@ -111,7 +111,7 @@ export default function Questionnaires() {
 
   const restoreMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/questionnaires/${id}/restore`, "PATCH");
+      return await apiRequest("PATCH", `/api/questionnaires/${id}/restore`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/questionnaires"] });
@@ -131,8 +131,11 @@ export default function Questionnaires() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await apiRequest(`/api/questionnaires/${id}`, "DELETE");
-      return response;
+      const response = await apiRequest("DELETE", `/api/questionnaires/${id}`);
+      if (response.status === 204) {
+        return { archived: false };
+      }
+      return await response.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/questionnaires"] });
@@ -163,7 +166,7 @@ export default function Questionnaires() {
   const duplicateMutation = useMutation({
     mutationFn: async (questionnaire: Questionnaire) => {
       const now = new Date().toISOString();
-      return await apiRequest("/api/questionnaires", "POST", {
+      return await apiRequest("POST", "/api/questionnaires", {
         name: `${questionnaire.name} (Copy)`,
         status: "draft",
         questions: questionnaire.questions,

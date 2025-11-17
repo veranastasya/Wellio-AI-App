@@ -592,12 +592,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/questionnaires/:id/publish", requireCoachAuth, async (req, res) => {
     try {
+      console.log(`[Publish] Publishing questionnaire ${req.params.id}`);
       const questionnaire = await storage.publishQuestionnaire(req.params.id);
       if (!questionnaire) {
+        console.log(`[Publish] Questionnaire ${req.params.id} not found`);
         return res.status(404).json({ error: "Questionnaire not found" });
       }
+      console.log(`[Publish] Successfully published questionnaire ${req.params.id}`);
       res.json(questionnaire);
     } catch (error) {
+      console.error(`[Publish] Error publishing questionnaire ${req.params.id}:`, error);
       res.status(500).json({ error: "Failed to publish questionnaire" });
     }
   });
