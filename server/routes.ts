@@ -2163,7 +2163,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         return res.status(404).json({ error: "Client not found" });
       }
 
-      const doc = new PDFDocument({ margin: 50 });
+      const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
       const chunks: Buffer[] = [];
 
       doc.on('data', (chunk) => chunks.push(chunk));
@@ -2172,24 +2172,34 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         doc.on('end', () => resolve(Buffer.concat(chunks)));
       });
 
-      doc.fontSize(24).fillColor('#28A0AE').text('Wellio', { align: 'center' });
+      doc.fontSize(28).fillColor('#28A0AE').text('Wellio', { align: 'center' });
+      doc.moveDown(0.3);
+      doc.fontSize(20).fillColor('#000000').text(plan.planName, { align: 'center' });
       doc.moveDown(0.5);
-      doc.fontSize(18).fillColor('#000000').text(plan.planName, { align: 'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(12).fillColor('#666666').text(`Client: ${client.name}`, { align: 'center' });
+      doc.fontSize(11).fillColor('#666666').text(`Client: ${client.name}`, { align: 'center' });
       doc.fontSize(10).text(`Generated: ${new Date().toLocaleDateString()}`, { align: 'center' });
-      doc.moveDown(2);
-
-      const chatHistory = (plan.planContent as any).messages || [];
+      doc.moveDown(0.3);
       
-      doc.fontSize(14).fillColor('#000000');
-      for (const msg of chatHistory) {
-        if (msg.role === 'assistant') {
-          doc.fontSize(12).fillColor('#000000').text(msg.content, {
+      doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke('#E2F9AD');
+      doc.moveDown(1.5);
+
+      const sections = (plan.planContent as any).sections || [];
+      
+      if (sections.length === 0) {
+        doc.fontSize(12).fillColor('#666666').text('No content available.', { align: 'center' });
+      } else {
+        for (const section of sections) {
+          doc.fontSize(16).fillColor('#28A0AE').text(section.heading, {
             align: 'left',
-            lineGap: 4,
+            underline: false,
           });
-          doc.moveDown(1);
+          doc.moveDown(0.5);
+          
+          doc.fontSize(11).fillColor('#000000').text(section.content, {
+            align: 'left',
+            lineGap: 3,
+          });
+          doc.moveDown(1.2);
         }
       }
 
