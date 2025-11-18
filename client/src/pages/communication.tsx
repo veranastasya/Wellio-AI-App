@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download } from "lucide-react";
+import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,18 @@ export default function Communication() {
   const [searchQuery, setSearchQuery] = useState("");
   const [validationError, setValidationError] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const { toast } = useToast();
+
+  // Track window size for mobile/desktop view switching
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const { data: clients = [], isLoading: clientsLoading, isError: clientsError } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -244,15 +255,16 @@ export default function Communication() {
   }
 
   return (
-    <div className="bg-background">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+    <div className="bg-background h-full">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 h-full flex flex-col">
         <div className="mb-4 sm:mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-communication-title">Communication</h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">Message your clients and manage conversations</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          <Card data-testid="card-client-list" className="lg:max-h-[calc(100vh-200px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 flex-1 min-h-0">
+          {(!isMobile || !selectedClientId) && (
+          <Card data-testid="card-client-list" className="lg:max-h-[calc(100vh-200px)] h-full flex flex-col">
             <CardHeader className="pb-3">
               <CardTitle className="text-base sm:text-lg">Clients</CardTitle>
               <div className="relative mt-2">
@@ -327,25 +339,38 @@ export default function Communication() {
                 </div>
             </CardContent>
           </Card>
+          )}
 
-          <Card className="lg:col-span-2" data-testid="card-messages">
+          {(!isMobile || selectedClientId) && (
+          <Card className="lg:col-span-2 h-full flex flex-col" data-testid="card-messages">
             {selectedClient ? (
               <>
                 <CardHeader className="pb-3 border-b">
                   <div className="flex items-center gap-3">
+                    {isMobile && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSelectedClientId(null)}
+                        className="flex-shrink-0"
+                        data-testid="button-back-to-list"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </Button>
+                    )}
                     <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
                       <span className="text-sm font-semibold">
                         {getInitials(selectedClient.name)}
                       </span>
                     </div>
-                    <div>
-                      <CardTitle className="text-lg">{selectedClient.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{selectedClient.email}</p>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg truncate">{selectedClient.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground truncate">{selectedClient.email}</p>
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-4">
-                    <div className="space-y-4">
+                <CardContent className="p-4 flex-1 flex flex-col min-h-0">
+                    <div className="space-y-4 flex-1 overflow-y-auto mb-4">
                       {clientMessages.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">
                           No messages yet. Start the conversation!
@@ -542,6 +567,7 @@ export default function Communication() {
               </CardContent>
             )}
           </Card>
+          )}
         </div>
       </div>
     </div>
