@@ -68,6 +68,16 @@ export default function QuestionnaireBuilder() {
   const isEditMode = Boolean(id) && id !== "new";
 
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [initialQuestions, setInitialQuestions] = useState<Question[]>([]);
+  const [initialStandardFields, setInitialStandardFields] = useState({
+    sex: true,
+    weight: true,
+    age: true,
+    height: true,
+    activityLevel: true,
+    bodyFatPercentage: true,
+    goal: true,
+  });
   const [newQuestionType, setNewQuestionType] = useState<QuestionType>("short_text");
   const [standardFields, setStandardFields] = useState({
     sex: true,
@@ -108,29 +118,28 @@ export default function QuestionnaireBuilder() {
       });
       const normalized = (questionnaire.questions as any[]).map(normalizeQuestion);
       setQuestions(normalized);
+      setInitialQuestions(normalized);
       
-      if (questionnaire.standardFields) {
-        setStandardFields({
-          sex: questionnaire.standardFields.sex !== false,
-          weight: questionnaire.standardFields.weight !== false,
-          age: questionnaire.standardFields.age !== false,
-          height: questionnaire.standardFields.height !== false,
-          activityLevel: questionnaire.standardFields.activityLevel !== false,
-          bodyFatPercentage: questionnaire.standardFields.bodyFatPercentage !== false,
-          goal: questionnaire.standardFields.goal !== false,
-        });
-      } else {
-        // Default to all enabled for questionnaires without standardFields
-        setStandardFields({
-          sex: true,
-          weight: true,
-          age: true,
-          height: true,
-          activityLevel: true,
-          bodyFatPercentage: true,
-          goal: true,
-        });
-      }
+      const fields = questionnaire.standardFields ? {
+        sex: questionnaire.standardFields.sex !== false,
+        weight: questionnaire.standardFields.weight !== false,
+        age: questionnaire.standardFields.age !== false,
+        height: questionnaire.standardFields.height !== false,
+        activityLevel: questionnaire.standardFields.activityLevel !== false,
+        bodyFatPercentage: questionnaire.standardFields.bodyFatPercentage !== false,
+        goal: questionnaire.standardFields.goal !== false,
+      } : {
+        sex: true,
+        weight: true,
+        age: true,
+        height: true,
+        activityLevel: true,
+        bodyFatPercentage: true,
+        goal: true,
+      };
+      
+      setStandardFields(fields);
+      setInitialStandardFields(fields);
     }
   }, [questionnaire, form]);
 
@@ -262,6 +271,17 @@ export default function QuestionnaireBuilder() {
     setQuestions(newQuestions);
   };
 
+  // Check if questions or standard fields have changed
+  const hasChanges = () => {
+    const formDirty = form.formState.isDirty;
+    const questionsChanged = JSON.stringify(questions) !== JSON.stringify(initialQuestions);
+    const fieldsChanged = JSON.stringify(standardFields) !== JSON.stringify(initialStandardFields);
+    return formDirty || questionsChanged || fieldsChanged;
+  };
+
+  const currentStatus = questionnaire?.status || "draft";
+  const hasUnsavedChanges = hasChanges();
+
   const handleSave = (status: "draft" | "published") => {
     const formData = form.getValues();
     if (!formData.name) {
@@ -338,24 +358,29 @@ export default function QuestionnaireBuilder() {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:flex-shrink-0">
-            <Button
-              variant="outline"
-              onClick={() => handleSave("draft")}
-              disabled={saveMutation.isPending}
-              data-testid="button-save-draft"
-              className="min-h-10"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Save Draft</span>
-              <span className="sm:hidden">Draft</span>
-            </Button>
+            {/* Show Save Draft only for drafts OR published with changes */}
+            {(currentStatus === "draft" || (currentStatus === "published" && hasUnsavedChanges)) && (
+              <Button
+                variant="outline"
+                onClick={() => handleSave("draft")}
+                disabled={saveMutation.isPending}
+                data-testid="button-save-draft"
+                className="min-h-10"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">
+                  {currentStatus === "published" ? "Save as Draft" : "Save Draft"}
+                </span>
+                <span className="sm:hidden">Draft</span>
+              </Button>
+            )}
             <Button
               onClick={() => handleSave("published")}
               disabled={saveMutation.isPending}
               data-testid="button-publish"
               className="min-h-10"
             >
-              Publish
+              {currentStatus === "published" ? "Update" : "Publish"}
             </Button>
           </div>
         </div>
