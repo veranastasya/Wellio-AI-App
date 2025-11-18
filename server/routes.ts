@@ -2274,7 +2274,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
       const objectPath = `/objects/plans/${plan.id}.pdf`;
       try {
-        await objectStorageService.trySetObjectEntityAclPolicy(fileName, {
+        await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
           owner: plan.coachId,
           visibility: 'private',
           aclRules: [
@@ -2290,7 +2290,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         console.log("ACL policy set successfully");
       } catch (error) {
         console.error("PDF Generation: Failed to set ACL policy", error);
-        // Don't fail the request if ACL fails - the PDF is still accessible
+        return res.status(500).json({ error: "Failed to set PDF access permissions", details: error instanceof Error ? error.message : 'Unknown error' });
       }
 
       await storage.updateClientPlan(plan.id, { pdfUrl: objectPath });
