@@ -8,14 +8,21 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Save, Share2, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft } from "lucide-react";
+import { Loader2, Send, Save, Share2, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, Plus, Trash2, GripVertical, Edit3, PlusCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, Goal } from "@shared/schema";
 import { getGoalTypeLabel } from "@shared/schema";
 
 interface Message {
   role: "system" | "user" | "assistant";
+  content: string;
+}
+
+interface PlanSection {
+  id: string;
+  heading: string;
   content: string;
 }
 
@@ -165,6 +172,18 @@ function generateInitialPrompt(context: ClientContext): string {
   return prompt;
 }
 
+const SECTION_TEMPLATES = [
+  { heading: "Summary", content: "Brief overview of the wellness plan..." },
+  { heading: "Key Goals", content: "• Goal 1\n• Goal 2\n• Goal 3" },
+  { heading: "Weekly Structure", content: "Monday:\nTuesday:\nWednesday:\nThursday:\nFriday:\nSaturday:\nSunday:" },
+  { heading: "Movement & Activity Habits", content: "Describe recommended physical activities, frequency, duration, and intensity..." },
+  { heading: "Nutrition Habits", content: "List simple, sustainable nutrition guidelines..." },
+  { heading: "Sleep & Recovery", content: "Sleep duration target and recovery practices..." },
+  { heading: "Stress Management & Mindset", content: "Mindfulness practices and stress reduction techniques..." },
+  { heading: "Environment & Routines", content: "Daily routines and environmental optimizations..." },
+  { heading: "Weekly Checkpoints & Metrics", content: "Metrics to track:\n• Metric 1\n• Metric 2\n• Metric 3" },
+];
+
 export default function PlanBuilder() {
   const [, params] = useRoute("/coach/plan-builder/:clientId");
   const clientId = params?.clientId;
@@ -174,6 +193,7 @@ export default function PlanBuilder() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [planName, setPlanName] = useState("");
+  const [planSections, setPlanSections] = useState<PlanSection[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -260,11 +280,15 @@ export default function PlanBuilder() {
         throw new Error("Please enter a plan name");
       }
       
+      if (planSections.length === 0) {
+        throw new Error("Please add content to your plan");
+      }
+      
       const response = await apiRequest("POST", "/api/client-plans", {
         clientId,
         coachId: "default-coach",
         planName: planName.trim(),
-        planContent: { messages },
+        planContent: { sections: planSections },
         status: "draft",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -335,6 +359,38 @@ export default function PlanBuilder() {
     chatMutation.mutate(input);
   };
 
+  const handleAddToCanvas = (content: string) => {
+    const newSection: PlanSection = {
+      id: Date.now().toString(),
+      heading: "AI Response",
+      content: content.trim(),
+    };
+    setPlanSections(prev => [...prev, newSection]);
+    toast({
+      title: "Added to canvas",
+      description: "Content added. You can now edit it.",
+    });
+  };
+
+  const handleAddSection = (template: typeof SECTION_TEMPLATES[0]) => {
+    const newSection: PlanSection = {
+      id: Date.now().toString(),
+      heading: template.heading,
+      content: template.content,
+    };
+    setPlanSections(prev => [...prev, newSection]);
+  };
+
+  const handleUpdateSection = (id: string, field: 'heading' | 'content', value: string) => {
+    setPlanSections(prev => prev.map(section =>
+      section.id === id ? { ...section, [field]: value } : section
+    ));
+  };
+
+  const handleDeleteSection = (id: string) => {
+    setPlanSections(prev => prev.filter(section => section.id !== id));
+  };
+
   const handleSavePlan = async () => {
     setIsSaving(true);
     try {
@@ -374,6 +430,7 @@ export default function PlanBuilder() {
     setHasInitialized(false);
     setMessages([]);
     setPlanName("");
+    setPlanSections([]);
   }, [clientId]);
 
   useEffect(() => {
@@ -390,41 +447,72 @@ export default function PlanBuilder() {
 
   return (
     <div className="flex flex-col h-full p-4 sm:p-6 gap-3 sm:gap-4">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <Link href="/clients">
-          <Button variant="ghost" size="icon" data-testid="button-back-to-clients">
-            <ArrowLeft className="w-4 h-4" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/clients">
+            <Button variant="ghost" size="icon" data-testid="button-back-to-clients">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          </Link>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-bold">AI Plan Builder</h2>
+            <Separator orientation="vertical" className="hidden sm:block h-6" />
+            <Select value={clientId} onValueChange={(value) => setLocation(`/coach/plan-builder/${value}`)}>
+              <SelectTrigger className="w-full sm:w-64 min-h-10" data-testid="select-client">
+                <SelectValue placeholder="Select a client" />
+              </SelectTrigger>
+              <SelectContent>
+                {allClients?.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <Input
+            type="text"
+            placeholder="Plan name (e.g., '12-Week Transformation Plan')"
+            value={planName}
+            onChange={(e) => setPlanName(e.target.value)}
+            className="text-sm min-h-10 w-full sm:w-64"
+            data-testid="input-plan-name"
+          />
+          <Button
+            variant="outline"
+            onClick={handleSavePlan}
+            disabled={isSaving || planSections.length === 0}
+            className="min-h-10"
+            data-testid="button-save-plan"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Save & Generate PDF
           </Button>
-        </Link>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
-          <h2 className="text-base sm:text-lg font-semibold">AI Plan Builder</h2>
-          <Separator orientation="vertical" className="hidden sm:block h-6" />
-          <Select value={clientId} onValueChange={(value) => setLocation(`/coach/plan-builder/${value}`)}>
-            <SelectTrigger className="w-full sm:w-64 h-10" data-testid="select-client">
-              <SelectValue placeholder="Select a client" />
-            </SelectTrigger>
-            <SelectContent>
-              {allClients?.map((client) => (
-                <SelectItem key={client.id} value={client.id}>
-                  {client.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Button
+            onClick={handleSaveAndShare}
+            disabled={isSaving || planSections.length === 0}
+            className="min-h-10"
+            data-testid="button-save-share"
+          >
+            <Share2 className="w-4 h-4 mr-2" />
+            Save & Share
+          </Button>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
-        <div className="w-full lg:w-80 flex-shrink-0">
-          <Card className="h-auto lg:h-full max-h-96 lg:max-h-none overflow-y-auto lg:overflow-visible">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
+      <div className="flex flex-col xl:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
+        <div className="w-full xl:w-80 flex-shrink-0">
+          <Card className="h-auto xl:h-full max-h-96 xl:max-h-none">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <User className="w-4 h-4" />
                 Client Context
               </CardTitle>
             </CardHeader>
             <CardContent>
-            <ScrollArea className="h-[calc(100vh-200px)]">
+            <ScrollArea className="h-[280px] xl:h-[calc(100vh-280px)]">
               <div className="space-y-4">
                 <div>
                   <h3 className="font-semibold text-sm mb-2">{clientContext.client.name}</h3>
@@ -528,75 +616,59 @@ export default function PlanBuilder() {
         </Card>
       </div>
 
-      <div className="flex-1 flex flex-col gap-3 sm:gap-4">
-        <Card>
+      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
+        <Card className="flex-1">
           <CardHeader className="pb-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Activity className="w-5 h-5" />
-                AI Plan Builder
-              </CardTitle>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <input
-                  type="text"
-                  placeholder="Plan name..."
-                  value={planName}
-                  onChange={(e) => setPlanName(e.target.value)}
-                  className="text-sm border rounded px-3 py-2 h-10 w-full sm:w-48"
-                  data-testid="input-plan-name"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleSavePlan}
-                  disabled={isSaving || messages.length === 0}
-                  data-testid="button-save-plan"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  Save & Generate PDF
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveAndShare}
-                  disabled={isSaving || messages.length === 0}
-                  data-testid="button-save-share"
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Save & Share
-                </Button>
-              </div>
-            </div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Activity className="w-4 h-4" />
+              AI Chat
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[calc(100vh-320px)] mb-4">
-              <div className="space-y-4 pr-4">
+          <CardContent className="flex flex-col h-[calc(100%-60px)]">
+            <ScrollArea className="flex-1 mb-4">
+              <div className="space-y-3 pr-4">
                 {messages.length === 0 && (
                   <div className="text-center text-muted-foreground py-12">
-                    <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Start a conversation with AI to create a personalized plan</p>
-                    <p className="text-sm mt-2">Example: "Create a 7-day meal plan for weight loss"</p>
+                    <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">Chat with AI to generate plan content</p>
+                    <p className="text-sm mt-2">Ask questions, request sections, or get suggestions</p>
                   </div>
                 )}
                 {messages.map((message, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
+                  <div key={idx} className="space-y-2">
                     <div
-                      className={`max-w-[80%] rounded-lg p-4 ${
-                        message.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
-                      }`}
-                      data-testid={`message-${message.role}-${idx}`}
+                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                     >
-                      <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                      <div
+                        className={`max-w-[85%] rounded-lg p-3 ${
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted"
+                        }`}
+                        data-testid={`message-${message.role}-${idx}`}
+                      >
+                        <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                      </div>
                     </div>
+                    {message.role === "assistant" && (
+                      <div className="flex justify-start">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddToCanvas(message.content)}
+                          className="ml-2 min-h-8"
+                          data-testid={`button-add-to-canvas-${idx}`}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add to Canvas
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {chatMutation.isPending && (
                   <div className="flex justify-start">
-                    <div className="bg-muted rounded-lg p-4">
+                    <div className="bg-muted rounded-lg p-3">
                       <Loader2 className="w-4 h-4 animate-spin" />
                     </div>
                   </div>
@@ -615,21 +687,101 @@ export default function PlanBuilder() {
                     handleSendMessage();
                   }
                 }}
-                placeholder="Ask AI to create a personalized plan..."
-                className="flex-1"
-                rows={3}
+                placeholder="Ask AI to create plan sections..."
+                className="flex-1 min-h-10"
+                rows={2}
                 data-testid="input-message"
               />
               <Button
                 onClick={handleSendMessage}
                 disabled={chatMutation.isPending || !input.trim()}
                 size="icon"
-                className="h-full"
+                className="h-full min-h-10"
                 data-testid="button-send"
               >
                 <Send className="w-4 h-4" />
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="flex-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Edit3 className="w-4 h-4" />
+                Editable Plan Canvas
+              </CardTitle>
+              <Select onValueChange={(value) => {
+                const template = SECTION_TEMPLATES.find(t => t.heading === value);
+                if (template) handleAddSection(template);
+              }}>
+                <SelectTrigger className="w-48 min-h-8 text-sm">
+                  <SelectValue placeholder="Add section..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {SECTION_TEMPLATES.map((template) => (
+                    <SelectItem key={template.heading} value={template.heading}>
+                      <div className="flex items-center gap-2">
+                        <PlusCircle className="w-3 h-3" />
+                        {template.heading}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[calc(100vh-320px)]">
+              {planSections.length === 0 ? (
+                <div className="text-center text-muted-foreground py-12">
+                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-medium">Your plan canvas is empty</p>
+                  <p className="text-sm mt-2">Chat with AI and click "Add to Canvas" to start building</p>
+                  <p className="text-sm mt-1">Or use the dropdown above to add pre-structured sections</p>
+                </div>
+              ) : (
+                <div className="space-y-3 pr-4">
+                  {planSections.map((section) => (
+                    <Card key={section.id} className="group">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-1">
+                            <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
+                            <Input
+                              value={section.heading}
+                              onChange={(e) => handleUpdateSection(section.id, 'heading', e.target.value)}
+                              className="font-semibold text-sm min-h-8 border-0 focus-visible:ring-1 px-2"
+                              placeholder="Section heading..."
+                              data-testid={`input-section-heading-${section.id}`}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteSection(section.id)}
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`button-delete-section-${section.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <Textarea
+                          value={section.content}
+                          onChange={(e) => handleUpdateSection(section.id, 'content', e.target.value)}
+                          className="min-h-32 text-sm resize-none border-0 focus-visible:ring-1"
+                          placeholder="Add content here..."
+                          data-testid={`textarea-section-content-${section.id}`}
+                        />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>
