@@ -9,9 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Save, Share2, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, Plus, Trash2, GripVertical, Edit3, PlusCircle, ChevronDown } from "lucide-react";
+import { Loader2, Send, Save, Share2, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, Plus, Trash2, GripVertical, Edit3, PlusCircle, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, Goal } from "@shared/schema";
 import { getGoalTypeLabel } from "@shared/schema";
@@ -504,27 +503,41 @@ export default function PlanBuilder() {
         </div>
       </div>
 
-      <div className="flex flex-col xl:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
-        <div className="w-full xl:w-80 flex-shrink-0">
-          <Collapsible open={isClientContextOpen} onOpenChange={setIsClientContextOpen}>
-            <Card className="h-auto xl:h-full max-h-96 xl:max-h-none">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <User className="w-4 h-4" />
-                    Client Context
-                  </CardTitle>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-toggle-client-context">
-                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isClientContextOpen ? "" : "-rotate-90"}`} />
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-              </CardHeader>
-              <CollapsibleContent>
-                <CardContent>
-                  <ScrollArea className="h-[280px] xl:h-[calc(100vh-280px)]">
-                    <div className="space-y-4">
+      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0 relative">
+        {/* Horizontal Sliding Sidebar */}
+        <div 
+          className={`transition-all duration-300 ease-in-out flex-shrink-0 ${
+            isClientContextOpen 
+              ? 'w-full lg:w-80 max-h-96 lg:max-h-none' 
+              : 'w-0 h-0 lg:h-full overflow-hidden'
+          }`}
+          aria-hidden={!isClientContextOpen}
+        >
+          <Card className={`h-full overflow-hidden transition-opacity duration-300 ${
+            isClientContextOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+          tabIndex={isClientContextOpen ? 0 : -1}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <User className="w-4 h-4" />
+                  Client Context
+                </CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8" 
+                  onClick={() => setIsClientContextOpen(false)}
+                  data-testid="button-close-client-context"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[calc(100vh-280px)]">
+                <div className="space-y-4 pr-4">
                 <div>
                   <h3 className="font-semibold text-sm mb-2">{clientContext.client.name}</h3>
                   <p className="text-xs text-muted-foreground">{clientContext.client.email}</p>
@@ -621,22 +634,35 @@ export default function PlanBuilder() {
                     </div>
                   </>
                 )}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
         </div>
 
-      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
-        <Card className="flex-1 lg:flex-[0.8]">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Activity className="w-4 h-4" />
-              AI Chat
-            </CardTitle>
-          </CardHeader>
+        {/* Main Content Area */}
+        <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
+          <Card className="flex-1 lg:flex-[0.8]">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Activity className="w-4 h-4" />
+                  AI Chat
+                </CardTitle>
+                {!isClientContextOpen && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setIsClientContextOpen(true)}
+                    data-testid="button-open-client-context"
+                    className="min-h-8"
+                  >
+                    <PanelLeftOpen className="w-4 h-4 mr-2" />
+                    Client Context
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
           <CardContent className="flex flex-col h-[calc(100%-60px)]">
             <ScrollArea className="flex-1 mb-4">
               <div className="space-y-3 pr-4">
@@ -715,10 +741,10 @@ export default function PlanBuilder() {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="flex-1 lg:flex-[1.2]">
+          <Card className="flex-1 lg:flex-[1.2]">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
