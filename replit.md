@@ -17,6 +17,12 @@ Wellio is an AI-powered fitness and wellness coaching platform designed to help 
 ### UI/UX Decisions
 The platform features a modern design using React, Tailwind CSS, and Shadcn UI components, incorporating a teal and lime color scheme, dark mode support, and the Inter font family. It includes responsive design with a collapsible sidebar and touch-friendly controls (≥40px targets), consistent Tailwind breakpoints, and reusable layout primitives for standardized responsive patterns.
 
+**UX Enhancements (November 2025):**
+- **Mobile Sidebar Auto-Close**: Sidebar automatically closes on mobile when navigating between pages for better UX. Implemented via `SidebarAutoClose` wrapper component in both `CoachProtectedLayout` and `ClientProtectedLayout`.
+- **Modern Component States**: All interactive elements feature smooth 150ms transitions on hover/focus/active states. Select dropdowns include hover-elevate effects and animated chevron rotation. Sidebar menu items have refined active states with softer highlighting.
+- **Touch Target Optimization**: Core UI components updated to meet ≥40px minimum: Input (min-h-10), Select (min-h-10), Tabs (min-h-10), SidebarMenuButton (min-h-10/8/12), all with smooth transitions for professional feel.
+- **Focus Ring Enhancement**: Improved keyboard navigation visibility with ring-2 system across all focusable elements.
+
 **Mobile-First Responsive Implementation:**
 - **Conditional Rendering**: List pages (questionnaires, etc.) use viewport detection (`isMobile` state with window.innerWidth <768px) to conditionally render card layouts on mobile and table layouts on desktop. Table elements are NOT present in DOM on mobile viewports, ensuring optimal mobile performance.
 - **Touch Targets**: All interactive controls meet ≥40px minimum touch target requirement using `min-h-10` Tailwind class on buttons, inputs, selects, tabs, and all interactive elements across questionnaires list, questionnaire builder, and client onboarding pages.
