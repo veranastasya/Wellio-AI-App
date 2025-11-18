@@ -2155,12 +2155,20 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     try {
       const plan = await storage.getClientPlan(req.params.id);
       if (!plan) {
+        console.error("PDF Generation: Plan not found", req.params.id);
         return res.status(404).json({ error: "Plan not found" });
       }
 
       const client = await storage.getClient(plan.clientId);
       if (!client) {
+        console.error("PDF Generation: Client not found", plan.clientId);
         return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Validate planContent exists and has sections
+      if (!plan.planContent || typeof plan.planContent !== 'object') {
+        console.error("PDF Generation: Invalid planContent", plan.planContent);
+        return res.status(400).json({ error: "Plan has no content" });
       }
 
       const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
@@ -2174,7 +2182,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
       doc.fontSize(28).fillColor('#28A0AE').text('Wellio', { align: 'center' });
       doc.moveDown(0.3);
-      doc.fontSize(20).fillColor('#000000').text(plan.planName, { align: 'center' });
+      doc.fontSize(20).fillColor('#000000').text(plan.planName || 'Wellness Plan', { align: 'center' });
       doc.moveDown(0.5);
       doc.fontSize(11).fillColor('#666666').text(`Client: ${client.name}`, { align: 'center' });
       doc.fontSize(10).text(`Generated: ${new Date().toLocaleDateString()}`, { align: 'center' });
@@ -2189,63 +2197,81 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         doc.fontSize(12).fillColor('#666666').text('No content available.', { align: 'center' });
       } else {
         for (const section of sections) {
-          doc.fontSize(16).fillColor('#28A0AE').text(section.heading, {
-            align: 'left',
-            underline: false,
-          });
-          doc.moveDown(0.5);
+          if (section.heading) {
+            doc.fontSize(16).fillColor('#28A0AE').text(section.heading, {
+              align: 'left',
+              underline: false,
+            });
+            doc.moveDown(0.5);
+          }
           
-          doc.fontSize(11).fillColor('#000000').text(section.content, {
-            align: 'left',
-            lineGap: 3,
-          });
-          doc.moveDown(1.2);
+          if (section.content) {
+            doc.fontSize(11).fillColor('#000000').text(section.content, {
+              align: 'left',
+              lineGap: 3,
+            });
+            doc.moveDown(1.2);
+          }
         }
       }
 
       doc.end();
 
       const pdfBuffer = await pdfPromise;
+      console.log("PDF buffer generated successfully, size:", pdfBuffer.length);
 
       const objectStorageService = new ObjectStorageService();
       let privateDir: string;
       try {
         privateDir = objectStorageService.getPrivateObjectDir();
       } catch (error) {
+        console.error("PDF Generation: Object storage not configured", error);
         return res.status(500).json({ error: "Object storage not configured. Please set up PRIVATE_OBJECT_DIR." });
       }
       const fileName = `${privateDir}/plans/${plan.id}.pdf`;
       
-      const { bucketName, objectName } = parseObjectPath(fileName);
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectName);
-      
-      await file.save(pdfBuffer, {
-        contentType: 'application/pdf',
-        resumable: false,
-      });
+      try {
+        const { bucketName, objectName } = parseObjectPath(fileName);
+        const bucket = objectStorageClient.bucket(bucketName);
+        const file = bucket.file(objectName);
+        
+        await file.save(pdfBuffer, {
+          contentType: 'application/pdf',
+          resumable: false,
+        });
+        console.log("PDF saved to object storage successfully:", fileName);
+      } catch (error) {
+        console.error("PDF Generation: Failed to save to object storage", error);
+        throw new Error("Failed to save PDF to storage");
+      }
 
       const objectPath = `/objects/plans/${plan.id}.pdf`;
-      await objectStorageService.trySetObjectEntityAclPolicy(fileName, {
-        owner: plan.coachId,
-        visibility: 'private',
-        aclRules: [
-          {
-            group: {
-              type: 'clientId' as ObjectAccessGroupType,
-              id: plan.clientId,
+      try {
+        await objectStorageService.trySetObjectEntityAclPolicy(fileName, {
+          owner: plan.coachId,
+          visibility: 'private',
+          aclRules: [
+            {
+              group: {
+                type: 'clientId' as ObjectAccessGroupType,
+                id: plan.clientId,
+              },
+              permission: ObjectPermission.READ,
             },
-            permission: ObjectPermission.READ,
-          },
-        ],
-      });
+          ],
+        });
+        console.log("ACL policy set successfully");
+      } catch (error) {
+        console.error("PDF Generation: Failed to set ACL policy", error);
+        // Don't fail the request if ACL fails - the PDF is still accessible
+      }
 
       await storage.updateClientPlan(plan.id, { pdfUrl: objectPath });
 
       res.json({ pdfUrl: objectPath });
     } catch (error) {
       console.error("Error generating PDF:", error);
-      res.status(500).json({ error: "Failed to generate PDF" });
+      res.status(500).json({ error: "Failed to generate PDF", details: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
