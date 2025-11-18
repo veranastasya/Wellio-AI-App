@@ -1892,6 +1892,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           targetWeight: client.targetWeight || null,
           targetBodyFat: client.targetBodyFat || null,
           goalWeight: client.goalWeight || null,
+          // Wellness plan fields
+          occupation: client.occupation || null,
+          medicalNotes: client.medicalNotes || null,
+          trainingExperience: client.trainingExperience || null,
+          equipmentAccess: client.equipmentAccess || null,
+          timeframe: client.timeframe || null,
+          currentHabits: client.currentHabits || null,
+          preferences: client.preferences || null,
         },
         goals: goals.map(g => ({
           type: g.goalType,
@@ -1948,6 +1956,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             height: z.number().nullable().optional(),
             activityLevel: z.string().nullable().optional(),
             bodyFatPercentage: z.number().nullable().optional(),
+            occupation: z.string().nullable().optional(),
+            medicalNotes: z.string().nullable().optional(),
+            trainingExperience: z.string().nullable().optional(),
+            equipmentAccess: z.string().nullable().optional(),
+            timeframe: z.string().nullable().optional(),
+            currentHabits: z.any().nullable().optional(),
+            preferences: z.any().nullable().optional(),
           }),
           goals: z.array(z.any()).optional(),
           recent_nutrition: z.array(z.any()).optional(),
@@ -1959,20 +1974,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = chatRequestSchema.parse(req.body);
       const { messages, clientContext } = validatedData;
 
-      const systemPrompt = `You are Wellio AI, a professional assistant that helps coaches create structured, personalized client plans.
-Use the provided client profile data to generate a wellness or nutrition plan tailored to the client's goal, preferences, and metrics.
-Always return structured, sectioned content that can be exported to PDF (no conversational fluff).
+      // Format client data according to the wellness coach prompt structure
+      const client = clientContext.client;
+      const formattedProfile = {
+        Name: client.name || "Not provided",
+        Age: client.age || "Not provided",
+        Sex: client.sex || "Not provided",
+        Height: client.height || "Not provided",
+        Weight: client.weight || "Not provided",
+        BodyFatPercent: client.bodyFatPercentage || "Not provided",
+        ActivityLevel: client.activityLevel || "Not provided",
+        Occupation: client.occupation || "Not provided",
+        MainGoal: client.goal || client.goalDescription || "Not provided",
+        SecondaryGoals: clientContext.goals?.map((g: any) => g.type) || [],
+        Timeframe: client.timeframe || "Not specified",
+        MedicalNotes: client.medicalNotes || "None provided",
+        TrainingExperience: client.trainingExperience || "Not provided",
+        AccessToEquipment: client.equipmentAccess || "Not provided",
+        CurrentHabits: {
+          ExercisePerWeek: client.currentHabits?.exercisePerWeek || "Not provided",
+          AverageStepsPerDay: client.currentHabits?.averageStepsPerDay || "Not provided",
+          SleepHoursPerNight: client.currentHabits?.sleepHoursPerNight || "Not provided",
+          StressLevel: client.currentHabits?.stressLevel || "Not provided",
+          Hydration: client.currentHabits?.hydration || "Not provided",
+          EatingPattern: client.currentHabits?.eatingPattern || "Not provided",
+        },
+        Preferences: {
+          Likes: client.preferences?.likes || "Not provided",
+          Dislikes: client.preferences?.dislikes || "Not provided",
+          ScheduleConstraints: client.preferences?.scheduleConstraints || "Not provided",
+        },
+        CoachNotes: client.notes || "None provided",
+      };
 
-Client Context:
-${JSON.stringify(clientContext, null, 2)}
+      // Add questionnaire data if available
+      const questionnaireContext = clientContext.questionnaire_data?.length > 0
+        ? `\n\nQuestionnaire Responses:\n${clientContext.questionnaire_data.map((q: any) => 
+            `- ${q.questionnaire_name} (submitted ${q.submitted_at})`
+          ).join('\n')}`
+        : '';
 
-When creating plans, include sections such as:
-- 7-Day Meal Plan
-- Daily Calorie / Macro Targets
-- Exercise & Recovery Recommendations
-- Optional Shopping List
+      const systemPrompt = `You are an expert wellness coach. 
+Your job is to create clear, realistic, habit based wellness plans for clients, not just workout or diet plans.
 
-Be specific, actionable, and professional.`;
+You will receive a structured input with the client profile and coach notes. 
+Use it to build a personalized wellness plan that a real human could follow.
+
+=====================
+INPUT FORMAT
+=====================
+You will get data in this structure:
+
+ClientProfile:
+- Name:
+- Age:
+- Sex:
+- Height:
+- Weight:
+- BodyFatPercent (if provided):
+- ActivityLevel (sedentary, lightly_active, moderately_active, very_active, extra_active):
+- Occupation and daily routine:
+- MainGoal:
+- SecondaryGoals:
+- Timeframe:
+- MedicalNotes:
+- TrainingExperience:
+- AccessToEquipment:
+- CurrentHabits:
+    - ExercisePerWeek:
+    - AverageStepsPerDay:
+    - SleepHoursPerNight:
+    - StressLevel (1-10):
+    - Hydration:
+    - EatingPattern:
+- Preferences:
+    - Likes:
+    - Dislikes:
+    - ScheduleConstraints:
+- CoachNotes:
+
+=====================
+YOUR TASK
+=====================
+Using the input, create a personalized 8 to 12 week style wellness plan that covers the whole lifestyle, not only workouts or strict diet rules.
+
+The plan must include these sections:
+
+1. Short summary
+   - 2 to 4 sentences that describe the client situation and the main focus of the plan.
+
+2. Key goals
+   - Bullet list of 2 to 5 clear goals.
+   - Use the client wording when possible and make them measurable where appropriate.
+
+3. Weekly structure overview
+   - A simple table or bullet list that shows the week at a glance.
+   - Include: number of movement sessions, approximate step goal range, number of strength or mobility sessions, number of stress or mindset practices, sleep target.
+
+4. Movement and activity habits
+   - Daily or weekly step goal.
+   - Number and type of movement sessions per week (walking, strength, mobility, yoga, cardio, etc) tailored to experience, equipment and medical notes.
+   - For each type of session, give:
+     - frequency per week
+     - target duration
+     - intensity guidance (easy, moderate, hard, RPE 1 to 10, etc)
+   - Respect all limitations from MedicalNotes. Avoid anything that would be unsafe.
+
+5. Nutrition habits
+   - Focus on habits, not a strict meal plan, unless the coach notes explicitly say otherwise.
+   - Give 4 to 8 simple rules, for example:
+     - protein habit per meal,
+     - vegetables/fruit servings per day,
+     - hydration target,
+     - sample day structure (breakfast, lunch, dinner, snacks),
+     - 1 or 2 examples of balanced meals that fit the client life.
+   - If the client goal is weight related, gently align portions or habits with that goal without extreme restrictions.
+
+6. Sleep and recovery
+   - Sleep duration target.
+   - 3 to 5 practical steps for better sleep and recovery that match the schedule and preferences.
+   - Mention at least one recovery strategy (rest day, light movement day, stretching, relaxation).
+
+7. Stress management and mindset
+   - 3 to 6 simple practices such as breathing work, short meditation, walks without phone, journaling, boundary setting, etc.
+   - Connect at least one habit directly to the client stress pattern or work context.
+
+8. Environment and routines
+   - 3 to 5 concrete suggestions to adjust the home, work or social environment to support the plan
+     for example: prep water bottle on desk, keep walking shoes by the door, create a snack plan, grocery list idea.
+
+9. Weekly checkpoints and metrics
+   - Propose 3 to 5 simple metrics to track weekly, for example:
+     - average steps,
+     - workouts completed,
+     - hours of sleep,
+     - self reported energy (1 to 10),
+     - adherence to key nutrition habits.
+   - Suggest a short weekly reflection question or two.
+
+=====================
+STYLE AND CONSTRAINTS
+=====================
+- Be realistic for the client level, schedule, and limitations.
+- Prioritize consistency and habit building over intensity.
+- Avoid medical claims or diagnosis. If something sounds risky, say that the client should confirm with a healthcare professional.
+- Keep language clear and encouraging, not fluffy.
+- Use bullet points, short paragraphs, and headings so a coach can copy this directly into a client plan.
+- Never invent extreme or unsustainable advice such as starvation diets or very long daily workouts.
+
+Now read the ClientProfile input and generate the personalized wellness plan following the structure above.
+
+=====================
+CLIENT PROFILE
+=====================
+${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4o",
@@ -1981,7 +2136,7 @@ Be specific, actionable, and professional.`;
           ...messages,
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: 3500,
       });
 
       const response = completion.choices[0]?.message;
