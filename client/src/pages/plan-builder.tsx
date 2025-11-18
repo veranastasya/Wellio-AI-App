@@ -10,19 +10,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Save, Share2, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, Plus, Trash2, GripVertical, Edit3, PlusCircle, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Loader2, Send, Download, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, ChevronRight, ChevronLeft, Maximize2, Minimize2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, Goal } from "@shared/schema";
 import { getGoalTypeLabel } from "@shared/schema";
 
 interface Message {
   role: "system" | "user" | "assistant";
-  content: string;
-}
-
-interface PlanSection {
-  id: string;
-  heading: string;
   content: string;
 }
 
@@ -193,11 +187,13 @@ export default function PlanBuilder() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [planName, setPlanName] = useState("");
-  const [planSections, setPlanSections] = useState<PlanSection[]>([]);
+  const [planContent, setPlanContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isClientContextOpen, setIsClientContextOpen] = useState(true);
+  const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const canvasTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: allClients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -281,7 +277,7 @@ export default function PlanBuilder() {
         throw new Error("Please enter a plan name");
       }
       
-      if (planSections.length === 0) {
+      if (!planContent.trim()) {
         throw new Error("Please add content to your plan");
       }
       
@@ -289,7 +285,7 @@ export default function PlanBuilder() {
         clientId,
         coachId: "default-coach",
         planName: planName.trim(),
-        planContent: { sections: planSections },
+        planContent: { content: planContent },
         status: "draft",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -361,35 +357,41 @@ export default function PlanBuilder() {
   };
 
   const handleAddToCanvas = (content: string) => {
-    const newSection: PlanSection = {
-      id: Date.now().toString(),
-      heading: "AI Response",
-      content: content.trim(),
-    };
-    setPlanSections(prev => [...prev, newSection]);
+    const formattedContent = content.trim();
+    setPlanContent(prev => {
+      if (!prev.trim()) {
+        return formattedContent;
+      }
+      return prev + "\n\n" + formattedContent;
+    });
     toast({
       title: "Added to canvas",
       description: "Content added. You can now edit it.",
     });
+    
+    // Scroll to bottom of canvas
+    setTimeout(() => {
+      if (canvasTextareaRef.current) {
+        canvasTextareaRef.current.scrollTop = canvasTextareaRef.current.scrollHeight;
+      }
+    }, 100);
   };
 
   const handleAddSection = (template: typeof SECTION_TEMPLATES[0]) => {
-    const newSection: PlanSection = {
-      id: Date.now().toString(),
-      heading: template.heading,
-      content: template.content,
-    };
-    setPlanSections(prev => [...prev, newSection]);
-  };
-
-  const handleUpdateSection = (id: string, field: 'heading' | 'content', value: string) => {
-    setPlanSections(prev => prev.map(section =>
-      section.id === id ? { ...section, [field]: value } : section
-    ));
-  };
-
-  const handleDeleteSection = (id: string) => {
-    setPlanSections(prev => prev.filter(section => section.id !== id));
+    const sectionText = `### ${template.heading}\n\n${template.content}`;
+    setPlanContent(prev => {
+      if (!prev.trim()) {
+        return sectionText;
+      }
+      return prev + "\n\n" + sectionText;
+    });
+    
+    // Scroll to bottom of canvas
+    setTimeout(() => {
+      if (canvasTextareaRef.current) {
+        canvasTextareaRef.current.scrollTop = canvasTextareaRef.current.scrollHeight;
+      }
+    }, 100);
   };
 
   const handleSavePlan = async () => {
@@ -431,7 +433,7 @@ export default function PlanBuilder() {
     setHasInitialized(false);
     setMessages([]);
     setPlanName("");
-    setPlanSections([]);
+    setPlanContent("");
   }, [clientId]);
 
   useEffect(() => {
@@ -481,60 +483,58 @@ export default function PlanBuilder() {
             className="text-sm min-h-10 w-full sm:w-64"
             data-testid="input-plan-name"
           />
-          <Button
-            variant="outline"
-            onClick={handleSavePlan}
-            disabled={isSaving || planSections.length === 0}
-            className="min-h-10"
-            data-testid="button-save-plan"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            Save & Generate PDF
-          </Button>
-          <Button
-            onClick={handleSaveAndShare}
-            disabled={isSaving || planSections.length === 0}
-            className="min-h-10"
-            data-testid="button-save-share"
-          >
-            <Share2 className="w-4 h-4 mr-2" />
-            Save & Share
-          </Button>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0 relative">
-        {/* Horizontal Sliding Sidebar */}
+      <div className="flex flex-1 gap-3 sm:gap-4 min-h-0 relative">
+        {/* Persistent Sidebar Rail */}
         <div 
           className={`transition-all duration-300 ease-in-out flex-shrink-0 ${
-            isClientContextOpen 
-              ? 'w-full lg:w-80 max-h-96 lg:max-h-none' 
-              : 'w-0 h-0 lg:h-full overflow-hidden'
+            isClientContextOpen ? 'w-80' : 'w-12'
           }`}
-          aria-hidden={!isClientContextOpen}
         >
-          <Card className={`h-full overflow-hidden transition-opacity duration-300 ${
-            isClientContextOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
-          tabIndex={isClientContextOpen ? 0 : -1}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <User className="w-4 h-4" />
-                  Client Context
-                </CardTitle>
+          <Card className="h-full flex flex-col overflow-hidden">
+            {!isClientContextOpen ? (
+              <div className="flex flex-col items-center py-4 gap-4">
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-8 w-8" 
-                  onClick={() => setIsClientContextOpen(false)}
-                  data-testid="button-close-client-context"
+                  className="h-10 w-10" 
+                  onClick={() => setIsClientContextOpen(true)}
+                  data-testid="button-open-client-context"
                 >
-                  <PanelLeftClose className="w-4 h-4" />
+                  <ChevronRight className="w-5 h-5" />
                 </Button>
+                {clientContext.client.age && (
+                  <Badge variant="secondary" className="rotate-90 whitespace-nowrap">
+                    {clientContext.client.age}y
+                  </Badge>
+                )}
+                {clientContext.client.goal && (
+                  <div className="writing-mode-vertical text-xs text-muted-foreground px-1">
+                    {getGoalTypeLabel(clientContext.client.goal).substring(0, 15)}
+                  </div>
+                )}
               </div>
-            </CardHeader>
+            ) : (
+              <>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <User className="w-4 h-4" />
+                      Client Context
+                    </CardTitle>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8" 
+                      onClick={() => setIsClientContextOpen(false)}
+                      data-testid="button-close-client-context"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
             <CardContent>
               <ScrollArea className="h-[calc(100vh-280px)]">
                 <div className="space-y-4 pr-4">
@@ -637,6 +637,8 @@ export default function PlanBuilder() {
                 </div>
               </ScrollArea>
             </CardContent>
+            </>
+            )}
           </Card>
         </div>
 
@@ -644,24 +646,10 @@ export default function PlanBuilder() {
         <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
           <Card className="flex-1 lg:flex-[0.8]">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Activity className="w-4 h-4" />
-                  AI Chat
-                </CardTitle>
-                {!isClientContextOpen && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setIsClientContextOpen(true)}
-                    data-testid="button-open-client-context"
-                    className="min-h-8"
-                  >
-                    <PanelLeftOpen className="w-4 h-4 mr-2" />
-                    Client Context
-                  </Button>
-                )}
-              </div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Activity className="w-4 h-4" />
+                AI Chat
+              </CardTitle>
             </CardHeader>
           <CardContent className="flex flex-col h-[calc(100%-60px)]">
             <ScrollArea className="flex-1 mb-4">
@@ -698,7 +686,7 @@ export default function PlanBuilder() {
                           className="ml-2 min-h-8"
                           data-testid={`button-add-to-canvas-${idx}`}
                         >
-                          <Plus className="w-3 h-3 mr-1" />
+                          <ArrowLeft className="w-3 h-3 mr-1 rotate-180" />
                           Add to Canvas
                         </Button>
                       </div>
@@ -744,83 +732,80 @@ export default function PlanBuilder() {
             </CardContent>
           </Card>
 
-          <Card className="flex-1 lg:flex-[1.2]">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+          <Card className={`flex-1 lg:flex-[1.2] flex flex-col ${isCanvasExpanded ? 'fixed inset-4 z-50' : ''}`}>
+          <CardHeader className="pb-3 flex-shrink-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Edit3 className="w-4 h-4" />
-                Editable Plan Canvas
+                <FileText className="w-4 h-4" />
+                Plan Canvas
               </CardTitle>
-              <Select onValueChange={(value) => {
-                const template = SECTION_TEMPLATES.find(t => t.heading === value);
-                if (template) handleAddSection(template);
-              }}>
-                <SelectTrigger className="w-48 min-h-8 text-sm">
-                  <SelectValue placeholder="Add section..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {SECTION_TEMPLATES.map((template) => (
-                    <SelectItem key={template.heading} value={template.heading}>
-                      <div className="flex items-center gap-2">
-                        <PlusCircle className="w-3 h-3" />
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  placeholder="Plan filename"
+                  value={planName}
+                  onChange={(e) => setPlanName(e.target.value)}
+                  className="text-sm min-h-8 w-48"
+                  data-testid="input-canvas-filename"
+                />
+                <Select onValueChange={(value) => {
+                  const template = SECTION_TEMPLATES.find(t => t.heading === value);
+                  if (template) handleAddSection(template);
+                }}>
+                  <SelectTrigger className="w-40 min-h-8 text-sm">
+                    <SelectValue placeholder="Add section..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SECTION_TEMPLATES.map((template) => (
+                      <SelectItem key={template.heading} value={template.heading}>
                         {template.heading}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsCanvasExpanded(!isCanvasExpanded)}
+                  className="h-8 w-8"
+                  data-testid="button-toggle-canvas-expand"
+                >
+                  {isCanvasExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSavePlan}
+                  disabled={isSaving || !planContent.trim() || !planName.trim()}
+                  className="min-h-8"
+                  data-testid="button-download-pdf"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {isSaving ? "Generating..." : "Download PDF"}
+                </Button>
+              </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[calc(100vh-240px)]">
-              {planSections.length === 0 ? (
-                <div className="text-center text-muted-foreground py-12">
-                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="font-medium">Your plan canvas is empty</p>
-                  <p className="text-sm mt-2">Chat with AI and click "Add to Canvas" to start building</p>
-                  <p className="text-sm mt-1">Or use the dropdown above to add pre-structured sections</p>
-                </div>
-              ) : (
-                <div className="space-y-3 pr-4">
-                  {planSections.map((section) => (
-                    <Card key={section.id} className="group">
-                      <CardHeader className="pb-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-2 flex-1">
-                            <GripVertical className="w-4 h-4 text-muted-foreground cursor-move" />
-                            <Input
-                              value={section.heading}
-                              onChange={(e) => handleUpdateSection(section.id, 'heading', e.target.value)}
-                              className="font-semibold text-sm min-h-8 border-0 focus-visible:ring-1 px-2"
-                              placeholder="Section heading..."
-                              data-testid={`input-section-heading-${section.id}`}
-                            />
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteSection(section.id)}
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                            data-testid={`button-delete-section-${section.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <Textarea
-                          value={section.content}
-                          onChange={(e) => handleUpdateSection(section.id, 'content', e.target.value)}
-                          className="min-h-32 text-sm resize-none border-0 focus-visible:ring-1"
-                          placeholder="Add content here..."
-                          data-testid={`textarea-section-content-${section.id}`}
-                        />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+          <CardContent className="flex-1 min-h-0 flex flex-col">
+            {!planContent.trim() ? (
+              <div className="text-center text-muted-foreground py-12">
+                <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p className="font-medium">Your plan canvas is empty</p>
+                <p className="text-sm mt-2">Chat with AI and click "Add to Canvas" to start building</p>
+                <p className="text-sm mt-1">Or use the dropdown above to add pre-structured sections</p>
+              </div>
+            ) : (
+              <Textarea
+                ref={canvasTextareaRef}
+                value={planContent}
+                onChange={(e) => setPlanContent(e.target.value)}
+                className={`flex-1 text-sm resize-none border focus-visible:ring-1 font-mono leading-relaxed ${
+                  isCanvasExpanded ? 'min-h-[calc(100vh-200px)]' : 'min-h-[400px]'
+                }`}
+                placeholder="Your plan content will appear here..."
+                data-testid="textarea-plan-canvas"
+              />
+            )}
           </CardContent>
         </Card>
       </div>
