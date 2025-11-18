@@ -2165,8 +2165,8 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         return res.status(404).json({ error: "Client not found" });
       }
 
-      // Validate planContent exists and has sections
-      if (!plan.planContent || typeof plan.planContent !== 'object') {
+      // Validate planContent exists
+      if (!plan.planContent) {
         console.error("PDF Generation: Invalid planContent", plan.planContent);
         return res.status(400).json({ error: "Plan has no content" });
       }
@@ -2191,26 +2191,53 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke('#E2F9AD');
       doc.moveDown(1.5);
 
-      const sections = (plan.planContent as any).sections || [];
+      // Handle both old sections array format and new single-document string format
+      let contentText = '';
+      if (typeof plan.planContent === 'string') {
+        // New format: single document string
+        contentText = plan.planContent;
+      } else if (typeof plan.planContent === 'object') {
+        // Old format: sections array
+        const sections = (plan.planContent as any).sections || [];
+        if (sections.length === 0) {
+          contentText = 'No content available.';
+        } else {
+          // Convert sections to plain text for backward compatibility
+          contentText = sections.map((section: any) => {
+            let text = '';
+            if (section.heading) {
+              text += `${section.heading}\n\n`;
+            }
+            if (section.content) {
+              text += `${section.content}\n\n`;
+            }
+            return text;
+          }).join('\n');
+        }
+      }
       
-      if (sections.length === 0) {
+      if (!contentText.trim()) {
         doc.fontSize(12).fillColor('#666666').text('No content available.', { align: 'center' });
       } else {
-        for (const section of sections) {
-          if (section.heading) {
-            doc.fontSize(16).fillColor('#28A0AE').text(section.heading, {
-              align: 'left',
-              underline: false,
-            });
+        // Render content as simple formatted text with line breaks preserved
+        const lines = contentText.split('\n');
+        for (const line of lines) {
+          if (line.trim()) {
+            // Simple heuristic: lines ending with : or being all caps might be headings
+            const isHeading = line.endsWith(':') || (line.length > 0 && line === line.toUpperCase() && line.length < 60);
+            if (isHeading) {
+              doc.fontSize(14).fillColor('#28A0AE').text(line.trim(), {
+                align: 'left',
+              });
+              doc.moveDown(0.3);
+            } else {
+              doc.fontSize(11).fillColor('#000000').text(line.trim(), {
+                align: 'left',
+                lineGap: 2,
+              });
+            }
+          } else {
             doc.moveDown(0.5);
-          }
-          
-          if (section.content) {
-            doc.fontSize(11).fillColor('#000000').text(section.content, {
-              align: 'left',
-              lineGap: 3,
-            });
-            doc.moveDown(1.2);
           }
         }
       }
