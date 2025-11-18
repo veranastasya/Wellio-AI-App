@@ -630,7 +630,7 @@ export default function PlanBuilder() {
         </div>
 
       <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
-        <Card className="flex-1">
+        <Card className="flex-1 lg:flex-[0.8]">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Activity className="w-4 h-4" />
@@ -718,7 +718,7 @@ export default function PlanBuilder() {
           </CardContent>
         </Card>
 
-        <Card className="flex-1">
+        <Card className="flex-1 lg:flex-[1.2]">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -746,7 +746,7 @@ export default function PlanBuilder() {
             </div>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[calc(100vh-320px)]">
+            <ScrollArea className="h-[calc(100vh-240px)]">
               {planSections.length === 0 ? (
                 <div className="text-center text-muted-foreground py-12">
                   <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
