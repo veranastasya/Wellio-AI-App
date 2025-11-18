@@ -3,10 +3,10 @@ import { File } from "@google-cloud/storage";
 
 const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
 
-// For messaging attachments, we use MESSAGE_PARTICIPANT type
-// to control access between coach and clients
+// Access group types for different object types
 export enum ObjectAccessGroupType {
   MESSAGE_PARTICIPANT = "message_participant",
+  CLIENT_ID = "client_id", // For PDFs and other client-specific files
 }
 
 // The logic user group that can access the object.
@@ -78,12 +78,26 @@ class MessageParticipantAccessGroup extends BaseObjectAccessGroup {
   }
 }
 
+// For client-specific files (PDFs, etc): client can access their own files
+class ClientIdAccessGroup extends BaseObjectAccessGroup {
+  constructor(id: string) {
+    super(ObjectAccessGroupType.CLIENT_ID, id);
+  }
+
+  async hasMember(userId: string): Promise<boolean> {
+    // Client can access if their ID matches the group ID
+    return userId === this.id;
+  }
+}
+
 function createObjectAccessGroup(
   group: ObjectAccessGroup,
 ): BaseObjectAccessGroup {
   switch (group.type) {
     case ObjectAccessGroupType.MESSAGE_PARTICIPANT:
       return new MessageParticipantAccessGroup(group.id);
+    case ObjectAccessGroupType.CLIENT_ID:
+      return new ClientIdAccessGroup(group.id);
     default:
       throw new Error(`Unknown access group type: ${group.type}`);
   }

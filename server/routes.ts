@@ -390,20 +390,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       
-      // For messaging attachments, check if user has access
-      // Access is granted if: user is coach OR user is the client in the message
+      // Check for both coach and client sessions
+      const coachId = req.session?.coachId;
       const clientId = req.session?.clientId;
+      const userId = coachId || clientId;
       
-      // Get the attachment metadata to verify access
+      // Verify the user has access via ACL policy
       const canAccess = await objectStorageService.canAccessObjectEntity({
         objectFile,
-        userId: clientId, // For clients, this is their clientId
+        userId,
         requestedPermission: ObjectPermission.READ,
       });
       
-      // For coach access, we allow all (they can see all client messages)
-      // For client access, canAccess checks if they own the file
-      if (!clientId && !canAccess) {
+      if (!canAccess) {
         return res.sendStatus(401);
       }
       
@@ -2280,7 +2279,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
           aclRules: [
             {
               group: {
-                type: 'clientId' as ObjectAccessGroupType,
+                type: ObjectAccessGroupType.CLIENT_ID,
                 id: plan.clientId,
               },
               permission: ObjectPermission.READ,
