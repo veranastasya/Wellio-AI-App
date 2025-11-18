@@ -116,6 +116,25 @@ export const clients = pgTable("clients", {
   targetWeight: real("target_weight"),
   targetBodyFat: real("target_body_fat"),
   goalWeight: real("goal_weight"),
+  // Wellness plan fields
+  occupation: text("occupation"),
+  medicalNotes: text("medical_notes"),
+  trainingExperience: text("training_experience"),
+  equipmentAccess: text("equipment_access"),
+  timeframe: text("timeframe"),
+  currentHabits: json("current_habits").$type<{
+    exercisePerWeek?: number;
+    averageStepsPerDay?: number;
+    sleepHoursPerNight?: number;
+    stressLevel?: number;
+    hydration?: string;
+    eatingPattern?: string;
+  }>(),
+  preferences: json("preferences").$type<{
+    likes?: string;
+    dislikes?: string;
+    scheduleConstraints?: string;
+  }>(),
 });
 
 export const sessions = pgTable("sessions", {
