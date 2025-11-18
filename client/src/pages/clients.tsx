@@ -541,6 +541,13 @@ function ClientForm({
       targetWeight: client?.targetWeight || undefined,
       targetBodyFat: client?.targetBodyFat || undefined,
       goalWeight: client?.goalWeight || undefined,
+      occupation: client?.occupation || undefined,
+      medicalNotes: client?.medicalNotes || undefined,
+      trainingExperience: client?.trainingExperience || undefined,
+      equipmentAccess: client?.equipmentAccess || undefined,
+      timeframe: client?.timeframe || undefined,
+      currentHabits: client?.currentHabits || undefined,
+      preferences: client?.preferences || undefined,
     },
   });
 
@@ -565,6 +572,13 @@ function ClientForm({
         targetWeight: client.targetWeight || undefined,
         targetBodyFat: client.targetBodyFat || undefined,
         goalWeight: client.goalWeight || undefined,
+        occupation: client.occupation || undefined,
+        medicalNotes: client.medicalNotes || undefined,
+        trainingExperience: client.trainingExperience || undefined,
+        equipmentAccess: client.equipmentAccess || undefined,
+        timeframe: client.timeframe || undefined,
+        currentHabits: client.currentHabits || undefined,
+        preferences: client.preferences || undefined,
       });
       setUnitsPreference((client.unitsPreference as UnitsPreference) || "us");
       
@@ -1080,12 +1094,120 @@ function ClientForm({
           />
         )}
 
+        <div className="space-y-3 pt-4">
+          <h3 className="text-sm font-semibold text-foreground">Wellness Plan Details (Optional)</h3>
+          <p className="text-xs text-muted-foreground">This information helps create personalized AI-powered wellness plans</p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="occupation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Occupation</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., desk job, works from home"
+                      {...field}
+                      value={field.value || ""}
+                      data-testid="input-client-occupation"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="timeframe"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Goal Timeframe</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., 12 weeks, 3 months"
+                      {...field}
+                      value={field.value || ""}
+                      data-testid="input-client-timeframe"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="trainingExperience"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Training Experience</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                    <FormControl>
+                      <SelectTrigger data-testid="select-client-training-experience">
+                        <SelectValue placeholder="Select experience level" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
+                      <SelectItem value="returning_after_break">Returning after break</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="equipmentAccess"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Equipment Access</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., home gym, dumbbells, resistance bands"
+                      {...field}
+                      value={field.value || ""}
+                      data-testid="input-client-equipment"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="medicalNotes"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Medical Notes / Limitations</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Injuries, conditions, limitations, medications, etc."
+                    className="min-h-20"
+                    {...field}
+                    value={field.value || ""}
+                    data-testid="input-client-medical-notes"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
         <FormField
           control={form.control}
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Notes (Optional)</FormLabel>
+              <FormLabel>Coach Notes (Optional)</FormLabel>
               <FormControl>
                 <Textarea
                   placeholder="Additional notes about the client..."

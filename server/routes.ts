@@ -2008,7 +2008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Add questionnaire data if available
-      const questionnaireContext = clientContext.questionnaire_data?.length > 0
+      const questionnaireContext = clientContext.questionnaire_data && clientContext.questionnaire_data.length > 0
         ? `\n\nQuestionnaire Responses:\n${clientContext.questionnaire_data.map((q: any) => 
             `- ${q.questionnaire_name} (submitted ${q.submitted_at})`
           ).join('\n')}`
