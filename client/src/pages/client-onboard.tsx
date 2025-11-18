@@ -713,8 +713,8 @@ export default function ClientOnboard() {
                     {questionnaire.standardFields.height && unitsPreference === "us" && (
                       <div className="space-y-2" data-testid="standard-field-height">
                         <Label>Height</Label>
-                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                          <div className="space-y-2">
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                          <div className="flex-1 space-y-2">
                             <Input
                               id="heightFeet"
                               type="number"
@@ -733,7 +733,7 @@ export default function ClientOnboard() {
                               className="min-h-10"
                             />
                           </div>
-                          <div className="space-y-2">
+                          <div className="flex-1 space-y-2">
                             <Input
                               id="heightInches"
                               type="number"

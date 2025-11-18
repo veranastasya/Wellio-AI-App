@@ -345,6 +345,7 @@ export default function QuestionnaireBuilder() {
               size="icon"
               onClick={() => setLocation("/questionnaires")}
               data-testid="button-back"
+              className="min-h-10 min-w-10"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -403,6 +404,7 @@ export default function QuestionnaireBuilder() {
                         {...field}
                         placeholder="Client Intake Form"
                         data-testid="input-form-name"
+                        className="min-h-10"
                       />
                     </FormControl>
                     <FormMessage />
@@ -481,6 +483,7 @@ export default function QuestionnaireBuilder() {
                         {...field}
                         placeholder="Thank you for completing the questionnaire!"
                         data-testid="input-confirmation-message"
+                        className="min-h-10"
                       />
                     </FormControl>
                     <FormMessage />
@@ -599,7 +602,7 @@ export default function QuestionnaireBuilder() {
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4">
               <Select value={newQuestionType} onValueChange={(v) => setNewQuestionType(v as QuestionType)}>
-                <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-new-question-type">
+                <SelectTrigger className="w-full sm:w-[200px] min-h-10" data-testid="select-new-question-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -610,7 +613,7 @@ export default function QuestionnaireBuilder() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button onClick={addQuestion} variant="outline" data-testid="button-add-question" className="w-full sm:w-auto">
+              <Button onClick={addQuestion} variant="outline" data-testid="button-add-question" className="w-full sm:w-auto min-h-10">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Question
               </Button>
@@ -635,20 +638,22 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
   return (
     <AccordionItem value={question.id}>
       <div className="border rounded-lg">
-        <div className="flex items-start gap-3 p-4">
-          <GripVertical className="h-4 w-4 text-muted-foreground mt-2 flex-shrink-0" />
+        <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4">
+          <GripVertical className="hidden sm:block h-4 w-4 text-muted-foreground mt-2 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <AccordionTrigger className="hover:no-underline py-0">
-              <div className="flex items-center gap-3 text-left">
-                <span className="font-medium">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-left">
+                <span className="font-medium text-sm sm:text-base">
                   {question.label || `Question ${index + 1}`}
                 </span>
-                <span className="text-sm text-muted-foreground">
-                  {QUESTION_TYPE_LABELS[question.type]}
-                </span>
-                {question.required && (
-                  <span className="text-xs text-destructive">Required</span>
-                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm text-muted-foreground">
+                    {QUESTION_TYPE_LABELS[question.type]}
+                  </span>
+                  {question.required && (
+                    <span className="text-xs text-destructive">Required</span>
+                  )}
+                </div>
               </div>
             </AccordionTrigger>
           </div>
@@ -661,7 +666,7 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
                 onDuplicate();
               }}
               data-testid={`button-duplicate-question-${index}`}
-              className="h-8 w-8"
+              className="min-h-10 min-w-10"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -673,15 +678,15 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
                 onDelete();
               }}
               data-testid={`button-delete-question-${index}`}
-              className="h-8 w-8"
+              className="min-h-10 min-w-10"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        <AccordionContent className="px-4 pb-4 pt-0">
-          <div className="space-y-4 pl-7">
+        <AccordionContent className="px-3 sm:px-4 pb-4 pt-0">
+          <div className="space-y-4 sm:pl-7">
             <div className="space-y-2">
               <Label htmlFor={`question-label-${question.id}`}>Question Label *</Label>
               <Input
@@ -690,6 +695,7 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
                 onChange={(e) => onUpdate({ label: e.target.value })}
                 placeholder="Enter your question"
                 data-testid={`input-question-label-${index}`}
+                className="min-h-10"
               />
             </div>
 
@@ -701,17 +707,18 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
                 onChange={(e) => onUpdate({ description: e.target.value })}
                 placeholder="Helper text for this question"
                 data-testid={`input-question-description-${index}`}
+                className="min-h-10"
               />
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="space-y-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              <div className="space-y-2 flex-1">
                 <Label>Question Type</Label>
                 <Select
                   value={question.type}
                   onValueChange={(value) => onUpdate({ type: value as QuestionType })}
                 >
-                  <SelectTrigger className="w-[200px]" data-testid={`select-question-type-${index}`}>
+                  <SelectTrigger className="w-full min-h-10" data-testid={`select-question-type-${index}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -724,13 +731,13 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
                 </Select>
               </div>
 
-              <div className="flex items-center gap-2 pt-6">
+              <div className="flex items-center justify-between sm:justify-start gap-2 rounded-lg border p-3 sm:p-0 sm:border-0 sm:pt-6">
+                <Label className="text-sm">Required</Label>
                 <Switch
                   checked={question.required}
                   onCheckedChange={(checked) => onUpdate({ required: checked })}
                   data-testid={`switch-required-${index}`}
                 />
-                <Label className="text-sm">Required</Label>
               </div>
             </div>
 
@@ -846,6 +853,7 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
                   onChange={(e) => updateOption(idx, e.target.value)}
                   placeholder={`Option ${idx + 1}`}
                   data-testid={`input-option-${index}-${idx}`}
+                  className="min-h-10"
                 />
                 <Button
                   variant="ghost"
@@ -853,7 +861,7 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
                   onClick={() => deleteOption(idx)}
                   disabled={(settings.options || []).length <= 1}
                   data-testid={`button-delete-option-${index}-${idx}`}
-                  className="flex-shrink-0"
+                  className="flex-shrink-0 min-h-10 min-w-10"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -861,9 +869,9 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
             ))}
             <Button
               variant="outline"
-              size="sm"
               onClick={addOption}
               data-testid={`button-add-option-${index}`}
+              className="min-h-10"
             >
               <Plus className="h-3 w-3 mr-2" />
               Add Option

@@ -17,6 +17,12 @@ Wellio is an AI-powered fitness and wellness coaching platform designed to help 
 ### UI/UX Decisions
 The platform features a modern design using React, Tailwind CSS, and Shadcn UI components, incorporating a teal and lime color scheme, dark mode support, and the Inter font family. It includes responsive design with a collapsible sidebar and touch-friendly controls (≥40px targets), consistent Tailwind breakpoints, and reusable layout primitives for standardized responsive patterns.
 
+**Mobile-First Responsive Implementation:**
+- **Conditional Rendering**: List pages (questionnaires, etc.) use viewport detection (`isMobile` state with window.innerWidth <768px) to conditionally render card layouts on mobile and table layouts on desktop. Table elements are NOT present in DOM on mobile viewports, ensuring optimal mobile performance.
+- **Touch Targets**: All interactive controls meet ≥40px minimum touch target requirement using `min-h-10` Tailwind class on buttons, inputs, selects, tabs, and all interactive elements across questionnaires list, questionnaire builder, and client onboarding pages.
+- **Responsive Patterns**: Consistent use of responsive Tailwind classes: `p-4 sm:p-6` (padding), `space-y-3 sm:space-y-4` (spacing), `flex flex-col sm:flex-row` (stacked mobile layouts), `text-xl sm:text-2xl md:text-3xl` (typography scaling).
+- **Smart Button Visibility**: Questionnaire builder implements dynamic button display based on status and unsaved changes detection using React Hook Form isDirty + deep JSON comparisons for questions/standardFields arrays.
+
 ### Technical Implementations
 Wellio is built with a React frontend and an Express.js backend. Data is stored in PostgreSQL with Drizzle ORM. State management uses TanStack Query v5, and form handling uses React Hook Form with Zod validation. Data visualization is powered by Recharts. The system employs UUID primary keys, local timezones for date operations, and robust form validation. AI-Assisted Plan Builder leverages OpenAI GPT-4 with streaming responses. PDF generation uses pdfkit, and plan data uses JSONB columns for flexibility.
 

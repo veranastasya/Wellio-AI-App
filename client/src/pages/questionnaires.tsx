@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -49,6 +49,15 @@ export default function Questionnaires() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [selectedQuestionnaire, setSelectedQuestionnaire] = useState<Questionnaire | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const { data: allQuestionnaires = [], isLoading } = useQuery<Questionnaire[]>({
     queryKey: ["/api/questionnaires"],
@@ -229,6 +238,158 @@ export default function Questionnaires() {
     }
   };
 
+  const renderQuestionnaireCard = (questionnaire: Questionnaire) => (
+    <Card
+      key={questionnaire.id}
+      data-testid={`card-questionnaire-${questionnaire.id}`}
+      className="hover-elevate cursor-pointer"
+      onClick={() => activeTab === "active" && setLocation(`/questionnaires/${questionnaire.id}/edit`)}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-medium text-base truncate">{questionnaire.name}</h3>
+              <Badge
+                variant={getStatusBadgeVariant(questionnaire.status)}
+                data-testid={`badge-status-${questionnaire.id}`}
+              >
+                {questionnaire.status.charAt(0).toUpperCase() + questionnaire.status.slice(1)}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span data-testid={`text-usage-count-${questionnaire.id}`}>
+                Sent to: {questionnaire.usageCount || 0}
+              </span>
+              <span data-testid={`text-updated-${questionnaire.id}`}>
+                {new Date(questionnaire.updatedAt).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+          <div onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  data-testid={`button-actions-${questionnaire.id}`}
+                  className="min-h-10 min-w-10"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {activeTab === "active" ? (
+                  <>
+                    {questionnaire.status === "draft" && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          publishMutation.mutate(questionnaire.id);
+                        }}
+                        data-testid={`action-publish-${questionnaire.id}`}
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Publish
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLocation(`/questionnaires/${questionnaire.id}/edit`);
+                      }}
+                      data-testid={`action-edit-${questionnaire.id}`}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLocation(`/questionnaires/${questionnaire.id}/preview`);
+                      }}
+                      data-testid={`action-preview-${questionnaire.id}`}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateMutation.mutate(questionnaire);
+                      }}
+                      data-testid={`action-duplicate-${questionnaire.id}`}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleArchive(questionnaire);
+                      }}
+                      data-testid={`action-archive-${questionnaire.id}`}
+                    >
+                      <Archive className="h-4 w-4 mr-2" />
+                      Archive
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(questionnaire);
+                      }}
+                      data-testid={`action-delete-${questionnaire.id}`}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        restoreMutation.mutate(questionnaire.id);
+                      }}
+                      data-testid={`action-restore-${questionnaire.id}`}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Restore
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateMutation.mutate(questionnaire);
+                      }}
+                      data-testid={`action-duplicate-${questionnaire.id}`}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Duplicate
+                    </DropdownMenuItem>
+                    {(!questionnaire.usageCount || questionnaire.usageCount === 0) && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(questionnaire);
+                        }}
+                        data-testid={`action-hard-delete-${questionnaire.id}`}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Permanently
+                      </DropdownMenuItem>
+                    )}
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   const renderQuestionnaireRow = (questionnaire: Questionnaire) => (
     <TableRow 
       key={questionnaire.id} 
@@ -387,7 +548,7 @@ export default function Questionnaires() {
           <Button
             onClick={() => setLocation("/questionnaires/new")}
             data-testid="button-new-questionnaire"
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto min-h-10"
           >
             <Plus className="h-4 w-4 mr-2" />
             New Questionnaire
@@ -414,6 +575,7 @@ export default function Questionnaires() {
                 <Button
                   onClick={() => setLocation("/questionnaires/new")}
                   data-testid="button-create-first-questionnaire"
+                  className="min-h-10"
                 >
                   Create Questionnaire
                 </Button>
@@ -424,17 +586,17 @@ export default function Questionnaires() {
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "active" | "archived")}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <TabsList data-testid="tabs-list">
-                <TabsTrigger value="active" data-testid="tab-active">
+                <TabsTrigger value="active" data-testid="tab-active" className="min-h-10">
                   Active ({activeQuestionnaires.length})
                 </TabsTrigger>
-                <TabsTrigger value="archived" data-testid="tab-archived">
+                <TabsTrigger value="archived" data-testid="tab-archived" className="min-h-10">
                   Archived ({archivedQuestionnaires.length})
                 </TabsTrigger>
               </TabsList>
 
               {activeTab === "active" && (
                 <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-                  <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-status-filter">
+                  <SelectTrigger className="w-full sm:w-[180px] min-h-10" data-testid="select-status-filter">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -447,66 +609,94 @@ export default function Questionnaires() {
             </div>
 
             <TabsContent value="active" className="m-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Active Questionnaires</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {filteredQuestionnaires.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
+              {filteredQuestionnaires.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <div className="text-muted-foreground">
                       {statusFilter !== "all" 
                         ? `No ${statusFilter} questionnaires found`
                         : "No active questionnaires found"
                       }
                     </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {isMobile ? (
+                    /* Mobile Card Layout */
+                    <div className="space-y-3">
+                      {filteredQuestionnaires.map(renderQuestionnaireCard)}
+                    </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Sent To</TableHead>
-                          <TableHead>Last Updated</TableHead>
-                          <TableHead className="w-[80px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredQuestionnaires.map(renderQuestionnaireRow)}
-                      </TableBody>
-                    </Table>
+                    /* Desktop Table Layout */
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Active Questionnaires</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Sent To</TableHead>
+                              <TableHead>Last Updated</TableHead>
+                              <TableHead className="w-[80px]">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredQuestionnaires.map(renderQuestionnaireRow)}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
                   )}
-                </CardContent>
-              </Card>
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="archived" className="m-0">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Archived Questionnaires</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {archivedQuestionnaires.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
+              {archivedQuestionnaires.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <div className="text-muted-foreground">
                       No archived questionnaires
                     </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <>
+                  {isMobile ? (
+                    /* Mobile Card Layout */
+                    <div className="space-y-3">
+                      {archivedQuestionnaires.map(renderQuestionnaireCard)}
+                    </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Sent To</TableHead>
-                          <TableHead>Archived At</TableHead>
-                          <TableHead className="w-[80px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {archivedQuestionnaires.map(renderQuestionnaireRow)}
-                      </TableBody>
-                    </Table>
+                    /* Desktop Table Layout */
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Archived Questionnaires</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Sent To</TableHead>
+                              <TableHead>Archived At</TableHead>
+                              <TableHead className="w-[80px]">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {archivedQuestionnaires.map(renderQuestionnaireRow)}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
                   )}
-                </CardContent>
-              </Card>
+                </>
+              )}
             </TabsContent>
           </Tabs>
         )}
