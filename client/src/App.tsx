@@ -71,6 +71,11 @@ export default function App() {
             </Route>
 
           {/* Coach Routes - Protected Layout */}
+          <Route path="/coach/dashboard">
+            <CoachProtectedLayout>
+              <Dashboard />
+            </CoachProtectedLayout>
+          </Route>
           <Route path="/">
             <CoachProtectedLayout>
               <Dashboard />
