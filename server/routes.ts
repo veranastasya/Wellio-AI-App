@@ -2223,25 +2223,82 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       if (!contentText.trim()) {
         doc.fontSize(12).fillColor('#666666').text('No content available.', { align: 'center' });
       } else {
-        // Render content as simple formatted text with line breaks preserved
+        // Render content with beautiful formatting
         const lines = contentText.split('\n');
-        for (const line of lines) {
-          if (line.trim()) {
-            // Simple heuristic: lines ending with : or being all caps might be headings
-            const isHeading = line.endsWith(':') || (line.length > 0 && line === line.toUpperCase() && line.length < 60);
-            if (isHeading) {
-              doc.fontSize(14).fillColor('#28A0AE').text(line.trim(), {
-                align: 'left',
-              });
-              doc.moveDown(0.3);
-            } else {
-              doc.fontSize(11).fillColor('#000000').text(line.trim(), {
-                align: 'left',
-                lineGap: 2,
-              });
-            }
-          } else {
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const trimmedLine = line.trim();
+          
+          if (!trimmedLine) {
+            // Empty line - add spacing
+            doc.moveDown(0.6);
+            continue;
+          }
+          
+          // Detect markdown-style headings
+          const h1Match = trimmedLine.match(/^#\s+(.+)$/);
+          const h2Match = trimmedLine.match(/^##\s+(.+)$/);
+          const h3Match = trimmedLine.match(/^###\s+(.+)$/);
+          
+          // Detect bullet points or numbered lists
+          const bulletMatch = trimmedLine.match(/^[-*•]\s+(.+)$/);
+          const numberedMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
+          
+          // Detect lines ending with : as section headers
+          const colonHeader = trimmedLine.endsWith(':') && trimmedLine.length < 80;
+          
+          // Detect all-caps as headers (but not too long)
+          const capsHeader = trimmedLine === trimmedLine.toUpperCase() && 
+                             trimmedLine.length > 2 && 
+                             trimmedLine.length < 60 &&
+                             !trimmedLine.match(/^[A-Z\s]+$/);
+          
+          if (h1Match) {
+            // Main heading
             doc.moveDown(0.5);
+            doc.fontSize(16).fillColor('#28A0AE').text(h1Match[1], { align: 'left' });
+            doc.moveDown(0.4);
+          } else if (h2Match) {
+            // Subheading
+            doc.moveDown(0.4);
+            doc.fontSize(14).fillColor('#28A0AE').text(h2Match[1], { align: 'left' });
+            doc.moveDown(0.3);
+          } else if (h3Match) {
+            // Sub-subheading
+            doc.moveDown(0.3);
+            doc.fontSize(12).fillColor('#28A0AE').text(h3Match[1], { align: 'left' });
+            doc.moveDown(0.2);
+          } else if (colonHeader) {
+            // Section header (ends with :)
+            doc.moveDown(0.3);
+            doc.fontSize(13).fillColor('#28A0AE').text(trimmedLine, { align: 'left' });
+            doc.moveDown(0.2);
+          } else if (capsHeader) {
+            // ALL CAPS header
+            doc.moveDown(0.3);
+            doc.fontSize(12).fillColor('#28A0AE').text(trimmedLine, { align: 'left' });
+            doc.moveDown(0.2);
+          } else if (bulletMatch) {
+            // Bullet point
+            doc.fontSize(11).fillColor('#000000').text(`• ${bulletMatch[1]}`, {
+              align: 'left',
+              indent: 20,
+              lineGap: 3,
+            });
+          } else if (numberedMatch) {
+            // Numbered list
+            doc.fontSize(11).fillColor('#000000').text(trimmedLine, {
+              align: 'left',
+              indent: 20,
+              lineGap: 3,
+            });
+          } else {
+            // Regular paragraph text
+            doc.fontSize(11).fillColor('#333333').text(trimmedLine, {
+              align: 'left',
+              lineGap: 4,
+            });
           }
         }
       }
