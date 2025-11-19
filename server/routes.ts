@@ -2220,6 +2220,106 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         }
       }
       
+      // Helper function to parse inline markdown (bold and italic)
+      interface TextSegment {
+        text: string;
+        bold: boolean;
+        italic: boolean;
+      }
+
+      function parseInlineMarkdown(text: string): TextSegment[] {
+        const segments: TextSegment[] = [];
+        let currentPos = 0;
+        
+        // Regex to match **bold** or *italic* (non-greedy)
+        const markdownRegex = /(\*\*([^*]+)\*\*)|(\*([^*]+)\*)/g;
+        let match;
+        
+        while ((match = markdownRegex.exec(text)) !== null) {
+          // Add text before the match as regular text
+          if (match.index > currentPos) {
+            segments.push({
+              text: text.substring(currentPos, match.index),
+              bold: false,
+              italic: false,
+            });
+          }
+          
+          // Add the formatted text
+          if (match[1]) {
+            // Bold text (**text**)
+            segments.push({
+              text: match[2],
+              bold: true,
+              italic: false,
+            });
+          } else if (match[3]) {
+            // Italic text (*text*)
+            segments.push({
+              text: match[4],
+              bold: false,
+              italic: true,
+            });
+          }
+          
+          currentPos = match.index + match[0].length;
+        }
+        
+        // Add remaining text
+        if (currentPos < text.length) {
+          segments.push({
+            text: text.substring(currentPos),
+            bold: false,
+            italic: false,
+          });
+        }
+        
+        // If no markdown found, return the whole text as one segment
+        if (segments.length === 0) {
+          segments.push({ text, bold: false, italic: false });
+        }
+        
+        return segments;
+      }
+
+      // Helper function to render text with inline formatting
+      function renderTextWithFormatting(
+        doc: PDFKit.PDFDocument,
+        text: string,
+        fontSize: number,
+        color: string,
+        options: PDFKit.Mixins.TextOptions = {}
+      ) {
+        const segments = parseInlineMarkdown(text);
+        
+        doc.fontSize(fontSize).fillColor(color);
+        
+        for (let i = 0; i < segments.length; i++) {
+          const segment = segments[i];
+          
+          // Set font based on formatting
+          if (segment.bold && segment.italic) {
+            doc.font('Helvetica-BoldOblique');
+          } else if (segment.bold) {
+            doc.font('Helvetica-Bold');
+          } else if (segment.italic) {
+            doc.font('Helvetica-Oblique');
+          } else {
+            doc.font('Helvetica');
+          }
+          
+          // Render the segment
+          // Continue on same line except for first segment
+          doc.text(segment.text, {
+            ...options,
+            continued: i < segments.length - 1,
+          });
+        }
+        
+        // Reset to default font
+        doc.font('Helvetica');
+      }
+
       if (!contentText.trim()) {
         doc.fontSize(12).fillColor('#666666').text('No content available.', { align: 'center' });
       } else {
@@ -2257,45 +2357,45 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
           if (h1Match) {
             // Main heading
             doc.moveDown(0.5);
-            doc.fontSize(16).fillColor('#28A0AE').text(h1Match[1], { align: 'left' });
+            renderTextWithFormatting(doc, h1Match[1], 16, '#28A0AE', { align: 'left' });
             doc.moveDown(0.4);
           } else if (h2Match) {
             // Subheading
             doc.moveDown(0.4);
-            doc.fontSize(14).fillColor('#28A0AE').text(h2Match[1], { align: 'left' });
+            renderTextWithFormatting(doc, h2Match[1], 14, '#28A0AE', { align: 'left' });
             doc.moveDown(0.3);
           } else if (h3Match) {
             // Sub-subheading
             doc.moveDown(0.3);
-            doc.fontSize(12).fillColor('#28A0AE').text(h3Match[1], { align: 'left' });
+            renderTextWithFormatting(doc, h3Match[1], 12, '#28A0AE', { align: 'left' });
             doc.moveDown(0.2);
           } else if (colonHeader) {
             // Section header (ends with :)
             doc.moveDown(0.3);
-            doc.fontSize(13).fillColor('#28A0AE').text(trimmedLine, { align: 'left' });
+            renderTextWithFormatting(doc, trimmedLine, 13, '#28A0AE', { align: 'left' });
             doc.moveDown(0.2);
           } else if (capsHeader) {
             // ALL CAPS header
             doc.moveDown(0.3);
-            doc.fontSize(12).fillColor('#28A0AE').text(trimmedLine, { align: 'left' });
+            renderTextWithFormatting(doc, trimmedLine, 12, '#28A0AE', { align: 'left' });
             doc.moveDown(0.2);
           } else if (bulletMatch) {
             // Bullet point
-            doc.fontSize(11).fillColor('#000000').text(`• ${bulletMatch[1]}`, {
+            renderTextWithFormatting(doc, `• ${bulletMatch[1]}`, 11, '#000000', {
               align: 'left',
               indent: 20,
               lineGap: 3,
             });
           } else if (numberedMatch) {
             // Numbered list
-            doc.fontSize(11).fillColor('#000000').text(trimmedLine, {
+            renderTextWithFormatting(doc, trimmedLine, 11, '#000000', {
               align: 'left',
               indent: 20,
               lineGap: 3,
             });
           } else {
             // Regular paragraph text
-            doc.fontSize(11).fillColor('#333333').text(trimmedLine, {
+            renderTextWithFormatting(doc, trimmedLine, 11, '#333333', {
               align: 'left',
               lineGap: 4,
             });
