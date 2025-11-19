@@ -13,12 +13,16 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, Response } from "@shared/schema";
 import { getGoalTypeLabel, getActivityLevelLabel } from "@shared/schema";
 import { type UnitsPreference, formatWeight, formatHeight } from "@shared/units";
+import { usePlanBuilder } from "@/hooks/use-plan-builder";
+import { PlanBuilderContent } from "@/components/plan-builder-content";
 
 export default function CoachClientDetail() {
   const [, params] = useRoute("/coach/clients/:clientId");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const clientId = params?.clientId;
+  
+  const planBuilderState = usePlanBuilder(clientId);
 
   const { data: client, isLoading: isLoadingClient } = useQuery<Client>({
     queryKey: ["/api/clients", clientId],
@@ -206,12 +210,15 @@ export default function CoachClientDetail() {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-2xl grid-cols-3">
             <TabsTrigger value="overview" data-testid="tab-overview">
               Overview
             </TabsTrigger>
             <TabsTrigger value="intake" data-testid="tab-intake">
               Intake
+            </TabsTrigger>
+            <TabsTrigger value="plan" data-testid="tab-plan">
+              Plan
             </TabsTrigger>
           </TabsList>
 
@@ -552,6 +559,37 @@ export default function CoachClientDetail() {
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* Plan Tab */}
+          <TabsContent value="plan" className="space-y-6">
+            <div className="min-h-[600px]">
+              {planBuilderState.isLoadingContext ? (
+                <div className="flex items-center justify-center h-96">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" data-testid="loader-plan-context" />
+                </div>
+              ) : (
+                <PlanBuilderContent
+                  messages={planBuilderState.messages}
+                  input={planBuilderState.input}
+                  planName={planBuilderState.planName}
+                  planContent={planBuilderState.planContent}
+                  isSaving={planBuilderState.isSaving}
+                  isCanvasExpanded={planBuilderState.isCanvasExpanded}
+                  messagesEndRef={planBuilderState.messagesEndRef}
+                  canvasTextareaRef={planBuilderState.canvasTextareaRef}
+                  chatMutation={planBuilderState.chatMutation}
+                  setInput={planBuilderState.setInput}
+                  setPlanName={planBuilderState.setPlanName}
+                  setPlanContent={planBuilderState.setPlanContent}
+                  setIsCanvasExpanded={planBuilderState.setIsCanvasExpanded}
+                  handleSendMessage={planBuilderState.handleSendMessage}
+                  handleAddToCanvas={planBuilderState.handleAddToCanvas}
+                  handleAddSection={planBuilderState.handleAddSection}
+                  handleSavePlan={planBuilderState.handleSavePlan}
+                />
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
