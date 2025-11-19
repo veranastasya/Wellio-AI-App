@@ -190,7 +190,6 @@ export default function PlanBuilder() {
   const [planContent, setPlanContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [isClientContextOpen, setIsClientContextOpen] = useState(true);
   const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const canvasTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -486,164 +485,7 @@ export default function PlanBuilder() {
         </div>
       </div>
 
-      <div className="flex flex-1 gap-3 sm:gap-4 min-h-0 relative">
-        {/* Persistent Sidebar Rail */}
-        <div 
-          className={`transition-all duration-300 ease-in-out flex-shrink-0 ${
-            isClientContextOpen ? 'w-80' : 'w-12'
-          }`}
-        >
-          <Card className="h-full flex flex-col overflow-hidden">
-            {!isClientContextOpen ? (
-              <div className="flex flex-col items-center py-4 gap-4">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-10 w-10" 
-                  onClick={() => setIsClientContextOpen(true)}
-                  data-testid="button-open-client-context"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </Button>
-                {clientContext.client.age && (
-                  <Badge variant="secondary" className="rotate-90 whitespace-nowrap">
-                    {clientContext.client.age}y
-                  </Badge>
-                )}
-                {clientContext.client.goal && (
-                  <div className="writing-mode-vertical text-xs text-muted-foreground px-1">
-                    {getGoalTypeLabel(clientContext.client.goal).substring(0, 15)}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <User className="w-4 h-4" />
-                      Client Context
-                    </CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8" 
-                      onClick={() => setIsClientContextOpen(false)}
-                      data-testid="button-close-client-context"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[calc(100vh-280px)]">
-                <div className="space-y-4 pr-4">
-                <div>
-                  <h3 className="font-semibold text-sm mb-2">{clientContext.client.name}</h3>
-                  <p className="text-xs text-muted-foreground">{clientContext.client.email}</p>
-                </div>
-
-                <Separator />
-
-                {clientContext.goals && clientContext.goals.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Target className="w-4 h-4" />
-                      <h4 className="font-semibold text-sm">Active Goals</h4>
-                    </div>
-                    <div className="space-y-2">
-                      {clientContext.goals.map((goal) => (
-                        <div key={goal.id} className="text-xs">
-                          <Badge variant="outline" className="mb-1">
-                            {getGoalTypeLabel(goal.goalType)}
-                          </Badge>
-                          {goal.description && (
-                            <p className="text-muted-foreground">{goal.description}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {clientContext.recent_nutrition && clientContext.recent_nutrition.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Apple className="w-4 h-4" />
-                        <h4 className="font-semibold text-sm">Recent Nutrition</h4>
-                      </div>
-                      <div className="space-y-2">
-                        {clientContext.recent_nutrition.slice(0, 3).map((log, idx) => (
-                          <div key={idx} className="text-xs">
-                            <div className="font-medium">{log.date}</div>
-                            <div className="text-muted-foreground">
-                              {log.calories}cal • P: {log.protein}g • C: {log.carbs}g • F: {log.fats}g
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {clientContext.recent_workouts && clientContext.recent_workouts.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Dumbbell className="w-4 h-4" />
-                        <h4 className="font-semibold text-sm">Recent Workouts</h4>
-                      </div>
-                      <div className="space-y-2">
-                        {clientContext.recent_workouts.slice(0, 3).map((workout, idx) => (
-                          <div key={idx} className="text-xs">
-                            <div className="font-medium">{workout.date}</div>
-                            <div className="text-muted-foreground">
-                              {workout.type} • {workout.duration}min • {workout.intensity}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {clientContext.questionnaire_data && clientContext.questionnaire_data.length > 0 && (
-                  <>
-                    <Separator />
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="w-4 h-4" />
-                        <h4 className="font-semibold text-sm">Questionnaire Data</h4>
-                      </div>
-                      <div className="space-y-2">
-                        {clientContext.questionnaire_data.map((response, idx) => (
-                          <div key={idx} className="text-xs">
-                            <div className="font-medium">{response.questionnaire_name}</div>
-                            <div className="text-muted-foreground">
-                              {new Date(response.submitted_at).toLocaleDateString()}
-                            </div>
-                            <Badge variant="secondary" className="mt-1 text-xs">
-                              Pinned for AI
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-            </>
-            )}
-          </Card>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
+      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
           <Card className="flex-1 lg:flex-[0.8]">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -809,7 +651,6 @@ export default function PlanBuilder() {
           </CardContent>
         </Card>
       </div>
-    </div>
     </div>
   );
 }
