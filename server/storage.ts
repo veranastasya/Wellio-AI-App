@@ -1,3 +1,4 @@
+import bcrypt from "bcrypt";
 import {
   type Client,
   type InsertClient,
@@ -170,10 +171,14 @@ export class DatabaseStorage implements IStorage {
       return;
     }
 
+    // Hash default password for all seeded clients
+    const defaultPasswordHash = await bcrypt.hash("password", 10);
+
     const sampleClients: InsertClient[] = [
       {
         name: "Sarah Wilson",
         email: "sarah.wilson@example.com",
+        passwordHash: defaultPasswordHash,
         phone: "+1 (555) 123-4567",
         status: "active",
         goalType: "gain_muscle_strength",
@@ -185,6 +190,7 @@ export class DatabaseStorage implements IStorage {
       {
         name: "Alex Thompson",
         email: "alex.thompson@example.com",
+        passwordHash: defaultPasswordHash,
         phone: "+1 (555) 234-5678",
         status: "active",
         goalType: "improve_fitness_endurance",
@@ -196,6 +202,7 @@ export class DatabaseStorage implements IStorage {
       {
         name: "Lisa Chen",
         email: "lisa.chen@example.com",
+        passwordHash: defaultPasswordHash,
         phone: "+1 (555) 345-6789",
         status: "active",
         goalType: "eat_healthier",
@@ -218,6 +225,7 @@ export class DatabaseStorage implements IStorage {
       {
         name: "Emma Davis",
         email: "emma.davis@example.com",
+        passwordHash: defaultPasswordHash,
         phone: "+1 (555) 567-8901",
         status: "active",
         goalType: "improve_health",

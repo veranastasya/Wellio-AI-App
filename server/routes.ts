@@ -1771,11 +1771,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/client-plans/my-plans", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.session.clientId!;
+      console.log("[GET my-plans] Client ID from session:", clientId);
       const plans = await storage.getClientPlansByClientId(clientId);
+      console.log("[GET my-plans] All plans for client:", plans.map(p => ({ id: p.id, clientId: p.clientId, shared: p.shared, status: p.status, planName: p.planName })));
       // Only return shared and active plans for clients
       const activePlans = plans.filter(plan => plan.shared && plan.status === 'active');
+      console.log("[GET my-plans] Filtered active plans:", activePlans.map(p => ({ id: p.id, shared: p.shared, status: p.status, planName: p.planName })));
       res.json(activePlans);
     } catch (error) {
+      console.error("[GET my-plans] Error:", error);
       res.status(500).json({ error: "Failed to fetch plans" });
     }
   });
@@ -2558,11 +2562,13 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       });
 
       // Update plan: mark as shared, active, and add PDF URL
-      await storage.updateClientPlan(plan.id, {
+      console.log("[Plan Assignment] BEFORE update - Plan:", { id: plan.id, clientId: plan.clientId, shared: plan.shared, status: plan.status });
+      const updatedPlan = await storage.updateClientPlan(plan.id, {
         pdfUrl: objectPath,
         shared: true,
         status: 'active',
       });
+      console.log("[Plan Assignment] AFTER update - Plan:", { id: updatedPlan?.id, clientId: updatedPlan?.clientId, shared: updatedPlan?.shared, status: updatedPlan?.status, pdfUrl: updatedPlan?.pdfUrl });
 
       // Send email notification to client
       try {
