@@ -2190,28 +2190,33 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke('#E2F9AD');
       doc.moveDown(1.5);
 
-      // Handle both old sections array format and new single-document string format
+      // Handle multiple formats: string, { content: string }, or { sections: [] }
       let contentText = '';
       if (typeof plan.planContent === 'string') {
-        // New format: single document string
+        // Direct string format
         contentText = plan.planContent;
       } else if (typeof plan.planContent === 'object') {
-        // Old format: sections array
-        const sections = (plan.planContent as any).sections || [];
-        if (sections.length === 0) {
-          contentText = 'No content available.';
+        // Check for { content: string } format (current format)
+        if ((plan.planContent as any).content && typeof (plan.planContent as any).content === 'string') {
+          contentText = (plan.planContent as any).content;
         } else {
-          // Convert sections to plain text for backward compatibility
-          contentText = sections.map((section: any) => {
-            let text = '';
-            if (section.heading) {
-              text += `${section.heading}\n\n`;
-            }
-            if (section.content) {
-              text += `${section.content}\n\n`;
-            }
-            return text;
-          }).join('\n');
+          // Old format: sections array
+          const sections = (plan.planContent as any).sections || [];
+          if (sections.length === 0) {
+            contentText = 'No content available.';
+          } else {
+            // Convert sections to plain text for backward compatibility
+            contentText = sections.map((section: any) => {
+              let text = '';
+              if (section.heading) {
+                text += `${section.heading}\n\n`;
+              }
+              if (section.content) {
+                text += `${section.content}\n\n`;
+              }
+              return text;
+            }).join('\n');
+          }
         }
       }
       
