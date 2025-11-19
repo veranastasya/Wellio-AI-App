@@ -77,7 +77,12 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
       setMessages(prev => [...prev, userMsg]);
       setInput("");
 
-      const newMessages = [...messages, userMsg];
+      let newMessages: Message[] = [];
+      setMessages(prev => {
+        newMessages = [...prev];
+        return prev;
+      });
+      
       const response = await apiRequest("POST", "/api/plans/chat", {
         messages: newMessages,
         clientContext,
@@ -224,11 +229,13 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
       description: "Content added. You can now edit it.",
     });
     
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       if (canvasTextareaRef.current) {
         canvasTextareaRef.current.scrollTop = canvasTextareaRef.current.scrollHeight;
       }
     }, 100);
+    
+    return () => clearTimeout(timeoutId);
   };
 
   const handleAddSection = (template: { heading: string; content: string }) => {
@@ -240,11 +247,13 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
       return prev + "\n\n" + sectionText;
     });
     
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       if (canvasTextareaRef.current) {
         canvasTextareaRef.current.scrollTop = canvasTextareaRef.current.scrollHeight;
       }
     }, 100);
+    
+    return () => clearTimeout(timeoutId);
   };
 
   const handleSavePlan = async () => {
@@ -341,7 +350,7 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
       setHasInitialized(true);
       chatMutation.mutate(initialPrompt);
     }
-  }, [clientContext, hasInitialized, messages.length, chatMutation.isPending]);
+  }, [clientContext, hasInitialized, messages.length]);
 
   useEffect(() => {
     setHasInitialized(false);

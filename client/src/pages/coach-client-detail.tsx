@@ -21,13 +21,13 @@ export default function CoachClientDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const clientId = params?.clientId;
-  
-  const planBuilderState = usePlanBuilder(clientId);
 
   const { data: client, isLoading: isLoadingClient } = useQuery<Client>({
     queryKey: ["/api/clients", clientId],
     enabled: !!clientId,
   });
+  
+  const planBuilderState = usePlanBuilder(clientId);
 
   const { data: responses = [], isLoading: isLoadingResponses } = useQuery<Response[]>({
     queryKey: ["/api/clients", clientId, "responses"],
