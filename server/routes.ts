@@ -2227,7 +2227,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         italic: boolean;
       }
 
-      function parseInlineMarkdown(text: string): TextSegment[] {
+      const parseInlineMarkdown = (text: string): TextSegment[] => {
         const segments: TextSegment[] = [];
         let currentPos = 0;
         
@@ -2280,16 +2280,16 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         }
         
         return segments;
-      }
+      };
 
       // Helper function to render text with inline formatting
-      function renderTextWithFormatting(
+      const renderTextWithFormatting = (
         doc: PDFKit.PDFDocument,
         text: string,
         fontSize: number,
         color: string,
         options: PDFKit.Mixins.TextOptions = {}
-      ) {
+      ) => {
         const segments = parseInlineMarkdown(text);
         
         doc.fontSize(fontSize).fillColor(color);
@@ -2318,7 +2318,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         
         // Reset to default font
         doc.font('Helvetica');
-      }
+      };
 
       if (!contentText.trim()) {
         doc.fontSize(12).fillColor('#666666').text('No content available.', { align: 'center' });
