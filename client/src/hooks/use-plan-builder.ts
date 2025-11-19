@@ -22,6 +22,7 @@ interface PlanBuilderState {
   planName: string;
   planContent: string;
   isSaving: boolean;
+  isAssigning: boolean;
   hasInitialized: boolean;
   isCanvasExpanded: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement>;
@@ -32,6 +33,7 @@ interface PlanBuilderState {
   savePlanMutation: any;
   generatePDFMutation: any;
   sharePlanMutation: any;
+  assignPlanMutation: any;
   setInput: (value: string) => void;
   setPlanName: (value: string) => void;
   setPlanContent: (value: string) => void;
@@ -41,6 +43,7 @@ interface PlanBuilderState {
   handleAddSection: (template: { heading: string; content: string }) => void;
   handleSavePlan: () => Promise<void>;
   handleSaveAndShare: () => Promise<void>;
+  handleAssignToClient: () => Promise<void>;
 }
 
 export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
@@ -51,6 +54,7 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
   const [planName, setPlanName] = useState("");
   const [planContent, setPlanContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -211,6 +215,29 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
     },
   });
 
+  const assignPlanMutation = useMutation({
+    mutationFn: async (planId: string) => {
+      const response = await apiRequest("POST", `/api/client-plans/${planId}/assign`, {
+        message: "Your coach has assigned you a new wellness plan. Review it and let them know if you have any questions!",
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client-plans"] });
+      toast({
+        title: "Success",
+        description: "Plan assigned to client successfully! Email notification sent.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to assign plan",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSendMessage = () => {
     if (!input.trim() || chatMutation.isPending) return;
     chatMutation.mutate(input);
@@ -278,6 +305,32 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleAssignToClient = async () => {
+    setIsAssigning(true);
+    try {
+      if (!planName.trim()) {
+        throw new Error("Please enter a plan name");
+      }
+      
+      if (!planContent.trim()) {
+        throw new Error("Please add content to your plan");
+      }
+
+      const plan = await savePlanMutation.mutateAsync();
+      if (plan?.id) {
+        await assignPlanMutation.mutateAsync(plan.id);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to assign plan",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -369,6 +422,7 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
     planName,
     planContent,
     isSaving,
+    isAssigning,
     hasInitialized,
     isCanvasExpanded,
     messagesEndRef,
@@ -379,6 +433,7 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
     savePlanMutation,
     generatePDFMutation,
     sharePlanMutation,
+    assignPlanMutation,
     setInput,
     setPlanName,
     setPlanContent,
@@ -388,5 +443,6 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
     handleAddSection,
     handleSavePlan,
     handleSaveAndShare,
+    handleAssignToClient,
   };
 }

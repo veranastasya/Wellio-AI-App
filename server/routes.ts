@@ -61,7 +61,7 @@ import {
   mapRookBodyToCheckIn,
   generateRookConnectionUrl
 } from "./rook";
-import { sendInviteEmail } from "./email";
+import { sendInviteEmail, sendPlanAssignmentEmail } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Coach authentication routes
@@ -1772,9 +1772,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const clientId = req.session.clientId!;
       const plans = await storage.getClientPlansByClientId(clientId);
-      // Only return shared plans for clients
-      const sharedPlans = plans.filter(plan => plan.shared);
-      res.json(sharedPlans);
+      // Only return shared and active plans for clients
+      const activePlans = plans.filter(plan => plan.shared && plan.status === 'active');
+      res.json(activePlans);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch plans" });
     }
@@ -2460,6 +2460,214 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     } catch (error) {
       console.error("Error generating PDF:", error);
       res.status(500).json({ error: "Failed to generate PDF", details: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Assign plan to client (generates PDF, archives old plan, sends notification)
+  app.post("/api/client-plans/:id/assign", requireCoachAuth, async (req, res) => {
+    try {
+      const { message } = req.body;
+      const plan = await storage.getClientPlan(req.params.id);
+      
+      if (!plan) {
+        console.error("Plan Assignment: Plan not found", req.params.id);
+        return res.status(404).json({ error: "Plan not found" });
+      }
+
+      const client = await storage.getClient(plan.clientId);
+      if (!client) {
+        console.error("Plan Assignment: Client not found", plan.clientId);
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Validate planContent exists
+      if (!plan.planContent) {
+        console.error("Plan Assignment: Invalid planContent", plan.planContent);
+        return res.status(400).json({ error: "Plan has no content" });
+      }
+
+      // Archive any existing active plan for this client
+      await storage.archiveActivePlan(plan.clientId);
+      console.log("Plan Assignment: Archived old active plan for client", plan.clientId);
+
+      // Generate PDF (reuse logic from generate-pdf endpoint)
+      const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      const pdfPromise = new Promise<Buffer>((resolve) => {
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+      });
+
+      doc.fontSize(28).fillColor('#28A0AE').text('Wellio', { align: 'center' });
+      doc.moveDown(0.3);
+      doc.fontSize(20).fillColor('#000000').text(plan.planName || 'Wellness Plan', { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(11).fillColor('#666666').text(`Client: ${client.name}`, { align: 'center' });
+      doc.fontSize(10).text(`Generated: ${new Date().toLocaleDateString()}`, { align: 'center' });
+      doc.moveDown(0.3);
+      doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke('#E2F9AD');
+      doc.moveDown(1.5);
+
+      // Extract content text from plan
+      let contentText = '';
+      if (typeof plan.planContent === 'string') {
+        contentText = plan.planContent;
+      } else if (typeof plan.planContent === 'object') {
+        if ((plan.planContent as any).content && typeof (plan.planContent as any).content === 'string') {
+          contentText = (plan.planContent as any).content;
+        }
+      }
+
+      // Render content (simplified version)
+      if (!contentText.trim()) {
+        doc.fontSize(12).fillColor('#666666').text('No content available.', { align: 'center' });
+      } else {
+        const lines = contentText.split('\n');
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) {
+            doc.moveDown(0.6);
+            continue;
+          }
+          doc.fontSize(11).fillColor('#333333').text(trimmedLine, { align: 'left', lineGap: 4 });
+        }
+      }
+
+      doc.end();
+      const pdfBuffer = await pdfPromise;
+
+      // Save PDF to object storage
+      const objectStorageService = new ObjectStorageService();
+      const privateDir = objectStorageService.getPrivateObjectDir();
+      const fileName = `${privateDir}/plans/${plan.id}.pdf`;
+      
+      const { bucketName, objectName } = parseObjectPath(fileName);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      await file.save(pdfBuffer, { contentType: 'application/pdf', resumable: false });
+
+      // Set ACL for client access
+      const objectPath = `/objects/plans/${plan.id}.pdf`;
+      await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
+        owner: plan.coachId,
+        visibility: 'private',
+        aclRules: [{
+          group: { type: ObjectAccessGroupType.CLIENT_ID, id: plan.clientId },
+          permission: ObjectPermission.READ,
+        }],
+      });
+
+      // Update plan: mark as shared, active, and add PDF URL
+      await storage.updateClientPlan(plan.id, {
+        pdfUrl: objectPath,
+        shared: true,
+        status: 'active',
+      });
+
+      // Send email notification to client
+      try {
+        const planLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/plan`;
+        await sendPlanAssignmentEmail({
+          to: client.email,
+          clientName: client.name,
+          coachName: "Coach",
+          planName: plan.planName,
+          planLink,
+          message,
+        });
+        console.log("[Email] Successfully sent plan assignment email to:", client.email);
+      } catch (emailError) {
+        console.error("[Email] Failed to send plan assignment email:", emailError);
+        // Don't fail the assignment if email fails
+      }
+
+      res.json({ 
+        success: true, 
+        pdfUrl: objectPath,
+        message: "Plan assigned successfully"
+      });
+    } catch (error) {
+      console.error("Error assigning plan:", error);
+      res.status(500).json({ error: "Failed to assign plan", details: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
+  // Manual plan assignment (create plan with optional PDF)
+  app.post("/api/client-plans/assign-manual", requireCoachAuth, async (req, res) => {
+    try {
+      const { clientId, planName, planContent, pdfUrl, message } = req.body;
+
+      if (!clientId || !planName || !planContent) {
+        return res.status(400).json({ error: "Missing required fields: clientId, planName, planContent" });
+      }
+
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        console.error("Manual Assignment: Client not found", clientId);
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const coachId = req.session.coachId!;
+
+      // Archive any existing active plan for this client
+      await storage.archiveActivePlan(clientId);
+      console.log("Manual Assignment: Archived old active plan for client", clientId);
+
+      // Create new plan record with text content
+      const newPlan = await storage.createClientPlan({
+        clientId,
+        coachId,
+        planName,
+        planContent: { content: planContent }, // Store as { content: string } format
+        pdfUrl: pdfUrl || null,
+        shared: true,
+        status: 'active',
+      });
+
+      // If PDF was provided, set ACL for client access
+      if (pdfUrl) {
+        try {
+          const objectStorageService = new ObjectStorageService();
+          await objectStorageService.trySetObjectEntityAclPolicy(pdfUrl, {
+            owner: coachId,
+            visibility: 'private',
+            aclRules: [{
+              group: { type: ObjectAccessGroupType.CLIENT_ID, id: clientId },
+              permission: ObjectPermission.READ,
+            }],
+          });
+          console.log("Manual Assignment: ACL policy set for PDF");
+        } catch (aclError) {
+          console.error("Manual Assignment: Failed to set ACL policy for PDF", aclError);
+          // Continue anyway - plan is created, just PDF access might not work
+        }
+      }
+
+      // Send email notification to client
+      try {
+        const planLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/plan`;
+        await sendPlanAssignmentEmail({
+          to: client.email,
+          clientName: client.name,
+          coachName: "Coach",
+          planName,
+          planLink,
+          message,
+        });
+        console.log("[Email] Successfully sent plan assignment email to:", client.email);
+      } catch (emailError) {
+        console.error("[Email] Failed to send plan assignment email:", emailError);
+        // Don't fail the assignment if email fails
+      }
+
+      res.json({ 
+        success: true,
+        plan: newPlan,
+        message: "Plan assigned successfully"
+      });
+    } catch (error) {
+      console.error("Error in manual assignment:", error);
+      res.status(500).json({ error: "Failed to assign plan manually", details: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 

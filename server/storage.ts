@@ -149,6 +149,7 @@ export interface IStorage {
   createClientPlan(clientPlan: InsertClientPlan): Promise<ClientPlan>;
   updateClientPlan(id: string, clientPlan: Partial<InsertClientPlan>): Promise<ClientPlan | undefined>;
   deleteClientPlan(id: string): Promise<boolean>;
+  archiveActivePlan(clientId: string): Promise<ClientPlan | undefined>;
 
   // Goals
   getGoals(): Promise<Goal[]>;
@@ -941,6 +942,23 @@ export class DatabaseStorage implements IStorage {
   async deleteClientPlan(id: string): Promise<boolean> {
     const result = await db.delete(clientPlans).where(eq(clientPlans.id, id));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async archiveActivePlan(clientId: string): Promise<ClientPlan | undefined> {
+    const activePlan = await this.getActiveClientPlan(clientId);
+    if (!activePlan) {
+      return undefined;
+    }
+    
+    const [archivedPlan] = await db.update(clientPlans)
+      .set({
+        status: 'archived',
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(clientPlans.id, activePlan.id))
+      .returning();
+    
+    return archivedPlan || undefined;
   }
 
   async getGoals(): Promise<Goal[]> {

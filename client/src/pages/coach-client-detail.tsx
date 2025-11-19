@@ -575,6 +575,7 @@ export default function CoachClientDetail() {
                   planName={planBuilderState.planName}
                   planContent={planBuilderState.planContent}
                   isSaving={planBuilderState.isSaving}
+                  isAssigning={planBuilderState.isAssigning}
                   isCanvasExpanded={planBuilderState.isCanvasExpanded}
                   messagesEndRef={planBuilderState.messagesEndRef}
                   canvasTextareaRef={planBuilderState.canvasTextareaRef}
@@ -587,6 +588,7 @@ export default function CoachClientDetail() {
                   handleAddToCanvas={planBuilderState.handleAddToCanvas}
                   handleAddSection={planBuilderState.handleAddSection}
                   handleSavePlan={planBuilderState.handleSavePlan}
+                  handleAssignToClient={planBuilderState.handleAssignToClient}
                 />
               )}
             </div>

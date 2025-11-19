@@ -100,8 +100,18 @@ export default function ClientPlan() {
         ) : (
           <div className="grid gap-6">
             {sharedPlans.map((plan) => {
-              const planMessages = (plan.planContent as any).messages || [];
-              const assistantMessages = planMessages.filter((msg: any) => msg.role === "assistant");
+              // Handle both new format { content: string } and old format { messages: [] }
+              let contentText = '';
+              const planContentObj = plan.planContent as any;
+              
+              if (planContentObj?.content && typeof planContentObj.content === 'string') {
+                // New format: { content: string }
+                contentText = planContentObj.content;
+              } else if (planContentObj?.messages && Array.isArray(planContentObj.messages)) {
+                // Old format: { messages: [] }
+                const assistantMessages = planContentObj.messages.filter((msg: any) => msg.role === "assistant");
+                contentText = assistantMessages.map((msg: any) => msg.content).join('\n\n');
+              }
               
               return (
                 <Card key={plan.id} data-testid={`plan-${plan.id}`}>
@@ -136,19 +146,12 @@ export default function ClientPlan() {
                   <CardContent className="p-4 sm:p-6 pt-0">
                     <ScrollArea className="h-[300px] sm:h-[400px] pr-2 sm:pr-4">
                       <div className="space-y-4">
-                        {assistantMessages.length > 0 ? (
-                          assistantMessages.map((message: any, idx: number) => (
-                            <div key={idx} className="space-y-2">
-                              <div className="prose prose-sm max-w-none dark:prose-invert">
-                                <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                                  {message.content}
-                                </div>
-                              </div>
-                              {idx < assistantMessages.length - 1 && (
-                                <div className="border-t border-border my-4" />
-                              )}
+                        {contentText ? (
+                          <div className="prose prose-sm max-w-none dark:prose-invert">
+                            <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                              {contentText}
                             </div>
-                          ))
+                          </div>
                         ) : (
                           <p className="text-muted-foreground text-sm italic">
                             No plan content available

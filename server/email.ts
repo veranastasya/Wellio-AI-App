@@ -50,6 +50,15 @@ interface SendInviteEmailParams {
   message?: string;
 }
 
+interface SendPlanAssignmentEmailParams {
+  to: string;
+  clientName: string;
+  coachName: string;
+  planName: string;
+  planLink: string;
+  message?: string;
+}
+
 export async function sendInviteEmail({
   to,
   clientName,
@@ -180,7 +189,7 @@ export async function sendInviteEmail({
         </div>
         
         <div class="content">
-          <h2>Hi ${clientName}! 👋</h2>
+          <h2>Hi ${clientName}!</h2>
           
           <p>You've been invited by <strong>${coachName}</strong> to join Wellio, a platform designed to help you achieve your fitness and wellness goals.</p>
           
@@ -262,6 +271,211 @@ Need help? Contact ${coachName} directly.
     return data;
   } catch (error) {
     console.error('[Email] Error sending invite email:', error);
+    throw error;
+  }
+}
+
+export async function sendPlanAssignmentEmail({
+  to,
+  clientName,
+  coachName,
+  planName,
+  planLink,
+  message
+}: SendPlanAssignmentEmailParams) {
+  const { client, fromEmail } = await getUncachableResendClient();
+  
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>New Wellness Plan Assigned</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+          line-height: 1.6;
+          color: #333333;
+          margin: 0;
+          padding: 0;
+          background-color: #f5f5f5;
+        }
+        .container {
+          max-width: 600px;
+          margin: 40px auto;
+          background-color: #ffffff;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+          background: linear-gradient(135deg, #28A0AE 0%, #E2F9AD 100%);
+          padding: 40px 30px;
+          text-align: center;
+        }
+        .header h1 {
+          margin: 0;
+          color: #ffffff;
+          font-size: 32px;
+          font-weight: 700;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .content {
+          padding: 40px 30px;
+        }
+        .content h2 {
+          color: #28A0AE;
+          font-size: 24px;
+          margin-top: 0;
+          margin-bottom: 20px;
+        }
+        .content p {
+          margin: 16px 0;
+          color: #555555;
+        }
+        .plan-highlight {
+          background-color: #f8f9fa;
+          border-left: 4px solid #28A0AE;
+          padding: 20px;
+          margin: 24px 0;
+          border-radius: 4px;
+        }
+        .plan-highlight h3 {
+          margin: 0 0 8px 0;
+          color: #28A0AE;
+          font-size: 20px;
+        }
+        .plan-highlight p {
+          margin: 0;
+          color: #666666;
+          font-size: 14px;
+        }
+        .message-box {
+          background-color: #f8f9fa;
+          border-left: 4px solid #E2F9AD;
+          padding: 16px 20px;
+          margin: 24px 0;
+          border-radius: 4px;
+        }
+        .message-box p {
+          margin: 0;
+          font-style: italic;
+          color: #666666;
+        }
+        .cta-button {
+          display: inline-block;
+          background-color: #28A0AE;
+          color: #ffffff;
+          text-decoration: none;
+          padding: 14px 32px;
+          border-radius: 6px;
+          font-weight: 600;
+          font-size: 16px;
+          margin: 24px 0;
+          transition: background-color 0.2s;
+        }
+        .cta-button:hover {
+          background-color: #1f8491;
+        }
+        .footer {
+          background-color: #f8f9fa;
+          padding: 24px 30px;
+          text-align: center;
+          border-top: 1px solid #e9ecef;
+        }
+        .footer p {
+          margin: 8px 0;
+          font-size: 14px;
+          color: #666666;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>New Wellness Plan</h1>
+        </div>
+        
+        <div class="content">
+          <h2>Hi ${clientName}!</h2>
+          
+          <p><strong>${coachName}</strong> has created a personalized wellness plan for you!</p>
+          
+          <div class="plan-highlight">
+            <h3>${planName}</h3>
+            <p>Your coach has put together a customized plan to help you reach your goals.</p>
+          </div>
+          
+          ${message ? `
+            <div class="message-box">
+              <p>"${message}"</p>
+              <p style="margin-top: 8px; font-size: 14px;"><em>- ${coachName}</em></p>
+            </div>
+          ` : ''}
+          
+          <p>This plan is now available in your Wellio portal. Review it carefully and reach out to ${coachName} if you have any questions.</p>
+          
+          <div style="text-align: center;">
+            <a href="${planLink}" class="cta-button">View Your Plan</a>
+          </div>
+          
+          <p style="margin-top: 32px; font-size: 14px; color: #666666;">
+            Ready to get started? Your wellness journey continues!
+          </p>
+        </div>
+        
+        <div class="footer">
+          <p><strong>Wellio</strong> - AI-Powered Fitness & Wellness Coaching</p>
+          <p>Questions? Contact ${coachName} directly.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const emailText = `
+New Wellness Plan Assigned!
+
+Hi ${clientName},
+
+${coachName} has created a personalized wellness plan for you!
+
+Plan: ${planName}
+Your coach has put together a customized plan to help you reach your goals.
+
+${message ? `Personal message from ${coachName}:\n"${message}"\n\n` : ''}
+
+This plan is now available in your Wellio portal. Review it carefully and reach out to ${coachName} if you have any questions.
+
+View Your Plan:
+${planLink}
+
+Ready to get started? Your wellness journey continues!
+
+---
+Wellio - AI-Powered Fitness & Wellness Coaching
+Questions? Contact ${coachName} directly.
+  `;
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject: `${coachName} assigned you a new wellness plan`,
+      html: emailHtml,
+      text: emailText,
+    });
+
+    if (error) {
+      console.error('[Email] Failed to send plan assignment email:', error);
+      throw error;
+    }
+
+    console.log('[Email] Plan assignment email sent successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('[Email] Error sending plan assignment email:', error);
     throw error;
   }
 }

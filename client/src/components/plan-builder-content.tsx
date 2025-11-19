@@ -1,4 +1,4 @@
-import { Activity, FileText, Send, Loader2, Download, Minimize2, Maximize2, ArrowLeft } from "lucide-react";
+import { Activity, FileText, Send, Loader2, Download, Minimize2, Maximize2, ArrowLeft, UserPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ interface PlanBuilderContentProps {
   planName: string;
   planContent: string;
   isSaving: boolean;
+  isAssigning: boolean;
   isCanvasExpanded: boolean;
   messagesEndRef: React.RefObject<HTMLDivElement>;
   canvasTextareaRef: React.RefObject<HTMLTextAreaElement>;
@@ -29,6 +30,7 @@ interface PlanBuilderContentProps {
   handleAddToCanvas: (content: string) => void;
   handleAddSection: (template: { heading: string; content: string }) => void;
   handleSavePlan: () => Promise<void>;
+  handleAssignToClient: () => Promise<void>;
 }
 
 const SECTION_TEMPLATES = [
@@ -49,6 +51,7 @@ export function PlanBuilderContent({
   planName,
   planContent,
   isSaving,
+  isAssigning,
   isCanvasExpanded,
   messagesEndRef,
   canvasTextareaRef,
@@ -61,6 +64,7 @@ export function PlanBuilderContent({
   handleAddToCanvas,
   handleAddSection,
   handleSavePlan,
+  handleAssignToClient,
 }: PlanBuilderContentProps) {
   return (
     <div className="flex flex-col h-full gap-3 sm:gap-4">
@@ -203,6 +207,17 @@ export function PlanBuilderContent({
                 >
                   <Download className="w-4 h-4 mr-2" />
                   {isSaving ? "Generating..." : "Download PDF"}
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleAssignToClient}
+                  disabled={isAssigning || !planContent.trim() || !planName.trim()}
+                  className="min-h-8"
+                  data-testid="button-assign-to-client"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  {isAssigning ? "Assigning..." : "Assign to Client"}
                 </Button>
               </div>
             </div>
