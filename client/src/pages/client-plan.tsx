@@ -9,6 +9,154 @@ import { Loader2, FileText, Download, Calendar, Target, CheckCircle2, Sparkles }
 import { apiRequest } from "@/lib/queryClient";
 import type { Client, ClientPlan } from "@shared/schema";
 
+// Render markdown content with beautiful formatting
+function MarkdownRenderer({ content }: { content: string }) {
+  const lines = content.split('\n');
+  const elements: JSX.Element[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    
+    // Skip empty lines but preserve spacing
+    if (!line.trim()) {
+      elements.push(<div key={`empty-${i}`} className="h-2" />);
+      i++;
+      continue;
+    }
+
+    // Heading levels
+    if (line.startsWith('### ')) {
+      elements.push(
+        <h3 key={`h3-${i}`} className="text-lg font-bold text-foreground mt-4 mb-2">
+          {line.substring(4)}
+        </h3>
+      );
+      i++;
+    } else if (line.startsWith('## ')) {
+      elements.push(
+        <h2 key={`h2-${i}`} className="text-xl font-bold text-foreground mt-5 mb-3">
+          {line.substring(3)}
+        </h2>
+      );
+      i++;
+    } else if (line.startsWith('# ')) {
+      elements.push(
+        <h1 key={`h1-${i}`} className="text-2xl font-bold text-foreground mt-6 mb-3">
+          {line.substring(2)}
+        </h1>
+      );
+      i++;
+    }
+    // Horizontal rule
+    else if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') {
+      elements.push(
+        <div key={`hr-${i}`} className="border-t border-border my-4" />
+      );
+      i++;
+    }
+    // Bold text (must handle inline)
+    else if (line.includes('**')) {
+      elements.push(
+        <p key={`p-${i}`} className="text-sm leading-relaxed text-foreground">
+          {renderInlineFormatting(line)}
+        </p>
+      );
+      i++;
+    }
+    // Bullet points
+    else if (line.trim().startsWith('- ') || line.trim().startsWith('* ') || line.trim().startsWith('• ')) {
+      elements.push(
+        <div key={`li-${i}`} className="flex gap-3 text-sm leading-relaxed text-foreground ml-2">
+          <span className="text-primary mt-0.5">•</span>
+          <span>{renderInlineFormatting(line.trim().substring(2))}</span>
+        </div>
+      );
+      i++;
+    }
+    // Numbered lists
+    else if (/^\d+\. /.test(line.trim())) {
+      const match = line.trim().match(/^(\d+)\. (.*)$/);
+      if (match) {
+        elements.push(
+          <div key={`ol-${i}`} className="flex gap-3 text-sm leading-relaxed text-foreground ml-2">
+            <span className="text-primary font-semibold min-w-fit">{match[1]}.</span>
+            <span>{renderInlineFormatting(match[2])}</span>
+          </div>
+        );
+      }
+      i++;
+    }
+    // Regular paragraph
+    else {
+      elements.push(
+        <p key={`text-${i}`} className="text-sm leading-relaxed text-foreground">
+          {renderInlineFormatting(line)}
+        </p>
+      );
+      i++;
+    }
+  }
+
+  return <div className="space-y-2">{elements}</div>;
+}
+
+// Render inline formatting (bold, italic)
+function renderInlineFormatting(text: string): JSX.Element | string {
+  const parts: (JSX.Element | string)[] = [];
+  let lastIndex = 0;
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*|__(.+?)__(?!_)|_(.+?)_(?!_)/g;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    // Add text before match
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+
+    // Add formatted text
+    const boldText = match[1]; // ** **
+    const italicText = match[2]; // * *
+    const boldText2 = match[3]; // __ __
+    const italicText2 = match[4]; // _ _
+
+    if (boldText) {
+      parts.push(
+        <strong key={`bold-${match.index}`} className="font-bold">
+          {boldText}
+        </strong>
+      );
+    } else if (italicText) {
+      parts.push(
+        <em key={`italic-${match.index}`} className="italic">
+          {italicText}
+        </em>
+      );
+    } else if (boldText2) {
+      parts.push(
+        <strong key={`bold2-${match.index}`} className="font-bold">
+          {boldText2}
+        </strong>
+      );
+    } else if (italicText2) {
+      parts.push(
+        <em key={`italic2-${match.index}`} className="italic">
+          {italicText2}
+        </em>
+      );
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+
+  return parts.length === 0 ? text : <>{parts}</>;
+}
+
 export default function ClientPlan() {
   const [, setLocation] = useLocation();
   const [clientData, setClientData] = useState<Client | null>(null);
@@ -147,11 +295,7 @@ export default function ClientPlan() {
                     <ScrollArea className="h-[300px] sm:h-[400px] pr-2 sm:pr-4">
                       <div className="space-y-4">
                         {contentText ? (
-                          <div className="prose prose-sm max-w-none dark:prose-invert">
-                            <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                              {contentText}
-                            </div>
-                          </div>
+                          <MarkdownRenderer content={contentText} />
                         ) : (
                           <p className="text-muted-foreground text-sm italic">
                             No plan content available
