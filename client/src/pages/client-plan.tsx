@@ -55,6 +55,16 @@ function MarkdownRenderer({ content }: { content: string }) {
       );
       i++;
     }
+    // Sub-headers: lines starting with "- " and ending with ":" (e.g., "- Movement Sessions:")
+    else if ((line.trim().startsWith('- ') || line.trim().startsWith('* ')) && line.trim().endsWith(':')) {
+      const headerText = line.trim().substring(2); // Remove "- " or "* " prefix
+      elements.push(
+        <h4 key={`subheader-${i}`} className="text-base font-semibold text-primary mt-4 mb-2">
+          {renderInlineFormatting(headerText)}
+        </h4>
+      );
+      i++;
+    }
     // Bold text (must handle inline)
     else if (line.includes('**')) {
       elements.push(
