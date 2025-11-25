@@ -98,14 +98,17 @@ body {
   --font-serif: Georgia, serif;
   --font-mono: 'Roboto Mono', 'Courier New', monospace;
   --radius: .5rem;
-  --shadow-2xs: 0px 1px 2px 0px hsl(220 15% 15% / 0.05);
-  --shadow-xs: 0px 1px 3px 0px hsl(220 15% 15% / 0.08);
-  --shadow-sm: 0px 2px 4px 0px hsl(220 15% 15% / 0.06), 0px 1px 2px -1px hsl(220 15% 15% / 0.04);
-  --shadow: 0px 4px 6px -1px hsl(220 15% 15% / 0.08), 0px 2px 4px -2px hsl(220 15% 15% / 0.05);
-  --shadow-md: 0px 6px 12px -2px hsl(220 15% 15% / 0.10), 0px 3px 6px -3px hsl(220 15% 15% / 0.06);
-  --shadow-lg: 0px 10px 20px -4px hsl(220 15% 15% / 0.12), 0px 4px 8px -4px hsl(220 15% 15% / 0.08);
-  --shadow-xl: 0px 20px 30px -6px hsl(220 15% 15% / 0.15), 0px 8px 12px -6px hsl(220 15% 15% / 0.10);
-  --shadow-2xl: 0px 25px 40px -8px hsl(220 15% 15% / 0.18);
+  --radius-lg: .75rem;
+  --focus-ring: 2px solid hsl(var(--ring) / 0.5);
+  --focus-ring-offset: 3px;
+  --shadow-2xs: 0px 1px 2px 0px hsl(220 15% 15% / 0.04);
+  --shadow-xs: 0px 1px 2px 0px hsl(220 15% 15% / 0.06);
+  --shadow-sm: 0px 1px 3px 0px hsl(220 15% 15% / 0.05), 0px 1px 2px -1px hsl(220 15% 15% / 0.03);
+  --shadow: 0px 2px 4px 0px hsl(220 15% 15% / 0.06), 0px 1px 2px -1px hsl(220 15% 15% / 0.04);
+  --shadow-md: 0px 4px 8px -2px hsl(220 15% 15% / 0.08), 0px 2px 4px -2px hsl(220 15% 15% / 0.04);
+  --shadow-lg: 0px 8px 16px -4px hsl(220 15% 15% / 0.10), 0px 4px 8px -4px hsl(220 15% 15% / 0.06);
+  --shadow-xl: 0px 12px 24px -6px hsl(220 15% 15% / 0.12), 0px 6px 12px -6px hsl(220 15% 15% / 0.08);
+  --shadow-2xl: 0px 20px 40px -8px hsl(220 15% 15% / 0.14);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -212,14 +215,14 @@ body {
   --chart-4: 45 90% 65%;
   --chart-5: 270 60% 60%;
 
-  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.20);
-  --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.25);
-  --shadow-sm: 0px 2px 4px 0px hsl(0 0% 0% / 0.20), 0px 1px 2px -1px hsl(0 0% 0% / 0.15);
-  --shadow: 0px 4px 6px -1px hsl(0 0% 0% / 0.25), 0px 2px 4px -2px hsl(0 0% 0% / 0.18);
-  --shadow-md: 0px 6px 12px -2px hsl(0 0% 0% / 0.30), 0px 3px 6px -3px hsl(0 0% 0% / 0.22);
-  --shadow-lg: 0px 10px 20px -4px hsl(0 0% 0% / 0.35), 0px 4px 8px -4px hsl(0 0% 0% / 0.25);
-  --shadow-xl: 0px 20px 30px -6px hsl(0 0% 0% / 0.40), 0px 8px 12px -6px hsl(0 0% 0% / 0.30);
-  --shadow-2xl: 0px 25px 40px -8px hsl(0 0% 0% / 0.45);
+  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.16);
+  --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.20);
+  --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.16), 0px 1px 2px -1px hsl(0 0% 0% / 0.12);
+  --shadow: 0px 2px 4px 0px hsl(0 0% 0% / 0.20), 0px 1px 2px -1px hsl(0 0% 0% / 0.16);
+  --shadow-md: 0px 4px 8px -2px hsl(0 0% 0% / 0.24), 0px 2px 4px -2px hsl(0 0% 0% / 0.16);
+  --shadow-lg: 0px 8px 16px -4px hsl(0 0% 0% / 0.28), 0px 4px 8px -4px hsl(0 0% 0% / 0.20);
+  --shadow-xl: 0px 12px 24px -6px hsl(0 0% 0% / 0.32), 0px 6px 12px -6px hsl(0 0% 0% / 0.24);
+  --shadow-2xl: 0px 20px 40px -8px hsl(0 0% 0% / 0.36);
 
 }
 
@@ -254,6 +257,20 @@ body {
  * need to be distinguished from eachother visually.
  */
 @layer utilities {
+
+  /* Modern focus ring - clean, single outline */
+  .modern-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 transition-all duration-150;
+  }
+
+  /* Tabs styling */
+  .tabs-list-modern {
+    @apply inline-flex h-10 items-center justify-start gap-1 border-b border-border px-1 bg-transparent;
+  }
+
+  .tabs-trigger-modern {
+    @apply inline-flex min-h-10 items-center justify-center px-4 py-2 text-sm font-medium text-muted-foreground transition-all duration-150 border-b-2 border-transparent hover:text-foreground data-[state=active]:text-foreground data-[state=active]:border-b-primary data-[state=active]:font-semibold relative top-1 px-4;
+  }
 
   /* Hide ugly search cancel button in Chrome until we can style it properly */
   input[type="search"]::-webkit-search-cancel-button {
