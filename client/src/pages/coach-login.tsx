@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Dumbbell } from "lucide-react";
+import logoImage from "@assets/Group 626535_1761099357468.png";
 
 export default function CoachLogin() {
   const [, setLocation] = useLocation();
@@ -50,8 +50,13 @@ export default function CoachLogin() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4 text-center">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center">
-            <Dumbbell className="w-8 h-8 text-primary-foreground" />
+          <div className="mx-auto">
+            <img 
+              src={logoImage} 
+              alt="Wellio Logo" 
+              className="w-16 h-16 rounded-xl"
+              data-testid="logo-image"
+            />
           </div>
           <div>
             <CardTitle className="text-3xl">Wellio Coach</CardTitle>
