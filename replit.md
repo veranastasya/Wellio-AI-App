@@ -19,9 +19,22 @@ The platform features a modern design using React, Tailwind CSS, and Shadcn UI c
 
 **UX Enhancements (November 2025):**
 - **Mobile Sidebar Auto-Close**: Sidebar automatically closes on mobile when navigating between pages for better UX. Implemented via `SidebarAutoClose` wrapper component in both `CoachProtectedLayout` and `ClientProtectedLayout`.
-- **Modern Component States**: All interactive elements feature smooth 150ms transitions on hover/focus/active states. Select dropdowns include hover-elevate effects and animated chevron rotation. Sidebar menu items have refined active states with softer highlighting.
+- **Modern Component States**: All interactive elements feature smooth 200ms ease-out transitions on hover/focus/active states. Select dropdowns include hover-elevate effects. Sidebar menu items have refined active states with softer highlighting.
 - **Touch Target Optimization**: Core UI components updated to meet ≥40px minimum: Input (min-h-10), Select (min-h-10), Tabs (min-h-10), SidebarMenuButton (min-h-10/8/12), all with smooth transitions for professional feel.
-- **Focus Ring Enhancement**: Improved keyboard navigation visibility with ring-2 system across all focusable elements.
+- **Focus Ring Enhancement**: Improved keyboard navigation visibility with ring-2 system (ring-ring/50 or ring-ring/40 with ring-offset-1) across all focusable elements.
+
+**Component Design System (November 2025):**
+- **Tabs**: Pill-style with h-11 container, rounded-lg, bg-muted/60, backdrop-blur-sm. Triggers: min-h-9, px-4, rounded-md, active state with bg-background shadow-sm font-semibold
+- **Input/Textarea**: Soft borders (border-input/60), shadow-sm baseline, hover:border-input hover:shadow elevation, focus: ring-2 ring-ring/40 shadow-md
+- **Button**: focus-visible:ring-2 ring-ring/50 ring-offset-1, shadow-sm hover:shadow on default/outline variants
+- **Badge**: Consistent shadow-sm, softer focus rings
+- **Select**: Matches Input styling with soft shadows, improved dropdown items with rounded-md hover:bg-muted/60
+- **Card**: Softer border (border-card-border/60), transition-shadow for hover interactions
+- **Dialog**: bg-black/60 backdrop-blur-sm overlay, rounded-xl corners, border-border/60, shadow-xl
+- **Checkbox/Switch**: Softer borders with hover states, improved checked/active states
+- **Popover/Tooltip**: rounded-xl/rounded-lg, softer borders, backdrop-blur support
+- **Accordion**: Clean hover:text-primary interaction (no underline)
+- **Sidebar**: hover:bg-sidebar-accent/80, active: font-semibold shadow-sm
 
 **Mobile-First Responsive Implementation:**
 - **Conditional Rendering**: List pages (questionnaires, etc.) use viewport detection (`isMobile` state with window.innerWidth <768px) to conditionally render card layouts on mobile and table layouts on desktop. Table elements are NOT present in DOM on mobile viewports, ensuring optimal mobile performance.
