@@ -1,0 +1,223 @@
+PROMPT START
+
+You are updating an existing fitness coaching platform called Valio.
+
+We already have:
+
+a screen called AI Insights where a coach selects a client and sees their progress
+
+a screen called Client Data Logs where a coach can log data by client (Nutrition, Workout, Check-in/Progress, Goals), but this screen is currently just a mock and nothing is wired up
+
+We need to implement a simple but fully working Progress Tracking feature for the MVP, without wearables integration.
+
+High level goals
+
+Allow both clients and coaches to log progress data.
+
+Ensure all data is shared:
+
+if a client logs something, the coach sees it
+
+if a coach logs something, the client sees it
+
+Store all logs in a unified model and use them as input for an AI analytics module on the AI Insights screen.
+
+AI should compare real data against the client plan (which is already attached/assigned to the client) and produce weekly-level insights and recommendations.
+
+Data model
+
+Create a unified data entity, for example ClientDataLog, stored in the backend or in a simple database layer:
+
+id: string
+
+clientId: string
+
+planId?: string // current plan linked to the client
+
+createdByUserId: string
+
+source: "client" | "coach"
+
+type: "nutrition" | "workout" | "checkin" | "goal"
+
+date: string // logical date of the log
+
+createdAt: string
+
+payload: object with fields such as:
+
+For nutrition:
+
+calories?: number
+
+protein?: number
+
+carbs?: number
+
+fats?: number
+
+comment?: string
+
+For workout:
+
+workoutType?: string
+
+durationMinutes?: number
+
+intensity?: "low" | "medium" | "high"
+
+comment?: string
+
+For checkin / progress:
+
+weight?: number
+
+waist?: number
+
+hips?: number
+
+energy?: number // 1-10
+
+mood?: number // 1-10
+
+sleepHours?: number
+
+comment?: string
+
+progressPhotoUrl?: string (optional, if file upload is available)
+
+For goal:
+
+goalType?: string
+
+goalValue?: string | number
+
+goalStatus?: "active" | "paused" | "completed"
+
+comment?: string
+
+Make sure this data model is reusable for both coach and client flows.
+
+Coach-side UX
+
+Client Data Logs screen
+
+Allow the coach to select a client.
+
+Show a list/table of ClientDataLog entries for that client, grouped by date and by type.
+
+Provide a clear way to add new logs:
+
+Add Nutrition log
+
+Add Workout log
+
+Add Check-in / Progress log
+
+Update Goals
+
+The forms for each log type should match the fields described above.
+
+When the coach submits a form, create a new ClientDataLog with:
+
+source = "coach"
+
+appropriate type and payload
+
+After saving, update the list in real time so the coach sees the new log.
+
+AI Insights screen
+
+Keep the existing structure but wire it to real data:
+
+When a coach selects a client, fetch that client's recent ClientDataLog records for a configurable period, for example the last 7 days by default.
+
+Fetch the client's current plan (calories target, macro targets, workouts per week, steps target, etc.).
+
+Aggregate the logs per period:
+
+Average daily calories vs target.
+
+Average macros vs targets (if available).
+
+Number of workouts vs workoutsPerWeekTarget.
+
+Weight trend (start vs end of period).
+
+Build a prompt for the AI model that includes:
+
+A short description of the client plan.
+
+A structured summary of the actual data from ClientDataLog for the selected period.
+
+A request to:
+
+Assess adherence to the plan.
+
+Point out key issues (undereating, overeating, skipped workouts, fast weight changes).
+
+Provide 3–5 concrete recommendations for the coach and the client.
+
+Display the AI response on the AI Insights screen as:
+
+Summary of progress vs plan.
+
+Key metrics (calories, workouts, weight).
+
+Recommendations list.
+
+Focus on weekly-level analysis, not day-by-day nagging. The default period can be a week, but allow selecting other ranges like 2 weeks or 30 days.
+
+Client-side UX
+
+Create or extend a Progress / Check-in screen in the client app:
+
+The client can:
+
+Add a Nutrition log (calories, macros, comment).
+
+Add a Workout log.
+
+Add a Check-in / Progress log (weight, energy, mood, sleep, comment, optional photo).
+
+See the history of their logs (at least simple list and basic charts for weight and calories).
+
+The UX should be simple and low-friction:
+
+Quick-add buttons like "Add weight", "Add calories", "Add workout".
+
+Reasonable defaults for date (today) with the option to edit.
+
+When the client submits a log, create a ClientDataLog with:
+
+source = "client"
+
+All logs created by the client must immediately be visible on the coach side (Client Data Logs and AI Insights), and logs created by the coach must appear in the client’s history. Optionally mark who created the log (e.g. “added by your coach”).
+
+Technical expectations
+
+Reuse existing components and screens where possible (AI Insights and Client Data Logs).
+
+Implement minimal backend endpoints or local data store to:
+
+Create a ClientDataLog.
+
+Fetch logs by clientId and time range.
+
+Implement a simple AI integration function that:
+
+Receives aggregated data and the client plan.
+
+Sends a prompt to the AI model.
+
+Returns a structured response for AI Insights.
+
+Do not overengineer authentication or permissions. Focus on making the end to end Progress Tracking flow work for:
+
+a client logging data
+
+a coach logging data
+
+AI Insights consuming those logs and the plan for analysis
+
+PROMPT END
