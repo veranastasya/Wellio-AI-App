@@ -30,6 +30,8 @@ import {
   type InsertClientPlan,
   type Goal,
   type InsertGoal,
+  type ClientDataLog,
+  type InsertClientDataLog,
   clients,
   sessions,
   messages,
@@ -45,9 +47,10 @@ import {
   clientInvites,
   clientPlans,
   goals,
+  clientDataLogs,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // Clients
@@ -159,6 +162,14 @@ export interface IStorage {
   createGoal(goal: InsertGoal): Promise<Goal>;
   updateGoal(id: string, goal: Partial<InsertGoal>): Promise<Goal | undefined>;
   deleteGoal(id: string): Promise<boolean>;
+
+  // Client Data Logs (unified progress tracking)
+  getClientDataLogs(): Promise<ClientDataLog[]>;
+  getClientDataLog(id: string): Promise<ClientDataLog | undefined>;
+  getClientDataLogsByClientId(clientId: string, options?: { startDate?: string; endDate?: string; type?: string }): Promise<ClientDataLog[]>;
+  createClientDataLog(log: InsertClientDataLog): Promise<ClientDataLog>;
+  updateClientDataLog(id: string, log: Partial<InsertClientDataLog>): Promise<ClientDataLog | undefined>;
+  deleteClientDataLog(id: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -1003,6 +1014,67 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGoal(id: string): Promise<boolean> {
     const result = await db.delete(goals).where(eq(goals.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Client Data Logs (unified progress tracking)
+  async getClientDataLogs(): Promise<ClientDataLog[]> {
+    return await db.select().from(clientDataLogs).orderBy(desc(clientDataLogs.date));
+  }
+
+  async getClientDataLog(id: string): Promise<ClientDataLog | undefined> {
+    const result = await db.select().from(clientDataLogs).where(eq(clientDataLogs.id, id));
+    return result[0];
+  }
+
+  async getClientDataLogsByClientId(
+    clientId: string,
+    options?: { startDate?: string; endDate?: string; type?: string }
+  ): Promise<ClientDataLog[]> {
+    let query = db.select().from(clientDataLogs)
+      .where(eq(clientDataLogs.clientId, clientId))
+      .orderBy(desc(clientDataLogs.date));
+
+    if (options?.startDate || options?.endDate || options?.type) {
+      const conditions = [eq(clientDataLogs.clientId, clientId)];
+      
+      if (options.startDate) {
+        conditions.push(gte(clientDataLogs.date, options.startDate));
+      }
+      if (options.endDate) {
+        conditions.push(lte(clientDataLogs.date, options.endDate));
+      }
+      if (options.type) {
+        conditions.push(eq(clientDataLogs.type, options.type));
+      }
+      
+      return await db.select().from(clientDataLogs)
+        .where(and(...conditions))
+        .orderBy(desc(clientDataLogs.date));
+    }
+
+    return await query;
+  }
+
+  async createClientDataLog(log: InsertClientDataLog): Promise<ClientDataLog> {
+    const now = new Date().toISOString();
+    const result = await db.insert(clientDataLogs).values({
+      ...log,
+      createdAt: log.createdAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updateClientDataLog(id: string, log: Partial<InsertClientDataLog>): Promise<ClientDataLog | undefined> {
+    const result = await db.update(clientDataLogs)
+      .set(log)
+      .where(eq(clientDataLogs.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteClientDataLog(id: string): Promise<boolean> {
+    const result = await db.delete(clientDataLogs).where(eq(clientDataLogs.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }

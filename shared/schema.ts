@@ -675,3 +675,103 @@ export type ClientPlan = typeof clientPlans.$inferSelect;
 
 export type InsertGoal = z.infer<typeof insertGoalSchema>;
 export type Goal = typeof goals.$inferSelect;
+
+// Unified Client Data Log for progress tracking
+export const LOG_TYPES = ["nutrition", "workout", "checkin", "goal"] as const;
+export type LogType = typeof LOG_TYPES[number];
+
+export const LOG_SOURCES = ["client", "coach"] as const;
+export type LogSource = typeof LOG_SOURCES[number];
+
+export const WORKOUT_INTENSITIES = ["low", "medium", "high"] as const;
+export type WorkoutIntensity = typeof WORKOUT_INTENSITIES[number];
+
+// Payload type definitions for each log type
+export interface NutritionPayload {
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
+  comment?: string;
+}
+
+export interface WorkoutPayload {
+  workoutType?: string;
+  durationMinutes?: number;
+  intensity?: WorkoutIntensity;
+  comment?: string;
+}
+
+export interface CheckinPayload {
+  weight?: number;
+  waist?: number;
+  hips?: number;
+  energy?: number; // 1-10
+  mood?: number; // 1-10
+  sleepHours?: number;
+  comment?: string;
+  progressPhotoUrl?: string;
+}
+
+export interface GoalPayload {
+  goalType?: string;
+  goalValue?: string | number;
+  goalStatus?: "active" | "paused" | "completed";
+  comment?: string;
+}
+
+export type LogPayload = NutritionPayload | WorkoutPayload | CheckinPayload | GoalPayload;
+
+export const clientDataLogs = pgTable("client_data_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  planId: varchar("plan_id"),
+  createdByUserId: varchar("created_by_user_id").notNull(),
+  source: text("source").notNull(), // "client" or "coach"
+  type: text("type").notNull(), // "nutrition", "workout", "checkin", "goal"
+  date: text("date").notNull(), // logical date of the log (YYYY-MM-DD)
+  payload: json("payload").notNull().$type<LogPayload>(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertClientDataLogSchema = createInsertSchema(clientDataLogs).omit({
+  id: true,
+}).extend({
+  createdAt: z.string().optional(),
+  source: z.enum(LOG_SOURCES),
+  type: z.enum(LOG_TYPES),
+  payload: z.union([
+    z.object({
+      calories: z.number().optional(),
+      protein: z.number().optional(),
+      carbs: z.number().optional(),
+      fats: z.number().optional(),
+      comment: z.string().optional(),
+    }),
+    z.object({
+      workoutType: z.string().optional(),
+      durationMinutes: z.number().optional(),
+      intensity: z.enum(WORKOUT_INTENSITIES).optional(),
+      comment: z.string().optional(),
+    }),
+    z.object({
+      weight: z.number().optional(),
+      waist: z.number().optional(),
+      hips: z.number().optional(),
+      energy: z.number().min(1).max(10).optional(),
+      mood: z.number().min(1).max(10).optional(),
+      sleepHours: z.number().optional(),
+      comment: z.string().optional(),
+      progressPhotoUrl: z.string().optional(),
+    }),
+    z.object({
+      goalType: z.string().optional(),
+      goalValue: z.union([z.string(), z.number()]).optional(),
+      goalStatus: z.enum(["active", "paused", "completed"]).optional(),
+      comment: z.string().optional(),
+    }),
+  ]),
+});
+
+export type InsertClientDataLog = z.infer<typeof insertClientDataLogSchema>;
+export type ClientDataLog = typeof clientDataLogs.$inferSelect;
