@@ -1,4 +1,4 @@
-import { Home, MessageSquare, FileText, TrendingUp, User } from "lucide-react";
+import { Home, MessageSquare, FileText, TrendingUp, User, ClipboardList } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -37,6 +37,11 @@ const navigationItems = [
     title: "Plan",
     url: "/client/plan",
     icon: TrendingUp,
+  },
+  {
+    title: "Progress",
+    url: "/client/progress",
+    icon: ClipboardList,
   },
   {
     title: "Profile",

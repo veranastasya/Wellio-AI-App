@@ -47,6 +47,7 @@ import {
   insertClientInviteSchema,
   insertClientPlanSchema,
   insertGoalSchema,
+  insertClientDataLogSchema,
   GOAL_TYPES,
   type GoalType,
 } from "@shared/schema";
@@ -1446,22 +1447,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Client not found" });
       }
 
-      const allNutritionLogs = await storage.getNutritionLogs();
-      const allWorkoutLogs = await storage.getWorkoutLogs();
-      const allCheckIns = await storage.getCheckIns();
-      const allGoals = await storage.getGoals();
+      // Fetch data from new unified ClientDataLog table
+      const clientDataLogs = await storage.getClientDataLogsByClientId(clientId);
+      const clientGoals = await storage.getGoalsByClientId(clientId);
 
-      const clientNutritionLogs = allNutritionLogs.filter(log => log.clientId === clientId);
-      const clientWorkoutLogs = allWorkoutLogs.filter(log => log.clientId === clientId);
-      const clientCheckIns = allCheckIns.filter(log => log.clientId === clientId);
-      const clientGoals = allGoals.filter(goal => goal.clientId === clientId);
+      // Convert ClientDataLogs to legacy format for backward compatibility with AI analysis
+      const nutritionLogs = clientDataLogs
+        .filter(log => log.type === "nutrition")
+        .map(log => {
+          const payload = log.payload as Record<string, unknown>;
+          return {
+            id: log.id,
+            clientId: log.clientId,
+            clientName: client.name,
+            date: log.date,
+            calories: payload.calories as number | null,
+            protein: payload.protein as number | null,
+            carbs: payload.carbs as number | null,
+            fats: payload.fats as number | null,
+            notes: payload.notes as string | null,
+            createdAt: log.createdAt,
+          };
+        });
+
+      const workoutLogs = clientDataLogs
+        .filter(log => log.type === "workout")
+        .map(log => {
+          const payload = log.payload as Record<string, unknown>;
+          return {
+            id: log.id,
+            clientId: log.clientId,
+            clientName: client.name,
+            date: log.date,
+            workoutType: payload.workoutType as string | null,
+            duration: payload.duration as number | null,
+            intensity: payload.intensity as string | null,
+            notes: payload.notes as string | null,
+            createdAt: log.createdAt,
+          };
+        });
+
+      const checkIns = clientDataLogs
+        .filter(log => log.type === "checkin")
+        .map(log => {
+          const payload = log.payload as Record<string, unknown>;
+          return {
+            id: log.id,
+            clientId: log.clientId,
+            clientName: client.name,
+            date: log.date,
+            weight: payload.weight as number | null,
+            bodyFat: payload.bodyFat as number | null,
+            notes: payload.notes as string | null,
+            createdAt: log.createdAt,
+          };
+        });
 
       const insights = await analyzeClientData(
         clientId,
         client.name,
-        clientNutritionLogs,
-        clientWorkoutLogs,
-        clientCheckIns,
+        nutritionLogs,
+        workoutLogs,
+        checkIns,
         clientGoals
       );
 
@@ -2910,6 +2957,149 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete goal" });
+    }
+  });
+
+  // ============================================================
+  // Client Data Logs (unified progress tracking)
+  // ============================================================
+
+  // Get all logs for a client (coach can view any client, client can only view their own)
+  app.get("/api/client-data-logs/:clientId", async (req, res) => {
+    try {
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      const clientId = req.params.clientId;
+      
+      // Must be authenticated as coach or client
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      // Authorization check: clients can only view their own logs
+      if (sessionClientId && sessionClientId !== clientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      const { startDate, endDate, type } = req.query;
+      const logs = await storage.getClientDataLogsByClientId(clientId, {
+        startDate: startDate as string | undefined,
+        endDate: endDate as string | undefined,
+        type: type as string | undefined,
+      });
+      
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching client data logs:", error);
+      res.status(500).json({ error: "Failed to fetch client data logs" });
+    }
+  });
+
+  // Create a new data log (coach creates with source='coach', client creates with source='client')
+  app.post("/api/client-data-logs", async (req, res) => {
+    try {
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      // Must be authenticated as coach or client
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+
+      // Determine source and creator based on session
+      const isCoach = !!coachId;
+      const source = isCoach ? 'coach' : 'client';
+      const creatorId = isCoach ? coachId : sessionClientId;
+      
+      // If client is creating, they can only create for themselves
+      const clientId = req.body.clientId;
+      if (!isCoach && sessionClientId !== clientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const validatedData = insertClientDataLogSchema.parse({
+        ...req.body,
+        source,
+        createdByUserId: creatorId,
+      });
+      
+      const log = await storage.createClientDataLog(validatedData);
+      res.status(201).json(log);
+    } catch (error) {
+      console.error("Error creating client data log:", error);
+      res.status(400).json({ error: "Invalid data log" });
+    }
+  });
+
+  // Update a data log
+  app.patch("/api/client-data-logs/:id", async (req, res) => {
+    try {
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      // Must be authenticated as coach or client
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      const userId = coachId || sessionClientId;
+
+      const logId = req.params.id;
+      const existingLog = await storage.getClientDataLog(logId);
+      
+      if (!existingLog) {
+        return res.status(404).json({ error: "Log not found" });
+      }
+
+      // Authorization: users can only update logs they created
+      if (existingLog.createdByUserId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const validatedData = insertClientDataLogSchema.partial().parse(req.body);
+      const log = await storage.updateClientDataLog(logId, validatedData);
+      
+      res.json(log);
+    } catch (error) {
+      console.error("Error updating client data log:", error);
+      res.status(400).json({ error: "Invalid data" });
+    }
+  });
+
+  // Delete a data log
+  app.delete("/api/client-data-logs/:id", async (req, res) => {
+    try {
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      // Must be authenticated as coach or client
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      const userId = coachId || sessionClientId;
+
+      const logId = req.params.id;
+      const existingLog = await storage.getClientDataLog(logId);
+      
+      if (!existingLog) {
+        return res.status(404).json({ error: "Log not found" });
+      }
+
+      // Authorization: users can only delete logs they created
+      if (existingLog.createdByUserId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const success = await storage.deleteClientDataLog(logId);
+      if (!success) {
+        return res.status(404).json({ error: "Log not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting client data log:", error);
+      res.status(500).json({ error: "Failed to delete log" });
     }
   });
 

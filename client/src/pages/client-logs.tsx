@@ -22,13 +22,15 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { insertNutritionLogSchema, insertWorkoutLogSchema, insertCheckInSchema } from "@shared/schema";
-import { ClipboardList, Apple, Dumbbell, Scale, Target } from "lucide-react";
-import type { z } from "zod";
+import { ClipboardList, Apple, Dumbbell, Scale, Target, History, Trash2, Calendar } from "lucide-react";
+import { z } from "zod";
 import { DeviceConnection } from "@/components/device-connection";
 import { ClientGoals } from "@/components/goals/client-goals";
+import type { ClientDataLog } from "@shared/schema";
+import { format, parseISO } from "date-fns";
 
 interface Client {
   id: string;
@@ -37,9 +39,33 @@ interface Client {
   status: string;
 }
 
-type NutritionLogFormData = z.infer<typeof insertNutritionLogSchema>;
-type WorkoutLogFormData = z.infer<typeof insertWorkoutLogSchema>;
-type CheckInFormData = z.infer<typeof insertCheckInSchema>;
+const nutritionFormSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  calories: z.number().nullable().optional(),
+  protein: z.number().nullable().optional(),
+  carbs: z.number().nullable().optional(),
+  fats: z.number().nullable().optional(),
+  notes: z.string().optional(),
+});
+
+const workoutFormSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  workoutType: z.string().min(1, "Workout type is required"),
+  duration: z.number().nullable().optional(),
+  intensity: z.string().nullable().optional(),
+  notes: z.string().optional(),
+});
+
+const checkinFormSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  weight: z.number().nullable().optional(),
+  bodyFat: z.number().nullable().optional(),
+  notes: z.string().optional(),
+});
+
+type NutritionFormData = z.infer<typeof nutritionFormSchema>;
+type WorkoutFormData = z.infer<typeof workoutFormSchema>;
+type CheckInFormData = z.infer<typeof checkinFormSchema>;
 
 export default function ClientLogs() {
   const { toast } = useToast();
@@ -52,11 +78,14 @@ export default function ClientLogs() {
   const activeClients = clients?.filter(c => c.status === "active") || [];
   const selectedClient = activeClients.find(c => c.id === selectedClientId);
 
-  const nutritionForm = useForm<NutritionLogFormData>({
-    resolver: zodResolver(insertNutritionLogSchema),
+  const { data: clientLogs, isLoading: logsLoading } = useQuery<ClientDataLog[]>({
+    queryKey: ["/api/client-data-logs", selectedClientId],
+    enabled: !!selectedClientId,
+  });
+
+  const nutritionForm = useForm<NutritionFormData>({
+    resolver: zodResolver(nutritionFormSchema),
     defaultValues: {
-      clientId: "",
-      clientName: "",
       date: new Date().toISOString().split('T')[0],
       calories: null,
       protein: null,
@@ -66,11 +95,9 @@ export default function ClientLogs() {
     },
   });
 
-  const workoutForm = useForm<WorkoutLogFormData>({
-    resolver: zodResolver(insertWorkoutLogSchema),
+  const workoutForm = useForm<WorkoutFormData>({
+    resolver: zodResolver(workoutFormSchema),
     defaultValues: {
-      clientId: "",
-      clientName: "",
       date: new Date().toISOString().split('T')[0],
       workoutType: "strength",
       duration: null,
@@ -80,10 +107,8 @@ export default function ClientLogs() {
   });
 
   const checkInForm = useForm<CheckInFormData>({
-    resolver: zodResolver(insertCheckInSchema),
+    resolver: zodResolver(checkinFormSchema),
     defaultValues: {
-      clientId: "",
-      clientName: "",
       date: new Date().toISOString().split('T')[0],
       weight: null,
       bodyFat: null,
@@ -91,85 +116,44 @@ export default function ClientLogs() {
     },
   });
 
-  const nutritionMutation = useMutation({
-    mutationFn: (data: NutritionLogFormData) => 
-      apiRequest("POST", "/api/nutrition-logs", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/nutrition-logs"] });
+  const createLogMutation = useMutation({
+    mutationFn: (data: { type: string; date: string; payload: Record<string, unknown> }) => 
+      apiRequest("POST", "/api/client-data-logs", {
+        clientId: selectedClientId,
+        type: data.type,
+        date: data.date,
+        payload: data.payload,
+      }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client-data-logs", selectedClientId] });
       toast({
         title: "Success",
-        description: "Nutrition log added successfully",
-      });
-      nutritionForm.reset({
-        clientId: selectedClientId,
-        clientName: selectedClient?.name || "",
-        date: new Date().toISOString().split('T')[0],
-        calories: null,
-        protein: null,
-        carbs: null,
-        fats: null,
-        notes: "",
+        description: `${variables.type.charAt(0).toUpperCase() + variables.type.slice(1)} log added successfully`,
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to add nutrition log",
+        description: "Failed to add log",
         variant: "destructive",
       });
     },
   });
 
-  const workoutMutation = useMutation({
-    mutationFn: (data: WorkoutLogFormData) => 
-      apiRequest("POST", "/api/workout-logs", data),
+  const deleteLogMutation = useMutation({
+    mutationFn: (logId: string) => 
+      apiRequest("DELETE", `/api/client-data-logs/${logId}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/workout-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client-data-logs", selectedClientId] });
       toast({
-        title: "Success",
-        description: "Workout log added successfully",
-      });
-      workoutForm.reset({
-        clientId: selectedClientId,
-        clientName: selectedClient?.name || "",
-        date: new Date().toISOString().split('T')[0],
-        workoutType: "strength",
-        duration: null,
-        intensity: "moderate",
-        notes: "",
+        title: "Deleted",
+        description: "Log entry removed",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to add workout log",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const checkInMutation = useMutation({
-    mutationFn: (data: CheckInFormData) => 
-      apiRequest("POST", "/api/check-ins", data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/check-ins"] });
-      toast({
-        title: "Success",
-        description: "Check-in log added successfully",
-      });
-      checkInForm.reset({
-        clientId: selectedClientId,
-        clientName: selectedClient?.name || "",
-        date: new Date().toISOString().split('T')[0],
-        weight: null,
-        bodyFat: null,
-        notes: "",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to add check-in log",
+        description: "Failed to delete log",
         variant: "destructive",
       });
     },
@@ -177,27 +161,167 @@ export default function ClientLogs() {
 
   const handleClientChange = (clientId: string) => {
     setSelectedClientId(clientId);
-    const client = activeClients.find(c => c.id === clientId);
-    if (client) {
-      nutritionForm.setValue("clientId", clientId);
-      nutritionForm.setValue("clientName", client.name);
-      workoutForm.setValue("clientId", clientId);
-      workoutForm.setValue("clientName", client.name);
-      checkInForm.setValue("clientId", clientId);
-      checkInForm.setValue("clientName", client.name);
-    }
   };
 
-  const onNutritionSubmit = (data: NutritionLogFormData) => {
-    nutritionMutation.mutate(data);
+  const onNutritionSubmit = (data: NutritionFormData) => {
+    createLogMutation.mutate({
+      type: "nutrition",
+      date: data.date,
+      payload: {
+        calories: data.calories,
+        protein: data.protein,
+        carbs: data.carbs,
+        fats: data.fats,
+        notes: data.notes,
+      },
+    });
+    nutritionForm.reset({
+      date: new Date().toISOString().split('T')[0],
+      calories: null,
+      protein: null,
+      carbs: null,
+      fats: null,
+      notes: "",
+    });
   };
 
-  const onWorkoutSubmit = (data: WorkoutLogFormData) => {
-    workoutMutation.mutate(data);
+  const onWorkoutSubmit = (data: WorkoutFormData) => {
+    createLogMutation.mutate({
+      type: "workout",
+      date: data.date,
+      payload: {
+        workoutType: data.workoutType,
+        duration: data.duration,
+        intensity: data.intensity,
+        notes: data.notes,
+      },
+    });
+    workoutForm.reset({
+      date: new Date().toISOString().split('T')[0],
+      workoutType: "strength",
+      duration: null,
+      intensity: "moderate",
+      notes: "",
+    });
   };
 
   const onCheckInSubmit = (data: CheckInFormData) => {
-    checkInMutation.mutate(data);
+    createLogMutation.mutate({
+      type: "checkin",
+      date: data.date,
+      payload: {
+        weight: data.weight,
+        bodyFat: data.bodyFat,
+        notes: data.notes,
+      },
+    });
+    checkInForm.reset({
+      date: new Date().toISOString().split('T')[0],
+      weight: null,
+      bodyFat: null,
+      notes: "",
+    });
+  };
+
+  const getLogTypeIcon = (type: string) => {
+    switch (type) {
+      case "nutrition": return <Apple className="w-4 h-4" />;
+      case "workout": return <Dumbbell className="w-4 h-4" />;
+      case "checkin": return <Scale className="w-4 h-4" />;
+      default: return <ClipboardList className="w-4 h-4" />;
+    }
+  };
+
+  const getLogTypeBadgeVariant = (type: string) => {
+    switch (type) {
+      case "nutrition": return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400";
+      case "workout": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
+      case "checkin": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400";
+      default: return "";
+    }
+  };
+
+  const formatPayload = (type: string, payload: Record<string, unknown>) => {
+    const parts: string[] = [];
+    if (type === "nutrition") {
+      if (payload.calories) parts.push(`${payload.calories} cal`);
+      if (payload.protein) parts.push(`${payload.protein}g protein`);
+      if (payload.carbs) parts.push(`${payload.carbs}g carbs`);
+      if (payload.fats) parts.push(`${payload.fats}g fats`);
+    } else if (type === "workout") {
+      if (payload.workoutType) parts.push(String(payload.workoutType).charAt(0).toUpperCase() + String(payload.workoutType).slice(1));
+      if (payload.duration) parts.push(`${payload.duration} min`);
+      if (payload.intensity) parts.push(String(payload.intensity).charAt(0).toUpperCase() + String(payload.intensity).slice(1));
+    } else if (type === "checkin") {
+      if (payload.weight) parts.push(`${payload.weight} lbs`);
+      if (payload.bodyFat) parts.push(`${payload.bodyFat}% body fat`);
+    }
+    return parts.length > 0 ? parts.join(" • ") : "No data recorded";
+  };
+
+  const filteredLogs = clientLogs || [];
+  const nutritionLogs = filteredLogs.filter(log => log.type === "nutrition");
+  const workoutLogs = filteredLogs.filter(log => log.type === "workout");
+  const checkinLogs = filteredLogs.filter(log => log.type === "checkin");
+
+  const renderLogHistory = (logs: ClientDataLog[], type: string) => {
+    if (logs.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          <History className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No {type} logs recorded yet</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3 max-h-64 overflow-y-auto">
+        {logs.slice(0, 10).map((log) => (
+          <div 
+            key={log.id} 
+            className="flex items-start justify-between p-3 rounded-lg bg-muted/50 hover-elevate transition-all duration-150"
+            data-testid={`log-item-${log.id}`}
+          >
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <div className="flex-shrink-0 mt-0.5">
+                {getLogTypeIcon(log.type)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-medium text-foreground">
+                    {format(parseISO(log.date), "MMM d, yyyy")}
+                  </span>
+                  <Badge variant="outline" className={`text-xs ${getLogTypeBadgeVariant(log.type)}`}>
+                    {log.source === "client" ? "Client" : "Coach"}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground truncate">
+                  {formatPayload(log.type, log.payload as Record<string, unknown>)}
+                </p>
+                {(() => {
+                  const notes = (log.payload as Record<string, unknown>).notes;
+                  return notes ? (
+                    <p className="text-xs text-muted-foreground mt-1 italic line-clamp-1">
+                      "{String(notes)}"
+                    </p>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="flex-shrink-0 opacity-50 hover:opacity-100"
+              onClick={() => deleteLogMutation.mutate(log.id)}
+              disabled={deleteLogMutation.isPending}
+              data-testid={`button-delete-log-${log.id}`}
+            >
+              <Trash2 className="w-4 h-4 text-destructive" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -274,44 +398,125 @@ export default function ClientLogs() {
               </TabsList>
 
               <TabsContent value="nutrition">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Log Nutrition Data</CardTitle>
-                    <CardDescription>
-                      Track daily macronutrient intake for {selectedClient?.name}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...nutritionForm}>
-                      <form onSubmit={nutritionForm.handleSubmit(onNutritionSubmit)} className="space-y-4">
-                        <FormField
-                          control={nutritionForm.control}
-                          name="date"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Date</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} data-testid="input-nutrition-date" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Log Nutrition Data</CardTitle>
+                      <CardDescription>
+                        Track daily macronutrient intake for {selectedClient?.name}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Form {...nutritionForm}>
+                        <form onSubmit={nutritionForm.handleSubmit(onNutritionSubmit)} className="space-y-4">
                           <FormField
                             control={nutritionForm.control}
-                            name="calories"
+                            name="date"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Calories</FormLabel>
+                                <FormLabel>Date</FormLabel>
                                 <FormControl>
-                                  <Input 
-                                    type="number" 
+                                  <Input type="date" {...field} data-testid="input-nutrition-date" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid gap-4 grid-cols-2">
+                            <FormField
+                              control={nutritionForm.control}
+                              name="calories"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Calories</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number" 
+                                      {...field} 
+                                      value={field.value ?? ""}
+                                      onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                                      data-testid="input-calories" 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={nutritionForm.control}
+                              name="protein"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Protein (g)</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number" 
+                                      {...field} 
+                                      value={field.value ?? ""}
+                                      onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                                      data-testid="input-protein" 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={nutritionForm.control}
+                              name="carbs"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Carbs (g)</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number" 
+                                      {...field} 
+                                      value={field.value ?? ""}
+                                      onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                                      data-testid="input-carbs" 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={nutritionForm.control}
+                              name="fats"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Fats (g)</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number" 
+                                      {...field} 
+                                      value={field.value ?? ""}
+                                      onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                                      data-testid="input-fats" 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <FormField
+                            control={nutritionForm.control}
+                            name="notes"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Notes (Optional)</FormLabel>
+                                <FormControl>
+                                  <Textarea 
                                     {...field} 
-                                    value={field.value ?? ""}
-                                    onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
-                                    data-testid="input-calories" 
+                                    value={field.value || ""}
+                                    placeholder="Any additional observations..."
+                                    data-testid="input-nutrition-notes" 
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -319,147 +524,136 @@ export default function ClientLogs() {
                             )}
                           />
 
-                          <FormField
-                            control={nutritionForm.control}
-                            name="protein"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Protein (g)</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    {...field} 
-                                    value={field.value ?? ""}
-                                    onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
-                                    data-testid="input-protein" 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                          <Button 
+                            type="submit" 
+                            disabled={createLogMutation.isPending}
+                            data-testid="button-save-nutrition"
+                          >
+                            {createLogMutation.isPending ? "Saving..." : "Save Nutrition Log"}
+                          </Button>
+                        </form>
+                      </Form>
+                    </CardContent>
+                  </Card>
 
-                          <FormField
-                            control={nutritionForm.control}
-                            name="carbs"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Carbs (g)</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    {...field} 
-                                    value={field.value ?? ""}
-                                    onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
-                                    data-testid="input-carbs" 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          <FormField
-                            control={nutritionForm.control}
-                            name="fats"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Fats (g)</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    {...field} 
-                                    value={field.value ?? ""}
-                                    onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
-                                    data-testid="input-fats" 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        <FormField
-                          control={nutritionForm.control}
-                          name="notes"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Notes (Optional)</FormLabel>
-                              <FormControl>
-                                <Textarea 
-                                  {...field} 
-                                  value={field.value || ""}
-                                  placeholder="Any additional observations..."
-                                  data-testid="input-nutrition-notes" 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <Button 
-                          type="submit" 
-                          disabled={nutritionMutation.isPending}
-                          data-testid="button-save-nutrition"
-                        >
-                          {nutritionMutation.isPending ? "Saving..." : "Save Nutrition Log"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <History className="w-5 h-5" />
+                        Recent Nutrition Logs
+                      </CardTitle>
+                      <CardDescription>
+                        Last 10 nutrition entries for {selectedClient?.name}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {logsLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                      ) : (
+                        renderLogHistory(nutritionLogs, "nutrition")
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
 
               <TabsContent value="workout">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Log Workout Data</CardTitle>
-                    <CardDescription>
-                      Track training sessions for {selectedClient?.name}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...workoutForm}>
-                      <form onSubmit={workoutForm.handleSubmit(onWorkoutSubmit)} className="space-y-4">
-                        <FormField
-                          control={workoutForm.control}
-                          name="date"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Date</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} data-testid="input-workout-date" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Log Workout Data</CardTitle>
+                      <CardDescription>
+                        Track training sessions for {selectedClient?.name}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Form {...workoutForm}>
+                        <form onSubmit={workoutForm.handleSubmit(onWorkoutSubmit)} className="space-y-4">
                           <FormField
                             control={workoutForm.control}
-                            name="workoutType"
+                            name="date"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Workout Type</FormLabel>
+                                <FormLabel>Date</FormLabel>
+                                <FormControl>
+                                  <Input type="date" {...field} data-testid="input-workout-date" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid gap-4 grid-cols-2">
+                            <FormField
+                              control={workoutForm.control}
+                              name="workoutType"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Workout Type</FormLabel>
+                                  <Select 
+                                    onValueChange={field.onChange} 
+                                    defaultValue={field.value}
+                                    value={field.value}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger data-testid="select-workout-type">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="strength">Strength</SelectItem>
+                                      <SelectItem value="cardio">Cardio</SelectItem>
+                                      <SelectItem value="hiit">HIIT</SelectItem>
+                                      <SelectItem value="flexibility">Flexibility</SelectItem>
+                                      <SelectItem value="sports">Sports</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={workoutForm.control}
+                              name="duration"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Duration (min)</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number" 
+                                      {...field} 
+                                      value={field.value ?? ""}
+                                      onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                                      data-testid="input-duration" 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <FormField
+                            control={workoutForm.control}
+                            name="intensity"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Intensity</FormLabel>
                                 <Select 
                                   onValueChange={field.onChange} 
-                                  defaultValue={field.value}
-                                  value={field.value}
+                                  defaultValue={field.value ?? undefined}
+                                  value={field.value ?? undefined}
                                 >
                                   <FormControl>
-                                    <SelectTrigger data-testid="select-workout-type">
+                                    <SelectTrigger data-testid="select-intensity">
                                       <SelectValue />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="strength">Strength</SelectItem>
-                                    <SelectItem value="cardio">Cardio</SelectItem>
-                                    <SelectItem value="hiit">HIIT</SelectItem>
-                                    <SelectItem value="flexibility">Flexibility</SelectItem>
-                                    <SelectItem value="sports">Sports</SelectItem>
+                                    <SelectItem value="low">Low</SelectItem>
+                                    <SelectItem value="moderate">Moderate</SelectItem>
+                                    <SelectItem value="high">High</SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -469,124 +663,138 @@ export default function ClientLogs() {
 
                           <FormField
                             control={workoutForm.control}
-                            name="duration"
+                            name="notes"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Duration (minutes)</FormLabel>
+                                <FormLabel>Notes (Optional)</FormLabel>
                                 <FormControl>
-                                  <Input 
-                                    type="number" 
+                                  <Textarea 
                                     {...field} 
-                                    value={field.value ?? ""}
-                                    onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
-                                    data-testid="input-duration" 
+                                    value={field.value || ""}
+                                    placeholder="Exercises performed, sets, reps, etc..."
+                                    data-testid="input-workout-notes" 
                                   />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                        </div>
 
-                        <FormField
-                          control={workoutForm.control}
-                          name="intensity"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Intensity</FormLabel>
-                              <Select 
-                                onValueChange={field.onChange} 
-                                defaultValue={field.value ?? undefined}
-                                value={field.value ?? undefined}
-                              >
-                                <FormControl>
-                                  <SelectTrigger data-testid="select-intensity">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="low">Low</SelectItem>
-                                  <SelectItem value="moderate">Moderate</SelectItem>
-                                  <SelectItem value="high">High</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                          <Button 
+                            type="submit" 
+                            disabled={createLogMutation.isPending}
+                            data-testid="button-save-workout"
+                          >
+                            {createLogMutation.isPending ? "Saving..." : "Save Workout Log"}
+                          </Button>
+                        </form>
+                      </Form>
+                    </CardContent>
+                  </Card>
 
-                        <FormField
-                          control={workoutForm.control}
-                          name="notes"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Notes (Optional)</FormLabel>
-                              <FormControl>
-                                <Textarea 
-                                  {...field} 
-                                  value={field.value || ""}
-                                  placeholder="Exercises performed, sets, reps, etc..."
-                                  data-testid="input-workout-notes" 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <Button 
-                          type="submit" 
-                          disabled={workoutMutation.isPending}
-                          data-testid="button-save-workout"
-                        >
-                          {workoutMutation.isPending ? "Saving..." : "Save Workout Log"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <History className="w-5 h-5" />
+                        Recent Workout Logs
+                      </CardTitle>
+                      <CardDescription>
+                        Last 10 workout entries for {selectedClient?.name}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {logsLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                      ) : (
+                        renderLogHistory(workoutLogs, "workout")
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
 
               <TabsContent value="checkin">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Log Check-in Data</CardTitle>
-                    <CardDescription>
-                      Track body metrics and progress for {selectedClient?.name}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Form {...checkInForm}>
-                      <form onSubmit={checkInForm.handleSubmit(onCheckInSubmit)} className="space-y-4">
-                        <FormField
-                          control={checkInForm.control}
-                          name="date"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Date</FormLabel>
-                              <FormControl>
-                                <Input type="date" {...field} data-testid="input-checkin-date" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Log Check-in Data</CardTitle>
+                      <CardDescription>
+                        Track body metrics and progress for {selectedClient?.name}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Form {...checkInForm}>
+                        <form onSubmit={checkInForm.handleSubmit(onCheckInSubmit)} className="space-y-4">
                           <FormField
                             control={checkInForm.control}
-                            name="weight"
+                            name="date"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Weight (lbs)</FormLabel>
+                                <FormLabel>Date</FormLabel>
                                 <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    step="0.1"
+                                  <Input type="date" {...field} data-testid="input-checkin-date" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid gap-4 grid-cols-2">
+                            <FormField
+                              control={checkInForm.control}
+                              name="weight"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Weight (lbs)</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number" 
+                                      step="0.1"
+                                      {...field} 
+                                      value={field.value ?? ""}
+                                      onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                                      data-testid="input-weight" 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={checkInForm.control}
+                              name="bodyFat"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Body Fat (%)</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="number" 
+                                      step="0.1"
+                                      {...field} 
+                                      value={field.value ?? ""}
+                                      onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+                                      data-testid="input-bodyfat" 
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <FormField
+                            control={checkInForm.control}
+                            name="notes"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Notes (Optional)</FormLabel>
+                                <FormControl>
+                                  <Textarea 
                                     {...field} 
-                                    value={field.value ?? ""}
-                                    onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
-                                    data-testid="input-weight" 
+                                    value={field.value || ""}
+                                    placeholder="Energy levels, measurements, photos, etc..."
+                                    data-testid="input-checkin-notes" 
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -594,58 +802,37 @@ export default function ClientLogs() {
                             )}
                           />
 
-                          <FormField
-                            control={checkInForm.control}
-                            name="bodyFat"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Body Fat (%)</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    step="0.1"
-                                    {...field} 
-                                    value={field.value ?? ""}
-                                    onChange={e => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
-                                    data-testid="input-bodyfat" 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                          <Button 
+                            type="submit" 
+                            disabled={createLogMutation.isPending}
+                            data-testid="button-save-checkin"
+                          >
+                            {createLogMutation.isPending ? "Saving..." : "Save Check-in Log"}
+                          </Button>
+                        </form>
+                      </Form>
+                    </CardContent>
+                  </Card>
 
-                        <FormField
-                          control={checkInForm.control}
-                          name="notes"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Notes (Optional)</FormLabel>
-                              <FormControl>
-                                <Textarea 
-                                  {...field} 
-                                  value={field.value || ""}
-                                  placeholder="Energy levels, measurements, photos, etc..."
-                                  data-testid="input-checkin-notes" 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <Button 
-                          type="submit" 
-                          disabled={checkInMutation.isPending}
-                          data-testid="button-save-checkin"
-                        >
-                          {checkInMutation.isPending ? "Saving..." : "Save Check-in Log"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </CardContent>
-                </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <History className="w-5 h-5" />
+                        Recent Check-in Logs
+                      </CardTitle>
+                      <CardDescription>
+                        Last 10 check-in entries for {selectedClient?.name}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {logsLoading ? (
+                        <div className="text-center py-8 text-muted-foreground">Loading...</div>
+                      ) : (
+                        renderLogHistory(checkinLogs, "check-in")
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
 
               <TabsContent value="goals">
