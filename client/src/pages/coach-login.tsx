@@ -10,6 +10,7 @@ import { Dumbbell } from "lucide-react";
 
 export default function CoachLogin() {
   const [, setLocation] = useLocation();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { signIn } = useCoachAuth();
@@ -28,7 +29,7 @@ export default function CoachLogin() {
 
     setIsLoading(true);
     try {
-      await signIn(password);
+      await signIn(password, username.trim() || undefined);
       toast({
         title: "Login successful",
         description: "Welcome to Wellio Coach Dashboard",
@@ -37,7 +38,7 @@ export default function CoachLogin() {
     } catch (error: any) {
       toast({
         title: "Login failed",
-        description: error.message || "Invalid password. Please try again.",
+        description: error.message || "Invalid credentials. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -62,7 +63,20 @@ export default function CoachLogin() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">Coach Password</Label>
+              <Label htmlFor="username">Username (optional)</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="Leave blank for regular login"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={isLoading}
+                data-testid="input-username"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -71,7 +85,6 @@ export default function CoachLogin() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isLoading}
                 data-testid="input-password"
-                autoFocus
               />
             </div>
             <Button

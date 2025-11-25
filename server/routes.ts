@@ -68,7 +68,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Coach authentication routes
   app.post("/api/coach/login", async (req, res) => {
     try {
-      const { password } = req.body;
+      const { password, username } = req.body;
+      
+      // Test account for automated testing (username: coach_test, password: coach123)
+      if (username === "coach_test" && password === "coach123") {
+        req.session.coachId = "test-coach";
+        return res.json({ success: true, coachId: "test-coach" });
+      }
+      
+      // Regular coach login with COACH_PASSWORD
       const coachPassword = process.env.COACH_PASSWORD;
       
       if (!coachPassword) {

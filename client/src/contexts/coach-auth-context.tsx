@@ -6,7 +6,7 @@ import { useLocation } from "wouter";
 interface CoachAuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: (password: string) => Promise<void>;
+  signIn: (password: string, username?: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -32,11 +32,11 @@ export function CoachAuthProvider({ children }: { children: ReactNode }) {
   });
 
   const signInMutation = useMutation({
-    mutationFn: async (password: string) => {
+    mutationFn: async ({ password, username }: { password: string; username?: string }) => {
       const res = await fetch("/api/coach/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password, username }),
         credentials: "include",
       });
       if (!res.ok) {
@@ -70,8 +70,8 @@ export function CoachAuthProvider({ children }: { children: ReactNode }) {
   const value: CoachAuthContextType = {
     isAuthenticated: session?.authenticated ?? false,
     isLoading,
-    signIn: async (password: string) => {
-      await signInMutation.mutateAsync(password);
+    signIn: async (password: string, username?: string) => {
+      await signInMutation.mutateAsync({ password, username });
     },
     signOut: async () => {
       await signOutMutation.mutateAsync();
