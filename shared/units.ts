@@ -35,9 +35,17 @@ export function formatWeight(weight: number | null | undefined, units: UnitsPref
   if (weight == null || !isFinite(weight)) return "";
   
   if (units === "metric") {
-    return `${lbsToKg(weight)} kg`;
+    // Round to 1 decimal place to avoid floating-point precision artifacts (e.g., 59.99 → 60.0)
+    const kg = lbsToKg(weight);
+    const rounded = Math.round(kg * 10) / 10;
+    // Remove trailing .0 for cleaner display (60.0 → 60)
+    const display = rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1);
+    return `${display} kg`;
   }
-  return `${weight} lbs`;
+  // Round lbs to 1 decimal for consistency
+  const rounded = Math.round(weight * 10) / 10;
+  const display = rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1);
+  return `${display} lbs`;
 }
 
 export function formatHeight(height: number | null | undefined, units: UnitsPreference): string {
