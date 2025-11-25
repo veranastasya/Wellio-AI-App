@@ -11,7 +11,6 @@ Wellio is an AI-powered fitness and wellness coaching platform designed to help 
 - Questionnaire Builder positioned between Client Management and Progress Analytics in sidebar
 - AI Insights and Client Data Logs positioned after Communication in sidebar navigation
 - Mobile-first responsive design required across all pages with touch-friendly controls (≥40px targets)
-- **UI Design System (November 2025)**: Modernized interface inspired by Linear, Notion, and Stripe with clean, minimal aesthetic
 
 ## System Architecture
 
@@ -22,11 +21,7 @@ The platform features a modern design using React, Tailwind CSS, and Shadcn UI c
 - **Mobile Sidebar Auto-Close**: Sidebar automatically closes on mobile when navigating between pages for better UX. Implemented via `SidebarAutoClose` wrapper component in both `CoachProtectedLayout` and `ClientProtectedLayout`.
 - **Modern Component States**: All interactive elements feature smooth 150ms transitions on hover/focus/active states. Select dropdowns include hover-elevate effects and animated chevron rotation. Sidebar menu items have refined active states with softer highlighting.
 - **Touch Target Optimization**: Core UI components updated to meet ≥40px minimum: Input (min-h-10), Select (min-h-10), Tabs (min-h-10), SidebarMenuButton (min-h-10/8/12), all with smooth transitions for professional feel.
-- **Modern Focus Ring System**: Replaced outdated double-line focus outline with clean 2px ring with 50% opacity for contemporary aesthetic. Consistent focus states across all interactive elements (buttons, inputs, tabs, select controls) with subtle ring-offset-2 for visual clarity.
-- **Modern Tab Design**: Tabs redesigned with underline style (underline active indicator) on transparent background, mimicking modern applications like Linear/Notion. Horizontally scrollable on mobile with 40px+ touch targets. Active tabs display teal underline with bold font weight for clear distinction.
-- **Search Field Refinements**: Input fields feature normalized padding (px-3 py-2), proper border styling, subtle hover state (border-border/60), and modern focus ring. Placeholder text uses muted-foreground for accessibility.
-- **Refined Shadows**: Updated shadow system with softer, more subtle drop shadows for modern minimalist look. Reduced shadow intensity while maintaining depth perception across all elevation levels (shadow-xs through shadow-2xl).
-- **Updated Border Radius**: Modernized border radius values: lg (10px), md (6px), sm (4px) for contemporary rounded appearance consistent with modern design systems.
+- **Focus Ring Enhancement**: Improved keyboard navigation visibility with ring-2 system across all focusable elements.
 
 **Mobile-First Responsive Implementation:**
 - **Conditional Rendering**: List pages (questionnaires, etc.) use viewport detection (`isMobile` state with window.innerWidth <768px) to conditionally render card layouts on mobile and table layouts on desktop. Table elements are NOT present in DOM on mobile viewports, ensuring optimal mobile performance.
