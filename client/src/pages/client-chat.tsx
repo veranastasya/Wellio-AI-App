@@ -7,8 +7,6 @@ import { Loader2, Send, MessageSquare, X, FileText, Image as ImageIcon, Video, F
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client, Message, InsertMessage, MessageAttachment } from "@shared/schema";
-import { InlineFileAttachment } from "@/components/InlineFileAttachment";
-import { DragDropFileZone } from "@/components/DragDropFileZone";
 
 export default function ClientChat() {
   const [, setLocation] = useLocation();
@@ -16,7 +14,10 @@ export default function ClientChat() {
   const [isVerifying, setIsVerifying] = useState(true);
   const [messageText, setMessageText] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -138,8 +139,78 @@ export default function ClientChat() {
     });
   };
 
-  const handleAttachmentsAdded = (newAttachments: MessageAttachment[]) => {
-    setPendingAttachments((prev) => [...prev, ...newAttachments]);
+  const handleFileUpload = async (files: FileList, imagesOnly: boolean = false) => {
+    if (!clientData) return;
+    
+    const maxFiles = 5;
+    const maxFileSize = 25 * 1024 * 1024;
+    
+    if (pendingAttachments.length + files.length > maxFiles) {
+      toast({
+        title: "Too many files",
+        description: `Maximum ${maxFiles} files allowed`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    
+    for (const file of Array.from(files)) {
+      if (file.size > maxFileSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds 25MB limit`,
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      if (imagesOnly && !file.type.startsWith("image/")) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file",
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("clientId", clientData.id);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error("Upload failed");
+        }
+
+        const data = await response.json();
+        
+        const newAttachment: MessageAttachment = {
+          id: crypto.randomUUID(),
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          objectPath: data.url,
+          uploadedAt: new Date().toISOString(),
+        };
+
+        setPendingAttachments((prev) => [...prev, newAttachment]);
+      } catch (error) {
+        toast({
+          title: "Upload failed",
+          description: `Failed to upload ${file.name}`,
+          variant: "destructive",
+        });
+      }
+    }
+    
+    setIsUploading(false);
   };
 
   const removeAttachment = (attachmentId: string) => {
@@ -161,7 +232,7 @@ export default function ClientChat() {
 
   if (isVerifying || messagesLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="h-full bg-background flex items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin text-primary" />
       </div>
     );
@@ -196,27 +267,20 @@ export default function ClientChat() {
         </div>
       </div>
 
-      <DragDropFileZone
-        onAttachmentsAdded={handleAttachmentsAdded}
-        clientId={clientData?.id || ""}
-        currentAttachmentCount={pendingAttachments.length}
-        disabled={!clientData || sendMessageMutation.isPending}
-        maxFiles={5}
-        maxFileSize={25 * 1024 * 1024}
-      >
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-          {clientMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-              <MessageSquare className="w-16 h-16 text-muted-foreground/50" />
-              <div>
-                <p className="text-lg font-medium text-foreground">No messages yet</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Start a conversation with your coach
-                </p>
-              </div>
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        {clientMessages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+            <MessageSquare className="w-16 h-16 text-muted-foreground/50" />
+            <div>
+              <p className="text-lg font-medium text-foreground">No messages yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Start a conversation with your coach
+              </p>
             </div>
-          ) : (
-            clientMessages.map((message) => {
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {clientMessages.map((message) => {
               const isCoach = message.sender === "coach";
               
               return (
@@ -306,11 +370,11 @@ export default function ClientChat() {
                   </div>
                 </div>
               );
-            })
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </DragDropFileZone>
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
 
       <div className="flex-shrink-0 border-t p-4 bg-background">
         {pendingAttachments.length > 0 && (
@@ -343,20 +407,47 @@ export default function ClientChat() {
           </div>
         )}
         
-        <div className="flex items-center gap-2">
-          <InlineFileAttachment
-            onAttachmentsAdded={handleAttachmentsAdded}
-            clientId={clientData?.id || ""}
-            currentAttachmentCount={pendingAttachments.length}
-            disabled={!clientData || sendMessageMutation.isPending}
-            maxFiles={5}
-            maxFileSize={25 * 1024 * 1024}
-          />
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          multiple
+          onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+          data-testid="input-file-upload"
+        />
+        <input
+          type="file"
+          ref={imageInputRef}
+          className="hidden"
+          multiple
+          accept="image/*"
+          onChange={(e) => e.target.files && handleFileUpload(e.target.files, true)}
+          data-testid="input-image-upload"
+        />
+        
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground"
-            data-testid="button-add-image"
+            className="text-muted-foreground hover:text-foreground flex-shrink-0"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || sendMessageMutation.isPending}
+            data-testid="button-attach-file"
+          >
+            {isUploading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Paperclip className="w-5 h-5" />
+            )}
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground flex-shrink-0"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={isUploading || sendMessageMutation.isPending}
+            data-testid="button-attach-image"
           >
             <ImageIcon className="w-5 h-5" />
           </Button>
@@ -369,24 +460,16 @@ export default function ClientChat() {
               onChange={(e) => setMessageText(e.target.value)}
               onKeyDown={handleKeyPress}
               disabled={sendMessageMutation.isPending}
-              className="w-full px-4 py-3 rounded-full border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-150 pr-12"
+              className="w-full px-4 py-3 rounded-full border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-150"
               data-testid="input-message"
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-              data-testid="button-emoji"
-            >
-              <Smile className="w-5 h-5" />
-            </Button>
           </div>
           
           <Button
             onClick={handleSendMessage}
-            disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending}
+            disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending || isUploading}
             size="icon"
-            className="rounded-full w-12 h-12"
+            className="rounded-full w-11 h-11 flex-shrink-0"
             data-testid="button-send"
           >
             {sendMessageMutation.isPending ? (
