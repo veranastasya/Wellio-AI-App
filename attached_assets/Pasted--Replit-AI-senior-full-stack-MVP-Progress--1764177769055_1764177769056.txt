@@ -1,0 +1,655 @@
+Ты - Replit AI и senior full-stack инженер.  
+Нужно спроектировать и реализовать MVP-фичу Progress Tracking для продукта Wellio.
+
+Цель:  
+Сделать простой, но умный трекинг прогресса клиента без интеграций с wearables.  
+Клиент и коуч могут логировать питание, тренировки и другие метрики в свободной форме (текст, фото, скриншоты).  
+Система должна автоматически структурировать данные, сравнивать их с планом и строить аналитику и weekly report.
+
+Просьба: читай этот документ как детальное ТЗ и реализуй полностью: backend, frontend, базу данных и интеграцию с уже существующим приложением (если оно есть). Если контекста нет - создай минимальный проект.
+
+
+## 1. Общий workflow
+
+### 1.1. Роли
+
+Есть 2 роли:
+- Coach
+- Client
+
+Коуч:
+- создает клиенту план (питание и/или тренировки)
+- смотрит аналитику и weekly report
+- использует AI-инсайты
+
+Клиент:
+- живет по плану
+- логирует прогресс в удобной для себя форме
+- видит свой прогресс и базовую аналитику
+
+### 1.2. Основная идея
+
+1. Коуч создает клиенту план (nutrition + training).
+2. Клиент начинает логировать свои действия:
+   - текстом (например: "сегодня 1500 ккал и силовая на ноги")
+   - фото еды
+   - скринами приложений типа MyFitnessPal
+   - краткими фразами про тренировки ("была силовая на ноги", "кардио 30 минут")
+3. Все такие записи попадают в Smart Log.
+4. AI:
+   - классифицирует запись (что это: питание, тренировка, вес, шаги и т.п.)
+   - извлекает из записи структурированные данные
+   - создает Progress Events в нормализованном виде
+5. На основе Progress Events строится аналитика:
+   - калории
+   - тренировки
+   - вес
+   - выполнение плана
+   - тренды по неделям
+6. Раз в неделю AI формирует Weekly Report:
+   - summary по неделе
+   - сравнение с планом
+   - ключевые успехи
+   - риски и рекомендации для коуча и клиента.
+
+
+## 2. Датамодель
+
+Используй реляционную схему (можешь взять Postgres или эквивалент).  
+Названия таблиц и полей на английском.
+
+### 2.1. Таблица clients
+
+Минимально:
+
+- id (uuid)
+- coach_id (uuid)
+- name (string)
+- email (string | nullable)
+- timezone (string, например "America/New_York")
+- created_at (datetime, UTC)
+- updated_at (datetime)
+
+### 2.2. Таблица plans
+
+План клиента, к которому мы привязываем фактические данные.
+
+- id (uuid)
+- client_id (uuid)
+- type: "nutrition", "training" или "combined"
+- title (string)
+- start_date (date)
+- end_date (date | nullable)
+- config_json (jsonb)  
+  Структура для nutrition:
+
+  ```json
+  {
+    "calories_target_per_day": 1700,
+    "protein_target_g": 130,
+    "carbs_target_g": 160,
+    "fat_target_g": 55
+  }
+Для тренинга:
+
+json
+Copy code
+{
+  "workouts_per_week_target": 3,
+  "preferred_types": ["strength", "cardio"],
+  "notes": "focus on lower body strength"
+}
+is_active (boolean)
+
+created_at (datetime)
+
+updated_at (datetime)
+
+2.3. Таблица logs (Smart Log - сырой ввод)
+Храним все, что клиент или коуч отправил.
+
+id (uuid)
+
+client_id (uuid)
+
+author_type: "client" | "coach" | "system"
+
+source: "smart_log" | "quick_action" | "import" | "other"
+
+raw_text (text | nullable)
+
+media_urls (jsonb, массив строк с url файлов/картинок)
+
+created_at (datetime, UTC)
+
+local_date_for_client (date)
+Важно: это локальная дата клиента на момент записи (по timezone клиента).
+
+ai_classification_json (jsonb | nullable)
+Результат классификации (см. формат ниже).
+
+ai_parsed_json (jsonb | nullable)
+Результат парсинга (см. формат ниже).
+
+2.4. Таблица progress_events
+Нормализованные события прогресса.
+
+id (uuid)
+
+client_id (uuid)
+
+log_id (uuid) - ссылка на исходный log
+
+event_type:
+
+"weight"
+
+"nutrition"
+
+"workout"
+
+"steps"
+
+"sleep"
+
+"checkin_mood"
+
+"note"
+
+"other"
+
+date_for_metric (date) - дата метрики в локальной дате клиента
+
+data_json (jsonb) - содержимое события (см. примеры ниже)
+
+confidence (float от 0 до 1)
+
+created_at (datetime, UTC)
+
+Примеры:
+
+Nutrition:
+
+json
+Copy code
+{
+  "calories": 1780,
+  "protein_g": 120,
+  "carbs_g": 160,
+  "fat_g": 60,
+  "source": "mfp_screenshot",
+  "estimated": false
+}
+Estimated nutrition с фото:
+
+json
+Copy code
+{
+  "calories_est": 420,
+  "protein_est_g": 20,
+  "carbs_est_g": 45,
+  "fat_est_g": 15,
+  "source": "food_photo",
+  "estimated": true
+}
+Weight:
+
+json
+Copy code
+{
+  "value": 66.8,
+  "unit": "kg"
+}
+Workout:
+
+json
+Copy code
+{
+  "type": "strength",
+  "body_focus": ["lower"],
+  "duration_min": null,
+  "intensity": "unknown",
+  "notes": "силовая на ноги"
+}
+Steps:
+
+json
+Copy code
+{
+  "steps": 8650,
+  "source": "screenshot"
+}
+3. User Stories
+Ниже набор ключевых юзер стори. Реализуй MVP под них.
+
+US1 - Клиент логирует данные в свободной форме
+Как Client
+я хочу добавлять записи о питании, тренировках, весе и других метриках в удобной для меня форме (текст, фото, скриншоты, быстрые кнопки)
+чтобы не тратить много времени на сложные формы и при этом делиться с коучем прогрессом.
+
+Acceptance Criteria:
+
+Есть экран Smart Log для клиента.
+
+Клиент может:
+
+ввести текст
+
+прикрепить фото
+
+прикрепить файл/скриншот
+
+После отправки создается запись в таблице logs.
+
+Запись отображается в хронологическом ленте клиента.
+
+US2 - Система определяет, что именно прислал клиент
+Как System
+я хочу классифицировать каждый лог
+чтобы понять, какие события прогресса в нем содержатся.
+
+Acceptance Criteria:
+
+Для каждого нового log выполняется AI-классификация.
+
+Результат записывается в поле ai_classification_json.
+
+Один лог может содержать несколько типов событий.
+
+Если уверенность низкая, тип "unknown".
+
+Формат ai_classification_json:
+
+json
+Copy code
+{
+  "detected_event_types": ["nutrition", "workout"],
+  "has_weight": false,
+  "has_nutrition": true,
+  "has_workout": true,
+  "has_steps": false,
+  "has_sleep": false,
+  "has_mood": false,
+  "overall_confidence": 0.82
+}
+US3 - Система извлекает структурированные данные
+Как System
+я хочу извлекать числовые и категорийные значения из текста и медиа
+чтобы использовать их в аналитике.
+
+Acceptance Criteria:
+
+На основе ai_classification_json выполняется AI-парсинг.
+
+Результат сохраняется в ai_parsed_json.
+
+На основе ai_parsed_json создаются записи в progress_events (по одному событию на тип).
+
+Формат ai_parsed_json (пример):
+
+json
+Copy code
+{
+  "nutrition": {
+    "calories": 1500,
+    "protein_g": 110,
+    "carbs_g": 140,
+    "fat_g": 50,
+    "estimated": true,
+    "confidence": 0.76
+  },
+  "workout": {
+    "type": "strength",
+    "body_focus": ["lower"],
+    "duration_min": null,
+    "intensity": "unknown",
+    "confidence": 0.7
+  },
+  "weight": null,
+  "steps": null
+}
+US4 - Система хранит Progress Events
+Как System
+я хочу хранить нормализованные Progress Events
+чтобы аналитика клиента могла строиться на простых и однородных данных.
+
+Acceptance Criteria:
+
+Для каждого логa с распарсенными данными:
+
+создаются записи в progress_events по каждому типу события
+
+поле date_for_metric заполняется локальной датой клиента
+
+поле confidence заполняется из результата парсинга
+
+Все связи log_id → progress_events корректны.
+
+US5 - Сравнение факта с планом
+Как Coach
+я хочу видеть, как фактическое поведение клиента соотносится с планом
+чтобы понимать, идет ли клиент по курсу.
+
+Acceptance Criteria:
+
+Для активного плана клиента рассчитываются:
+
+дни, когда калории были в диапазоне цели
+
+дни, когда был дефицит или профицит против цели
+
+количество тренировок за неделю против цели
+
+Эти сравнения используются в аналитике и weekly report.
+
+US6 - Аналитика для коуча
+Как Coach
+я хочу видеть визуальную картину прогресса клиента
+чтобы быстро оценить ситуацию и скорректировать план или коммуникацию.
+
+Acceptance Criteria:
+
+Есть экран "Progress / AI insights" для коуча.
+
+На экране:
+
+график веса по датам
+
+график калорий по датам
+
+индикатор выполнения плана по калориям (в процентах)
+
+список тренировок по датам (с типом и body focus)
+
+флаги:
+
+несколько дней без данных
+
+несколько дней подряд выше/ниже цели
+
+US7 - Weekly Report от AI
+Как System
+я хочу раз в неделю формировать human-friendly Weekly Report
+чтобы коуч и клиент понимали, что случилось за неделю.
+
+Acceptance Criteria:
+
+На основе progress_events и плана формируются агрегаты за выбранную неделю.
+
+AI получает агрегаты и контекст плана и возвращает текстовый отчет для:
+
+коуча (более аналитичный)
+
+клиента (более простой и поддерживающий)
+
+Отчет сохраняется в базе (например, отдельная таблица weekly_reports).
+
+Отчет доступен коучу и клиенту в интерфейсе.
+
+4. Поведение AI (парсинг и аналитика)
+Используй OpenAI (или аналогичную LLM+vision модель) для двух задач:
+
+Классификация лога.
+
+Извлечение структурированных данных + генерация weekly report.
+
+4.1. Промпт для классификации лога
+Модель получает:
+
+raw_text
+
+список media_urls (с типом "image"/"file")
+
+контекст клиента (язык, timezone при необходимости)
+
+Задача:
+
+Определить, какие типы событий присутствуют.
+
+Оценить уверенность по каждому типу и общую.
+
+Формат ответа см. ai_classification_json выше.
+
+Если лог пустой или неприменим к прогрессу - вернуть "detected_event_types": ["other"] или [].
+
+4.2. Промпт для парсинга
+Модель получает:
+
+raw_text
+
+медиа (картинки) через vision
+
+результаты классификации
+
+при необходимости план клиента (нужно для контекста, но не для прямого парсинга чисел)
+
+Задача:
+
+Извлечь численные и категорийные значения.
+
+Вернуть JSON ровно в целевом формате ai_parsed_json.
+
+Важно:
+
+Если модель не уверена в конкретном значении, оставлять null и ставить низкий confidence.
+
+Не придумывать значения, которых нет.
+
+Для тренировок не надо угадывать упражнения, только:
+
+type: strength/cardio/hiit/mobility/mixed/unknown
+
+body_focus: upper/lower/full/core/unspecified
+
+duration_min: число или null
+
+intensity: "low"/"moderate"/"high"/"unknown"
+
+4.3. Weekly Report
+Модель получает уже готовые агрегаты:
+
+Пример входных данных для weekly report:
+
+json
+Copy code
+{
+  "client_name": "Anna",
+  "week_start": "2025-11-17",
+  "week_end": "2025-11-23",
+  "plan": {
+    "calories_target_per_day": 1700,
+    "protein_target_g": 130,
+    "workouts_per_week_target": 3
+  },
+  "aggregates": {
+    "days_with_data": 6,
+    "avg_calories": 1820,
+    "avg_protein_g": 120,
+    "days_within_calorie_target": 3,
+    "days_above_calorie_target": 2,
+    "days_below_calorie_target": 1,
+    "workouts_count": 2,
+    "weight_change_kg": -0.3
+  },
+  "flags": {
+    "missing_data_days": ["2025-11-19"],
+    "consistent_over_target": false,
+    "consistent_under_target": false
+  }
+}
+Модель должна вернуть:
+
+json
+Copy code
+{
+  "coach_report": "string with detailed analysis in plain language",
+  "client_report": "string with friendly, supportive summary"
+}
+5. Архитектура backend
+Сделай простой, но расширяемый backend.
+
+5.1. Основные сущности и слои
+API слой (REST или GraphQL).
+
+Сервисный слой для:
+
+работы с планами
+
+работы с логами
+
+создания progress_events
+
+аналитики и weekly reports
+
+Модуль интеграции с AI (классификация, парсинг, weekly report).
+
+5.2. Основные endpoints (REST пример)
+POST /api/clients/:clientId/logs
+
+тело: { raw_text?, files? }
+
+создает log
+
+триггерит async обработку AI (классификация + парсинг + создание progress_events)
+
+GET /api/clients/:clientId/logs
+
+возвращает список логов с пагинацией
+
+GET /api/clients/:clientId/progress/summary?from=&to=
+
+возвращает агрегаты по progress_events за период
+
+GET /api/clients/:clientId/weekly-report?weekStart=
+
+возвращает weekly report, если есть
+
+если нет - может сгенерировать on demand (по параметру)
+
+POST /api/clients/:clientId/plans
+
+создание плана
+
+GET /api/clients/:clientId/plans/active
+
+получение активного плана
+
+Сделай базовую авторизацию по ролям (coach/client), хотя бы на уровне заглушек.
+
+5.3. Обработка Smart Log
+Клиент или коуч создает лог через POST /logs.
+
+Backend:
+
+сохраняет строку в logs
+
+ставит задачу в очередь (или просто запускает async функцию) для обработки AI
+
+Async обработчик:
+
+дергает AI-классификацию
+
+сохраняет ai_classification_json
+
+дергает AI-парсинг
+
+сохраняет ai_parsed_json
+
+создает progress_events для каждого типа события
+
+Аналитика и weekly report читают только из progress_events и plans.
+
+6. Frontend
+Сделай базовый, но понятный UI (можно на React).
+
+6.1. Для клиента
+Экран "My Progress":
+
+Лента Smart Log (хронология).
+
+Поле ввода текста + кнопка "Attach photo/file".
+
+Примеры подсказок ("Например: 'вес 67.5', 'сегодня силовая на ноги', 'примерно 1500 ккал'").
+
+Простейшая диаграмма:
+
+последние 7 дней по калориям (если есть данные)
+
+последние замеры веса
+
+6.2. Для коуча
+Экран "Client Progress / AI insights":
+
+Выбор клиента.
+
+Блок:
+
+график веса
+
+график калорий
+
+количество тренировок за неделю
+
+Блок "Weekly report":
+
+табы: "Coach view" и "Client view"
+
+Лента Smart Log с пометками:
+
+какие события были извлечены
+
+значок уверенности (ikонка по уровню confidence)
+
+Флаги, если:
+
+нет данных N дней
+
+клиент стабильно выше/ниже цели по калориям
+
+7. Валидации и здравый смысл
+Реализуй базовые guardrails на backend:
+
+Вес:
+
+допускается 30 - 300 кг
+
+Калории:
+
+500 - 6000 ккал в день
+
+Шаги:
+
+0 - 50000
+
+Если значение вне диапазона:
+
+либо отклонять
+
+либо снижать confidence и помечать событие для проверки
+
+Сохраняй всегда сырой текст и ссылки на медиа в logs, чтобы в будущем можно было перепарсить историю.
+
+8. Что нужно на выходе
+От Replit ожидается:
+
+Полностью рабочий backend с описанными сущностями и endpoints.
+
+Простые страницы UI для:
+
+клиента (логирование и базовый прогресс)
+
+коуча (аналитика и weekly report)
+
+Интеграция с AI для:
+
+классификации логов
+
+парсинга в Progress Events
+
+генерации weekly report
+
+Структура базы данных, отражающая описанные таблицы.
+
+Комментарии в коде, где логика AI-интеграции может быть подменена реальными ключами.
+
+Если какое-то решение двусмысленно, выбирай самый простой и прагматичный вариант, который максимально быстро даст ценность коучу и клиенту.

@@ -1,0 +1,560 @@
+You are Replit AI and a senior full-stack engineer.  
+Your task is to design and implement the MVP version of the **Progress Tracking** feature for Wellio.
+
+Goal:  
+Build a simple but smart progress-tracking system for coaching clients *without* wearables.  
+Clients and coaches must be able to log nutrition, workouts, and other metrics in free form (text, photo, screenshot).  
+The system must automatically classify and structure this data, convert it into normalized progress events, compare it to the client’s plan, and generate analytics + a weekly report.
+
+Read this document as a full specification.  
+Implement backend, database, frontend pages, and AI integrations.  
+If the existing project context is missing, create a minimal new project.
+
+
+# 1. High-Level Workflow
+
+## 1.1 Roles
+
+There are two roles:
+- Coach
+- Client
+
+Coach:
+- creates the plan for the client (nutrition and/or training)
+- reviews analytics and weekly report
+- views AI insights
+
+Client:
+- follows the plan
+- logs progress in any form that’s convenient
+- views basic progress data
+
+## 1.2 Main Flow
+
+1. Coach creates a plan for a client (nutrition + training).
+2. Client logs daily progress in any format:
+   - text (“1500 kcal today, lower-body strength workout”)
+   - food photos
+   - screenshots from MyFitnessPal
+   - short training descriptions (“strength legs”, “cardio 30min”)
+3. All inputs go into **Smart Log**.
+4. AI:
+   - classifies the entry (nutrition? workout? weight?)
+   - extracts structured data
+   - creates normalized **Progress Events**
+5. Analytics is built on top of these events:
+   - calories
+   - workouts
+   - weight
+   - adherence to plan
+   - weekly trends
+6. Once a week, AI generates a **Weekly Report**:
+   - calorie summary
+   - weekly workout summary
+   - weight trend
+   - plan adherence
+   - risk flags
+   - recommendations for coach & client
+
+
+# 2. Data Model
+
+Use a relational schema (Postgres or equivalent).  
+All fields named in English.
+
+## 2.1 clients
+
+- id (uuid)
+- coach_id (uuid)
+- name (string)
+- email (string | nullable)
+- timezone (string, e.g. "America/New_York")
+- created_at (datetime, UTC)
+- updated_at (datetime)
+
+## 2.2 plans
+
+A single plan assigned to a client.
+
+- id (uuid)
+- client_id (uuid)
+- type: "nutrition", "training", or "combined"
+- title (string)
+- start_date (date)
+- end_date (date | nullable)
+- config_json (jsonb)
+
+Example nutrition config:
+
+```json
+{
+  "calories_target_per_day": 1700,
+  "protein_target_g": 130,
+  "carbs_target_g": 160,
+  "fat_target_g": 55
+}
+Example training config:
+
+json
+Copy code
+{
+  "workouts_per_week_target": 3,
+  "preferred_types": ["strength", "cardio"],
+  "notes": "focus on lower body strength"
+}
+is_active (boolean)
+
+created_at (datetime)
+
+updated_at (datetime)
+
+2.3 logs (Smart Log – raw entries)
+Stores everything the client or coach submits.
+
+id (uuid)
+
+client_id (uuid)
+
+author_type: "client" | "coach" | "system"
+
+source: "smart_log" | "quick_action" | "import" | "other"
+
+raw_text (text | nullable)
+
+media_urls (jsonb array of urls)
+
+created_at (datetime, UTC)
+
+local_date_for_client (date)
+
+ai_classification_json (jsonb | nullable)
+
+ai_parsed_json (jsonb | nullable)
+
+2.4 progress_events (normalized events)
+Each structured metric extracted from a log.
+
+id (uuid)
+
+client_id (uuid)
+
+log_id (uuid)
+
+event_type:
+
+"weight"
+
+"nutrition"
+
+"workout"
+
+"steps"
+
+"sleep"
+
+"checkin_mood"
+
+"note"
+
+"other"
+
+date_for_metric (date)
+
+data_json (jsonb)
+
+confidence (float 0–1)
+
+created_at (datetime)
+
+Examples:
+
+Nutrition:
+
+json
+Copy code
+{
+  "calories": 1780,
+  "protein_g": 120,
+  "carbs_g": 160,
+  "fat_g": 60,
+  "source": "mfp_screenshot",
+  "estimated": false
+}
+Estimated nutrition from photo:
+
+json
+Copy code
+{
+  "calories_est": 420,
+  "protein_est_g": 20,
+  "carbs_est_g": 45,
+  "fat_est_g": 15,
+  "source": "food_photo",
+  "estimated": true
+}
+Weight:
+
+json
+Copy code
+{
+  "value": 66.8,
+  "unit": "kg"
+}
+Workout:
+
+json
+Copy code
+{
+  "type": "strength",
+  "body_focus": ["lower"],
+  "duration_min": null,
+  "intensity": "unknown",
+  "notes": "lower-body strength session"
+}
+Steps:
+
+json
+Copy code
+{
+  "steps": 8650,
+  "source": "screenshot"
+}
+3. User Stories
+Implement MVP based on these.
+
+US1 — Client logs progress in free form
+As a Client
+I want to log my nutrition, workouts, and other metrics in text/photo/screenshot form
+so I don’t need to deal with complicated input screens.
+
+AC:
+
+Client Smart Log screen
+
+Input:
+
+text
+
+photo upload
+
+file/screenshot upload
+
+Creates a record in logs
+
+Displays in chronological order
+
+US2 — System classifies the log
+As a System
+I want to classify each log
+so I can understand what kinds of progress events it contains.
+
+AC:
+
+AI classification
+
+Stored in ai_classification_json
+
+Supports multiple event types per log
+
+Low confidence → “unknown”
+
+Format:
+
+json
+Copy code
+{
+  "detected_event_types": ["nutrition", "workout"],
+  "has_weight": false,
+  "has_nutrition": true,
+  "has_workout": true,
+  "has_steps": false,
+  "has_sleep": false,
+  "has_mood": false,
+  "overall_confidence": 0.82
+}
+US3 — System extracts structured data
+As a System
+I want to extract structured values from text/media
+so I can use them in analytics.
+
+AC:
+
+Uses AI to parse raw_text and media
+
+Saves output in ai_parsed_json
+
+Creates one progress_event per event type
+
+Format example:
+
+json
+Copy code
+{
+  "nutrition": {
+    "calories": 1500,
+    "protein_g": 110,
+    "carbs_g": 140,
+    "fat_g": 50,
+    "estimated": true,
+    "confidence": 0.76
+  },
+  "workout": {
+    "type": "strength",
+    "body_focus": ["lower"],
+    "duration_min": null,
+    "intensity": "unknown",
+    "confidence": 0.7
+  }
+}
+US4 — System stores Progress Events
+As a System
+I want to save normalized events
+so analytics works off clean data.
+
+AC:
+
+Creates progress_events for each structured type
+
+Fills date_for_metric with client’s local date
+
+Saves confidence
+
+US5 — Compare actual behavior to plan
+As a Coach
+I want to see how the client is performing against the plan
+so I can understand how they’re progressing.
+
+AC:
+
+Daily calorie vs target
+
+Weekly workouts vs target
+
+Macro adherence
+
+Trend flags
+
+US6 — Coach-facing analytics
+As a Coach
+I want to see visual analytics
+so I can quickly understand client progress.
+
+AC:
+
+Weight chart
+
+Daily calories chart
+
+Weekly workout count
+
+Red flags (missing data, consistent over-target, etc.)
+
+US7 — Weekly Report
+As a System
+I want to generate a weekly report in natural language
+so coach and client understand the week at a glance.
+
+AC:
+
+Takes aggregated progress_events + plan
+
+AI generates:
+
+coach_report (analytical)
+
+client_report (supportive)
+
+Stores in weekly_reports table
+
+4. AI Behavior
+Two AI tasks:
+
+Classification
+
+Parsing (text + vision)
+
+Weekly Report generation
+
+4.1 Classification Prompt
+Inputs:
+
+raw_text
+
+media_urls
+
+client language/timezone context
+
+Output → ai_classification_json
+
+4.2 Parsing Prompt
+Inputs:
+
+raw_text
+
+media
+
+classification result
+
+optional plan context
+
+Output → ai_parsed_json (exact structure, no hallucinations)
+
+Workout rules:
+
+Only categorize (strength/cardio/hiit/mobility/mixed/unknown)
+
+Only body focus (upper/lower/full/core/unspecified)
+
+duration_min = number or null
+
+Do NOT guess exercises or calories
+
+4.3 Weekly Report Prompt
+Inputs: aggregated metrics for the selected week.
+
+Example input:
+
+json
+Copy code
+{
+  "client_name": "Anna",
+  "week_start": "2025-11-17",
+  "week_end": "2025-11-23",
+  "plan": {
+    "calories_target_per_day": 1700,
+    "protein_target_g": 130,
+    "workouts_per_week_target": 3
+  },
+  "aggregates": {
+    "days_with_data": 6,
+    "avg_calories": 1820,
+    "avg_protein_g": 120,
+    "days_within_calorie_target": 3,
+    "days_above_calorie_target": 2,
+    "days_below_calorie_target": 1,
+    "workouts_count": 2,
+    "weight_change_kg": -0.3
+  },
+  "flags": {
+    "missing_data_days": ["2025-11-19"],
+    "consistent_over_target": false,
+    "consistent_under_target": false
+  }
+}
+Output:
+
+json
+Copy code
+{
+  "coach_report": "detailed analytical summary",
+  "client_report": "friendly motivational summary"
+}
+5. Backend Architecture
+Use a layered structure.
+
+5.1 Components
+API layer (REST or GraphQL)
+
+Services:
+
+plans service
+
+logs service
+
+progress event service
+
+analytics service
+
+weekly report generator
+
+AI integration module
+
+5.2 API Endpoints (REST example)
+POST /api/clients/:clientId/logs
+
+GET /api/clients/:clientId/logs
+
+GET /api/clients/:clientId/progress/summary
+
+POST /api/clients/:clientId/plans
+
+GET /api/clients/:clientId/plans/active
+
+GET /api/clients/:clientId/weekly-report?weekStart=
+
+5.3 Smart Log Processing Pipeline
+Client/coach submits log → saved in DB.
+
+Async worker processes log:
+
+classification → save JSON to ai_classification_json
+
+parsing → save JSON to ai_parsed_json
+
+generate progress_events
+
+Analytics & weekly reports rely only on progress_events.
+
+6. Frontend
+6.1 Client UI
+"My Progress" screen:
+
+Smart Log feed
+
+Input (text + attach photo/file)
+
+Small charts (calories last 7 days, latest weights)
+
+6.2 Coach UI
+"Client Progress / AI Insights":
+
+client selector
+
+weight chart
+
+calories chart
+
+weekly workout summary
+
+weekly reports (tabs: coach view / client view)
+
+Smart Log with badges (“nutrition”, “workout”, etc)
+
+confidence indicators
+
+7. Validation & Safety
+Backend must guard against impossible values:
+
+Weight: 30–300 kg
+
+Calories: 500–6000 kcal
+
+Steps: 0–50,000
+
+If out of range:
+
+reject, OR
+
+save with low confidence + “needs review” flag
+
+8. Deliverables
+Replit should produce:
+
+Complete backend implementation.
+
+Database schema matching spec.
+
+Client-side pages for:
+
+client progress logging
+
+coach analytics view
+
+AI classification + parsing + weekly report integration.
+
+Comments and placeholders where developers add real API keys.
+
+When encountering ambiguous decisions, choose the simplest option that delivers maximum immediate value to coaches & clients.
+
+yaml
+Copy code
