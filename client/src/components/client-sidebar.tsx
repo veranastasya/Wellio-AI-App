@@ -1,4 +1,4 @@
-import { Home, MessageSquare, FileText, TrendingUp, User, ClipboardList } from "lucide-react";
+import { Home, MessageSquare, FileText, TrendingUp, User, Bot, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -6,62 +6,69 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import logoImage from "@assets/Group 626535_1761099357468.png";
 import type { Message } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 
 const navigationItems = [
   {
-    title: "Home",
+    title: "Dashboard",
     url: "/client/dashboard",
     icon: Home,
-  },
-  {
-    title: "Forms",
-    url: "/client/forms",
-    icon: FileText,
-  },
-  {
-    title: "Chat",
-    url: "/client/chat",
-    icon: MessageSquare,
-    showUnreadBadge: true,
-  },
-  {
-    title: "Plan",
-    url: "/client/plan",
-    icon: TrendingUp,
-  },
-  {
-    title: "Progress",
-    url: "/client/progress",
-    icon: ClipboardList,
   },
   {
     title: "Profile",
     url: "/client/profile",
     icon: User,
   },
+  {
+    title: "My Plan",
+    url: "/client/plan",
+    icon: TrendingUp,
+  },
+  {
+    title: "Coach Chat",
+    url: "/client/chat",
+    icon: MessageSquare,
+    showUnreadBadge: true,
+  },
+  {
+    title: "AI Tracker",
+    url: "/client/ai-tracker",
+    icon: Bot,
+  },
 ];
 
 export function ClientSidebar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
 
-  // Fetch messages to count unread
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
   });
 
-  // Count unread messages from coach
   const unreadCount = messages.filter(
     (m) => m.sender === "coach" && !m.read
   ).length;
+
+  const handleLogout = async () => {
+    try {
+      await apiRequest("POST", "/api/client-auth/logout");
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      localStorage.removeItem("clientId");
+      localStorage.removeItem("clientEmail");
+      setLocation("/client/login");
+    }
+  };
 
   return (
     <Sidebar>
@@ -73,14 +80,11 @@ export function ClientSidebar() {
             className="w-10 h-10 rounded-lg"
             data-testid="logo-image"
           />
-          <span className="text-xl font-bold text-foreground">Wellio</span>
+          <span className="text-xl font-bold text-primary">Wellio</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs uppercase tracking-wider text-muted-foreground px-3 py-2">
-            Navigation
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
@@ -110,6 +114,17 @@ export function ClientSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="p-4 border-t border-sidebar-border">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+          onClick={handleLogout}
+          data-testid="button-logout"
+        >
+          <LogOut className="w-5 h-5" />
+          <span>Log Out</span>
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }
