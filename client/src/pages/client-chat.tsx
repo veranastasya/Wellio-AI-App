@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Loader2, Send, MessageSquare, X, FileText, Image as ImageIcon, Video, FileAudio, Download } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Loader2, Send, MessageSquare, X, FileText, Image as ImageIcon, Video, FileAudio, Download, Paperclip, Smile } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client, Message, InsertMessage, MessageAttachment } from "@shared/schema";
@@ -17,6 +16,7 @@ export default function ClientChat() {
   const [isVerifying, setIsVerifying] = useState(true);
   const [messageText, setMessageText] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function ClientChat() {
   const { data: messages = [], isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
     enabled: !!clientData,
-    refetchInterval: 5000, // Poll every 5 seconds for real-time updates
+    refetchInterval: 5000,
   });
 
   const sendMessageMutation = useMutation({
@@ -64,10 +64,7 @@ export default function ClientChat() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
       setMessageText("");
-      toast({
-        title: "Message sent",
-        description: "Your message has been sent to your coach",
-      });
+      setPendingAttachments([]);
     },
     onError: () => {
       toast({
@@ -87,7 +84,6 @@ export default function ClientChat() {
     },
   });
 
-  // Auto-mark coach messages as read when chat page loads
   useEffect(() => {
     if (!clientData) return;
 
@@ -99,6 +95,10 @@ export default function ClientChat() {
       markAsReadMutation.mutate(msg.id);
     });
   }, [messages, clientData]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const handleSendMessage = () => {
     if (!clientData) {
@@ -120,7 +120,6 @@ export default function ClientChat() {
     };
 
     sendMessageMutation.mutate(newMessage);
-    setPendingAttachments([]); // Clear attachments after sending
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -135,23 +134,8 @@ export default function ClientChat() {
     return date.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
-      hour12: true,
+      hour12: false,
     });
-  };
-
-  const formatDate = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return "Today";
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-    }
   };
 
   const handleAttachmentsAdded = (newAttachments: MessageAttachment[]) => {
@@ -191,215 +175,227 @@ export default function ClientChat() {
     .filter((m) => m.clientId === clientData.id)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  return (
-    <div className="bg-background min-h-screen">
-      <div className="max-w-4xl mx-auto p-4 sm:p-6">
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-chat-title">Chat with Coach</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">Message your coach for support and guidance</p>
-        </div>
+  const coachInitials = "MS";
+  const coachName = "Maria Smith";
 
-        <Card className="h-[500px] sm:h-[600px] flex flex-col">
-          <CardHeader className="border-b p-4 sm:p-6">
-            <CardTitle className="text-base sm:text-lg">Messages</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col p-0">
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-              {clientMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-                  <MessageSquare className="w-16 h-16 text-muted-foreground/50" />
-                  <div>
-                    <p className="text-lg font-medium text-foreground">No messages yet</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Start a conversation with your coach
+  return (
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex-shrink-0 p-4 sm:p-6 border-b bg-background">
+        <div className="flex items-center gap-3">
+          <Avatar className="w-10 h-10 bg-green-500">
+            <AvatarFallback className="bg-green-500 text-white font-medium">
+              {coachInitials}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-lg font-semibold text-foreground" data-testid="text-chat-title">
+              {coachName}
+            </h1>
+            <p className="text-sm text-muted-foreground">Your wellness coach</p>
+          </div>
+        </div>
+      </div>
+
+      <DragDropFileZone
+        onAttachmentsAdded={handleAttachmentsAdded}
+        clientId={clientData?.id || ""}
+        currentAttachmentCount={pendingAttachments.length}
+        disabled={!clientData || sendMessageMutation.isPending}
+        maxFiles={5}
+        maxFileSize={25 * 1024 * 1024}
+      >
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+          {clientMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+              <MessageSquare className="w-16 h-16 text-muted-foreground/50" />
+              <div>
+                <p className="text-lg font-medium text-foreground">No messages yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Start a conversation with your coach
+                </p>
+              </div>
+            </div>
+          ) : (
+            clientMessages.map((message) => {
+              const isCoach = message.sender === "coach";
+              
+              return (
+                <div
+                  key={message.id}
+                  className={`flex ${isCoach ? "justify-start" : "justify-end"}`}
+                  data-testid={`message-${message.id}`}
+                >
+                  <div className={`max-w-[80%] sm:max-w-[60%]`}>
+                    <div
+                      className={`p-4 shadow-sm ${
+                        isCoach
+                          ? "bg-card border rounded-2xl rounded-tl-sm"
+                          : "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm"
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+                      
+                      {message.attachments && message.attachments.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {message.attachments.map((attachment) => {
+                            const Icon = getAttachmentIcon(attachment.fileType);
+                            const isImage = attachment.fileType.startsWith("image/");
+                            
+                            return (
+                              <div
+                                key={attachment.id}
+                                className={`rounded-md overflow-hidden ${
+                                  !isCoach
+                                    ? "bg-white/10 border border-white/20"
+                                    : "bg-muted border"
+                                }`}
+                                data-testid={`attachment-${attachment.id}`}
+                              >
+                                {isImage ? (
+                                  <a
+                                    href={attachment.objectPath}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block hover-elevate"
+                                  >
+                                    <img
+                                      src={attachment.objectPath}
+                                      alt={attachment.fileName}
+                                      className="max-w-full h-auto rounded-md"
+                                    />
+                                  </a>
+                                ) : (
+                                  <a
+                                    href={attachment.objectPath}
+                                    download={attachment.fileName}
+                                    className="flex items-center gap-2 p-2 hover-elevate"
+                                  >
+                                    <Icon className={`w-4 h-4 flex-shrink-0 ${
+                                      !isCoach ? "text-white/70" : "text-muted-foreground"
+                                    }`} />
+                                    <div className="flex-1 min-w-0">
+                                      <p className={`text-xs font-medium truncate ${
+                                        !isCoach ? "text-white" : "text-foreground"
+                                      }`}>
+                                        {attachment.fileName}
+                                      </p>
+                                      <p className={`text-xs ${
+                                        !isCoach ? "text-white/60" : "text-muted-foreground"
+                                      }`}>
+                                        {formatFileSize(attachment.fileSize)}
+                                      </p>
+                                    </div>
+                                    <Download className={`w-4 h-4 flex-shrink-0 ${
+                                      !isCoach ? "text-white/70" : "text-muted-foreground"
+                                    }`} />
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <p
+                      className={`text-xs mt-1 ${
+                        isCoach ? "text-muted-foreground" : "text-muted-foreground text-right"
+                      }`}
+                    >
+                      {formatTime(message.timestamp)}
                     </p>
                   </div>
                 </div>
-              ) : (
-                clientMessages.map((message, index) => {
-                  const showDate =
-                    index === 0 ||
-                    formatDate(message.timestamp) !== formatDate(clientMessages[index - 1].timestamp);
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </DragDropFileZone>
 
-                  return (
-                    <div key={message.id}>
-                      {showDate && (
-                        <div className="flex justify-center mb-4">
-                          <div className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
-                            {formatDate(message.timestamp)}
-                          </div>
-                        </div>
-                      )}
-                      <div
-                        className={`flex ${
-                          message.sender === "client" ? "justify-end" : "justify-start"
-                        }`}
-                        data-testid={`message-${message.id}`}
-                      >
-                        <div
-                          className={`max-w-[85%] sm:max-w-[70%] rounded-lg p-3 ${
-                            message.sender === "client"
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-foreground"
-                          }`}
-                        >
-                          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                          
-                          {/* Display attachments */}
-                          {message.attachments && message.attachments.length > 0 && (
-                            <div className="mt-2 space-y-2">
-                              {message.attachments.map((attachment) => {
-                                const Icon = getAttachmentIcon(attachment.fileType);
-                                const isImage = attachment.fileType.startsWith("image/");
-                                
-                                return (
-                                  <div
-                                    key={attachment.id}
-                                    className={`rounded-md overflow-hidden ${
-                                      message.sender === "client"
-                                        ? "bg-white/10 border border-white/20"
-                                        : "bg-background border"
-                                    }`}
-                                    data-testid={`attachment-${attachment.id}`}
-                                  >
-                                    {isImage ? (
-                                      <a
-                                        href={attachment.objectPath}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block hover-elevate"
-                                      >
-                                        <img
-                                          src={attachment.objectPath}
-                                          alt={attachment.fileName}
-                                          className="max-w-full h-auto rounded-md"
-                                        />
-                                      </a>
-                                    ) : (
-                                      <a
-                                        href={attachment.objectPath}
-                                        download={attachment.fileName}
-                                        className="flex items-center gap-2 p-2 hover-elevate"
-                                      >
-                                        <Icon className={`w-4 h-4 flex-shrink-0 ${
-                                          message.sender === "client" ? "text-white/70" : "text-muted-foreground"
-                                        }`} />
-                                        <div className="flex-1 min-w-0">
-                                          <p className={`text-xs font-medium truncate ${
-                                            message.sender === "client" ? "text-white" : "text-foreground"
-                                          }`}>
-                                            {attachment.fileName}
-                                          </p>
-                                          <p className={`text-xs ${
-                                            message.sender === "client" ? "text-white/60" : "text-muted-foreground"
-                                          }`}>
-                                            {formatFileSize(attachment.fileSize)}
-                                          </p>
-                                        </div>
-                                        <Download className={`w-4 h-4 flex-shrink-0 ${
-                                          message.sender === "client" ? "text-white/70" : "text-muted-foreground"
-                                        }`} />
-                                      </a>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                          
-                          <p
-                            className={`text-xs mt-1 ${
-                              message.sender === "client"
-                                ? "text-primary-foreground/70"
-                                : "text-muted-foreground"
-                            }`}
-                          >
-                            {formatTime(message.timestamp)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-            <DragDropFileZone
-              onAttachmentsAdded={handleAttachmentsAdded}
-              clientId={clientData?.id || ""}
-              currentAttachmentCount={pendingAttachments.length}
-              disabled={!clientData || sendMessageMutation.isPending}
-              maxFiles={5}
-              maxFileSize={25 * 1024 * 1024}
-            >
-              <div className="border-t p-3 sm:p-4 space-y-3">
-                {/* Pending attachments display */}
-                {pendingAttachments.length > 0 && (
-                  <div className="space-y-2">
-                    {pendingAttachments.map((attachment) => {
-                      const Icon = getAttachmentIcon(attachment.fileType);
-                      return (
-                        <div
-                          key={attachment.id}
-                          className="flex items-center gap-2 p-2 bg-muted rounded-md"
-                          data-testid={`pending-attachment-${attachment.id}`}
-                        >
-                          <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs sm:text-sm font-medium truncate">{attachment.fileName}</p>
-                            <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
-                          </div>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => removeAttachment(attachment.id)}
-                            className="flex-shrink-0 min-h-8 min-w-8"
-                            data-testid={`button-remove-attachment-${attachment.id}`}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      );
-                    })}
+      <div className="flex-shrink-0 border-t p-4 bg-background">
+        {pendingAttachments.length > 0 && (
+          <div className="mb-3 space-y-2">
+            {pendingAttachments.map((attachment) => {
+              const Icon = getAttachmentIcon(attachment.fileType);
+              return (
+                <div
+                  key={attachment.id}
+                  className="flex items-center gap-2 p-2 bg-muted rounded-md"
+                  data-testid={`pending-attachment-${attachment.id}`}
+                >
+                  <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm font-medium truncate">{attachment.fileName}</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
                   </div>
-                )}
-                
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    placeholder="Type your message..."
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    disabled={sendMessageMutation.isPending}
-                    data-testid="input-message"
-                    className="flex-1 min-h-10"
-                  />
-                  <div className="flex gap-2 justify-end sm:justify-start">
-                    <InlineFileAttachment
-                      onAttachmentsAdded={handleAttachmentsAdded}
-                      clientId={clientData?.id || ""}
-                      currentAttachmentCount={pendingAttachments.length}
-                      disabled={!clientData || sendMessageMutation.isPending}
-                      maxFiles={5}
-                      maxFileSize={25 * 1024 * 1024}
-                    />
-                    <Button
-                      onClick={handleSendMessage}
-                      disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending}
-                      data-testid="button-send"
-                      className="min-h-10"
-                    >
-                      {sendMessageMutation.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeAttachment(attachment.id)}
+                    className="flex-shrink-0"
+                    data-testid={`button-remove-attachment-${attachment.id}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
-              </div>
-            </DragDropFileZone>
-          </CardContent>
-        </Card>
+              );
+            })}
+          </div>
+        )}
+        
+        <div className="flex items-center gap-2">
+          <InlineFileAttachment
+            onAttachmentsAdded={handleAttachmentsAdded}
+            clientId={clientData?.id || ""}
+            currentAttachmentCount={pendingAttachments.length}
+            disabled={!clientData || sendMessageMutation.isPending}
+            maxFiles={5}
+            maxFileSize={25 * 1024 * 1024}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            data-testid="button-add-image"
+          >
+            <ImageIcon className="w-5 h-5" />
+          </Button>
+          
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              placeholder="Write a message..."
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyDown={handleKeyPress}
+              disabled={sendMessageMutation.isPending}
+              className="w-full px-4 py-3 rounded-full border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-150 pr-12"
+              data-testid="input-message"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+              data-testid="button-emoji"
+            >
+              <Smile className="w-5 h-5" />
+            </Button>
+          </div>
+          
+          <Button
+            onClick={handleSendMessage}
+            disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending}
+            size="icon"
+            className="rounded-full w-12 h-12"
+            data-testid="button-send"
+          >
+            {sendMessageMutation.isPending ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );
