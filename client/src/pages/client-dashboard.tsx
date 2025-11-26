@@ -7,6 +7,7 @@ import { Loader2, User, MessageSquare, FileText, TrendingUp } from "lucide-react
 import { apiRequest } from "@/lib/queryClient";
 import type { Client } from "@shared/schema";
 import { getGoalTypeLabel } from "@shared/schema";
+import { SmartLogWidget } from "@/components/smart-log";
 
 export default function ClientDashboard() {
   const [, setLocation] = useLocation();
@@ -130,26 +131,33 @@ export default function ClientDashboard() {
           )}
         </div>
 
-        <div>
-          <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-            {quickActions.map((action) => (
-              <Card key={action.title} className="hover-elevate cursor-pointer min-h-10" onClick={() => setLocation(action.path)}>
-                <CardHeader className="p-4 sm:p-6">
-                  <div className="flex items-center gap-3">
-                    <div className={`${action.color}`}>
-                      <action.icon className="w-5 h-5 sm:w-6 sm:h-6" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-1 gap-3 sm:gap-4">
+              {quickActions.map((action) => (
+                <Card key={action.title} className="hover-elevate cursor-pointer min-h-10" onClick={() => setLocation(action.path)}>
+                  <CardHeader className="p-4 sm:p-6">
+                    <div className="flex items-center gap-3">
+                      <div className={`${action.color}`}>
+                        <action.icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm sm:text-base">{action.title}</CardTitle>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-sm sm:text-base">{action.title}</CardTitle>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground">{action.description}</p>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardHeader>
+                  <CardContent className="p-4 sm:p-6 pt-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">{action.description}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+          
+          <div>
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Track Your Progress</h2>
+            <SmartLogWidget clientId={clientData.id} />
           </div>
         </div>
       </div>

@@ -32,6 +32,14 @@ import {
   type InsertGoal,
   type ClientDataLog,
   type InsertClientDataLog,
+  type SmartLog,
+  type InsertSmartLog,
+  type ProgressEvent,
+  type InsertProgressEvent,
+  type WeeklyReport,
+  type InsertWeeklyReport,
+  type PlanTargetsRecord,
+  type InsertPlanTargets,
   clients,
   sessions,
   messages,
@@ -48,6 +56,10 @@ import {
   clientPlans,
   goals,
   clientDataLogs,
+  smartLogs,
+  progressEvents,
+  weeklyReports,
+  planTargets,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
@@ -170,6 +182,42 @@ export interface IStorage {
   createClientDataLog(log: InsertClientDataLog): Promise<ClientDataLog>;
   updateClientDataLog(id: string, log: Partial<InsertClientDataLog>): Promise<ClientDataLog | undefined>;
   deleteClientDataLog(id: string): Promise<boolean>;
+
+  // Smart Logs (AI-powered progress tracking)
+  getSmartLogs(): Promise<SmartLog[]>;
+  getSmartLog(id: string): Promise<SmartLog | undefined>;
+  getSmartLogsByClientId(clientId: string, options?: { startDate?: string; endDate?: string; limit?: number }): Promise<SmartLog[]>;
+  createSmartLog(log: InsertSmartLog): Promise<SmartLog>;
+  updateSmartLog(id: string, log: Partial<InsertSmartLog>): Promise<SmartLog | undefined>;
+  deleteSmartLog(id: string): Promise<boolean>;
+  getPendingSmartLogs(limit?: number): Promise<SmartLog[]>;
+
+  // Progress Events (normalized metrics)
+  getProgressEvents(): Promise<ProgressEvent[]>;
+  getProgressEvent(id: string): Promise<ProgressEvent | undefined>;
+  getProgressEventsByClientId(clientId: string, options?: { startDate?: string; endDate?: string; eventType?: string }): Promise<ProgressEvent[]>;
+  createProgressEvent(event: InsertProgressEvent): Promise<ProgressEvent>;
+  updateProgressEvent(id: string, event: Partial<InsertProgressEvent>): Promise<ProgressEvent | undefined>;
+  deleteProgressEvent(id: string): Promise<boolean>;
+  getProgressEventsBySmartLogId(smartLogId: string): Promise<ProgressEvent[]>;
+
+  // Weekly Reports
+  getWeeklyReports(): Promise<WeeklyReport[]>;
+  getWeeklyReport(id: string): Promise<WeeklyReport | undefined>;
+  getWeeklyReportsByClientId(clientId: string, options?: { limit?: number }): Promise<WeeklyReport[]>;
+  getWeeklyReportByWeek(clientId: string, weekStart: string): Promise<WeeklyReport | undefined>;
+  createWeeklyReport(report: InsertWeeklyReport): Promise<WeeklyReport>;
+  updateWeeklyReport(id: string, report: Partial<InsertWeeklyReport>): Promise<WeeklyReport | undefined>;
+  deleteWeeklyReport(id: string): Promise<boolean>;
+
+  // Plan Targets
+  getPlanTargets(): Promise<PlanTargetsRecord[]>;
+  getPlanTarget(id: string): Promise<PlanTargetsRecord | undefined>;
+  getPlanTargetsByClientId(clientId: string): Promise<PlanTargetsRecord[]>;
+  getActivePlanTarget(clientId: string): Promise<PlanTargetsRecord | undefined>;
+  createPlanTarget(target: InsertPlanTargets): Promise<PlanTargetsRecord>;
+  updatePlanTarget(id: string, target: Partial<InsertPlanTargets>): Promise<PlanTargetsRecord | undefined>;
+  deletePlanTarget(id: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -1075,6 +1123,236 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClientDataLog(id: string): Promise<boolean> {
     const result = await db.delete(clientDataLogs).where(eq(clientDataLogs.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Smart Logs (AI-powered progress tracking)
+  async getSmartLogs(): Promise<SmartLog[]> {
+    return await db.select().from(smartLogs).orderBy(desc(smartLogs.createdAt));
+  }
+
+  async getSmartLog(id: string): Promise<SmartLog | undefined> {
+    const result = await db.select().from(smartLogs).where(eq(smartLogs.id, id));
+    return result[0];
+  }
+
+  async getSmartLogsByClientId(
+    clientId: string,
+    options?: { startDate?: string; endDate?: string; limit?: number }
+  ): Promise<SmartLog[]> {
+    const conditions = [eq(smartLogs.clientId, clientId)];
+    
+    if (options?.startDate) {
+      conditions.push(gte(smartLogs.localDateForClient, options.startDate));
+    }
+    if (options?.endDate) {
+      conditions.push(lte(smartLogs.localDateForClient, options.endDate));
+    }
+
+    let query = db.select().from(smartLogs)
+      .where(and(...conditions))
+      .orderBy(desc(smartLogs.createdAt));
+
+    if (options?.limit) {
+      query = query.limit(options.limit) as typeof query;
+    }
+
+    return await query;
+  }
+
+  async createSmartLog(log: InsertSmartLog): Promise<SmartLog> {
+    const now = new Date().toISOString();
+    const result = await db.insert(smartLogs).values({
+      ...log,
+      createdAt: log.createdAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updateSmartLog(id: string, log: Partial<InsertSmartLog>): Promise<SmartLog | undefined> {
+    const result = await db.update(smartLogs)
+      .set(log)
+      .where(eq(smartLogs.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteSmartLog(id: string): Promise<boolean> {
+    const result = await db.delete(smartLogs).where(eq(smartLogs.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getPendingSmartLogs(limit: number = 10): Promise<SmartLog[]> {
+    return await db.select().from(smartLogs)
+      .where(eq(smartLogs.processingStatus, "pending"))
+      .orderBy(smartLogs.createdAt)
+      .limit(limit);
+  }
+
+  // Progress Events (normalized metrics)
+  async getProgressEvents(): Promise<ProgressEvent[]> {
+    return await db.select().from(progressEvents).orderBy(desc(progressEvents.createdAt));
+  }
+
+  async getProgressEvent(id: string): Promise<ProgressEvent | undefined> {
+    const result = await db.select().from(progressEvents).where(eq(progressEvents.id, id));
+    return result[0];
+  }
+
+  async getProgressEventsByClientId(
+    clientId: string,
+    options?: { startDate?: string; endDate?: string; eventType?: string }
+  ): Promise<ProgressEvent[]> {
+    const conditions = [eq(progressEvents.clientId, clientId)];
+    
+    if (options?.startDate) {
+      conditions.push(gte(progressEvents.dateForMetric, options.startDate));
+    }
+    if (options?.endDate) {
+      conditions.push(lte(progressEvents.dateForMetric, options.endDate));
+    }
+    if (options?.eventType) {
+      conditions.push(eq(progressEvents.eventType, options.eventType));
+    }
+
+    return await db.select().from(progressEvents)
+      .where(and(...conditions))
+      .orderBy(desc(progressEvents.dateForMetric));
+  }
+
+  async createProgressEvent(event: InsertProgressEvent): Promise<ProgressEvent> {
+    const now = new Date().toISOString();
+    const result = await db.insert(progressEvents).values({
+      ...event,
+      createdAt: event.createdAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updateProgressEvent(id: string, event: Partial<InsertProgressEvent>): Promise<ProgressEvent | undefined> {
+    const result = await db.update(progressEvents)
+      .set(event)
+      .where(eq(progressEvents.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteProgressEvent(id: string): Promise<boolean> {
+    const result = await db.delete(progressEvents).where(eq(progressEvents.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getProgressEventsBySmartLogId(smartLogId: string): Promise<ProgressEvent[]> {
+    return await db.select().from(progressEvents)
+      .where(eq(progressEvents.smartLogId, smartLogId))
+      .orderBy(desc(progressEvents.createdAt));
+  }
+
+  // Weekly Reports
+  async getWeeklyReports(): Promise<WeeklyReport[]> {
+    return await db.select().from(weeklyReports).orderBy(desc(weeklyReports.weekStart));
+  }
+
+  async getWeeklyReport(id: string): Promise<WeeklyReport | undefined> {
+    const result = await db.select().from(weeklyReports).where(eq(weeklyReports.id, id));
+    return result[0];
+  }
+
+  async getWeeklyReportsByClientId(
+    clientId: string,
+    options?: { limit?: number }
+  ): Promise<WeeklyReport[]> {
+    let query = db.select().from(weeklyReports)
+      .where(eq(weeklyReports.clientId, clientId))
+      .orderBy(desc(weeklyReports.weekStart));
+
+    if (options?.limit) {
+      query = query.limit(options.limit) as typeof query;
+    }
+
+    return await query;
+  }
+
+  async getWeeklyReportByWeek(clientId: string, weekStart: string): Promise<WeeklyReport | undefined> {
+    const result = await db.select().from(weeklyReports)
+      .where(and(
+        eq(weeklyReports.clientId, clientId),
+        eq(weeklyReports.weekStart, weekStart)
+      ));
+    return result[0];
+  }
+
+  async createWeeklyReport(report: InsertWeeklyReport): Promise<WeeklyReport> {
+    const now = new Date().toISOString();
+    const result = await db.insert(weeklyReports).values({
+      ...report,
+      generatedAt: report.generatedAt || now,
+      createdAt: report.createdAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updateWeeklyReport(id: string, report: Partial<InsertWeeklyReport>): Promise<WeeklyReport | undefined> {
+    const result = await db.update(weeklyReports)
+      .set(report)
+      .where(eq(weeklyReports.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteWeeklyReport(id: string): Promise<boolean> {
+    const result = await db.delete(weeklyReports).where(eq(weeklyReports.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Plan Targets
+  async getPlanTargets(): Promise<PlanTargetsRecord[]> {
+    return await db.select().from(planTargets).orderBy(desc(planTargets.createdAt));
+  }
+
+  async getPlanTarget(id: string): Promise<PlanTargetsRecord | undefined> {
+    const result = await db.select().from(planTargets).where(eq(planTargets.id, id));
+    return result[0];
+  }
+
+  async getPlanTargetsByClientId(clientId: string): Promise<PlanTargetsRecord[]> {
+    return await db.select().from(planTargets)
+      .where(eq(planTargets.clientId, clientId))
+      .orderBy(desc(planTargets.createdAt));
+  }
+
+  async getActivePlanTarget(clientId: string): Promise<PlanTargetsRecord | undefined> {
+    const result = await db.select().from(planTargets)
+      .where(and(
+        eq(planTargets.clientId, clientId),
+        eq(planTargets.isActive, true)
+      ))
+      .orderBy(desc(planTargets.startDate))
+      .limit(1);
+    return result[0];
+  }
+
+  async createPlanTarget(target: InsertPlanTargets): Promise<PlanTargetsRecord> {
+    const now = new Date().toISOString();
+    const result = await db.insert(planTargets).values({
+      ...target,
+      createdAt: target.createdAt || now,
+      updatedAt: target.updatedAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updatePlanTarget(id: string, target: Partial<InsertPlanTargets>): Promise<PlanTargetsRecord | undefined> {
+    const now = new Date().toISOString();
+    const result = await db.update(planTargets)
+      .set({ ...target, updatedAt: now })
+      .where(eq(planTargets.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deletePlanTarget(id: string): Promise<boolean> {
+    const result = await db.delete(planTargets).where(eq(planTargets.id, id));
     return result.rowCount !== null && result.rowCount > 0;
   }
 }

@@ -1,6 +1,6 @@
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Mail, Phone, Calendar, Target, User, Scale, Ruler, Activity as ActivityIcon, FileText, Pin, Download, ChevronDown, Loader2 } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, Target, User, Scale, Ruler, Activity as ActivityIcon, FileText, Pin, Download, ChevronDown, Loader2, BarChart3 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { getGoalTypeLabel, getActivityLevelLabel } from "@shared/schema";
 import { type UnitsPreference, formatWeight, formatHeight } from "@shared/units";
 import { usePlanBuilder } from "@/hooks/use-plan-builder";
 import { PlanBuilderContent } from "@/components/plan-builder-content";
+import { CoachProgressAnalytics } from "@/components/coach-progress-analytics";
 
 export default function CoachClientDetail() {
   const [, params] = useRoute("/coach/clients/:clientId");
@@ -210,9 +211,13 @@ export default function CoachClientDetail() {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-3">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="overview" data-testid="tab-overview">
               Overview
+            </TabsTrigger>
+            <TabsTrigger value="progress" data-testid="tab-progress">
+              <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:inline" />
+              Progress
             </TabsTrigger>
             <TabsTrigger value="intake" data-testid="tab-intake">
               Intake
@@ -409,6 +414,14 @@ export default function CoachClientDetail() {
                 </Card>
               )}
             </div>
+          </TabsContent>
+
+          {/* Progress Tab */}
+          <TabsContent value="progress" className="space-y-6">
+            <CoachProgressAnalytics 
+              clientId={clientId} 
+              unitsPreference={unitsPreference}
+            />
           </TabsContent>
 
           {/* Intake Tab */}

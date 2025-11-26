@@ -48,9 +48,14 @@ import {
   insertClientPlanSchema,
   insertGoalSchema,
   insertClientDataLogSchema,
+  insertSmartLogSchema,
+  insertProgressEventSchema,
+  insertWeeklyReportSchema,
+  insertPlanTargetsSchema,
   GOAL_TYPES,
   type GoalType,
 } from "@shared/schema";
+import { classifySmartLog, parseSmartLog, processSmartLogToEvents, processSmartLog } from "./smartLogProcessor";
 import { analyzeClientData } from "./ai";
 import { syncAppleHealthData } from "./sync";
 import OpenAI from "openai";
@@ -3108,6 +3113,426 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     } catch (error) {
       console.error("Error deleting client data log:", error);
       res.status(500).json({ error: "Failed to delete log" });
+    }
+  });
+
+  // ============================================
+  // Smart Log System API Routes
+  // ============================================
+
+  // Get smart logs for a client (client or coach)
+  app.get("/api/smart-logs/:clientId", async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { startDate, endDate, limit } = req.query;
+      
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      // Must be authenticated
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      // Clients can only access their own logs
+      if (sessionClientId && sessionClientId !== clientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const logs = await storage.getSmartLogsByClientId(clientId, {
+        startDate: startDate as string | undefined,
+        endDate: endDate as string | undefined,
+        limit: limit ? parseInt(limit as string) : undefined
+      });
+      
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching smart logs:", error);
+      res.status(500).json({ error: "Failed to fetch smart logs" });
+    }
+  });
+
+  // Create a smart log (client or coach)
+  app.post("/api/smart-logs", async (req, res) => {
+    try {
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+
+      const validatedData = insertSmartLogSchema.parse({
+        ...req.body,
+        authorType: sessionClientId ? "client" : "coach"
+      });
+
+      // Verify client can only log for themselves
+      if (sessionClientId && validatedData.clientId !== sessionClientId) {
+        return res.status(403).json({ error: "Unauthorized - Can only log for yourself" });
+      }
+
+      const smartLog = await storage.createSmartLog(validatedData);
+      
+      // Process asynchronously if there's text
+      if (smartLog.rawText) {
+        processSmartLog(smartLog.id).catch((err: unknown) => {
+          console.error("Error processing smart log:", err);
+        });
+      }
+      
+      res.status(201).json(smartLog);
+    } catch (error) {
+      console.error("Error creating smart log:", error);
+      res.status(400).json({ error: "Invalid data" });
+    }
+  });
+
+  // Get a single smart log
+  app.get("/api/smart-logs/log/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+
+      const log = await storage.getSmartLog(id);
+      if (!log) {
+        return res.status(404).json({ error: "Smart log not found" });
+      }
+
+      // Clients can only access their own logs
+      if (sessionClientId && log.clientId !== sessionClientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      res.json(log);
+    } catch (error) {
+      console.error("Error fetching smart log:", error);
+      res.status(500).json({ error: "Failed to fetch smart log" });
+    }
+  });
+
+  // Reprocess a smart log
+  app.post("/api/smart-logs/:id/reprocess", requireCoachAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const log = await storage.getSmartLog(id);
+      if (!log) {
+        return res.status(404).json({ error: "Smart log not found" });
+      }
+
+      const result = await processSmartLog(id);
+      res.json(result);
+    } catch (error) {
+      console.error("Error reprocessing smart log:", error);
+      res.status(500).json({ error: "Failed to reprocess smart log" });
+    }
+  });
+
+  // Delete a smart log
+  app.delete("/api/smart-logs/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+
+      const log = await storage.getSmartLog(id);
+      if (!log) {
+        return res.status(404).json({ error: "Smart log not found" });
+      }
+
+      // Clients can only delete their own logs
+      if (sessionClientId && log.clientId !== sessionClientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      await storage.deleteSmartLog(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting smart log:", error);
+      res.status(500).json({ error: "Failed to delete smart log" });
+    }
+  });
+
+  // ============================================
+  // Progress Events API Routes
+  // ============================================
+
+  // Get progress events for a client
+  app.get("/api/progress-events/:clientId", async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { startDate, endDate, eventType } = req.query;
+      
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      if (sessionClientId && sessionClientId !== clientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const events = await storage.getProgressEventsByClientId(clientId, {
+        startDate: startDate as string | undefined,
+        endDate: endDate as string | undefined,
+        eventType: eventType as string | undefined
+      });
+      
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching progress events:", error);
+      res.status(500).json({ error: "Failed to fetch progress events" });
+    }
+  });
+
+  // Create a progress event manually
+  app.post("/api/progress-events", async (req, res) => {
+    try {
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+
+      const validatedData = insertProgressEventSchema.parse(req.body);
+
+      // Clients can only create events for themselves
+      if (sessionClientId && validatedData.clientId !== sessionClientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const event = await storage.createProgressEvent(validatedData);
+      res.status(201).json(event);
+    } catch (error) {
+      console.error("Error creating progress event:", error);
+      res.status(400).json({ error: "Invalid data" });
+    }
+  });
+
+  // Update a progress event (review/correction)
+  app.patch("/api/progress-events/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const coachId = req.session?.coachId;
+      if (!coachId) {
+        return res.status(401).json({ error: "Unauthorized - Coach access required" });
+      }
+
+      const event = await storage.getProgressEvent(id);
+      if (!event) {
+        return res.status(404).json({ error: "Progress event not found" });
+      }
+
+      const validatedData = insertProgressEventSchema.partial().parse(req.body);
+      const updated = await storage.updateProgressEvent(id, validatedData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating progress event:", error);
+      res.status(400).json({ error: "Invalid data" });
+    }
+  });
+
+  // Delete a progress event
+  app.delete("/api/progress-events/:id", requireCoachAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const event = await storage.getProgressEvent(id);
+      if (!event) {
+        return res.status(404).json({ error: "Progress event not found" });
+      }
+
+      await storage.deleteProgressEvent(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting progress event:", error);
+      res.status(500).json({ error: "Failed to delete progress event" });
+    }
+  });
+
+  // ============================================
+  // Weekly Reports API Routes
+  // ============================================
+
+  // Get weekly reports for a client
+  app.get("/api/weekly-reports/:clientId", async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const { limit } = req.query;
+      
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      if (sessionClientId && sessionClientId !== clientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const reports = await storage.getWeeklyReportsByClientId(clientId, {
+        limit: limit ? parseInt(limit as string) : undefined
+      });
+      
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching weekly reports:", error);
+      res.status(500).json({ error: "Failed to fetch weekly reports" });
+    }
+  });
+
+  // Get a specific weekly report
+  app.get("/api/weekly-reports/:clientId/:weekStart", async (req, res) => {
+    try {
+      const { clientId, weekStart } = req.params;
+      
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      if (sessionClientId && sessionClientId !== clientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const report = await storage.getWeeklyReportByWeek(clientId, weekStart);
+      if (!report) {
+        return res.status(404).json({ error: "Weekly report not found" });
+      }
+      
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching weekly report:", error);
+      res.status(500).json({ error: "Failed to fetch weekly report" });
+    }
+  });
+
+  // ============================================
+  // Plan Targets API Routes
+  // ============================================
+
+  // Get plan targets for a client
+  app.get("/api/plan-targets/:clientId", async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      if (sessionClientId && sessionClientId !== clientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const targets = await storage.getPlanTargetsByClientId(clientId);
+      res.json(targets);
+    } catch (error) {
+      console.error("Error fetching plan targets:", error);
+      res.status(500).json({ error: "Failed to fetch plan targets" });
+    }
+  });
+
+  // Get active plan target for a client
+  app.get("/api/plan-targets/:clientId/active", async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      if (sessionClientId && sessionClientId !== clientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const target = await storage.getActivePlanTarget(clientId);
+      res.json(target || null);
+    } catch (error) {
+      console.error("Error fetching active plan target:", error);
+      res.status(500).json({ error: "Failed to fetch active plan target" });
+    }
+  });
+
+  // Create a plan target (coach only)
+  app.post("/api/plan-targets", requireCoachAuth, async (req, res) => {
+    try {
+      const validatedData = insertPlanTargetsSchema.parse(req.body);
+      
+      // Deactivate existing active targets for this client
+      const existingTargets = await storage.getPlanTargetsByClientId(validatedData.clientId);
+      for (const target of existingTargets) {
+        if (target.isActive) {
+          await storage.updatePlanTarget(target.id, { isActive: false });
+        }
+      }
+
+      const target = await storage.createPlanTarget(validatedData);
+      res.status(201).json(target);
+    } catch (error) {
+      console.error("Error creating plan target:", error);
+      res.status(400).json({ error: "Invalid data" });
+    }
+  });
+
+  // Update a plan target (coach only)
+  app.patch("/api/plan-targets/:id", requireCoachAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const target = await storage.getPlanTarget(id);
+      if (!target) {
+        return res.status(404).json({ error: "Plan target not found" });
+      }
+
+      const validatedData = insertPlanTargetsSchema.partial().parse(req.body);
+      const updated = await storage.updatePlanTarget(id, validatedData);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating plan target:", error);
+      res.status(400).json({ error: "Invalid data" });
+    }
+  });
+
+  // Delete a plan target (coach only)
+  app.delete("/api/plan-targets/:id", requireCoachAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const target = await storage.getPlanTarget(id);
+      if (!target) {
+        return res.status(404).json({ error: "Plan target not found" });
+      }
+
+      await storage.deletePlanTarget(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting plan target:", error);
+      res.status(500).json({ error: "Failed to delete plan target" });
     }
   });
 
