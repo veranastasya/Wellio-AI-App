@@ -775,3 +775,247 @@ export const insertClientDataLogSchema = createInsertSchema(clientDataLogs).omit
 
 export type InsertClientDataLog = z.infer<typeof insertClientDataLogSchema>;
 export type ClientDataLog = typeof clientDataLogs.$inferSelect;
+
+// ============================================
+// Smart Log System (AI-Powered Progress Tracking)
+// ============================================
+
+// Smart Log author types
+export const SMART_LOG_AUTHOR_TYPES = ["client", "coach", "system"] as const;
+export type SmartLogAuthorType = typeof SMART_LOG_AUTHOR_TYPES[number];
+
+// Smart Log sources
+export const SMART_LOG_SOURCES = ["smart_log", "quick_action", "import", "other"] as const;
+export type SmartLogSource = typeof SMART_LOG_SOURCES[number];
+
+// Progress event types
+export const PROGRESS_EVENT_TYPES = [
+  "weight",
+  "nutrition",
+  "workout",
+  "steps",
+  "sleep",
+  "checkin_mood",
+  "note",
+  "other"
+] as const;
+export type ProgressEventType = typeof PROGRESS_EVENT_TYPES[number];
+
+// AI Classification result type
+export interface AIClassification {
+  detected_event_types: ProgressEventType[];
+  has_weight: boolean;
+  has_nutrition: boolean;
+  has_workout: boolean;
+  has_steps: boolean;
+  has_sleep: boolean;
+  has_mood: boolean;
+  overall_confidence: number;
+}
+
+// AI Parsed data types
+export interface ParsedNutrition {
+  calories?: number;
+  calories_est?: number;
+  protein_g?: number;
+  protein_est_g?: number;
+  carbs_g?: number;
+  carbs_est_g?: number;
+  fat_g?: number;
+  fat_est_g?: number;
+  source: string;
+  estimated: boolean;
+  confidence: number;
+}
+
+export interface ParsedWorkout {
+  type: "strength" | "cardio" | "hiit" | "mobility" | "mixed" | "unknown";
+  body_focus: ("upper" | "lower" | "full" | "core" | "unspecified")[];
+  duration_min: number | null;
+  intensity: "low" | "medium" | "high" | "unknown";
+  notes?: string;
+  confidence: number;
+}
+
+export interface ParsedWeight {
+  value: number;
+  unit: "kg" | "lbs";
+  confidence: number;
+}
+
+export interface ParsedSteps {
+  steps: number;
+  source: string;
+  confidence: number;
+}
+
+export interface ParsedSleep {
+  hours: number;
+  quality?: "poor" | "fair" | "good" | "excellent";
+  confidence: number;
+}
+
+export interface ParsedMood {
+  rating: number; // 1-10
+  notes?: string;
+  confidence: number;
+}
+
+export interface AIParsedData {
+  nutrition?: ParsedNutrition;
+  workout?: ParsedWorkout;
+  weight?: ParsedWeight;
+  steps?: ParsedSteps;
+  sleep?: ParsedSleep;
+  mood?: ParsedMood;
+}
+
+// Plan targets configuration
+export interface PlanTargets {
+  calories_target_per_day?: number;
+  protein_target_g?: number;
+  carbs_target_g?: number;
+  fat_target_g?: number;
+  workouts_per_week_target?: number;
+  preferred_workout_types?: string[];
+  steps_target_per_day?: number;
+  sleep_target_hours?: number;
+  notes?: string;
+}
+
+// Smart Logs table - raw entries from clients/coaches
+export const smartLogs = pgTable("smart_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  authorType: text("author_type").notNull(), // "client" | "coach" | "system"
+  source: text("source").notNull().default("smart_log"), // "smart_log" | "quick_action" | "import" | "other"
+  rawText: text("raw_text"),
+  mediaUrls: json("media_urls").$type<string[]>(),
+  localDateForClient: text("local_date_for_client").notNull(), // YYYY-MM-DD
+  aiClassificationJson: json("ai_classification_json").$type<AIClassification | null>(),
+  aiParsedJson: json("ai_parsed_json").$type<AIParsedData | null>(),
+  processingStatus: text("processing_status").notNull().default("pending"), // "pending" | "processing" | "completed" | "failed"
+  processingError: text("processing_error"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertSmartLogSchema = createInsertSchema(smartLogs).omit({
+  id: true,
+}).extend({
+  authorType: z.enum(SMART_LOG_AUTHOR_TYPES),
+  source: z.enum(SMART_LOG_SOURCES).optional(),
+  rawText: z.string().optional(),
+  mediaUrls: z.array(z.string()).optional(),
+  localDateForClient: z.string(),
+  createdAt: z.string().optional(),
+});
+
+export type InsertSmartLog = z.infer<typeof insertSmartLogSchema>;
+export type SmartLog = typeof smartLogs.$inferSelect;
+
+// Progress Events table - normalized extracted metrics
+export const progressEvents = pgTable("progress_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  smartLogId: varchar("smart_log_id"), // Reference to source smart log
+  eventType: text("event_type").notNull(), // weight, nutrition, workout, steps, sleep, checkin_mood, note, other
+  dateForMetric: text("date_for_metric").notNull(), // YYYY-MM-DD
+  dataJson: json("data_json").notNull().$type<Record<string, any>>(),
+  confidence: real("confidence").notNull().default(1.0), // 0-1
+  needsReview: boolean("needs_review").notNull().default(false),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertProgressEventSchema = createInsertSchema(progressEvents).omit({
+  id: true,
+}).extend({
+  eventType: z.enum(PROGRESS_EVENT_TYPES),
+  dateForMetric: z.string(),
+  dataJson: z.record(z.any()),
+  confidence: z.number().min(0).max(1).optional(),
+  needsReview: z.boolean().optional(),
+  createdAt: z.string().optional(),
+});
+
+export type InsertProgressEvent = z.infer<typeof insertProgressEventSchema>;
+export type ProgressEvent = typeof progressEvents.$inferSelect;
+
+// Weekly Reports table - AI-generated summaries
+export const weeklyReports = pgTable("weekly_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  weekStart: text("week_start").notNull(), // YYYY-MM-DD (Monday)
+  weekEnd: text("week_end").notNull(), // YYYY-MM-DD (Sunday)
+  aggregatesJson: json("aggregates_json").$type<{
+    days_with_data: number;
+    avg_calories?: number;
+    avg_protein_g?: number;
+    days_within_calorie_target?: number;
+    days_above_calorie_target?: number;
+    days_below_calorie_target?: number;
+    workouts_count: number;
+    weight_change_kg?: number;
+    avg_steps?: number;
+    avg_sleep_hours?: number;
+  }>(),
+  flagsJson: json("flags_json").$type<{
+    missing_data_days: string[];
+    consistent_over_target: boolean;
+    consistent_under_target: boolean;
+    low_workout_adherence: boolean;
+    weight_trend: "up" | "down" | "stable" | "unknown";
+  }>(),
+  coachReport: text("coach_report"), // AI-generated analytical summary
+  clientReport: text("client_report"), // AI-generated motivational summary
+  generatedAt: text("generated_at").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertWeeklyReportSchema = createInsertSchema(weeklyReports).omit({
+  id: true,
+}).extend({
+  weekStart: z.string(),
+  weekEnd: z.string(),
+  generatedAt: z.string().optional(),
+  createdAt: z.string().optional(),
+});
+
+export type InsertWeeklyReport = z.infer<typeof insertWeeklyReportSchema>;
+export type WeeklyReport = typeof weeklyReports.$inferSelect;
+
+// Plan Targets table - specific targets for a client's plan
+export const planTargets = pgTable("plan_targets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  planId: varchar("plan_id"), // Optional reference to clientPlans
+  planType: text("plan_type").notNull().default("combined"), // "nutrition" | "training" | "combined"
+  title: text("title").notNull(),
+  startDate: text("start_date").notNull(), // YYYY-MM-DD
+  endDate: text("end_date"), // YYYY-MM-DD, nullable
+  configJson: json("config_json").$type<PlanTargets>().notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const insertPlanTargetsSchema = createInsertSchema(planTargets).omit({
+  id: true,
+}).extend({
+  planType: z.enum(["nutrition", "training", "combined"]).optional(),
+  configJson: z.object({
+    calories_target_per_day: z.number().optional(),
+    protein_target_g: z.number().optional(),
+    carbs_target_g: z.number().optional(),
+    fat_target_g: z.number().optional(),
+    workouts_per_week_target: z.number().optional(),
+    preferred_workout_types: z.array(z.string()).optional(),
+    steps_target_per_day: z.number().optional(),
+    sleep_target_hours: z.number().optional(),
+    notes: z.string().optional(),
+  }),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type InsertPlanTargets = z.infer<typeof insertPlanTargetsSchema>;
+export type PlanTargetsRecord = typeof planTargets.$inferSelect;
