@@ -176,35 +176,61 @@ export default function ClientChat() {
       }
 
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("clientId", clientData.id);
-
-        const response = await fetch("/api/upload", {
+        // Step 1: Get upload URL from backend
+        const uploadUrlResponse = await fetch("/api/attachments/upload", {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
         });
 
-        if (!response.ok) {
-          throw new Error("Upload failed");
+        if (!uploadUrlResponse.ok) {
+          const errorData = await uploadUrlResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to get upload URL");
         }
 
-        const data = await response.json();
-        
-        const newAttachment: MessageAttachment = {
-          id: crypto.randomUUID(),
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          objectPath: data.url,
-          uploadedAt: new Date().toISOString(),
-        };
+        const { uploadURL } = await uploadUrlResponse.json();
 
-        setPendingAttachments((prev) => [...prev, newAttachment]);
+        // Step 2: Upload file directly to cloud storage
+        const uploadResponse = await fetch(uploadURL, {
+          method: "PUT",
+          body: file,
+          headers: {
+            "Content-Type": file.type,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload file to storage");
+        }
+
+        // Get the object URL (remove query params from signed URL)
+        const objectURL = uploadURL.split("?")[0];
+
+        // Step 3: Save attachment metadata
+        const saveResponse = await fetch("/api/attachments/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            objectURL,
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            clientId: clientData.id,
+          }),
+        });
+
+        if (!saveResponse.ok) {
+          const errorData = await saveResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to save attachment");
+        }
+
+        const { attachment } = await saveResponse.json();
+        setPendingAttachments((prev) => [...prev, attachment]);
       } catch (error) {
+        console.error("Upload error:", error);
         toast({
           title: "Upload failed",
-          description: `Failed to upload ${file.name}`,
+          description: error instanceof Error ? error.message : `Failed to upload ${file.name}`,
           variant: "destructive",
         });
       }
