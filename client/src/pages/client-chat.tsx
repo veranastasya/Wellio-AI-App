@@ -1,12 +1,151 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2, Send, MessageSquare, X, FileText, Image as ImageIcon, Video, FileAudio, Download, Paperclip, Smile } from "lucide-react";
+import { Loader2, Send, MessageSquare, X, FileText, Image as ImageIcon, Video, FileAudio, Download, Paperclip } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client, Message, InsertMessage, MessageAttachment } from "@shared/schema";
+
+function AttachmentDisplay({ 
+  attachment, 
+  isCoach 
+}: { 
+  attachment: MessageAttachment; 
+  isCoach: boolean;
+}) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const isImage = attachment.fileType.startsWith("image/");
+  
+  const getAttachmentIcon = (fileType: string) => {
+    if (fileType.startsWith("image/")) return ImageIcon;
+    if (fileType.startsWith("video/")) return Video;
+    if (fileType.startsWith("audio/")) return FileAudio;
+    return FileText;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const Icon = getAttachmentIcon(attachment.fileType);
+
+  useEffect(() => {
+    const fetchSignedUrl = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const response = await fetch("/api/attachments/download-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ objectPath: attachment.objectPath }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load file");
+        }
+
+        const data = await response.json();
+        setSignedUrl(data.signedUrl);
+      } catch (err) {
+        setError("Failed to load");
+        console.error("Error fetching signed URL:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSignedUrl();
+  }, [attachment.objectPath]);
+
+  if (isLoading) {
+    return (
+      <div className={`rounded-md p-3 flex items-center gap-2 ${
+        !isCoach ? "bg-white/10 border border-white/20" : "bg-muted border"
+      }`}>
+        <Loader2 className={`w-4 h-4 animate-spin ${!isCoach ? "text-white/70" : "text-muted-foreground"}`} />
+        <span className={`text-xs ${!isCoach ? "text-white/70" : "text-muted-foreground"}`}>
+          Loading...
+        </span>
+      </div>
+    );
+  }
+
+  if (error || !signedUrl) {
+    return (
+      <div className={`rounded-md p-3 flex items-center gap-2 ${
+        !isCoach ? "bg-white/10 border border-white/20" : "bg-muted border"
+      }`}>
+        <Icon className={`w-4 h-4 ${!isCoach ? "text-white/70" : "text-muted-foreground"}`} />
+        <span className={`text-xs ${!isCoach ? "text-white/60" : "text-muted-foreground"}`}>
+          {attachment.fileName} ({formatFileSize(attachment.fileSize)})
+        </span>
+      </div>
+    );
+  }
+
+  if (isImage) {
+    return (
+      <div className={`rounded-md overflow-hidden ${
+        !isCoach ? "bg-white/10 border border-white/20" : "bg-muted border"
+      }`}>
+        <a
+          href={signedUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block hover-elevate"
+        >
+          <img
+            src={signedUrl}
+            alt={attachment.fileName}
+            className="max-w-full h-auto rounded-md"
+            loading="lazy"
+          />
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`rounded-md overflow-hidden ${
+      !isCoach ? "bg-white/10 border border-white/20" : "bg-muted border"
+    }`}>
+      <a
+        href={signedUrl}
+        download={attachment.fileName}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 p-2 hover-elevate"
+      >
+        <Icon className={`w-4 h-4 flex-shrink-0 ${
+          !isCoach ? "text-white/70" : "text-muted-foreground"
+        }`} />
+        <div className="flex-1 min-w-0">
+          <p className={`text-xs font-medium truncate ${
+            !isCoach ? "text-white" : "text-foreground"
+          }`}>
+            {attachment.fileName}
+          </p>
+          <p className={`text-xs ${
+            !isCoach ? "text-white/60" : "text-muted-foreground"
+          }`}>
+            {formatFileSize(attachment.fileSize)}
+          </p>
+        </div>
+        <Download className={`w-4 h-4 flex-shrink-0 ${
+          !isCoach ? "text-white/70" : "text-muted-foreground"
+        }`} />
+      </a>
+    </div>
+  );
+}
 
 export default function ClientChat() {
   const [, setLocation] = useLocation();
@@ -327,62 +466,14 @@ export default function ClientChat() {
                       
                       {message.attachments && message.attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
-                          {message.attachments.map((attachment) => {
-                            const Icon = getAttachmentIcon(attachment.fileType);
-                            const isImage = attachment.fileType.startsWith("image/");
-                            
-                            return (
-                              <div
-                                key={attachment.id}
-                                className={`rounded-md overflow-hidden ${
-                                  !isCoach
-                                    ? "bg-white/10 border border-white/20"
-                                    : "bg-muted border"
-                                }`}
-                                data-testid={`attachment-${attachment.id}`}
-                              >
-                                {isImage ? (
-                                  <a
-                                    href={attachment.objectPath}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block hover-elevate"
-                                  >
-                                    <img
-                                      src={attachment.objectPath}
-                                      alt={attachment.fileName}
-                                      className="max-w-full h-auto rounded-md"
-                                    />
-                                  </a>
-                                ) : (
-                                  <a
-                                    href={attachment.objectPath}
-                                    download={attachment.fileName}
-                                    className="flex items-center gap-2 p-2 hover-elevate"
-                                  >
-                                    <Icon className={`w-4 h-4 flex-shrink-0 ${
-                                      !isCoach ? "text-white/70" : "text-muted-foreground"
-                                    }`} />
-                                    <div className="flex-1 min-w-0">
-                                      <p className={`text-xs font-medium truncate ${
-                                        !isCoach ? "text-white" : "text-foreground"
-                                      }`}>
-                                        {attachment.fileName}
-                                      </p>
-                                      <p className={`text-xs ${
-                                        !isCoach ? "text-white/60" : "text-muted-foreground"
-                                      }`}>
-                                        {formatFileSize(attachment.fileSize)}
-                                      </p>
-                                    </div>
-                                    <Download className={`w-4 h-4 flex-shrink-0 ${
-                                      !isCoach ? "text-white/70" : "text-muted-foreground"
-                                    }`} />
-                                  </a>
-                                )}
-                              </div>
-                            );
-                          })}
+                          {message.attachments.map((attachment) => (
+                            <div key={attachment.id} data-testid={`attachment-${attachment.id}`}>
+                              <AttachmentDisplay 
+                                attachment={attachment} 
+                                isCoach={isCoach}
+                              />
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>

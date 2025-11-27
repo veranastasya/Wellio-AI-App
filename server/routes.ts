@@ -518,6 +518,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get signed download URL for an attachment
+  app.post("/api/attachments/download-url", async (req, res) => {
+    try {
+      // Require either coach or client session
+      if (!req.session || (!req.session.coachId && !req.session.clientId)) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+      
+      const { objectPath } = req.body;
+      
+      if (!objectPath || typeof objectPath !== 'string') {
+        return res.status(400).json({ error: "Missing objectPath" });
+      }
+      
+      const objectStorageService = new ObjectStorageService();
+      
+      // Get the object file and verify it exists
+      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+      
+      // Verify the user has access to this object
+      const userId = req.session.clientId || req.session.coachId || "";
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        userId,
+        objectFile,
+        requestedPermission: ObjectPermission.READ,
+      });
+      
+      if (!canAccess) {
+        return res.status(403).json({ error: "Access denied to this file" });
+      }
+      
+      // Generate a signed URL valid for 1 hour
+      const signedUrl = await objectStorageService.getSignedDownloadURL(objectPath, 3600);
+      
+      res.json({ signedUrl });
+    } catch (error) {
+      console.error("Error generating download URL:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      res.status(500).json({ error: "Failed to generate download URL" });
+    }
+  });
+
   // Activity routes
   app.get("/api/activities", requireCoachAuth, async (_req, res) => {
     try {
