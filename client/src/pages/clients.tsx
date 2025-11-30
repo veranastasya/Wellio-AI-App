@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Plus, Search, Mail, Phone, TrendingUp, Calendar, MoreVertical, Pencil, Trash2, Send, Copy, Check, UserPlus, Sparkles, User, Scale, Ruler, Activity as ActivityIcon } from "lucide-react";
+import { Plus, Search, Mail, Phone, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, Filter, ChevronDown, Users as UsersIcon } from "lucide-react";
 import type { Questionnaire, GoalType } from "@shared/schema";
 import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
@@ -49,6 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Clients() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -65,11 +66,12 @@ export default function Clients() {
     queryKey: ["/api/questionnaires"],
   });
 
-  const filteredClients = clients.filter(
-    (client) =>
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredClients = clients.filter((client) => {
+    const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || client.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   const createClientMutation = useMutation({
     mutationFn: async (data: InsertClient) => {
@@ -144,7 +146,17 @@ export default function Clients() {
   };
 
   const getAvatarColor = (index: number) => {
-    return index % 2 === 0 ? "bg-primary text-white" : "bg-accent text-accent-foreground";
+    const colors = [
+      "bg-primary text-white",
+      "bg-amber-500 text-white",
+      "bg-rose-500 text-white",
+      "bg-violet-500 text-white",
+      "bg-emerald-500 text-white",
+      "bg-cyan-500 text-white",
+      "bg-orange-500 text-white",
+      "bg-indigo-500 text-white",
+    ];
+    return colors[index % colors.length];
   };
 
   const copyInviteLink = async () => {
@@ -199,7 +211,7 @@ export default function Clients() {
         <div className="max-w-7xl mx-auto p-4 sm:p-6">
           <Card className="border-destructive">
             <CardContent className="py-12 sm:py-16 text-center">
-              <Users className="w-16 h-16 mx-auto text-destructive mb-4" />
+              <UsersIcon className="w-16 h-16 mx-auto text-destructive mb-4" />
               <p className="text-lg font-medium text-foreground">Failed to load clients</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Please try refreshing the page
@@ -213,8 +225,9 @@ export default function Clients() {
 
   return (
     <div className="bg-background">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-clients-title">Client Management</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage your coaching clients and track their progress</p>
@@ -230,7 +243,7 @@ export default function Clients() {
               <DialogTrigger asChild>
                 <Button variant="outline" className="gap-2" data-testid="button-send-invite">
                   <UserPlus className="w-4 h-4" />
-                  Send Invite
+                  <span className="hidden sm:inline">Send Invite</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -283,7 +296,7 @@ export default function Clients() {
 
             <Dialog open={isNewClientOpen} onOpenChange={setIsNewClientOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2" data-testid="button-new-client">
+                <Button className="gap-2 bg-primary hover:bg-primary/90" data-testid="button-new-client">
                   <Plus className="w-4 h-4" />
                   New Client
                 </Button>
@@ -318,34 +331,67 @@ export default function Clients() {
           </div>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search clients by name or email..."
-            className="pl-10 h-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            data-testid="input-search-clients"
-          />
+        {/* Search and Filter Section */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search clients by name or email..."
+              className="pl-10 h-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              data-testid="input-search-clients"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="gap-2" data-testid="button-filter">
+              <Filter className="w-4 h-4" />
+              Filter
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2 min-w-[120px]" data-testid="button-status-filter">
+                  {statusFilter === "all" ? "All Status" : statusFilter === "active" ? "Active" : "Inactive"}
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setStatusFilter("all")} data-testid="filter-all">
+                  All Status
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("active")} data-testid="filter-active">
+                  Active
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("inactive")} data-testid="filter-inactive">
+                  Inactive
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Client Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredClients.map((client, index) => (
             <Card 
               key={client.id} 
-              className="hover-elevate cursor-pointer" 
+              className="hover-elevate cursor-pointer overflow-visible" 
               data-testid={`card-client-${index}`}
               onClick={() => setLocation(`/coach/clients/${client.id}`)}
             >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
+              <CardContent className="p-5 space-y-4">
+                {/* Header: Avatar, Name, Status, Menu */}
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-full ${getAvatarColor(index)} flex items-center justify-center flex-shrink-0`}>
-                      <span className="text-lg font-semibold">{getInitials(client.name)}</span>
+                    <div className={`w-11 h-11 rounded-full ${getAvatarColor(index)} flex items-center justify-center flex-shrink-0`}>
+                      <span className="text-base font-semibold">{getInitials(client.name)}</span>
                     </div>
-                    <div>
-                      <CardTitle className="text-lg">{client.name}</CardTitle>
-                      <Badge variant={client.status === "active" ? "default" : "secondary"} className="mt-1">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-foreground truncate">{client.name}</h3>
+                      <Badge 
+                        variant={client.status === "active" ? "default" : "secondary"} 
+                        className={`mt-1 text-xs ${client.status === "active" ? "bg-emerald-500 hover:bg-emerald-500" : ""}`}
+                      >
                         {client.status}
                       </Badge>
                     </div>
@@ -355,6 +401,7 @@ export default function Clients() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
+                        className="flex-shrink-0"
                         data-testid={`button-client-menu-${index}`}
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -387,78 +434,81 @@ export default function Clients() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Mail className="w-4 h-4" />
-                  <span className="truncate">{client.email}</span>
-                </div>
-                {client.phone && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="w-4 h-4" />
-                    <span>{client.phone}</span>
+
+                {/* Contact Info Rows */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <Mail className="w-4 h-4 flex-shrink-0" />
+                    <span className="truncate">{client.email}</span>
                   </div>
-                )}
-                {client.goalType && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <TrendingUp className="w-4 h-4" />
-                    <span>{getGoalTypeLabel(client.goalType, client.goalDescription)}</span>
-                  </div>
-                )}
-                {(client.sex || client.age || client.weight || client.height || client.activityLevel || client.bodyFatPercentage) && (
-                  <div className="pt-2 border-t space-y-1">
-                    <div className="text-xs font-semibold text-muted-foreground mb-1.5">Health Metrics</div>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-                      {client.sex && (
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <User className="w-3 h-3" />
-                          <span className="capitalize">{client.sex.replace('_', ' ')}</span>
-                        </div>
-                      )}
-                      {client.age && (
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Calendar className="w-3 h-3" />
-                          <span>{client.age} yrs</span>
-                        </div>
-                      )}
-                      {client.weight && (
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Scale className="w-3 h-3" />
-                          <span>{formatWeight(client.weight, (client.unitsPreference as UnitsPreference) || "us")}</span>
-                        </div>
-                      )}
-                      {client.height && (
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
-                          <Ruler className="w-3 h-3" />
-                          <span>{formatHeight(client.height, (client.unitsPreference as UnitsPreference) || "us")}</span>
-                        </div>
-                      )}
-                      {client.activityLevel && (
-                        <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
-                          <ActivityIcon className="w-3 h-3" />
-                          <span className="truncate">{getActivityLevelLabel(client.activityLevel)}</span>
-                        </div>
-                      )}
-                      {client.bodyFatPercentage && (
-                        <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
-                          <TrendingUp className="w-3 h-3" />
-                          <span>Body Fat: {client.bodyFatPercentage}%</span>
-                        </div>
-                      )}
+                  {client.phone && (
+                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                      <Phone className="w-4 h-4 flex-shrink-0" />
+                      <span>{client.phone}</span>
                     </div>
+                  )}
+                  {client.goalType && (
+                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                      <Target className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{getGoalTypeLabel(client.goalType, client.goalDescription)}</span>
+                    </div>
+                  )}
+                  {client.joinedDate && (
+                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                      <Calendar className="w-4 h-4 flex-shrink-0" />
+                      <span>{new Date(client.joinedDate).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Physical Stats Pills */}
+                {(client.sex || client.weight || client.height) && (
+                  <div className="flex flex-wrap gap-2">
+                    {client.sex && (
+                      <span className="px-3 py-1 bg-muted rounded-md text-xs text-muted-foreground capitalize">
+                        {client.sex === "male" ? "Male" : client.sex === "female" ? "Female" : client.sex.replace('_', ' ')}
+                      </span>
+                    )}
+                    {client.weight && (
+                      <span className="px-3 py-1 bg-muted rounded-md text-xs text-muted-foreground">
+                        Weight {formatWeight(client.weight, (client.unitsPreference as UnitsPreference) || "us")}
+                      </span>
+                    )}
+                    {client.height && (
+                      <span className="px-3 py-1 bg-muted rounded-md text-xs text-muted-foreground">
+                        Height {formatHeight(client.height, (client.unitsPreference as UnitsPreference) || "us")}
+                      </span>
+                    )}
                   </div>
                 )}
-                {client.lastSession && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    <span>{new Date(client.lastSession).toLocaleDateString()}</span>
-                  </div>
+
+                {/* Activity Level */}
+                {client.activityLevel && (
+                  <p className="text-xs text-muted-foreground">
+                    {getActivityLevelLabel(client.activityLevel)}
+                  </p>
                 )}
-                <div className="pt-3 border-t" onClick={(e) => e.stopPropagation()}>
+
+                {/* Progress Bar */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-medium text-foreground">{client.progressScore || 0}%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary rounded-full transition-all duration-300"
+                      style={{ width: `${client.progressScore || 0}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Create AI Plan Button */}
+                <div onClick={(e) => e.stopPropagation()}>
                   <Link href={`/coach/plan-builder/${client.id}`}>
                     <Button
                       variant="outline"
-                      className="w-full"
+                      className="w-full border-primary text-primary hover:bg-primary/10"
                       data-testid={`button-create-plan-${index}`}
                     >
                       <Sparkles className="w-4 h-4 mr-2" />
@@ -474,7 +524,7 @@ export default function Clients() {
         {filteredClients.length === 0 && (
           <Card>
             <CardContent className="py-16 text-center">
-              <Users className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+              <UsersIcon className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
               <p className="text-lg font-medium text-foreground">No clients found</p>
               <p className="text-sm text-muted-foreground mt-1">
                 {searchQuery ? "Try adjusting your search" : "Add your first client to get started"}
