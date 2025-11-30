@@ -373,10 +373,6 @@ export default function Communication() {
                     </Avatar>
                     <div className="min-w-0">
                       <h3 className="text-lg font-semibold text-foreground truncate">{selectedClient.name}</h3>
-                      <p className="text-sm text-primary flex items-center gap-1">
-                        <span className="w-2 h-2 bg-primary rounded-full"></span>
-                        Online
-                      </p>
                     </div>
                   </div>
                 </div>
