@@ -53,7 +53,7 @@ const navigationItems = [
     locked: false,
   },
   {
-    title: "Communication",
+    title: "Chat",
     url: "/communication",
     icon: MessageSquare,
     locked: false,

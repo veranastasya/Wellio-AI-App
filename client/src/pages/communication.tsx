@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip, ExternalLink } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import type { Message, Client, InsertMessage, MessageAttachment } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -164,23 +164,23 @@ export default function Communication() {
     return date.toLocaleTimeString("en-US", {
       hour: "numeric",
       minute: "2-digit",
-      hour12: true,
+      hour12: false,
     });
   };
 
-  const formatDate = (timestamp: string) => {
+  const formatRelativeTime = (timestamp: string) => {
     const date = new Date(timestamp);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (date.toDateString() === today.toDateString()) {
-      return "Today";
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday";
-    } else {
-      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    }
+    if (diffMins < 1) return "now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
   const handleAttachmentsAdded = (newAttachments: MessageAttachment[]) => {
@@ -209,7 +209,7 @@ export default function Communication() {
       <div className="bg-background">
         <div className="max-w-7xl mx-auto p-4 sm:p-6">
           <div className="mb-4 sm:mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Communication</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Chat</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">Loading conversations...</p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -258,95 +258,103 @@ export default function Communication() {
     <div className="bg-background h-full">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 h-full flex flex-col">
         <div className="mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-communication-title">Communication</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-chat-title">Chat</h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">Message your clients and manage conversations</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 flex-1 min-h-0">
           {(!isMobile || !selectedClientId) && (
-          <Card data-testid="card-client-list" className="lg:max-h-[calc(100vh-200px)] h-full flex flex-col">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base sm:text-lg">Clients</CardTitle>
-              <div className="relative mt-2">
+          <div data-testid="card-client-list" className="lg:max-h-[calc(100vh-200px)] h-full flex flex-col bg-card rounded-lg border">
+            <div className="p-4 border-b">
+              <h2 className="text-lg font-semibold text-foreground mb-3">Messages</h2>
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Search clients..."
-                  className="pl-10 h-10"
+                  className="pl-10 h-10 bg-muted/50 border-0"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   data-testid="input-search-conversations"
                 />
               </div>
-            </CardHeader>
-            <CardContent className="p-3 sm:p-4 max-h-96 lg:max-h-[calc(100vh-340px)] overflow-y-auto">
-                <div className="space-y-1">
-                  {filteredClients.map((client, index) => {
-                    const lastMsg = getLastMessage(client.id);
-                    const unreadCount = getUnreadCount(client.id);
-                    return (
-                      <button
-                        key={client.id}
-                        onClick={() => setSelectedClientId(client.id)}
-                        className={`w-full text-left p-3 rounded-lg transition-colors hover-elevate ${
-                          selectedClientId === client.id
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                            : ""
-                        }`}
-                        data-testid={`button-client-conversation-${index}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div
-                            className={`w-10 h-10 rounded-full ${
-                              index % 2 === 0
-                                ? "bg-primary text-white"
-                                : "bg-accent text-accent-foreground"
-                            } flex items-center justify-center flex-shrink-0`}
-                          >
-                            <span className="text-sm font-semibold">{getInitials(client.name)}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="font-medium text-sm">{client.name}</p>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-2">
+                {filteredClients.map((client, index) => {
+                  const lastMsg = getLastMessage(client.id);
+                  const unreadCount = getUnreadCount(client.id);
+                  const avatarColors = [
+                    "bg-primary",
+                    "bg-amber-500",
+                    "bg-rose-500",
+                    "bg-violet-500",
+                    "bg-emerald-500",
+                    "bg-cyan-500",
+                  ];
+                  const avatarColor = avatarColors[index % avatarColors.length];
+                  
+                  return (
+                    <button
+                      key={client.id}
+                      onClick={() => setSelectedClientId(client.id)}
+                      className={`w-full text-left p-3 rounded-lg transition-colors hover-elevate ${
+                        selectedClientId === client.id
+                          ? "bg-muted"
+                          : ""
+                      }`}
+                      data-testid={`button-client-conversation-${index}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className={`w-10 h-10 ${avatarColor}`}>
+                          <AvatarFallback className={`${avatarColor} text-white font-medium text-sm`}>
+                            {getInitials(client.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-medium text-sm text-foreground">{client.name}</p>
+                            <div className="flex items-center gap-2">
+                              {lastMsg && (
+                                <span className="text-xs text-muted-foreground">
+                                  {formatRelativeTime(lastMsg.timestamp)}
+                                </span>
+                              )}
                               {unreadCount > 0 && (
                                 <Badge 
-                                  className="bg-primary text-white h-5 min-w-5 px-1.5"
+                                  className="bg-primary text-white h-5 min-w-5 px-1.5 rounded-full"
                                   data-testid={`badge-unread-count-${index}`}
                                 >
                                   {unreadCount}
                                 </Badge>
                               )}
                             </div>
-                            {lastMsg && (
-                              <p className="text-xs text-muted-foreground truncate">
-                                {lastMsg.content}
-                              </p>
-                            )}
                           </div>
                           {lastMsg && (
-                            <span className="text-xs text-muted-foreground">
-                              {formatDate(lastMsg.timestamp)}
-                            </span>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {lastMsg.content}
+                            </p>
                           )}
                         </div>
-                      </button>
-                    );
-                  })}
-                  {filteredClients.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                      No clients found
-                    </p>
-                  )}
-                </div>
-            </CardContent>
-          </Card>
+                      </div>
+                    </button>
+                  );
+                })}
+                {filteredClients.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No clients found
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
           )}
 
           {(!isMobile || selectedClientId) && (
-          <Card className="lg:col-span-2 h-full flex flex-col" data-testid="card-messages">
+          <div className="lg:col-span-2 h-full flex flex-col bg-card rounded-lg border" data-testid="card-messages">
             {selectedClient ? (
               <>
-                <CardHeader className="pb-3 border-b">
-                  <div className="flex items-center gap-3">
+                <div className="p-4 border-b flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     {isMobile && (
                       <Button
                         variant="ghost"
@@ -358,19 +366,32 @@ export default function Communication() {
                         <ArrowLeft className="w-5 h-5" />
                       </Button>
                     )}
-                    <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
-                      <span className="text-sm font-semibold">
+                    <Avatar className="w-10 h-10 bg-primary">
+                      <AvatarFallback className="bg-primary text-white font-medium text-sm">
                         {getInitials(selectedClient.name)}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <CardTitle className="text-lg truncate">{selectedClient.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground truncate">{selectedClient.email}</p>
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-semibold text-foreground truncate">{selectedClient.name}</h3>
+                      <p className="text-sm text-primary flex items-center gap-1">
+                        <span className="w-2 h-2 bg-primary rounded-full"></span>
+                        Online
+                      </p>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent className="p-4 flex-1 flex flex-col min-h-0">
-                    <div className="space-y-4 flex-1 overflow-y-auto mb-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`/client/dashboard`, '_blank')}
+                    className="flex-shrink-0 hidden sm:flex"
+                    data-testid="button-switch-client-view"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Switch to Client View
+                  </Button>
+                </div>
+                <div className="p-4 flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <div className="space-y-6 flex-1 overflow-y-auto mb-4 pr-2">
                       {clientMessages.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">
                           No messages yet. Start the conversation!
@@ -379,21 +400,20 @@ export default function Communication() {
                         clientMessages.map((msg, index) => (
                           <div
                             key={msg.id}
-                            className={`flex ${
-                              msg.sender === "coach" ? "justify-end" : "justify-start"
+                            className={`flex flex-col ${
+                              msg.sender === "coach" ? "items-end" : "items-start"
                             }`}
                             data-testid={`message-${index}`}
                           >
                             <div
-                              className={`max-w-[70%] rounded-lg p-3 ${
+                              className={`max-w-[75%] px-4 py-2.5 shadow-sm ${
                                 msg.sender === "coach"
-                                  ? "bg-primary text-white"
-                                  : "bg-muted text-foreground"
+                                  ? "bg-primary text-white rounded-2xl rounded-tr-sm"
+                                  : "bg-muted text-foreground rounded-2xl rounded-tl-sm"
                               }`}
                             >
-                              <p className="text-sm">{msg.content}</p>
+                              <p className="text-sm leading-relaxed">{msg.content}</p>
                               
-                              {/* Display attachments */}
                               {msg.attachments && msg.attachments.length > 0 && (
                                 <div className="mt-2 space-y-2">
                                   {msg.attachments.map((attachment) => {
@@ -454,20 +474,15 @@ export default function Communication() {
                                   })}
                                 </div>
                               )}
-                              
-                              <p
-                                className={`text-xs mt-1 ${
-                                  msg.sender === "coach" ? "text-white/70" : "text-muted-foreground"
-                                }`}
-                              >
-                                {formatTime(msg.timestamp)}
-                              </p>
                             </div>
+                            <p className="text-xs text-muted-foreground mt-1 px-1">
+                              {formatTime(msg.timestamp)}
+                            </p>
                           </div>
                         ))
                       )}
                     </div>
-                </CardContent>
+                </div>
                 <DragDropFileZone
                   onAttachmentsAdded={handleAttachmentsAdded}
                   clientId={selectedClientId || ""}
@@ -512,61 +527,59 @@ export default function Communication() {
                       </div>
                     )}
                     
-                    <div className="flex gap-2">
-                      <Textarea
-                        placeholder="Type your message..."
+                    <div className="flex items-center gap-2 bg-muted/50 rounded-full px-3 py-2">
+                      <InlineFileAttachment
+                        onAttachmentsAdded={handleAttachmentsAdded}
+                        clientId={selectedClientId || ""}
+                        currentAttachmentCount={pendingAttachments.length}
+                        disabled={!selectedClientId || sendMessageMutation.isPending}
+                        maxFiles={5}
+                        maxFileSize={25 * 1024 * 1024}
+                      />
+                      <Input
+                        placeholder="Write a message..."
                         value={messageText}
-                        onChange={(e) => {
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                           setMessageText(e.target.value);
                           if (validationError) setValidationError("");
                         }}
-                        onKeyDown={(e) => {
+                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                           if (e.key === "Enter" && !e.shiftKey) {
                             e.preventDefault();
                             handleSendMessage();
                           }
                         }}
-                        className="min-h-12 max-h-32 resize-none"
+                        className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-2"
                         data-testid="input-message"
                       />
-                      <div className="flex flex-col gap-2">
-                        <InlineFileAttachment
-                          onAttachmentsAdded={handleAttachmentsAdded}
-                          clientId={selectedClientId || ""}
-                          currentAttachmentCount={pendingAttachments.length}
-                          disabled={!selectedClientId || sendMessageMutation.isPending}
-                          maxFiles={5}
-                          maxFileSize={25 * 1024 * 1024}
-                        />
-                        <Button
-                          onClick={handleSendMessage}
-                          disabled={sendMessageMutation.isPending}
-                          size="icon"
-                          className="flex-shrink-0"
-                          data-testid="button-send-message"
-                        >
-                          {sendMessageMutation.isPending ? (
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <Send className="w-4 h-4" />
-                          )}
-                        </Button>
-                      </div>
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={sendMessageMutation.isPending}
+                        size="icon"
+                        className="flex-shrink-0 rounded-full bg-primary hover:bg-primary/90"
+                        data-testid="button-send-message"
+                      >
+                        {sendMessageMutation.isPending ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                      </Button>
                     </div>
                   </div>
                 </DragDropFileZone>
               </>
             ) : (
-              <CardContent className="flex-1 flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
                   <p className="text-lg font-medium text-foreground">Select a client</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     Choose a client from the list to start messaging
                   </p>
                 </div>
-              </CardContent>
+              </div>
             )}
-          </Card>
+          </div>
           )}
         </div>
       </div>
