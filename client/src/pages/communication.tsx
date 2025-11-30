@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip, ExternalLink } from "lucide-react";
+import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -379,16 +379,6 @@ export default function Communication() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(`/client/dashboard`, '_blank')}
-                    className="flex-shrink-0 hidden sm:flex"
-                    data-testid="button-switch-client-view"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Switch to Client View
-                  </Button>
                 </div>
                 <div className="p-4 flex-1 flex flex-col min-h-0 overflow-hidden">
                     <div className="space-y-6 flex-1 overflow-y-auto mb-4 pr-2">
