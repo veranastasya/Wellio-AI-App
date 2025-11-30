@@ -145,18 +145,8 @@ export default function Clients() {
       .slice(0, 2);
   };
 
-  const getAvatarColor = (index: number) => {
-    const colors = [
-      "bg-primary text-white",
-      "bg-amber-500 text-white",
-      "bg-rose-500 text-white",
-      "bg-violet-500 text-white",
-      "bg-emerald-500 text-white",
-      "bg-cyan-500 text-white",
-      "bg-orange-500 text-white",
-      "bg-indigo-500 text-white",
-    ];
-    return colors[index % colors.length];
+  const getAvatarColor = () => {
+    return "bg-[#2A9FAC] text-white";
   };
 
   const copyInviteLink = async () => {
@@ -377,7 +367,7 @@ export default function Clients() {
                 {/* Header: Avatar, Name, Status, Menu */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className={`w-11 h-11 rounded-full ${getAvatarColor(index)} flex items-center justify-center flex-shrink-0`}>
+                    <div className={`w-11 h-11 rounded-full ${getAvatarColor()} flex items-center justify-center flex-shrink-0`}>
                       <span className="text-base font-semibold">{getInitials(client.name)}</span>
                     </div>
                     <div className="min-w-0">

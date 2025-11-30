@@ -283,15 +283,7 @@ export default function Communication() {
                 {filteredClients.map((client, index) => {
                   const lastMsg = getLastMessage(client.id);
                   const unreadCount = getUnreadCount(client.id);
-                  const avatarColors = [
-                    "bg-primary",
-                    "bg-amber-500",
-                    "bg-rose-500",
-                    "bg-violet-500",
-                    "bg-emerald-500",
-                    "bg-cyan-500",
-                  ];
-                  const avatarColor = avatarColors[index % avatarColors.length];
+                  const avatarColor = "bg-[#2A9FAC]";
                   
                   return (
                     <button
@@ -366,8 +358,8 @@ export default function Communication() {
                         <ArrowLeft className="w-5 h-5" />
                       </Button>
                     )}
-                    <Avatar className="w-10 h-10 bg-primary">
-                      <AvatarFallback className="bg-primary text-white font-medium text-sm">
+                    <Avatar className="w-10 h-10 bg-[#2A9FAC]">
+                      <AvatarFallback className="bg-[#2A9FAC] text-white font-medium text-sm">
                         {getInitials(selectedClient.name)}
                       </AvatarFallback>
                     </Avatar>
