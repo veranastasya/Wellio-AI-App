@@ -313,8 +313,36 @@ export const clientPlans = pgTable("client_plans", {
   pdfUrl: text("pdf_url"),
   status: text("status").notNull().default("draft"),
   shared: boolean("shared").notNull().default(false),
+  sessionId: varchar("session_id"), // Links to plan session for chat history
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+});
+
+// Plan Sessions - tracks each AI plan building session
+export const PLAN_SESSION_STATUSES = ["in_progress", "completed", "assigned"] as const;
+export type PlanSessionStatus = typeof PLAN_SESSION_STATUSES[number];
+
+export const planSessions = pgTable("plan_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  coachId: varchar("coach_id").notNull().default("default-coach"),
+  status: text("status").notNull().default("in_progress"), // in_progress, completed, assigned
+  canvasContent: text("canvas_content"), // The plan document content
+  planName: text("plan_name"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+// Plan Messages - persists AI chat history for each session
+export const PLAN_MESSAGE_ROLES = ["system", "user", "assistant"] as const;
+export type PlanMessageRole = typeof PLAN_MESSAGE_ROLES[number];
+
+export const planMessages = pgTable("plan_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(),
+  role: text("role").notNull(), // system, user, assistant
+  content: text("content").notNull(),
+  createdAt: text("created_at").notNull(),
 });
 
 export const goals = pgTable("goals", {
@@ -657,6 +685,19 @@ export const insertClientPlanSchema = createInsertSchema(clientPlans).omit({
   updatedAt: z.string().optional(),
 });
 
+export const insertPlanSessionSchema = createInsertSchema(planSessions).omit({
+  id: true,
+}).extend({
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export const insertPlanMessageSchema = createInsertSchema(planMessages).omit({
+  id: true,
+}).extend({
+  createdAt: z.string().optional(),
+});
+
 export const insertGoalSchema = createInsertSchema(goals).omit({
   id: true,
 }).extend({
@@ -672,6 +713,12 @@ export type ClientInvite = typeof clientInvites.$inferSelect;
 
 export type InsertClientPlan = z.infer<typeof insertClientPlanSchema>;
 export type ClientPlan = typeof clientPlans.$inferSelect;
+
+export type InsertPlanSession = z.infer<typeof insertPlanSessionSchema>;
+export type PlanSession = typeof planSessions.$inferSelect;
+
+export type InsertPlanMessage = z.infer<typeof insertPlanMessageSchema>;
+export type PlanMessage = typeof planMessages.$inferSelect;
 
 export type InsertGoal = z.infer<typeof insertGoalSchema>;
 export type Goal = typeof goals.$inferSelect;
