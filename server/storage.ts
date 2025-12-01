@@ -1066,15 +1066,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActivePlanSession(clientId: string): Promise<PlanSession | undefined> {
+    // Get most recent non-assigned session (IN_PROGRESS status)
     const [session] = await db.select()
       .from(planSessions)
       .where(and(
         eq(planSessions.clientId, clientId),
-        eq(planSessions.status, 'in_progress')
+        eq(planSessions.status, 'IN_PROGRESS')
       ))
       .orderBy(desc(planSessions.createdAt))
       .limit(1);
-    return session || undefined;
+    
+    if (session) return session;
+    
+    // If no in-progress session, check for any session (may be ASSIGNED)
+    const [anySession] = await db.select()
+      .from(planSessions)
+      .where(eq(planSessions.clientId, clientId))
+      .orderBy(desc(planSessions.createdAt))
+      .limit(1);
+    return anySession || undefined;
   }
 
   async createPlanSession(insertSession: InsertPlanSession): Promise<PlanSession> {

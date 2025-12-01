@@ -324,6 +324,7 @@ export default function PlanBuilder() {
     onSuccess: () => {
       setPlanStatus("ASSIGNED");
       queryClient.invalidateQueries({ queryKey: ["/api/plan-sessions/client", clientId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-sessions"] }); // Invalidate all-sessions for Client Management
       queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "plan-status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/client-plans"] });
       toast({
