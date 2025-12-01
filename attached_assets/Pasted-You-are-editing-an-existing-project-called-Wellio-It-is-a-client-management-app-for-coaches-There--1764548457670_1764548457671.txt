@@ -1,0 +1,108 @@
+You are editing an existing project called Wellio. It is a client management app for coaches. There is already:
+
+- A Client Management dashboard that lists clients.
+- A Client Card page for each client, which includes a "Plan" section/tab.
+- A "Create AI Plan" button on the Client Management dashboard that now correctly routes to the Client Card -> Plan section for that client.
+
+Current problems that must be fixed:
+
+1) AI chat history for a client's plan is not saved. If the coach navigates away or refreshes, all context is lost.
+2) Plan status is not stored or synced to the Client Management dashboard. The dashboard always shows "Create AI Plan" even when a plan exists.
+3) Once a plan is created and assigned to the client, there is no way for the coach to review or edit that plan because the app does not retain the plan and AI history.
+
+We want to implement a simple plan lifecycle with three states:
+- "NOT_STARTED" - no plan exists for this client.
+- "IN_PROGRESS" - a plan has been started by the coach but not yet assigned to the client.
+- "ASSIGNED" - the plan has been finalized and assigned to the client and should be visible on the client side.
+
+Feature goals:
+
+- Persist the AI plan and chat history per client.
+- Track plan status per client and expose it in the UI.
+- Change the dashboard button label based on the plan status.
+- Always open the right plan when the coach clicks from the dashboard.
+
+Implementation requirements:
+
+1) Data model
+
+Create or extend a Plan model for each client. You can assume there is already a clientId. The Plan model should include at least:
+
+- id
+- clientId
+- coachId (if applicable in the project)
+- status: "NOT_STARTED" | "IN_PROGRESS" | "ASSIGNED"
+- planContent: structured plan data (JSON or text)
+- aiChatHistory: array of messages or JSON blob
+- createdAt
+- updatedAt
+- assignedAt (nullable, only set when status becomes "ASSIGNED")
+
+If there is already a Plan model, extend it rather than creating a duplicate.
+
+2) Backend logic
+
+- Create functions or API endpoints to:
+  - Get the current plan for a given client (by clientId).
+  - Create a new plan for a client with status "IN_PROGRESS".
+  - Update an existing plan (status, planContent, aiChatHistory).
+  - Mark a plan as "ASSIGNED" and set assignedAt.
+
+- When the Plan tab for a client loads:
+  - Check if a plan already exists for that client.
+  - If no plan exists, create a new plan with status "IN_PROGRESS" and return it.
+  - If a plan exists, return the existing plan and its AI chat history.
+
+3) Frontend - Plan tab
+
+- In the Client Card -> Plan tab:
+  - On mount, call the backend to fetch or create the client's plan as described above.
+  - Bind the AI chat component to the plan.aiChatHistory.
+    - Every time the AI responds or the coach sends a message, update aiChatHistory in the backend so the conversation is persisted.
+  - Bind the structured plan view (if you have one) to plan.planContent and keep it in sync with edits.
+  - Provide an explicit "Assign plan to client" action (button).
+    - When clicked:
+      - Update the plan status to "ASSIGNED".
+      - Save any final planContent and aiChatHistory.
+      - This status change must be reflected on the Client Management dashboard.
+
+4) Frontend - Client Management dashboard
+
+- For each client row, fetch the associated plan summary (status at minimum).
+- Based on the plan status, render:
+  - If no plan exists or status is "NOT_STARTED": show a primary button with label "Create AI Plan".
+  - If status is "IN_PROGRESS": show a primary button with label "Continue Plan".
+  - If status is "ASSIGNED": show a primary button with label "Review Plan".
+
+- On button click for any state:
+  - Navigate to the existing route that opens the Client Card -> Plan tab for that client.
+  - Do not create duplicate plans. The Plan tab should handle fetching or creating the correct single plan as described above.
+
+5) Client side (optional for this task, but wire if possible)
+
+- If there is already a client facing view:
+  - When plan.status is "ASSIGNED", make sure the client can see the latest planContent.
+  - It is enough to display read-only data for now.
+
+Acceptance criteria:
+
+- When I click "Create AI Plan" for a client that has no plan:
+  - I am taken to the Plan tab.
+  - A new plan is created with status "IN_PROGRESS".
+  - My AI chat and plan edits are saved and persist on refresh.
+
+- When I return to the same client:
+  - The dashboard button now shows "Continue Plan".
+  - Clicking it opens the Plan tab with the previous AI chat history and plan content restored.
+
+- When I click "Assign plan to client" in the Plan tab:
+  - The plan status updates to "ASSIGNED".
+  - The dashboard button now shows "Review Plan".
+  - Clicking it opens the same plan and AI chat history. There is no data loss.
+
+- No duplicate plans per client are created when I move between the dashboard and the Plan tab.
+
+Please:
+- Inspect the existing code, reuse existing patterns and components.
+- Add or update types, interfaces and enums where appropriate.
+- Keep the code clean and well structured, with clear separation between data fetching logic and presentation.
