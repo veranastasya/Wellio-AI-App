@@ -28,6 +28,7 @@ import ClientProgress from "@/pages/client-progress";
 import ClientAITracker from "@/pages/client-ai-tracker";
 import CoachLogin from "@/pages/coach-login";
 import CoachClientDetail from "@/pages/coach-client-detail";
+import PlanBuilder from "@/pages/plan-builder";
 import NotFound from "@/pages/not-found";
 
 export default function App() {
@@ -100,6 +101,11 @@ export default function App() {
           <Route path="/coach/clients/:clientId">
             <CoachProtectedLayout>
               <CoachClientDetail />
+            </CoachProtectedLayout>
+          </Route>
+          <Route path="/coach/plan-builder/:clientId">
+            <CoachProtectedLayout>
+              <PlanBuilder />
             </CoachProtectedLayout>
           </Route>
           <Route path="/questionnaires">
