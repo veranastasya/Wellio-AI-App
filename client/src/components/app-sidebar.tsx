@@ -64,12 +64,14 @@ const navigationItems = [
     url: "/ai-insights",
     icon: Brain,
     locked: false,
+    hidden: true,
   },
   {
     title: "Client Data Logs",
     url: "/client-logs",
     icon: FileText,
     locked: false,
+    hidden: true,
   },
   {
     title: "Predictive Analytics",
@@ -112,7 +114,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
+              {navigationItems.filter(item => !item.hidden).map((item) => (
                 <SidebarMenuItem key={item.title}>
                   {item.locked ? (
                     <Tooltip>
