@@ -319,18 +319,20 @@ export const clientPlans = pgTable("client_plans", {
 });
 
 // Plan Sessions - tracks each AI plan building session
-export const PLAN_SESSION_STATUSES = ["in_progress", "completed", "assigned"] as const;
+// Plan lifecycle: NOT_STARTED -> IN_PROGRESS -> ASSIGNED
+export const PLAN_SESSION_STATUSES = ["NOT_STARTED", "IN_PROGRESS", "ASSIGNED"] as const;
 export type PlanSessionStatus = typeof PLAN_SESSION_STATUSES[number];
 
 export const planSessions = pgTable("plan_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").notNull(),
   coachId: varchar("coach_id").notNull().default("default-coach"),
-  status: text("status").notNull().default("in_progress"), // in_progress, completed, assigned
+  status: text("status").notNull().default("IN_PROGRESS"), // NOT_STARTED, IN_PROGRESS, ASSIGNED
   canvasContent: text("canvas_content"), // The plan document content
   planName: text("plan_name"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+  assignedAt: text("assigned_at"), // Set when status becomes ASSIGNED
 });
 
 // Plan Messages - persists AI chat history for each session
