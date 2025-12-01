@@ -1961,6 +1961,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Plan Sessions routes (AI Plan Builder chat history)
   
+  // Get all plan sessions (for client cards dynamic button labels)
+  app.get("/api/plan-sessions", requireCoachAuth, async (req, res) => {
+    try {
+      const sessions = await storage.getPlanSessions();
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching all plan sessions:", error);
+      res.status(500).json({ error: "Failed to fetch plan sessions" });
+    }
+  });
+
   // Get or create active session for a client
   app.get("/api/plan-sessions/client/:clientId", requireCoachAuth, async (req, res) => {
     try {

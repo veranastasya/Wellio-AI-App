@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Plus, Search, Mail, Phone, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, Users as UsersIcon } from "lucide-react";
-import type { Questionnaire, GoalType } from "@shared/schema";
-import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel } from "@shared/schema";
+import { Plus, Search, Mail, Phone, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, Users as UsersIcon, FileEdit, Eye } from "lucide-react";
+import type { Questionnaire, GoalType, PlanSession } from "@shared/schema";
+import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel, PLAN_SESSION_STATUSES } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,46 @@ export default function Clients() {
   const { data: questionnaires = [] } = useQuery<Questionnaire[]>({
     queryKey: ["/api/questionnaires"],
   });
+
+  // Fetch plan sessions for all clients to show dynamic button labels
+  const { data: planSessions = [] } = useQuery<PlanSession[]>({
+    queryKey: ["/api/plan-sessions"],
+  });
+
+  // Helper to get plan status for a client
+  const getClientPlanStatus = (clientId: string): "NOT_STARTED" | "IN_PROGRESS" | "ASSIGNED" => {
+    const session = planSessions.find(s => s.clientId === clientId);
+    if (!session) return "NOT_STARTED";
+    return session.status as "NOT_STARTED" | "IN_PROGRESS" | "ASSIGNED";
+  };
+
+  // Get button config based on plan status
+  const getPlanButtonConfig = (clientId: string) => {
+    const status = getClientPlanStatus(clientId);
+    switch (status) {
+      case "IN_PROGRESS":
+        return {
+          label: "Continue Plan",
+          icon: FileEdit,
+          variant: "outline" as const,
+          className: "w-full border-amber-500 text-amber-600 hover:bg-amber-500/10",
+        };
+      case "ASSIGNED":
+        return {
+          label: "Review Plan",
+          icon: Eye,
+          variant: "outline" as const,
+          className: "w-full border-green-500 text-green-600 hover:bg-green-500/10",
+        };
+      default:
+        return {
+          label: "Create AI Plan",
+          icon: Sparkles,
+          variant: "outline" as const,
+          className: "w-full border-primary text-primary hover:bg-primary/10",
+        };
+    }
+  };
 
   const filteredClients = clients.filter((client) => {
     const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -497,17 +537,23 @@ export default function Clients() {
                   </div>
                 </div>
 
-                {/* Create AI Plan Button */}
+                {/* AI Plan Button - Dynamic based on plan status */}
                 <div onClick={(e) => e.stopPropagation()}>
                   <Link href={`/coach/plan-builder/${client.id}`}>
-                    <Button
-                      variant="outline"
-                      className="w-full border-primary text-primary hover:bg-primary/10"
-                      data-testid={`button-create-plan-${index}`}
-                    >
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Create AI Plan
-                    </Button>
+                    {(() => {
+                      const config = getPlanButtonConfig(client.id);
+                      const IconComponent = config.icon;
+                      return (
+                        <Button
+                          variant={config.variant}
+                          className={config.className}
+                          data-testid={`button-plan-${index}`}
+                        >
+                          <IconComponent className="w-4 h-4 mr-2" />
+                          {config.label}
+                        </Button>
+                      );
+                    })()}
                   </Link>
                 </div>
               </CardContent>
