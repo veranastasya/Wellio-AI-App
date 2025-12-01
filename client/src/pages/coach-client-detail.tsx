@@ -577,7 +577,7 @@ export default function CoachClientDetail() {
           {/* Plan Tab */}
           <TabsContent value="plan" className="space-y-6">
             <div className="min-h-[600px]">
-              {planBuilderState.isLoadingContext ? (
+              {planBuilderState.isLoadingContext || planBuilderState.isLoadingSession ? (
                 <div className="flex items-center justify-center h-96">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" data-testid="loader-plan-context" />
                 </div>
@@ -587,6 +587,7 @@ export default function CoachClientDetail() {
                   input={planBuilderState.input}
                   planName={planBuilderState.planName}
                   planContent={planBuilderState.planContent}
+                  planStatus={planBuilderState.planStatus}
                   isSaving={planBuilderState.isSaving}
                   isAssigning={planBuilderState.isAssigning}
                   isCanvasExpanded={planBuilderState.isCanvasExpanded}

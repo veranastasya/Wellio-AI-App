@@ -2,18 +2,37 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { PlanSession, PlanMessage } from "@shared/schema";
+import { getGoalTypeLabel } from "@shared/schema";
 
 interface Message {
+  id?: string;
   role: "user" | "assistant";
   content: string;
 }
 
 interface ClientContext {
-  client: any;
-  goals: any[];
-  recent_nutrition: any[];
-  recent_workouts: any[];
-  questionnaire_data: any[];
+  client: {
+    name: string;
+    email?: string;
+    goal: string | null;
+    goalDescription: string | null;
+    current_weight: number | null;
+    notes: string | null;
+    sex?: string | null;
+    age?: number | null;
+    weight?: number | null;
+    height?: number | null;
+    activityLevel?: string | null;
+    bodyFatPercentage?: number | null;
+    targetWeight?: number | null;
+    targetBodyFat?: number | null;
+    goalWeight?: number | null;
+  };
+  goals?: any[];
+  recent_nutrition?: any[];
+  recent_workouts?: any[];
+  questionnaire_data?: any[];
 }
 
 interface PlanBuilderState {
@@ -21,6 +40,7 @@ interface PlanBuilderState {
   input: string;
   planName: string;
   planContent: string;
+  planStatus: string;
   isSaving: boolean;
   isAssigning: boolean;
   hasInitialized: boolean;
@@ -29,6 +49,8 @@ interface PlanBuilderState {
   canvasTextareaRef: React.RefObject<HTMLTextAreaElement>;
   clientContext: ClientContext | undefined;
   isLoadingContext: boolean;
+  isLoadingSession: boolean;
+  sessionId: string | null;
   chatMutation: any;
   savePlanMutation: any;
   generatePDFMutation: any;
@@ -53,10 +75,12 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
   const [input, setInput] = useState("");
   const [planName, setPlanName] = useState("");
   const [planContent, setPlanContent] = useState("");
+  const [planStatus, setPlanStatus] = useState<string>("IN_PROGRESS");
   const [isSaving, setIsSaving] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const canvasTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -69,29 +93,151 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
     enabled: !!clientId,
   });
 
+  // Fetch or create plan session for this client
+  const { data: planSession, isLoading: isLoadingSession } = useQuery<PlanSession | null>({
+    queryKey: ["/api/plan-sessions/client", clientId, "active"],
+    queryFn: async () => {
+      // First try to get active session
+      const activeResponse = await apiRequest("GET", `/api/plan-sessions/client/${clientId}/active`);
+      const activeSession = await activeResponse.json();
+      
+      if (activeSession) {
+        return activeSession;
+      }
+      
+      // No active session - create one
+      const createResponse = await apiRequest("POST", "/api/plan-sessions", {
+        clientId,
+        coachId: "default-coach",
+        status: "IN_PROGRESS",
+      });
+      return createResponse.json();
+    },
+    enabled: !!clientId,
+    staleTime: 0, // Always refetch
+    refetchOnMount: true,
+  });
+
+  // Use planSession.id directly instead of waiting for useEffect
+  const activeSessionId = planSession?.id || null;
+
+  // Load messages for the session
+  const { data: sessionMessages, isLoading: isLoadingMessages } = useQuery<PlanMessage[]>({
+    queryKey: ["/api/plan-sessions", activeSessionId, "messages"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/plan-sessions/${activeSessionId}/messages`);
+      return response.json();
+    },
+    enabled: !!activeSessionId,
+    staleTime: 0, // Always refetch
+    refetchOnMount: true,
+  });
+
+  // Update local state when session is loaded
+  useEffect(() => {
+    if (planSession) {
+      setSessionId(planSession.id);
+      setPlanStatus(planSession.status);
+      if (planSession.canvasContent) {
+        setPlanContent(planSession.canvasContent);
+      }
+      if (planSession.planName) {
+        setPlanName(planSession.planName);
+      }
+    }
+  }, [planSession]);
+
+  // Use activeSessionId for all operations
+  const effectiveSessionId = activeSessionId;
+
+  // Load messages from database when sessionMessages changes
+  useEffect(() => {
+    if (sessionMessages && sessionMessages.length > 0) {
+      const loadedMessages: Message[] = sessionMessages.map(m => ({
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+      setMessages(loadedMessages);
+      setHasInitialized(true); // Don't auto-generate if we have history
+    }
+  }, [sessionMessages]);
+
+  // Mutation to update session (canvas content, status, etc.)
+  const updateSessionMutation = useMutation({
+    mutationFn: async (data: Partial<PlanSession>) => {
+      if (!effectiveSessionId) throw new Error("No session");
+      const response = await apiRequest("PATCH", `/api/plan-sessions/${effectiveSessionId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-sessions/client", clientId] });
+    },
+  });
+
+  // Auto-save canvas content when it changes (debounced)
+  useEffect(() => {
+    if (!effectiveSessionId || !planContent) return;
+    
+    const timer = setTimeout(() => {
+      updateSessionMutation.mutate({ canvasContent: planContent });
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [planContent, effectiveSessionId]);
+
+  // Save plan name when it changes
+  useEffect(() => {
+    if (!effectiveSessionId || !planName) return;
+    
+    const timer = setTimeout(() => {
+      updateSessionMutation.mutate({ planName });
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [planName, effectiveSessionId]);
+
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
       if (!clientContext || !clientContext.client) {
         throw new Error("Client context not loaded");
       }
 
+      if (!effectiveSessionId) {
+        throw new Error("Session not ready. Please wait...");
+      }
+
       const userMsg = { role: "user" as const, content: userMessage };
       const currentClientId = clientId;
+      const currentSessionId = effectiveSessionId;
       
+      // Optimistic update: Add user message immediately to UI
       setMessages(prev => [...prev, userMsg]);
       setInput("");
 
-      let newMessages: Message[] = [];
-      setMessages(prev => {
-        newMessages = [...prev];
-        return prev;
+      // Save user message to database
+      await apiRequest("POST", `/api/plan-sessions/${currentSessionId}/messages`, {
+        sessionId: currentSessionId,
+        role: "user",
+        content: userMessage,
       });
-      
+
+      const newMessages = [...messages, userMsg];
       const response = await apiRequest("POST", "/api/plans/chat", {
         messages: newMessages,
         clientContext,
       });
       const data = await response.json();
+      
+      // Save AI response to database
+      if (data.message) {
+        await apiRequest("POST", `/api/plan-sessions/${currentSessionId}/messages`, {
+          sessionId: currentSessionId,
+          role: data.message.role,
+          content: data.message.content,
+        });
+      }
+      
       return { userMsg, aiMessage: data.message, requestClientId: currentClientId };
     },
     onMutate: (userMessage) => {
@@ -144,6 +290,7 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
         coachId: "default-coach",
         planName: planName.trim(),
         planContent: { content: planContent },
+        sessionId: effectiveSessionId,
         status: "draft",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -217,13 +364,24 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
 
   const assignPlanMutation = useMutation({
     mutationFn: async (planId: string) => {
+      // First update the plan session status to ASSIGNED
+      if (effectiveSessionId) {
+        await apiRequest("PATCH", `/api/plan-sessions/${effectiveSessionId}`, {
+          status: "ASSIGNED",
+          assignedAt: new Date().toISOString(),
+        });
+      }
+
       const response = await apiRequest("POST", `/api/client-plans/${planId}/assign`, {
         message: "Your coach has assigned you a new wellness plan. Review it and let them know if you have any questions!",
       });
       return response.json();
     },
     onSuccess: () => {
+      setPlanStatus("ASSIGNED");
       queryClient.invalidateQueries({ queryKey: ["/api/client-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-sessions/client", clientId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-sessions"] });
       toast({
         title: "Success",
         description: "Plan assigned to client successfully! Email notification sent.",
@@ -240,6 +398,13 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
 
   const handleSendMessage = () => {
     if (!input.trim() || chatMutation.isPending) return;
+    if (!effectiveSessionId) {
+      toast({
+        title: "Please wait",
+        description: "Session is loading...",
+      });
+      return;
+    }
     chatMutation.mutate(input);
   };
 
@@ -335,81 +500,124 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
   };
 
   const generateInitialPrompt = (context: ClientContext): string => {
-    const { client, goals, recent_nutrition, recent_workouts, questionnaire_data } = context;
+    const { client, goals, recent_nutrition, recent_workouts } = context;
     
-    let prompt = `I need your help creating a personalized wellness plan for my client:\n\n`;
-    prompt += `**Client:** ${client.name}\n`;
-    prompt += `**Primary Goal:** ${client.goal || 'Not specified'}\n`;
-    
-    if (client.weight) {
-      prompt += `**Current Weight:** ${client.weight} lbs\n`;
+    let prompt = `Create a comprehensive wellness plan for ${client.name}.
+
+**Client Profile:**`;
+
+    if (client.sex || client.age) {
+      prompt += `\n- Demographics: `;
+      const demo = [];
+      if (client.sex) demo.push(client.sex);
+      if (client.age) demo.push(`${client.age} years old`);
+      prompt += demo.join(', ');
     }
-    if (client.targetWeight) {
-      prompt += `**Target Weight:** ${client.targetWeight} lbs\n`;
-    }
+
+    const metrics = [];
+    if (client.weight) metrics.push(`Weight: ${client.weight} lbs`);
     if (client.height) {
-      prompt += `**Height:** ${client.height} inches\n`;
+      const feet = Math.floor(client.height / 12);
+      const inches = client.height % 12;
+      metrics.push(`Height: ${feet}'${inches}"`);
     }
-    if (client.activityLevel) {
-      prompt += `**Activity Level:** ${client.activityLevel}\n`;
+    if (client.bodyFatPercentage) metrics.push(`Body Fat: ${client.bodyFatPercentage}%`);
+    if (client.activityLevel) metrics.push(`Activity Level: ${client.activityLevel}`);
+    
+    if (metrics.length > 0) {
+      prompt += `\n- Physical Metrics: ${metrics.join(' | ')}`;
+    }
+
+    if (client.goal) {
+      prompt += `\n- Primary Goal: ${getGoalTypeLabel(client.goal)}`;
+      if (client.goalDescription) {
+        prompt += ` - ${client.goalDescription}`;
+      }
+      
+      if (client.goal === 'lose_weight' && client.targetWeight) {
+        prompt += `\n  - Target Weight: ${client.targetWeight} lbs`;
+      }
+      if (client.goal === 'improve_body_composition' && client.targetBodyFat) {
+        prompt += `\n  - Target Body Fat: ${client.targetBodyFat}%`;
+      }
+      if (client.goal === 'maintain_weight' && client.goalWeight) {
+        prompt += `\n  - Goal Weight: ${client.goalWeight} lbs`;
+      }
     }
 
     if (goals && goals.length > 0) {
-      prompt += `\n**Active Goals:**\n`;
-      goals.forEach(g => {
-        prompt += `• ${g.description} - ${g.type} (${g.status})\n`;
-      });
-    }
-
-    if (questionnaire_data && questionnaire_data.length > 0) {
-      prompt += `\n**Key Intake Information:**\n`;
-      questionnaire_data.forEach(q => {
-        const answers = q.response?.answers || [];
-        const relevantAnswers = answers.slice(0, 3);
-        relevantAnswers.forEach((a: any) => {
-          if (a.answer) {
-            prompt += `• ${a.question}: ${typeof a.answer === 'object' ? JSON.stringify(a.answer) : a.answer}\n`;
+      const activeGoals = goals.filter((g: any) => g.status === 'active');
+      if (activeGoals.length > 0) {
+        prompt += `\n\n**Active Goals:**`;
+        activeGoals.forEach((g: any) => {
+          prompt += `\n- ${getGoalTypeLabel(g.goalType)}: `;
+          if (g.currentValue && g.targetValue) {
+            prompt += `Current ${g.currentValue} → Target ${g.targetValue}`;
+          } else if (g.targetValue) {
+            prompt += `Target ${g.targetValue}`;
+          }
+          if (g.deadline) {
+            prompt += ` (by ${new Date(g.deadline).toLocaleDateString()})`;
           }
         });
-      });
+      }
     }
 
     if (recent_nutrition && recent_nutrition.length > 0) {
-      prompt += `\n**Recent Nutrition (last 7 days):**\n`;
-      const avgCalories = recent_nutrition.reduce((sum, n) => sum + (n.calories || 0), 0) / recent_nutrition.length;
-      const avgProtein = recent_nutrition.reduce((sum, n) => sum + (n.protein || 0), 0) / recent_nutrition.length;
-      prompt += `Average daily: ${Math.round(avgCalories)} calories, ${Math.round(avgProtein)}g protein\n`;
+      prompt += `\n\n**Recent Nutrition (avg):**`;
+      const avgCalories = recent_nutrition.reduce((sum: number, n: any) => sum + (n.calories || 0), 0) / recent_nutrition.length;
+      const avgProtein = recent_nutrition.reduce((sum: number, n: any) => sum + (n.protein || 0), 0) / recent_nutrition.length;
+      prompt += `\n${Math.round(avgCalories)} cal/day, ${Math.round(avgProtein)}g protein`;
     }
 
     if (recent_workouts && recent_workouts.length > 0) {
-      prompt += `\n**Recent Workouts:**\n`;
-      recent_workouts.slice(0, 5).forEach(w => {
-        prompt += `• ${w.type}: ${w.duration} min${w.notes ? ` - ${w.notes}` : ''}\n`;
+      prompt += `\n\n**Recent Workouts:**`;
+      recent_workouts.slice(0, 3).forEach((w: any) => {
+        prompt += `\n- ${w.type || 'Workout'}: ${w.duration || 30} min`;
       });
     }
 
-    if (client.notes) {
-      prompt += `\n\n**Coach Notes:**\n${client.notes}`;
-    }
+    prompt += `\n\n---
 
-    prompt += `\n\n---\n\nBased on this comprehensive profile, please create a personalized wellness plan that addresses their goals, current fitness level, and activity patterns. Include specific recommendations for nutrition, exercise, and lifestyle adjustments.`;
+Please create a personalized wellness plan with:
+1. Short Summary
+2. Key Goals (specific, measurable)
+3. Weekly Structure
+4. Movement & Activity Habits
+5. Nutrition Habits
+6. Sleep & Recovery
+7. Stress Management
+8. Weekly Checkpoints`;
 
     return prompt;
   };
 
+  // Auto-generate and send initial prompt when context loads (only if no existing messages)
   useEffect(() => {
-    if (clientContext && clientContext.client && !hasInitialized && messages.length === 0 && !chatMutation.isPending) {
+    if (
+      clientContext && 
+      clientContext.client && 
+      !hasInitialized && 
+      messages.length === 0 && 
+      !chatMutation.isPending &&
+      effectiveSessionId && 
+      !isLoadingMessages &&
+      (!sessionMessages || sessionMessages.length === 0)
+    ) {
       const initialPrompt = generateInitialPrompt(clientContext);
       setHasInitialized(true);
       chatMutation.mutate(initialPrompt);
     }
-  }, [clientContext, hasInitialized, messages.length]);
+  }, [clientContext, hasInitialized, messages.length, chatMutation.isPending, effectiveSessionId, isLoadingMessages, sessionMessages]);
 
+  // Reset initialization when client changes
   useEffect(() => {
     setHasInitialized(false);
     setMessages([]);
     setPlanName("");
     setPlanContent("");
+    setSessionId(null);
+    setPlanStatus("IN_PROGRESS");
   }, [clientId]);
 
   useEffect(() => {
@@ -421,6 +629,7 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
     input,
     planName,
     planContent,
+    planStatus,
     isSaving,
     isAssigning,
     hasInitialized,
@@ -429,6 +638,8 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
     canvasTextareaRef,
     clientContext,
     isLoadingContext,
+    isLoadingSession,
+    sessionId,
     chatMutation,
     savePlanMutation,
     generatePDFMutation,

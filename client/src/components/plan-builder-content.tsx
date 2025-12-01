@@ -1,10 +1,11 @@
-import { Activity, FileText, Send, Loader2, Download, Minimize2, Maximize2, ArrowLeft, UserPlus } from "lucide-react";
+import { Activity, FileText, Send, Loader2, Download, Minimize2, Maximize2, ArrowLeft, UserPlus, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 interface Message {
   role: "user" | "assistant";
@@ -16,6 +17,7 @@ interface PlanBuilderContentProps {
   input: string;
   planName: string;
   planContent: string;
+  planStatus?: string;
   isSaving: boolean;
   isAssigning: boolean;
   isCanvasExpanded: boolean;
@@ -50,6 +52,7 @@ export function PlanBuilderContent({
   input,
   planName,
   planContent,
+  planStatus = "IN_PROGRESS",
   isSaving,
   isAssigning,
   isCanvasExpanded,
@@ -66,6 +69,7 @@ export function PlanBuilderContent({
   handleSavePlan,
   handleAssignToClient,
 }: PlanBuilderContentProps) {
+  const isAssigned = planStatus === "ASSIGNED";
   return (
     <div className="flex flex-col h-full gap-3 sm:gap-4">
       <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
@@ -208,17 +212,24 @@ export function PlanBuilderContent({
                   <Download className="w-4 h-4 mr-2" />
                   {isSaving ? "Generating..." : "Download PDF"}
                 </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleAssignToClient}
-                  disabled={isAssigning || !planContent.trim() || !planName.trim()}
-                  className="min-h-8"
-                  data-testid="button-assign-to-client"
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  {isAssigning ? "Assigning..." : "Assign to Client"}
-                </Button>
+                {isAssigned ? (
+                  <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-8 px-3">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Plan Assigned
+                  </Badge>
+                ) : (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleAssignToClient}
+                    disabled={isAssigning || !planContent.trim() || !planName.trim()}
+                    className="min-h-8"
+                    data-testid="button-assign-to-client"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    {isAssigning ? "Assigning..." : "Assign to Client"}
+                  </Button>
+                )}
               </div>
             </div>
           </CardHeader>
