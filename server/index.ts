@@ -7,6 +7,10 @@ import { storage } from "./storage";
 
 const app = express();
 
+// Trust proxy for production (Replit runs behind a reverse proxy)
+// This is required for secure cookies to work properly in production
+app.set('trust proxy', 1);
+
 // Validate SESSION_SECRET is set
 if (!process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET environment variable is required for secure session management");
