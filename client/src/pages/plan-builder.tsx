@@ -10,12 +10,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Download, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, ChevronRight, ChevronLeft, Maximize2, Minimize2 } from "lucide-react";
+import { Loader2, Send, Download, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, ChevronRight, ChevronLeft, Maximize2, Minimize2, CheckCircle, Share2 } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Client, Goal } from "@shared/schema";
-import { getGoalTypeLabel } from "@shared/schema";
+import type { Client, Goal, PlanSession, PlanMessage } from "@shared/schema";
+import { getGoalTypeLabel, PLAN_SESSION_STATUSES } from "@shared/schema";
 
 interface Message {
+  id?: string;
   role: "system" | "user" | "assistant";
   content: string;
 }
@@ -191,6 +192,8 @@ export default function PlanBuilder() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [planStatus, setPlanStatus] = useState<string>("IN_PROGRESS");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const canvasTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -207,6 +210,147 @@ export default function PlanBuilder() {
     enabled: !!clientId,
   });
 
+  // Fetch or create plan session for this client
+  const { data: planSession, isLoading: isLoadingSession, refetch: refetchSession } = useQuery<PlanSession | null>({
+    queryKey: ["/api/plan-sessions/client", clientId, "active"],
+    queryFn: async () => {
+      // First try to get active session
+      const activeResponse = await apiRequest("GET", `/api/plan-sessions/client/${clientId}/active`);
+      const activeSession = await activeResponse.json();
+      
+      if (activeSession) {
+        return activeSession;
+      }
+      
+      // No active session - create one
+      const createResponse = await apiRequest("POST", "/api/plan-sessions", {
+        clientId,
+        coachId: "default-coach",
+        status: "IN_PROGRESS",
+      });
+      return createResponse.json();
+    },
+    enabled: !!clientId,
+  });
+
+  // Load messages for the session
+  const { data: sessionMessages, isLoading: isLoadingMessages } = useQuery<PlanMessage[]>({
+    queryKey: ["/api/plan-sessions", sessionId, "messages"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/plan-sessions/${sessionId}/messages`);
+      return response.json();
+    },
+    enabled: !!sessionId,
+  });
+
+  // Update local state when session is loaded
+  useEffect(() => {
+    if (planSession) {
+      setSessionId(planSession.id);
+      setPlanStatus(planSession.status);
+      if (planSession.canvasContent) {
+        setPlanContent(planSession.canvasContent);
+      }
+      if (planSession.planName) {
+        setPlanName(planSession.planName);
+      }
+    }
+  }, [planSession]);
+
+  // Load messages from database when sessionMessages changes
+  useEffect(() => {
+    if (sessionMessages && sessionMessages.length > 0) {
+      const loadedMessages: Message[] = sessionMessages.map(m => ({
+        id: m.id,
+        role: m.role as "system" | "user" | "assistant",
+        content: m.content,
+      }));
+      setMessages(loadedMessages);
+      setHasInitialized(true); // Don't auto-generate if we have history
+    }
+  }, [sessionMessages]);
+
+  // Mutation to save a message to the database
+  const saveMessageMutation = useMutation({
+    mutationFn: async (message: { role: string; content: string }) => {
+      if (!sessionId) throw new Error("No session");
+      const response = await apiRequest("POST", `/api/plan-sessions/${sessionId}/messages`, {
+        sessionId,
+        role: message.role,
+        content: message.content,
+      });
+      return response.json();
+    },
+  });
+
+  // Mutation to update session (canvas content, status, etc.)
+  const updateSessionMutation = useMutation({
+    mutationFn: async (data: Partial<PlanSession>) => {
+      if (!sessionId) throw new Error("No session");
+      const response = await apiRequest("PATCH", `/api/plan-sessions/${sessionId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-sessions/client", clientId] });
+    },
+  });
+
+  // Mutation to assign plan to client
+  const assignPlanMutation = useMutation({
+    mutationFn: async () => {
+      if (!sessionId) throw new Error("No session");
+      
+      // First save current canvas content
+      await apiRequest("PATCH", `/api/plan-sessions/${sessionId}`, {
+        canvasContent: planContent,
+        planName: planName,
+        status: "ASSIGNED",
+        assignedAt: new Date().toISOString(),
+      });
+      
+      // Create the client plan record
+      const planResponse = await apiRequest("POST", "/api/client-plans", {
+        clientId,
+        coachId: "default-coach",
+        planName: planName || "Wellness Plan",
+        planContent: { content: planContent },
+        sessionId: sessionId,
+        status: "active",
+        shared: true,
+      });
+      
+      return planResponse.json();
+    },
+    onSuccess: () => {
+      setPlanStatus("ASSIGNED");
+      queryClient.invalidateQueries({ queryKey: ["/api/plan-sessions/client", clientId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "plan-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client-plans"] });
+      toast({
+        title: "Plan Assigned",
+        description: "The plan has been assigned to the client and is now visible in their portal.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to assign plan",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Auto-save canvas content when it changes (debounced)
+  useEffect(() => {
+    if (!sessionId || !planContent) return;
+    
+    const timer = setTimeout(() => {
+      updateSessionMutation.mutate({ canvasContent: planContent });
+    }, 2000); // Debounce 2 seconds
+    
+    return () => clearTimeout(timer);
+  }, [planContent, sessionId]);
+
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
       if (!clientContext || !clientContext.client) {
@@ -215,10 +359,20 @@ export default function PlanBuilder() {
 
       const userMsg = { role: "user" as const, content: userMessage };
       const currentClientId = clientId;
+      const currentSessionId = sessionId;
       
       // Optimistic update: Add user message immediately to UI
       setMessages(prev => [...prev, userMsg]);
       setInput("");
+
+      // Save user message to database
+      if (currentSessionId) {
+        await apiRequest("POST", `/api/plan-sessions/${currentSessionId}/messages`, {
+          sessionId: currentSessionId,
+          role: "user",
+          content: userMessage,
+        });
+      }
 
       const newMessages = [...messages, userMsg];
       const response = await apiRequest("POST", "/api/plans/chat", {
@@ -226,6 +380,16 @@ export default function PlanBuilder() {
         clientContext,
       });
       const data = await response.json();
+      
+      // Save AI response to database
+      if (currentSessionId && data.message) {
+        await apiRequest("POST", `/api/plan-sessions/${currentSessionId}/messages`, {
+          sessionId: currentSessionId,
+          role: data.message.role,
+          content: data.message.content,
+        });
+      }
+      
       return { userMsg, aiMessage: data.message, requestClientId: currentClientId };
     },
     onMutate: (userMessage) => {
@@ -418,14 +582,23 @@ export default function PlanBuilder() {
     }
   };
 
-  // Auto-generate and send initial prompt when context loads
+  // Auto-generate and send initial prompt when context loads (only if no existing messages)
   useEffect(() => {
-    if (clientContext && clientContext.client && !hasInitialized && messages.length === 0 && !chatMutation.isPending) {
+    if (
+      clientContext && 
+      clientContext.client && 
+      !hasInitialized && 
+      messages.length === 0 && 
+      !chatMutation.isPending &&
+      sessionId && 
+      !isLoadingMessages &&
+      (!sessionMessages || sessionMessages.length === 0)
+    ) {
       const initialPrompt = generateInitialPrompt(clientContext);
       setHasInitialized(true);
       chatMutation.mutate(initialPrompt);
     }
-  }, [clientContext, hasInitialized, messages.length, chatMutation.isPending]);
+  }, [clientContext, hasInitialized, messages.length, chatMutation.isPending, sessionId, isLoadingMessages, sessionMessages]);
 
   // Reset initialization when client changes
   useEffect(() => {
@@ -433,13 +606,15 @@ export default function PlanBuilder() {
     setMessages([]);
     setPlanName("");
     setPlanContent("");
+    setSessionId(null);
+    setPlanStatus("IN_PROGRESS");
   }, [clientId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  if (isLoadingContext || !clientContext) {
+  if (isLoadingContext || !clientContext || isLoadingSession) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-8 h-8 animate-spin text-primary" data-testid="loader-context" />
@@ -473,7 +648,17 @@ export default function PlanBuilder() {
             </Select>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+          {planStatus === "ASSIGNED" ? (
+            <Badge variant="default" className="bg-green-600 hover:bg-green-600">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Plan Assigned
+            </Badge>
+          ) : (
+            <Badge variant="secondary">
+              In Progress
+            </Badge>
+          )}
           <Input
             type="text"
             placeholder="Plan name (e.g., '12-Week Transformation Plan')"
@@ -482,6 +667,21 @@ export default function PlanBuilder() {
             className="text-sm min-h-10 w-full sm:w-64"
             data-testid="input-plan-name"
           />
+          {planStatus !== "ASSIGNED" && (
+            <Button
+              onClick={() => assignPlanMutation.mutate()}
+              disabled={assignPlanMutation.isPending || !planContent.trim() || !planName.trim()}
+              className="bg-primary hover:bg-primary/90 min-h-10"
+              data-testid="button-assign-plan"
+            >
+              {assignPlanMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Share2 className="w-4 h-4 mr-2" />
+              )}
+              Assign to Client
+            </Button>
+          )}
         </div>
       </div>
 
