@@ -255,14 +255,17 @@ export default function Communication() {
   }
 
   return (
-    <div className="bg-background h-full">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 h-full flex flex-col">
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-chat-title">Chat</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">Message your clients and manage conversations</p>
-        </div>
+    <div className="bg-background h-[100dvh] lg:h-full overflow-hidden">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 h-full flex flex-col overflow-hidden">
+        {/* Header - hide on mobile when viewing chat */}
+        {(!isMobile || !selectedClientId) && (
+          <div className="mb-4 sm:mb-6 flex-shrink-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-chat-title">Chat</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Message your clients and manage conversations</p>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 flex-1 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 flex-1 min-h-0 overflow-hidden">
           {(!isMobile || !selectedClientId) && (
           <div data-testid="card-client-list" className="lg:max-h-[calc(100vh-200px)] h-full flex flex-col bg-card rounded-lg border">
             <div className="p-4 border-b">
@@ -350,10 +353,10 @@ export default function Communication() {
           )}
 
           {(!isMobile || selectedClientId) && (
-          <div className="lg:col-span-2 h-full flex flex-col bg-card rounded-lg border" data-testid="card-messages">
+          <div className={`lg:col-span-2 flex flex-col bg-card rounded-lg border overflow-hidden ${isMobile ? 'h-full' : ''}`} data-testid="card-messages">
             {selectedClient ? (
               <>
-                <div className="p-4 border-b flex items-center justify-between gap-3">
+                <div className="p-3 sm:p-4 border-b flex items-center justify-between gap-3 flex-shrink-0">
                   <div className="flex items-center gap-3 min-w-0">
                     {isMobile && (
                       <Button
@@ -366,7 +369,7 @@ export default function Communication() {
                         <ArrowLeft className="w-5 h-5" />
                       </Button>
                     )}
-                    <Avatar className="w-10 h-10 bg-primary">
+                    <Avatar className="w-10 h-10 bg-primary flex-shrink-0">
                       <AvatarFallback className="bg-primary text-white font-medium text-sm">
                         {getInitials(selectedClient.name)}
                       </AvatarFallback>
@@ -376,8 +379,8 @@ export default function Communication() {
                     </div>
                   </div>
                 </div>
-                <div className="p-4 flex-1 flex flex-col min-h-0 overflow-hidden">
-                    <div className="space-y-6 flex-1 overflow-y-auto mb-4 pr-2">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                    <div className="space-y-6 flex-1 overflow-y-auto p-3 sm:p-4">
                       {clientMessages.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">
                           No messages yet. Start the conversation!
@@ -476,8 +479,9 @@ export default function Communication() {
                   disabled={!selectedClientId || sendMessageMutation.isPending}
                   maxFiles={5}
                   maxFileSize={25 * 1024 * 1024}
+                  className="flex-shrink-0"
                 >
-                  <div className="p-4 border-t space-y-3">
+                  <div className="p-3 sm:p-4 border-t space-y-3">
                     {validationError && (
                       <p className="text-sm text-destructive mb-2">{validationError}</p>
                     )}
