@@ -46,7 +46,9 @@ export function CoachAuthProvider({ children }: { children: ReactNode }) {
       return res.json();
     },
     onSuccess: async () => {
-      // Refetch session query and wait for it to complete
+      // Set the session data directly in the cache to ensure immediate availability
+      queryClient.setQueryData(["coach-session"], { authenticated: true });
+      // Also refetch to confirm with server
       await queryClient.refetchQueries({ queryKey: ["coach-session"] });
     },
   });
