@@ -52,6 +52,8 @@ import {
   insertProgressEventSchema,
   insertWeeklyReportSchema,
   insertPlanTargetsSchema,
+  insertPlanSessionSchema,
+  insertPlanMessageSchema,
   GOAL_TYPES,
   type GoalType,
 } from "@shared/schema";
@@ -1954,6 +1956,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(plan);
     } catch (error) {
       res.status(500).json({ error: "Failed to share plan" });
+    }
+  });
+
+  // Plan Sessions routes (AI Plan Builder chat history)
+  
+  // Get or create active session for a client
+  app.get("/api/plan-sessions/client/:clientId", requireCoachAuth, async (req, res) => {
+    try {
+      const sessions = await storage.getPlanSessionsByClientId(req.params.clientId);
+      res.json(sessions);
+    } catch (error) {
+      console.error("Error fetching plan sessions:", error);
+      res.status(500).json({ error: "Failed to fetch plan sessions" });
+    }
+  });
+
+  // Get active session for a client (or return null if none)
+  app.get("/api/plan-sessions/client/:clientId/active", requireCoachAuth, async (req, res) => {
+    try {
+      const session = await storage.getActivePlanSession(req.params.clientId);
+      res.json(session || null);
+    } catch (error) {
+      console.error("Error fetching active plan session:", error);
+      res.status(500).json({ error: "Failed to fetch active plan session" });
+    }
+  });
+
+  // Create new plan session
+  app.post("/api/plan-sessions", requireCoachAuth, async (req, res) => {
+    try {
+      const validatedData = insertPlanSessionSchema.parse(req.body);
+      const session = await storage.createPlanSession(validatedData);
+      res.status(201).json(session);
+    } catch (error) {
+      console.error("Error creating plan session:", error);
+      res.status(400).json({ error: "Invalid session data" });
+    }
+  });
+
+  // Get specific session
+  app.get("/api/plan-sessions/:id", requireCoachAuth, async (req, res) => {
+    try {
+      const session = await storage.getPlanSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch session" });
+    }
+  });
+
+  // Update session (canvas content, status, etc.)
+  app.patch("/api/plan-sessions/:id", requireCoachAuth, async (req, res) => {
+    try {
+      const validatedData = insertPlanSessionSchema.partial().parse(req.body);
+      const session = await storage.updatePlanSession(req.params.id, validatedData);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      res.json(session);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid session data" });
+    }
+  });
+
+  // Delete session
+  app.delete("/api/plan-sessions/:id", requireCoachAuth, async (req, res) => {
+    try {
+      const success = await storage.deletePlanSession(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete session" });
+    }
+  });
+
+  // Plan Messages routes (chat messages within a session)
+  
+  // Get all messages for a session
+  app.get("/api/plan-sessions/:sessionId/messages", requireCoachAuth, async (req, res) => {
+    try {
+      const messages = await storage.getPlanMessages(req.params.sessionId);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching plan messages:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+
+  // Add a message to a session
+  app.post("/api/plan-sessions/:sessionId/messages", requireCoachAuth, async (req, res) => {
+    try {
+      const validatedData = insertPlanMessageSchema.parse({
+        ...req.body,
+        sessionId: req.params.sessionId,
+      });
+      const message = await storage.createPlanMessage(validatedData);
+      res.status(201).json(message);
+    } catch (error) {
+      console.error("Error creating plan message:", error);
+      res.status(400).json({ error: "Invalid message data" });
+    }
+  });
+
+  // Get client's plan status (for dashboard button)
+  app.get("/api/clients/:clientId/plan-status", requireCoachAuth, async (req, res) => {
+    try {
+      const clientId = req.params.clientId;
+      
+      // Check for active plan first
+      const activePlan = await storage.getActiveClientPlan(clientId);
+      if (activePlan) {
+        return res.json({
+          hasActivePlan: true,
+          planId: activePlan.id,
+          planName: activePlan.planName,
+          status: activePlan.status,
+          sessionId: activePlan.sessionId,
+        });
+      }
+      
+      // Check for in-progress session
+      const activeSession = await storage.getActivePlanSession(clientId);
+      if (activeSession) {
+        return res.json({
+          hasActivePlan: false,
+          hasActiveSession: true,
+          sessionId: activeSession.id,
+          sessionStatus: activeSession.status,
+        });
+      }
+      
+      // No plan or session
+      res.json({
+        hasActivePlan: false,
+        hasActiveSession: false,
+      });
+    } catch (error) {
+      console.error("Error fetching plan status:", error);
+      res.status(500).json({ error: "Failed to fetch plan status" });
     }
   });
 

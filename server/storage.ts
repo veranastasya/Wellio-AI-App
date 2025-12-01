@@ -40,6 +40,10 @@ import {
   type InsertWeeklyReport,
   type PlanTargetsRecord,
   type InsertPlanTargets,
+  type PlanSession,
+  type InsertPlanSession,
+  type PlanMessage,
+  type InsertPlanMessage,
   clients,
   sessions,
   messages,
@@ -60,6 +64,8 @@ import {
   progressEvents,
   weeklyReports,
   planTargets,
+  planSessions,
+  planMessages,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
@@ -166,6 +172,20 @@ export interface IStorage {
   updateClientPlan(id: string, clientPlan: Partial<InsertClientPlan>): Promise<ClientPlan | undefined>;
   deleteClientPlan(id: string): Promise<boolean>;
   archiveActivePlan(clientId: string): Promise<ClientPlan | undefined>;
+
+  // Plan Sessions (AI Plan Builder chat history)
+  getPlanSessions(): Promise<PlanSession[]>;
+  getPlanSession(id: string): Promise<PlanSession | undefined>;
+  getPlanSessionsByClientId(clientId: string): Promise<PlanSession[]>;
+  getActivePlanSession(clientId: string): Promise<PlanSession | undefined>;
+  createPlanSession(session: InsertPlanSession): Promise<PlanSession>;
+  updatePlanSession(id: string, session: Partial<InsertPlanSession>): Promise<PlanSession | undefined>;
+  deletePlanSession(id: string): Promise<boolean>;
+
+  // Plan Messages (chat messages within a session)
+  getPlanMessages(sessionId: string): Promise<PlanMessage[]>;
+  createPlanMessage(message: InsertPlanMessage): Promise<PlanMessage>;
+  deletePlanMessages(sessionId: string): Promise<boolean>;
 
   // Goals
   getGoals(): Promise<Goal[]>;
@@ -1026,6 +1046,85 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return archivedPlan || undefined;
+  }
+
+  // Plan Sessions (AI Plan Builder chat history)
+  async getPlanSessions(): Promise<PlanSession[]> {
+    return await db.select().from(planSessions).orderBy(desc(planSessions.createdAt));
+  }
+
+  async getPlanSession(id: string): Promise<PlanSession | undefined> {
+    const [session] = await db.select().from(planSessions).where(eq(planSessions.id, id));
+    return session || undefined;
+  }
+
+  async getPlanSessionsByClientId(clientId: string): Promise<PlanSession[]> {
+    return await db.select()
+      .from(planSessions)
+      .where(eq(planSessions.clientId, clientId))
+      .orderBy(desc(planSessions.createdAt));
+  }
+
+  async getActivePlanSession(clientId: string): Promise<PlanSession | undefined> {
+    const [session] = await db.select()
+      .from(planSessions)
+      .where(and(
+        eq(planSessions.clientId, clientId),
+        eq(planSessions.status, 'in_progress')
+      ))
+      .orderBy(desc(planSessions.createdAt))
+      .limit(1);
+    return session || undefined;
+  }
+
+  async createPlanSession(insertSession: InsertPlanSession): Promise<PlanSession> {
+    const now = new Date().toISOString();
+    const [session] = await db.insert(planSessions).values({
+      ...insertSession,
+      createdAt: insertSession.createdAt || now,
+      updatedAt: insertSession.updatedAt || now,
+    }).returning();
+    return session;
+  }
+
+  async updatePlanSession(id: string, updateData: Partial<InsertPlanSession>): Promise<PlanSession | undefined> {
+    const [session] = await db.update(planSessions)
+      .set({
+        ...updateData,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(planSessions.id, id))
+      .returning();
+    return session || undefined;
+  }
+
+  async deletePlanSession(id: string): Promise<boolean> {
+    // First delete all messages for this session
+    await db.delete(planMessages).where(eq(planMessages.sessionId, id));
+    const result = await db.delete(planSessions).where(eq(planSessions.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Plan Messages (chat messages within a session)
+  async getPlanMessages(sessionId: string): Promise<PlanMessage[]> {
+    return await db.select()
+      .from(planMessages)
+      .where(eq(planMessages.sessionId, sessionId))
+      .orderBy(planMessages.createdAt);
+  }
+
+  async createPlanMessage(insertMessage: InsertPlanMessage): Promise<PlanMessage> {
+    const now = new Date().toISOString();
+    const [message] = await db.insert(planMessages).values({
+      ...insertMessage,
+      createdAt: insertMessage.createdAt || now,
+    }).returning();
+    return message;
+  }
+
+  async deletePlanMessages(sessionId: string): Promise<boolean> {
+    const result = await db.delete(planMessages).where(eq(planMessages.sessionId, sessionId));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   async getGoals(): Promise<Goal[]> {
