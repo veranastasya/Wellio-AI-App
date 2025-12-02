@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Calendar as CalendarIcon, Clock, Plus, User, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Plus, ChevronLeft, ChevronRight, User, Video, Phone, MapPin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSessionSchema, type Client, type Session } from "@shared/schema";
@@ -38,18 +37,85 @@ import { z } from "zod";
 const bookingFormSchema = insertSessionSchema.extend({
   clientId: z.string().min(1, "Please select a client"),
   sessionType: z.string().min(1, "Please select a session type"),
+  locationType: z.string().min(1, "Please select a location type"),
   date: z.string().min(1, "Date is required"),
   startTime: z.string().min(1, "Start time is required"),
-  endTime: z.string().min(1, "End time is required"),
+  duration: z.number().min(15, "Duration must be at least 15 minutes"),
 });
 
 type BookingFormData = z.infer<typeof bookingFormSchema>;
+
+type ViewMode = "week" | "month";
+
+const sessionTypeColors: Record<string, string> = {
+  "Progress Review": "bg-blue-500",
+  "Initial Consultation": "bg-cyan-500",
+  "Check-in": "bg-amber-500",
+  "Nutrition Planning": "bg-emerald-500",
+  training: "bg-blue-500",
+  consultation: "bg-cyan-500",
+  follow_up: "bg-amber-500",
+  assessment: "bg-emerald-500",
+};
+
+const sessionTypeDotColors: Record<string, string> = {
+  "Progress Review": "bg-blue-500",
+  "Initial Consultation": "bg-cyan-500",
+  "Check-in": "bg-amber-500",
+  "Nutrition Planning": "bg-emerald-500",
+  training: "bg-blue-500",
+  consultation: "bg-cyan-500",
+  follow_up: "bg-amber-500",
+  assessment: "bg-emerald-500",
+};
+
+function formatSessionType(type: string): string {
+  const typeMap: Record<string, string> = {
+    training: "Progress Review",
+    consultation: "Initial Consultation",
+    follow_up: "Check-in",
+    assessment: "Nutrition Planning",
+  };
+  return typeMap[type] || type;
+}
+
+function getLocationIcon(location?: string) {
+  switch (location) {
+    case "video":
+      return <Video className="w-3 h-3" />;
+    case "phone":
+      return <Phone className="w-3 h-3" />;
+    case "in-person":
+      return <MapPin className="w-3 h-3" />;
+    default:
+      return <Video className="w-3 h-3" />;
+  }
+}
+
+function getLocationLabel(location?: string): string {
+  switch (location) {
+    case "video":
+      return "Video";
+    case "phone":
+      return "Phone";
+    case "in-person":
+      return "In-Person";
+    default:
+      return "Video";
+  }
+}
+
+function calculateDuration(startTime: string, endTime: string): number {
+  const [startH, startM] = startTime.split(":").map(Number);
+  const [endH, endM] = endTime.split(":").map(Number);
+  return (endH * 60 + endM) - (startH * 60 + startM);
+}
 
 export default function Scheduling() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
 
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -65,9 +131,10 @@ export default function Scheduling() {
       clientId: "",
       clientName: "",
       sessionType: "",
+      locationType: "video",
       date: "",
       startTime: "",
-      endTime: "",
+      duration: 45,
       status: "scheduled",
       notes: "",
     },
@@ -75,10 +142,19 @@ export default function Scheduling() {
 
   const createSessionMutation = useMutation({
     mutationFn: async (data: BookingFormData) => {
+      const startMinutes = parseInt(data.startTime.split(":")[0]) * 60 + parseInt(data.startTime.split(":")[1]);
+      const endMinutes = startMinutes + data.duration;
+      const endHours = Math.floor(endMinutes / 60);
+      const endMins = endMinutes % 60;
+      const endTime = `${endHours.toString().padStart(2, "0")}:${endMins.toString().padStart(2, "0")}`;
+      
       const response = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          endTime,
+        }),
       });
       if (!response.ok) throw new Error("Failed to create session");
       return response.json();
@@ -118,12 +194,29 @@ export default function Scheduling() {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+    let startingDayOfWeek = firstDay.getDay();
+    startingDayOfWeek = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1;
     
     return { daysInMonth, startingDayOfWeek, year, month };
   };
 
+  const getWeekDays = (date: Date) => {
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(date);
+    monday.setDate(diff);
+    
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  };
+
   const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(selectedDate);
+  const weekDays = getWeekDays(selectedDate);
 
   const previousMonth = () => {
     setSelectedDate(new Date(year, month - 1, 1));
@@ -133,29 +226,47 @@ export default function Scheduling() {
     setSelectedDate(new Date(year, month + 1, 1));
   };
 
+  const previousWeek = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() - 7);
+    setSelectedDate(newDate);
+  };
+
+  const nextWeek = () => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + 7);
+    setSelectedDate(newDate);
+  };
+
+  const goToToday = () => {
+    setSelectedDate(new Date());
+  };
+
   const getSessionsForDate = (day: number) => {
     const dateStr = new Date(year, month, day).toLocaleDateString("en-CA");
     return sessions.filter((s) => s.date === dateStr);
   };
 
-  const filteredSessions = filterStatus === "all" 
-    ? sessions 
-    : sessions.filter((s: Session) => s.status === filterStatus);
-
-  const todaySessions = sessions.filter((s: Session) => s.date === new Date().toLocaleDateString("en-CA"));
-
-  const sessionTypeColors: Record<string, string> = {
-    training: "bg-blue-500",
-    consultation: "bg-purple-500",
-    follow_up: "bg-green-500",
-    assessment: "bg-orange-500",
+  const getSessionsForDateObj = (date: Date) => {
+    const dateStr = date.toLocaleDateString("en-CA");
+    return sessions.filter((s) => s.date === dateStr);
   };
 
-  const statusColors: Record<string, string> = {
-    scheduled: "default",
-    completed: "secondary",
-    cancelled: "destructive",
-  };
+  const upcomingSessions = sessions
+    .filter((s: Session) => {
+      const sessionDate = new Date(s.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return sessionDate >= today && s.status === "scheduled";
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.date + "T" + a.startTime);
+      const dateB = new Date(b.date + "T" + b.startTime);
+      return dateA.getTime() - dateB.getTime();
+    })
+    .slice(0, 5);
+
+  const timeSlots = Array.from({ length: 10 }, (_, i) => i + 9);
 
   if (clientsLoading || sessionsLoading) {
     return (
@@ -169,16 +280,21 @@ export default function Scheduling() {
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-scheduling">Smart Scheduling</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-scheduling">
+            Smart Scheduling
+          </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Manage your coaching sessions and availability
+            Manage your coaching sessions and appointments
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button data-testid="button-book-session" className="w-full sm:w-auto">
+            <Button 
+              data-testid="button-new-session" 
+              className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+            >
               <Plus className="w-4 h-4 mr-2" />
-              Book Session
+              New Session
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
@@ -225,10 +341,33 @@ export default function Scheduling() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="training">Training</SelectItem>
-                          <SelectItem value="consultation">Consultation</SelectItem>
-                          <SelectItem value="follow_up">Follow-up</SelectItem>
-                          <SelectItem value="assessment">Assessment</SelectItem>
+                          <SelectItem value="training">Progress Review</SelectItem>
+                          <SelectItem value="consultation">Initial Consultation</SelectItem>
+                          <SelectItem value="follow_up">Check-in</SelectItem>
+                          <SelectItem value="assessment">Nutrition Planning</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="locationType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location Type</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-location-type">
+                            <SelectValue placeholder="Select location" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="video">Video Call</SelectItem>
+                          <SelectItem value="phone">Phone Call</SelectItem>
+                          <SelectItem value="in-person">In-Person</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -250,7 +389,7 @@ export default function Scheduling() {
                   )}
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="startTime"
@@ -267,13 +406,26 @@ export default function Scheduling() {
 
                   <FormField
                     control={form.control}
-                    name="endTime"
+                    name="duration"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>End Time</FormLabel>
-                        <FormControl>
-                          <Input type="time" {...field} data-testid="input-end-time" />
-                        </FormControl>
+                        <FormLabel>Duration (min)</FormLabel>
+                        <Select 
+                          onValueChange={(val) => field.onChange(parseInt(val))} 
+                          value={field.value?.toString()}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-duration">
+                              <SelectValue placeholder="Duration" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="30">30 min</SelectItem>
+                            <SelectItem value="45">45 min</SelectItem>
+                            <SelectItem value="60">60 min</SelectItem>
+                            <SelectItem value="90">90 min</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -322,185 +474,260 @@ export default function Scheduling() {
         </Dialog>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle>Calendar View</CardTitle>
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
-                onClick={previousMonth}
-                data-testid="button-prev-month"
+                onClick={viewMode === "month" ? previousMonth : previousWeek}
+                data-testid="button-prev"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-5 h-5" />
               </Button>
-              <div className="text-sm font-medium min-w-32 text-center" data-testid="text-current-month">
+              <div className="text-base font-semibold min-w-36 text-center" data-testid="text-current-period">
                 {selectedDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
               </div>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
-                onClick={nextMonth}
-                data-testid="button-next-month"
+                onClick={viewMode === "month" ? nextMonth : nextWeek}
+                data-testid="button-next"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={goToToday}
+                className="ml-2"
+                data-testid="button-today"
+              >
+                Today
               </Button>
             </div>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-full">
-              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-                <div key={day} className="text-center text-xs font-medium text-muted-foreground p-1 sm:p-2">
-                  {day}
-                </div>
-              ))}
-              
-              {Array.from({ length: startingDayOfWeek }).map((_, i) => (
-                <div key={`empty-${i}`} className="p-1 sm:p-2" />
-              ))}
-              
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const daySessions = getSessionsForDate(day);
-                const isToday = 
-                  day === new Date().getDate() &&
-                  month === new Date().getMonth() &&
-                  year === new Date().getFullYear();
-                
-                return (
-                  <div
-                    key={day}
-                    className={`min-h-16 sm:min-h-20 p-1 sm:p-2 rounded-lg border ${
-                      isToday
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover-elevate"
-                    }`}
-                    data-testid={`calendar-day-${day}`}
-                  >
-                    <div className={`text-xs sm:text-sm font-medium mb-1 ${isToday ? "text-primary" : ""}`}>
-                      {day}
-                    </div>
-                    <div className="space-y-1">
-                      {daySessions.slice(0, 2).map((session: Session) => (
-                        <div
-                          key={session.id}
-                          className={`text-xs px-1 py-0.5 rounded ${
-                            sessionTypeColors[session.sessionType] || "bg-gray-500"
-                          } text-white truncate`}
-                          data-testid={`session-${session.id}`}
-                        >
-                          {session.startTime}
-                        </div>
-                      ))}
-                      {daySessions.length > 2 && (
-                        <div className="text-xs text-muted-foreground px-1">
-                          +{daySessions.length - 2} more
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === "week" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("week")}
+                className={viewMode === "week" ? "bg-background shadow-sm" : ""}
+                data-testid="button-week-view"
+              >
+                Week
+              </Button>
+              <Button
+                variant={viewMode === "month" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("month")}
+                className={viewMode === "month" ? "bg-background shadow-sm text-primary" : ""}
+                data-testid="button-month-view"
+              >
+                Month
+              </Button>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            {viewMode === "month" ? (
+              <div className="overflow-x-auto">
+                <div className="min-w-[600px]">
+                  <div className="grid grid-cols-7 border-b">
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+                      <div key={day} className="text-center text-sm font-medium text-muted-foreground py-3 border-r last:border-r-0">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="grid grid-cols-7">
+                    {Array.from({ length: startingDayOfWeek }).map((_, i) => (
+                      <div key={`empty-${i}`} className="min-h-24 p-2 border-r border-b bg-muted/30" />
+                    ))}
+                    
+                    {Array.from({ length: daysInMonth }).map((_, i) => {
+                      const day = i + 1;
+                      const daySessions = getSessionsForDate(day);
+                      const isToday = 
+                        day === new Date().getDate() &&
+                        month === new Date().getMonth() &&
+                        year === new Date().getFullYear();
+                      
+                      return (
+                        <div
+                          key={day}
+                          className={`min-h-24 p-2 border-r border-b last:border-r-0 ${
+                            isToday ? "bg-primary/5" : "hover:bg-muted/50"
+                          }`}
+                          data-testid={`calendar-day-${day}`}
+                        >
+                          <div className={`text-sm font-medium mb-2 ${isToday ? "text-primary" : "text-foreground"}`}>
+                            {day}
+                          </div>
+                          <div className="space-y-1">
+                            {daySessions.slice(0, 3).map((session: Session) => (
+                              <div
+                                key={session.id}
+                                className="flex items-center gap-1"
+                                data-testid={`session-${session.id}`}
+                              >
+                                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                  sessionTypeDotColors[session.sessionType] || "bg-blue-500"
+                                }`} />
+                                <span className="text-xs text-muted-foreground truncate">
+                                  {session.startTime}
+                                </span>
+                              </div>
+                            ))}
+                            {daySessions.length > 3 && (
+                              <div className="text-xs text-muted-foreground">
+                                +{daySessions.length - 3} more
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="min-w-[700px]">
+                  <div className="grid grid-cols-8 border-b">
+                    <div className="py-3 px-2 text-sm font-medium text-muted-foreground border-r">
+                      Time
+                    </div>
+                    {weekDays.map((day, i) => {
+                      const isToday = day.toDateString() === new Date().toDateString();
+                      const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+                      return (
+                        <div 
+                          key={i} 
+                          className={`py-3 text-center border-r last:border-r-0 ${isToday ? "bg-primary/5" : ""}`}
+                        >
+                          <div className="text-sm font-medium text-muted-foreground">
+                            {dayNames[i]}
+                          </div>
+                          <div className={`text-lg font-semibold ${isToday ? "text-primary" : ""}`}>
+                            {day.getDate()}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="relative max-h-[500px] overflow-y-auto">
+                    {timeSlots.map((hour) => (
+                      <div key={hour} className="grid grid-cols-8 border-b">
+                        <div className="py-6 px-2 text-sm text-muted-foreground border-r">
+                          {hour.toString().padStart(2, "0")}:00
+                        </div>
+                        {weekDays.map((day, dayIndex) => {
+                          const daySessions = getSessionsForDateObj(day).filter((s) => {
+                            const sessionHour = parseInt(s.startTime.split(":")[0]);
+                            return sessionHour === hour;
+                          });
+                          const isToday = day.toDateString() === new Date().toDateString();
+                          
+                          return (
+                            <div 
+                              key={dayIndex} 
+                              className={`py-1 px-1 border-r last:border-r-0 relative min-h-16 ${
+                                isToday ? "bg-primary/5" : ""
+                              }`}
+                            >
+                              {daySessions.map((session: Session) => {
+                                const duration = session.endTime 
+                                  ? calculateDuration(session.startTime, session.endTime)
+                                  : 45;
+                                const heightFactor = Math.max(duration / 60, 0.75);
+                                
+                                return (
+                                  <div
+                                    key={session.id}
+                                    className={`absolute left-1 right-1 rounded-md p-2 text-white text-xs ${
+                                      sessionTypeColors[session.sessionType] || "bg-blue-500"
+                                    }`}
+                                    style={{ 
+                                      minHeight: `${heightFactor * 60}px`,
+                                      zIndex: 10
+                                    }}
+                                    data-testid={`week-session-${session.id}`}
+                                  >
+                                    <div className="font-medium">
+                                      {session.startTime} - {formatSessionType(session.sessionType)}
+                                    </div>
+                                    <div className="opacity-90 truncate">
+                                      {session.clientName}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Today's Schedule</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {todaySessions.length} sessions scheduled
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {todaySessions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  No sessions scheduled for today
-                </div>
-              ) : (
-                todaySessions.map((session: Session) => (
-                  <div
-                    key={session.id}
-                    className="flex items-start gap-3 p-3 rounded-lg border"
-                    data-testid={`today-session-${session.id}`}
-                  >
-                    <div className={`w-2 h-2 rounded-full mt-2 ${sessionTypeColors[session.sessionType]}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{session.clientName}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {session.startTime} - {session.endTime}
-                      </div>
-                      <Badge variant={statusColors[session.status] as any} className="mt-1">
-                        {session.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>All Sessions</CardTitle>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-32" data-testid="select-filter">
-                  <Filter className="w-3 h-3 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="scheduled">Scheduled</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {filteredSessions.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  No sessions found
-                </div>
-              ) : (
-                filteredSessions.map((session: Session) => (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Upcoming Sessions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {upcomingSessions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                No upcoming sessions
+              </div>
+            ) : (
+              upcomingSessions.map((session: Session) => {
+                const duration = session.endTime 
+                  ? calculateDuration(session.startTime, session.endTime)
+                  : 45;
+                const displayType = formatSessionType(session.sessionType);
+                const locationType = (session as any).locationType || "video";
+                
+                return (
                   <div
                     key={session.id}
                     className="flex items-start gap-3 p-3 rounded-lg border hover-elevate"
-                    data-testid={`session-item-${session.id}`}
+                    data-testid={`upcoming-session-${session.id}`}
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="font-medium truncate">{session.clientName}</div>
-                        <Badge variant={statusColors[session.status] as any}>
-                          {session.status}
-                        </Badge>
+                    <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${
+                      sessionTypeDotColors[session.sessionType] || "bg-blue-500"
+                    }`} />
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="font-medium text-sm">{displayType}</div>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <User className="w-3 h-3" />
+                        <span className="truncate">{session.clientName}</span>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        <div className="flex items-center gap-1">
-                          <CalendarIcon className="w-3 h-3" />
-                          {new Date(session.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Clock className="w-3 h-3" />
-                          {session.startTime} - {session.endTime}
-                        </div>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>{session.startTime} • {duration} min</span>
                       </div>
-                      <Badge variant="outline" className="mt-2">
-                        {session.sessionType.replace("_", " ")}
-                      </Badge>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        {getLocationIcon(locationType)}
+                        <span>{getLocationLabel(locationType)}</span>
+                      </div>
                     </div>
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
