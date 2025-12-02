@@ -29,18 +29,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertSessionSchema, type Client, type Session } from "@shared/schema";
+import { type Client, type Session } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-const bookingFormSchema = insertSessionSchema.extend({
+const bookingFormSchema = z.object({
   clientId: z.string().min(1, "Please select a client"),
   sessionType: z.string().min(1, "Please select a session type"),
   locationType: z.string().min(1, "Please select a location type"),
   date: z.string().min(1, "Date is required"),
   startTime: z.string().min(1, "Start time is required"),
-  duration: z.number().min(15, "Duration must be at least 15 minutes"),
+  duration: z.coerce.number().min(15, "Duration must be at least 15 minutes"),
+  notes: z.string().optional(),
 });
 
 type BookingFormData = z.infer<typeof bookingFormSchema>;
@@ -129,19 +130,17 @@ export default function Scheduling() {
     resolver: zodResolver(bookingFormSchema),
     defaultValues: {
       clientId: "",
-      clientName: "",
       sessionType: "",
       locationType: "video",
       date: "",
       startTime: "",
       duration: 45,
-      status: "scheduled",
       notes: "",
     },
   });
 
   const createSessionMutation = useMutation({
-    mutationFn: async (data: BookingFormData) => {
+    mutationFn: async (data: BookingFormData & { clientName: string }) => {
       const startMinutes = parseInt(data.startTime.split(":")[0]) * 60 + parseInt(data.startTime.split(":")[1]);
       const endMinutes = startMinutes + data.duration;
       const endHours = Math.floor(endMinutes / 60);
@@ -152,11 +151,21 @@ export default function Scheduling() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...data,
+          clientId: data.clientId,
+          clientName: data.clientName,
+          sessionType: data.sessionType,
+          locationType: data.locationType,
+          date: data.date,
+          startTime: data.startTime,
           endTime,
+          status: "scheduled",
+          notes: data.notes || "",
         }),
       });
-      if (!response.ok) throw new Error("Failed to create session");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to create session");
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -169,10 +178,10 @@ export default function Scheduling() {
       form.reset();
       setIsDialogOpen(false);
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to book session",
+        description: error instanceof Error ? error.message : "Failed to book session",
         variant: "destructive",
       });
     },

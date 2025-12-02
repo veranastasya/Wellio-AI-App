@@ -142,6 +142,7 @@ export const sessions = pgTable("sessions", {
   clientId: varchar("client_id").notNull(),
   clientName: text("client_name").notNull(),
   sessionType: text("session_type").notNull(),
+  locationType: text("location_type").default("video"),
   date: text("date").notNull(),
   startTime: text("start_time").notNull(),
   endTime: text("end_time").notNull(),
