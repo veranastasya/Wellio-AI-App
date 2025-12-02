@@ -1,10 +1,44 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Video, Trophy, DollarSign, Lightbulb, TrendingUp } from "lucide-react";
+import { Users, Video, Trophy, Lightbulb, TrendingUp, Target, ArrowUp, ArrowDown, Minus, Activity as ActivityIcon, Brain, Loader2 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { Client, Session, Activity } from "@shared/schema";
 import { GoalsDashboardWidget } from "@/components/goals/goals-dashboard-widget";
 import { StatGrid } from "@/components/layout";
+import { Badge } from "@/components/ui/badge";
+import { apiRequest } from "@/lib/queryClient";
+
+interface TrendAnalysis {
+  category: string;
+  trend: "improving" | "declining" | "stable" | "plateau";
+  confidence: number;
+  description: string;
+  recommendation?: string;
+}
+
+interface GoalPrediction {
+  goalId: string;
+  goalTitle: string;
+  progressPercent: number;
+  successProbability: number;
+  trend: "ahead" | "on_track" | "behind" | "at_risk";
+  recommendation: string;
+}
+
+interface EnhancedClientInsight {
+  clientId: string;
+  clientName: string;
+  trends: TrendAnalysis[];
+  goalPredictions: GoalPrediction[];
+  summary: string;
+  quickStats: {
+    totalDataPoints: number;
+    trackingConsistency: number;
+    overallTrend: "improving" | "stable" | "declining";
+    topStrength: string | null;
+    topOpportunity: string | null;
+  };
+}
 
 export default function Dashboard() {
   const { data: clients = [], isLoading: clientsLoading, isError: clientsError } = useQuery<Client[]>({
@@ -312,34 +346,190 @@ export default function Dashboard() {
           <GoalsDashboardWidget />
         </div>
 
-        <Card className="bg-gradient-to-br from-primary to-primary/80 text-white" data-testid="card-ai-insights">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Lightbulb className="w-5 h-5" />
-              <CardTitle className="text-white">AI Insights</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <p className="font-semibold text-white">Progress Overview</p>
-              <p className="text-sm text-white/90 mt-1">
-                {clients.length > 0
-                  ? `Average client progress: ${Math.round(clients.reduce((sum, c) => sum + c.progressScore, 0) / clients.length)}%. ${clients.filter(c => c.progressScore < 70).length} clients may benefit from plan adjustments.`
-                  : "Add clients to see AI-powered insights and recommendations."}
-              </p>
-            </div>
-            {clients.length > 0 && (
-              <div className="border-t border-white/20 pt-3">
-                <p className="text-sm text-white/90">
-                  {clients.filter(c => c.progressScore < 70).length > 0
-                    ? `Consider scheduling check-ins with clients below 70% progress to re-evaluate their programs.`
-                    : "All clients are making excellent progress! Keep up the great work."}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <AIInsightsCard clients={clients} />
       </div>
     </div>
+  );
+}
+
+function AIInsightsCard({ clients }: { clients: Client[] }) {
+  const { data: allInsights, isLoading } = useQuery<EnhancedClientInsight[]>({
+    queryKey: ["/api/dashboard/insights"],
+    queryFn: async () => {
+      if (clients.length === 0) return [];
+      const insightPromises = clients.slice(0, 5).map(async (client) => {
+        try {
+          const response = await fetch(`/api/clients/${client.id}/insights`, { credentials: 'include' });
+          if (!response.ok) return null;
+          return response.json();
+        } catch {
+          return null;
+        }
+      });
+      const results = await Promise.all(insightPromises);
+      return results.filter((r): r is EnhancedClientInsight => r !== null && r.quickStats?.totalDataPoints > 0);
+    },
+    enabled: clients.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case "improving":
+      case "ahead":
+        return <ArrowUp className="w-3 h-3" />;
+      case "declining":
+      case "behind":
+      case "at_risk":
+        return <ArrowDown className="w-3 h-3" />;
+      default:
+        return <Minus className="w-3 h-3" />;
+    }
+  };
+
+  const getTrendColor = (trend: string) => {
+    switch (trend) {
+      case "improving":
+      case "ahead":
+      case "on_track":
+        return "bg-emerald-500/20 text-emerald-300";
+      case "declining":
+      case "at_risk":
+        return "bg-rose-500/20 text-rose-300";
+      case "behind":
+        return "bg-amber-500/20 text-amber-300";
+      default:
+        return "bg-white/20 text-white";
+    }
+  };
+
+  const hasData = allInsights && allInsights.length > 0;
+  const totalDataPoints = hasData ? allInsights.reduce((sum, i) => sum + (i.quickStats?.totalDataPoints || 0), 0) : 0;
+  const improvingClients = hasData ? allInsights.filter(i => i.quickStats?.overallTrend === "improving").length : 0;
+  const avgConsistency = hasData ? Math.round(allInsights.reduce((sum, i) => sum + (i.quickStats?.trackingConsistency || 0), 0) / allInsights.length) : 0;
+
+  const topGoalPredictions = hasData
+    ? allInsights
+        .flatMap(i => i.goalPredictions?.map(g => ({ ...g, clientName: i.clientName })) || [])
+        .filter(g => g.successProbability > 0)
+        .sort((a, b) => b.progressPercent - a.progressPercent)
+        .slice(0, 3)
+    : [];
+
+  const significantTrends = hasData
+    ? allInsights
+        .flatMap(i => i.trends?.filter(t => t.confidence > 0.6).map(t => ({ ...t, clientName: i.clientName })) || [])
+        .slice(0, 3)
+    : [];
+
+  return (
+    <Card className="bg-gradient-to-br from-primary to-primary/80 text-white" data-testid="card-ai-insights">
+      <CardHeader>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Brain className="w-5 h-5" />
+            <CardTitle className="text-white">AI Insights</CardTitle>
+          </div>
+          {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!hasData ? (
+          <div className="text-center py-4">
+            <ActivityIcon className="w-10 h-10 mx-auto mb-2 opacity-60" />
+            <p className="text-sm text-white/90">
+              {clients.length === 0
+                ? "Add clients to see AI-powered insights and trend analysis."
+                : "Waiting for client data... Insights will appear once clients log activities via the AI Tracker."}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="bg-white/10 rounded-lg p-2">
+                <p className="text-xl font-bold">{totalDataPoints}</p>
+                <p className="text-xs text-white/70">Data Points</p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-2">
+                <p className="text-xl font-bold">{improvingClients}/{allInsights.length}</p>
+                <p className="text-xs text-white/70">Improving</p>
+              </div>
+              <div className="bg-white/10 rounded-lg p-2">
+                <p className="text-xl font-bold">{avgConsistency}%</p>
+                <p className="text-xs text-white/70">Consistency</p>
+              </div>
+            </div>
+
+            {topGoalPredictions.length > 0 && (
+              <div className="border-t border-white/20 pt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4" />
+                  <p className="font-semibold text-sm">Goal Progress Predictions</p>
+                </div>
+                <div className="space-y-2">
+                  {topGoalPredictions.map((goal, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm bg-white/5 rounded px-2 py-1">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{goal.clientName}</p>
+                        <p className="text-xs text-white/70 truncate">{goal.goalTitle}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs">{goal.progressPercent}%</span>
+                        <Badge variant="secondary" className={`text-[10px] px-1 py-0 ${getTrendColor(goal.trend)}`}>
+                          {getTrendIcon(goal.trend)}
+                          <span className="ml-1">{Math.round(goal.successProbability * 100)}%</span>
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {significantTrends.length > 0 && (
+              <div className="border-t border-white/20 pt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4" />
+                  <p className="font-semibold text-sm">Detected Trends</p>
+                </div>
+                <div className="space-y-2">
+                  {significantTrends.map((trend, idx) => (
+                    <div key={idx} className="text-sm bg-white/5 rounded px-2 py-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{trend.clientName}</span>
+                        <Badge variant="secondary" className={`text-[10px] px-1 py-0 ${getTrendColor(trend.trend)}`}>
+                          {getTrendIcon(trend.trend)}
+                          <span className="ml-1 capitalize">{trend.category}</span>
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-white/70 mt-0.5">{trend.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {allInsights.some(i => i.quickStats?.topOpportunity) && (
+              <div className="border-t border-white/20 pt-3">
+                <p className="font-semibold text-sm flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4" />
+                  Recommendations
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {allInsights
+                    .filter(i => i.quickStats?.topOpportunity)
+                    .slice(0, 2)
+                    .map((insight, idx) => (
+                      <li key={idx} className="text-xs text-white/90">
+                        <span className="font-medium">{insight.clientName}:</span> {insight.quickStats.topOpportunity}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

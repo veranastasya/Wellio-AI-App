@@ -3,10 +3,43 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Dumbbell, Flame, TrendingUp, Trophy, Apple, Droplets, MessageSquare, Calendar } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Dumbbell, Flame, TrendingUp, Trophy, Apple, Droplets, MessageSquare, Calendar, Brain, Target, ArrowUp, ArrowDown, Minus, Lightbulb, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Client, SmartLog, ProgressEvent } from "@shared/schema";
 import { format, subDays, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
+
+interface TrendAnalysis {
+  category: string;
+  trend: "improving" | "declining" | "stable" | "plateau";
+  confidence: number;
+  description: string;
+  recommendation?: string;
+}
+
+interface GoalPrediction {
+  goalId: string;
+  goalTitle: string;
+  progressPercent: number;
+  successProbability: number;
+  trend: "ahead" | "on_track" | "behind" | "at_risk";
+  recommendation: string;
+}
+
+interface EnhancedClientInsight {
+  clientId: string;
+  clientName: string;
+  trends: TrendAnalysis[];
+  goalPredictions: GoalPrediction[];
+  summary: string;
+  quickStats: {
+    totalDataPoints: number;
+    trackingConsistency: number;
+    overallTrend: "improving" | "stable" | "declining";
+    topStrength: string | null;
+    topOpportunity: string | null;
+  };
+}
 
 function formatRelativeTime(dateStr: string): string {
   const date = parseISO(dateStr);
@@ -86,6 +119,11 @@ export default function ClientDashboard() {
       const response = await apiRequest("GET", `/api/smart-logs/${clientData.id}?limit=10`);
       return response.json();
     },
+    enabled: !!clientData?.id,
+  });
+
+  const { data: insights, isLoading: insightsLoading } = useQuery<EnhancedClientInsight>({
+    queryKey: ["/api/client/insights"],
     enabled: !!clientData?.id,
   });
 
@@ -199,6 +237,9 @@ export default function ClientDashboard() {
           ))}
         </div>
 
+        {/* AI Insights Section */}
+        <ClientInsightsCard insights={insights} isLoading={insightsLoading} />
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardContent className="p-4 sm:p-6">
@@ -256,5 +297,195 @@ export default function ClientDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+function ClientInsightsCard({ insights, isLoading }: { insights?: EnhancedClientInsight; isLoading: boolean }) {
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case "improving":
+      case "ahead":
+        return <ArrowUp className="w-3 h-3" />;
+      case "declining":
+      case "behind":
+      case "at_risk":
+        return <ArrowDown className="w-3 h-3" />;
+      default:
+        return <Minus className="w-3 h-3" />;
+    }
+  };
+
+  const getTrendColor = (trend: string) => {
+    switch (trend) {
+      case "improving":
+      case "ahead":
+      case "on_track":
+        return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400";
+      case "declining":
+      case "at_risk":
+        return "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400";
+      case "behind":
+        return "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400";
+      default:
+        return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const getOverallTrendColor = (trend?: string) => {
+    switch (trend) {
+      case "improving":
+        return "text-emerald-500";
+      case "declining":
+        return "text-rose-500";
+      default:
+        return "text-muted-foreground";
+    }
+  };
+
+  const hasData = insights && insights.quickStats?.totalDataPoints > 0;
+
+  return (
+    <Card className="bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20" data-testid="card-ai-insights">
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">Your AI Insights</h2>
+              <p className="text-xs text-muted-foreground">Based on your tracking data</p>
+            </div>
+          </div>
+          {isLoading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+        </div>
+
+        {!hasData ? (
+          <div className="text-center py-6">
+            <Brain className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">
+              Start logging your activities in the AI Tracker to see personalized insights and goal predictions.
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Log workouts, meals, sleep, and more to unlock trends analysis.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-background rounded-lg p-3 text-center">
+                <p className="text-xl font-bold text-foreground">{insights.quickStats.totalDataPoints}</p>
+                <p className="text-xs text-muted-foreground">Data Points</p>
+              </div>
+              <div className="bg-background rounded-lg p-3 text-center">
+                <p className="text-xl font-bold text-foreground">{insights.quickStats.trackingConsistency}%</p>
+                <p className="text-xs text-muted-foreground">Consistency</p>
+              </div>
+              <div className="bg-background rounded-lg p-3 text-center">
+                <p className={`text-xl font-bold capitalize ${getOverallTrendColor(insights.quickStats.overallTrend)}`}>
+                  {getTrendIcon(insights.quickStats.overallTrend)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Trend</p>
+              </div>
+            </div>
+
+            {/* Goal Predictions */}
+            {insights.goalPredictions && insights.goalPredictions.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-medium text-foreground">Your Goal Progress</p>
+                </div>
+                <div className="space-y-2">
+                  {insights.goalPredictions.slice(0, 2).map((goal, idx) => (
+                    <div key={idx} className="bg-background rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm font-medium text-foreground truncate flex-1">{goal.goalTitle}</p>
+                        <Badge variant="secondary" className={`text-xs ml-2 ${getTrendColor(goal.trend)}`}>
+                          {getTrendIcon(goal.trend)}
+                          <span className="ml-1">{Math.round(goal.successProbability * 100)}% likely</span>
+                        </Badge>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2 mt-2">
+                        <div
+                          className="bg-primary h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, goal.progressPercent)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{goal.progressPercent}% complete</p>
+                      {goal.recommendation && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">Tip: {goal.recommendation}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Trends */}
+            {insights.trends && insights.trends.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-medium text-foreground">Detected Trends</p>
+                </div>
+                <div className="space-y-2">
+                  {insights.trends.filter(t => t.confidence > 0.5).slice(0, 3).map((trend, idx) => (
+                    <div key={idx} className="bg-background rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-foreground capitalize">{trend.category}</span>
+                        <Badge variant="secondary" className={`text-xs ${getTrendColor(trend.trend)}`}>
+                          {getTrendIcon(trend.trend)}
+                          <span className="ml-1 capitalize">{trend.trend}</span>
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{trend.description}</p>
+                      {trend.recommendation && (
+                        <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                          <Lightbulb className="w-3 h-3" />
+                          {trend.recommendation}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Summary */}
+            {insights.summary && (
+              <div className="bg-background rounded-lg p-3 border-l-2 border-primary">
+                <p className="text-sm text-foreground">{insights.summary}</p>
+              </div>
+            )}
+
+            {/* Strengths & Opportunities */}
+            {(insights.quickStats.topStrength || insights.quickStats.topOpportunity) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {insights.quickStats.topStrength && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3">
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                      <Trophy className="w-3 h-3" />
+                      Your Strength
+                    </p>
+                    <p className="text-sm text-foreground mt-1">{insights.quickStats.topStrength}</p>
+                  </div>
+                )}
+                {insights.quickStats.topOpportunity && (
+                  <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3">
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                      <Lightbulb className="w-3 h-3" />
+                      Opportunity
+                    </p>
+                    <p className="text-sm text-foreground mt-1">{insights.quickStats.topOpportunity}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

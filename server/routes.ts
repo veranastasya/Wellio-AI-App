@@ -58,7 +58,7 @@ import {
   type GoalType,
 } from "@shared/schema";
 import { classifySmartLog, parseSmartLog, processSmartLogToEvents, processSmartLog } from "./smartLogProcessor";
-import { analyzeClientData } from "./ai";
+import { analyzeClientData, analyzeProgressEventsWithGoals, type EnhancedClientInsight } from "./ai";
 import { syncAppleHealthData } from "./sync";
 import OpenAI from "openai";
 import PDFDocument from "pdfkit";
@@ -2195,6 +2195,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting client context:", error);
       res.status(500).json({ error: "Failed to get client context" });
+    }
+  });
+
+  // Enhanced AI Insights endpoint - analyzes ProgressEvents and predicts goal completion
+  app.get("/api/clients/:id/insights", requireCoachAuth, async (req, res) => {
+    try {
+      const clientId = req.params.id;
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Get progress events from last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+      const progressEvents = await storage.getProgressEventsByClientId(clientId, { startDate });
+      const goals = await storage.getGoalsByClientId(clientId);
+
+      // Run the enhanced analysis
+      const insights = await analyzeProgressEventsWithGoals(
+        clientId,
+        client.name,
+        progressEvents,
+        goals
+      );
+
+      res.json(insights);
+    } catch (error) {
+      console.error("Error generating client insights:", error);
+      res.status(500).json({ error: "Failed to generate insights" });
+    }
+  });
+
+  // Client-facing insights endpoint (for client portal)
+  app.get("/api/client/insights", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId;
+      if (!clientId) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Get progress events from last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const startDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+      const progressEvents = await storage.getProgressEventsByClientId(clientId, { startDate });
+      const goals = await storage.getGoalsByClientId(clientId);
+
+      // Run the enhanced analysis
+      const insights = await analyzeProgressEventsWithGoals(
+        clientId,
+        client.name,
+        progressEvents,
+        goals
+      );
+
+      res.json(insights);
+    } catch (error) {
+      console.error("Error generating client insights:", error);
+      res.status(500).json({ error: "Failed to generate insights" });
     }
   });
 
