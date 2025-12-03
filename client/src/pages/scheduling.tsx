@@ -744,25 +744,29 @@ export default function Scheduling() {
                 Today
               </Button>
             </div>
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-              <Button
-                variant={viewMode === "week" ? "default" : "ghost"}
-                size="sm"
+            <div className="flex items-center gap-0 border border-border rounded-lg p-1 bg-background">
+              <button
                 onClick={() => setViewMode("week")}
-                className={viewMode === "week" ? "bg-background shadow-sm" : ""}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  viewMode === "week" 
+                    ? "bg-[#E2F9AD] text-[#28A0AE] border border-[#28A0AE]/20" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
                 data-testid="button-week-view"
               >
                 Week
-              </Button>
-              <Button
-                variant={viewMode === "month" ? "default" : "ghost"}
-                size="sm"
+              </button>
+              <button
                 onClick={() => setViewMode("month")}
-                className={viewMode === "month" ? "bg-background shadow-sm text-primary" : ""}
+                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  viewMode === "month" 
+                    ? "bg-[#E2F9AD] text-[#28A0AE] border border-[#28A0AE]/20" 
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
                 data-testid="button-month-view"
               >
                 Month
-              </Button>
+              </button>
             </div>
           </div>
         </CardContent>
