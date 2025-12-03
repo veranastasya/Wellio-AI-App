@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Clock, Plus, ChevronLeft, ChevronRight, User, Video, Phone, MapPin } from "lucide-react";
+import { Clock, Plus, ChevronLeft, ChevronRight, User, Video, Phone, MapPin, Calendar, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -117,6 +118,8 @@ export default function Scheduling() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -249,6 +252,26 @@ export default function Scheduling() {
 
   const goToToday = () => {
     setSelectedDate(new Date());
+  };
+
+  const openBookingWithDate = (date: Date, startTime?: string) => {
+    const dateStr = date.toLocaleDateString("en-CA");
+    form.reset({
+      clientId: "",
+      sessionType: "",
+      locationType: "video",
+      date: dateStr,
+      startTime: startTime || "",
+      duration: 45,
+      notes: "",
+    });
+    setIsDialogOpen(true);
+  };
+
+  const openSessionDetails = (session: Session, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedSession(session);
+    setIsDetailsDialogOpen(true);
   };
 
   const getSessionsForDate = (day: number) => {
@@ -566,14 +589,16 @@ export default function Scheduling() {
                         day === new Date().getDate() &&
                         month === new Date().getMonth() &&
                         year === new Date().getFullYear();
+                      const clickDate = new Date(year, month, day);
                       
                       return (
                         <div
                           key={day}
-                          className={`min-h-24 p-2 border-r border-b last:border-r-0 ${
-                            isToday ? "bg-primary/5" : "hover:bg-muted/50"
+                          className={`min-h-24 p-2 border-r border-b last:border-r-0 cursor-pointer transition-colors ${
+                            isToday ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/50"
                           }`}
                           data-testid={`calendar-day-${day}`}
+                          onClick={() => openBookingWithDate(clickDate)}
                         >
                           <div className={`text-sm font-medium mb-2 ${isToday ? "text-primary" : "text-foreground"}`}>
                             {day}
@@ -582,8 +607,9 @@ export default function Scheduling() {
                             {daySessions.slice(0, 3).map((session: Session) => (
                               <div
                                 key={session.id}
-                                className="flex items-center gap-1"
+                                className="flex items-center gap-1 hover:bg-muted rounded px-1 py-0.5 -mx-1 cursor-pointer transition-colors"
                                 data-testid={`session-${session.id}`}
+                                onClick={(e) => openSessionDetails(session, e)}
                               >
                                 <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                                   sessionTypeDotColors[session.sessionType] || "bg-blue-500"
@@ -643,13 +669,16 @@ export default function Scheduling() {
                             return sessionHour === hour;
                           });
                           const isToday = day.toDateString() === new Date().toDateString();
+                          const timeStr = `${hour.toString().padStart(2, "0")}:00`;
                           
                           return (
                             <div 
                               key={dayIndex} 
-                              className={`py-1 px-1 border-r last:border-r-0 relative min-h-16 ${
-                                isToday ? "bg-primary/5" : ""
+                              className={`py-1 px-1 border-r last:border-r-0 relative min-h-16 cursor-pointer transition-colors ${
+                                isToday ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/50"
                               }`}
+                              onClick={() => openBookingWithDate(day, timeStr)}
+                              data-testid={`week-slot-${day.toLocaleDateString("en-CA")}-${hour}`}
                             >
                               {daySessions.map((session: Session) => {
                                 const duration = session.endTime 
@@ -660,7 +689,7 @@ export default function Scheduling() {
                                 return (
                                   <div
                                     key={session.id}
-                                    className={`absolute left-1 right-1 rounded-md p-2 text-white text-xs ${
+                                    className={`absolute left-1 right-1 rounded-md p-2 text-white text-xs cursor-pointer hover:brightness-110 transition-all ${
                                       sessionTypeColors[session.sessionType] || "bg-blue-500"
                                     }`}
                                     style={{ 
@@ -668,6 +697,7 @@ export default function Scheduling() {
                                       zIndex: 10
                                     }}
                                     data-testid={`week-session-${session.id}`}
+                                    onClick={(e) => openSessionDetails(session, e)}
                                   >
                                     <div className="font-medium">
                                       {session.startTime} - {formatSessionType(session.sessionType)}
@@ -710,8 +740,9 @@ export default function Scheduling() {
                 return (
                   <div
                     key={session.id}
-                    className="flex items-start gap-3 p-3 rounded-lg border hover-elevate"
+                    className="flex items-start gap-3 p-3 rounded-lg border hover-elevate cursor-pointer"
                     data-testid={`upcoming-session-${session.id}`}
+                    onClick={(e) => openSessionDetails(session, e)}
                   >
                     <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${
                       sessionTypeDotColors[session.sessionType] || "bg-blue-500"
@@ -738,6 +769,109 @@ export default function Scheduling() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Session Details Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-primary" />
+              Session Details
+            </DialogTitle>
+          </DialogHeader>
+          {selectedSession && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${
+                  sessionTypeDotColors[selectedSession.sessionType] || "bg-blue-500"
+                }`} />
+                <Badge variant="secondary" className="text-sm">
+                  {formatSessionType(selectedSession.sessionType)}
+                </Badge>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <User className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Client</p>
+                    <p className="font-medium">{selectedSession.clientName}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Date</p>
+                    <p className="font-medium">
+                      {new Date(selectedSession.date).toLocaleDateString("en-US", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric"
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Time</p>
+                    <p className="font-medium">
+                      {selectedSession.startTime} - {selectedSession.endTime}
+                      {selectedSession.endTime && (
+                        <span className="text-muted-foreground ml-1">
+                          ({calculateDuration(selectedSession.startTime, selectedSession.endTime)} min)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  {getLocationIcon((selectedSession as any).locationType || "video")}
+                  <div>
+                    <p className="text-xs text-muted-foreground">Location</p>
+                    <p className="font-medium">
+                      {getLocationLabel((selectedSession as any).locationType || "video")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className={`w-2 h-2 rounded-full ${
+                    selectedSession.status === "scheduled" ? "bg-green-500" : 
+                    selectedSession.status === "completed" ? "bg-blue-500" : "bg-gray-500"
+                  }`} />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Status</p>
+                    <p className="font-medium capitalize">{selectedSession.status}</p>
+                  </div>
+                </div>
+
+                {selectedSession.notes && (
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                    <p className="text-sm">{selectedSession.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setIsDetailsDialogOpen(false)}
+                  data-testid="button-close-details"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
