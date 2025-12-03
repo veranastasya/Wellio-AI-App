@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Clock, Plus, ChevronLeft, ChevronRight, User, Video, Phone, MapPin, Calendar, X } from "lucide-react";
+import { Clock, Plus, ChevronLeft, ChevronRight, User, Video, Phone, MapPin, Calendar, X, Pencil, Trash2, Link, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Form,
   FormControl,
@@ -43,9 +53,40 @@ const bookingFormSchema = z.object({
   startTime: z.string().min(1, "Start time is required"),
   duration: z.coerce.number().min(15, "Duration must be at least 15 minutes"),
   notes: z.string().optional(),
+  meetingLink: z.string().optional(),
 });
 
 type BookingFormData = z.infer<typeof bookingFormSchema>;
+
+// Generate time options in 15-minute intervals with AM/PM format
+function generateTimeOptions() {
+  const options: { value: string; label: string }[] = [];
+  for (let hour = 6; hour <= 21; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      const h24 = hour.toString().padStart(2, "0");
+      const m = minute.toString().padStart(2, "0");
+      const value = `${h24}:${m}`;
+      
+      const h12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+      const ampm = hour >= 12 ? "pm" : "am";
+      const label = `${h12}:${m}${ampm}`;
+      
+      options.push({ value, label });
+    }
+  }
+  return options;
+}
+
+const timeOptions = generateTimeOptions();
+
+// Convert 24h time to 12h format for display
+function formatTimeDisplay(time24: string): string {
+  if (!time24) return "";
+  const [hours, minutes] = time24.split(":").map(Number);
+  const h12 = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+  const ampm = hours >= 12 ? "pm" : "am";
+  return `${h12}:${minutes.toString().padStart(2, "0")}${ampm}`;
+}
 
 type ViewMode = "week" | "month";
 
@@ -116,6 +157,8 @@ function calculateDuration(startTime: string, endTime: string): number {
 export default function Scheduling() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
@@ -139,6 +182,21 @@ export default function Scheduling() {
       startTime: "",
       duration: 45,
       notes: "",
+      meetingLink: "",
+    },
+  });
+
+  const editForm = useForm<BookingFormData>({
+    resolver: zodResolver(bookingFormSchema),
+    defaultValues: {
+      clientId: "",
+      sessionType: "",
+      locationType: "video",
+      date: "",
+      startTime: "",
+      duration: 45,
+      notes: "",
+      meetingLink: "",
     },
   });
 
@@ -163,6 +221,7 @@ export default function Scheduling() {
           endTime,
           status: "scheduled",
           notes: data.notes || "",
+          meetingLink: data.meetingLink || null,
         }),
       });
       if (!response.ok) {
@@ -190,6 +249,87 @@ export default function Scheduling() {
     },
   });
 
+  const updateSessionMutation = useMutation({
+    mutationFn: async (data: BookingFormData & { id: string; clientName: string }) => {
+      const startMinutes = parseInt(data.startTime.split(":")[0]) * 60 + parseInt(data.startTime.split(":")[1]);
+      const endMinutes = startMinutes + data.duration;
+      const endHours = Math.floor(endMinutes / 60);
+      const endMins = endMinutes % 60;
+      const endTime = `${endHours.toString().padStart(2, "0")}:${endMins.toString().padStart(2, "0")}`;
+      
+      const response = await fetch(`/api/sessions/${data.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: data.clientId,
+          clientName: data.clientName,
+          sessionType: data.sessionType,
+          locationType: data.locationType,
+          date: data.date,
+          startTime: data.startTime,
+          endTime,
+          notes: data.notes || "",
+          meetingLink: data.meetingLink || null,
+        }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update session");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      toast({
+        title: "Success",
+        description: "Session updated successfully",
+      });
+      editForm.reset();
+      setIsEditDialogOpen(false);
+      setIsDetailsDialogOpen(false);
+      setSelectedSession(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update session",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/sessions/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok && response.status !== 204) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete session");
+      }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+      toast({
+        title: "Success",
+        description: "Session deleted successfully",
+      });
+      setIsDeleteDialogOpen(false);
+      setIsDetailsDialogOpen(false);
+      setSelectedSession(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete session",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: BookingFormData) => {
     const selectedClient = clients.find((c: Client) => c.id === data.clientId);
     if (selectedClient) {
@@ -198,6 +338,38 @@ export default function Scheduling() {
         clientName: selectedClient.name,
       });
     }
+  };
+
+  const onEditSubmit = (data: BookingFormData) => {
+    if (!selectedSession) return;
+    const selectedClient = clients.find((c: Client) => c.id === data.clientId);
+    if (selectedClient) {
+      updateSessionMutation.mutate({
+        ...data,
+        id: selectedSession.id,
+        clientName: selectedClient.name,
+      });
+    }
+  };
+
+  const openEditDialog = () => {
+    if (!selectedSession) return;
+    const duration = selectedSession.endTime 
+      ? calculateDuration(selectedSession.startTime, selectedSession.endTime)
+      : 45;
+    
+    editForm.reset({
+      clientId: selectedSession.clientId,
+      sessionType: selectedSession.sessionType,
+      locationType: (selectedSession as any).locationType || "video",
+      date: selectedSession.date,
+      startTime: selectedSession.startTime,
+      duration,
+      notes: selectedSession.notes || "",
+      meetingLink: (selectedSession as any).meetingLink || "",
+    });
+    setIsDetailsDialogOpen(false);
+    setIsEditDialogOpen(true);
   };
 
   const getDaysInMonth = (date: Date) => {
@@ -264,6 +436,7 @@ export default function Scheduling() {
       startTime: startTime || "",
       duration: 45,
       notes: "",
+      meetingLink: "",
     });
     setIsDialogOpen(true);
   };
@@ -428,9 +601,22 @@ export default function Scheduling() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Start Time</FormLabel>
-                        <FormControl>
-                          <Input type="time" {...field} data-testid="input-start-time" />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="input-start-time">
+                              <SelectValue placeholder="Select time">
+                                {field.value ? formatTimeDisplay(field.value) : "Select time"}
+                              </SelectValue>
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-60">
+                            {timeOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -463,6 +649,25 @@ export default function Scheduling() {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="meetingLink"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Meeting Link (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="https://meet.google.com/..."
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-meeting-link"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
@@ -870,6 +1075,25 @@ export default function Scheduling() {
                   </div>
                 </div>
 
+                {(selectedSession as any).meetingLink && (
+                  <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Link className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">Meeting Link</p>
+                    </div>
+                    <a 
+                      href={(selectedSession as any).meetingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline flex items-center gap-1"
+                      data-testid="link-meeting"
+                    >
+                      Join Meeting
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
+
                 {selectedSession.notes && (
                   <div className="p-3 rounded-lg bg-muted/50">
                     <p className="text-xs text-muted-foreground mb-1">Notes</p>
@@ -879,6 +1103,24 @@ export default function Scheduling() {
               </div>
 
               <div className="flex gap-2 pt-2">
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  data-testid="button-delete-session"
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={openEditDialog}
+                  data-testid="button-edit-session"
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
                 <Button 
                   variant="outline" 
                   className="flex-1"
@@ -892,6 +1134,238 @@ export default function Scheduling() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Session Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Session</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="clientId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Client</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="edit-select-client">
+                          <SelectValue placeholder="Select a client" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {clients.map((client: Client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="sessionType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Session Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="edit-select-session-type">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="training">Progress Review</SelectItem>
+                        <SelectItem value="consultation">Initial Consultation</SelectItem>
+                        <SelectItem value="follow_up">Check-in</SelectItem>
+                        <SelectItem value="assessment">Nutrition Planning</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="locationType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="edit-select-location-type">
+                          <SelectValue placeholder="Select location" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="video">Video Call</SelectItem>
+                        <SelectItem value="phone">Phone Call</SelectItem>
+                        <SelectItem value="in-person">In-Person</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} data-testid="edit-input-date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Time</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="edit-input-start-time">
+                            <SelectValue placeholder="Select time">
+                              {field.value ? formatTimeDisplay(field.value) : "Select time"}
+                            </SelectValue>
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="max-h-60">
+                          {timeOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="duration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duration (min)</FormLabel>
+                      <Select 
+                        onValueChange={(val) => field.onChange(parseInt(val))} 
+                        value={field.value?.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="edit-select-duration">
+                            <SelectValue placeholder="Duration" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="30">30 min</SelectItem>
+                          <SelectItem value="45">45 min</SelectItem>
+                          <SelectItem value="60">60 min</SelectItem>
+                          <SelectItem value="90">90 min</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={editForm.control}
+                name="meetingLink"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Meeting Link (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="https://meet.google.com/..."
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="edit-input-meeting-link"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editForm.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Add session notes..."
+                        {...field}
+                        value={field.value || ""}
+                        data-testid="edit-input-notes"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex gap-2 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditDialogOpen(false)}
+                  data-testid="button-cancel-edit"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateSessionMutation.isPending}
+                  data-testid="button-submit-edit"
+                >
+                  {updateSessionMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Session</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this session? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedSession && deleteSessionMutation.mutate(selectedSession.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {deleteSessionMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
