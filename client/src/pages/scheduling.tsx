@@ -744,12 +744,12 @@ export default function Scheduling() {
                 Today
               </Button>
             </div>
-            <div className="flex items-center gap-0 border border-border rounded-lg p-1 bg-background">
+            <div className="inline-flex items-center rounded-lg bg-muted/50 p-0.5 border border-border/50">
               <button
                 onClick={() => setViewMode("week")}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                className={`relative px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                   viewMode === "week" 
-                    ? "bg-[#E2F9AD] text-[#28A0AE] border border-[#28A0AE]/20" 
+                    ? "bg-white dark:bg-slate-800 text-[#28A0AE] shadow-sm ring-1 ring-black/5 dark:ring-white/10" 
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 data-testid="button-week-view"
@@ -758,9 +758,9 @@ export default function Scheduling() {
               </button>
               <button
                 onClick={() => setViewMode("month")}
-                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                className={`relative px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
                   viewMode === "month" 
-                    ? "bg-[#E2F9AD] text-[#28A0AE] border border-[#28A0AE]/20" 
+                    ? "bg-white dark:bg-slate-800 text-[#28A0AE] shadow-sm ring-1 ring-black/5 dark:ring-white/10" 
                     : "text-muted-foreground hover:text-foreground"
                 }`}
                 data-testid="button-month-view"
