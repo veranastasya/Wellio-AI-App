@@ -9,15 +9,28 @@
   box-sizing: border-box;
 }
 
-html,
-body {
+html {
   height: 100%;
+  height: -webkit-fill-available;
   margin: 0;
-  overflow: hidden; /* Prevent double scroll on body */
 }
 
 body {
+  margin: 0;
   min-height: 100%;
+  min-height: -webkit-fill-available;
+  overflow: hidden;
+}
+
+/* iOS Safari safe area utilities */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+  
+  .safe-area-bottom-sm {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* LIGHT MODE */

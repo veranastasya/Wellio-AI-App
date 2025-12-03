@@ -1,0 +1,30 @@
+I am testing on iOS Safari. On the Client Management page the bottom of the screen is cut off: the lower part of the client cards and actions sit under the browser bar and cannot be fully seen. I attached a screenshot that shows the bottom of the card hidden behind the iOS browser controls.
+
+I need you to:
+	1.	Remove the cause of the cropping on mobile
+	•	Look for any layout container that uses a fixed height, for example:
+	•	height: 100vh
+	•	fixed pixel heights
+	•	overflow: hidden on the main layout or page containers.
+	•	Replace those with:
+	•	min-height: 100vh on the page wrapper, and
+	•	a normal scrollable vertical layout for the main content.
+	•	Make sure the page can always scroll vertically on mobile so that the entire content and all cards can move above the browser chrome.
+	2.	Add safe area padding on mobile
+	•	At the bottom of the main scrollable area, add padding that accounts for the iOS safe area so that content does not sit directly under the home indicator or browser bar.
+	•	For example, use something like:
+	•	padding-bottom: calc(16px + env(safe-area-inset-bottom))
+or the equivalent with our styling utilities (Tailwind or CSS-in-JS).
+	•	Apply this padding to the layout that wraps the list of client cards.
+	3.	Verify on the Client Management page
+	•	On a mobile sized viewport (iPhone width):
+	•	Scroll to the very bottom of the Client Management page.
+	•	Confirm that the last card is fully visible, including any bottom buttons or text.
+	•	Nothing should be cropped or hidden behind the browser bar.
+	•	Desktop behavior and layout must remain unchanged.
+	4.	General rule
+	•	Do not rely on fixed heights for entire pages on mobile. Use min-height plus scrollable content.
+	•	Ensure no core pages (Client Management, Client Card, Plan Builder, Calendar) have their bottom content cut off on mobile.
+
+Deliverable:
+	•	Updated layout and styles so that on iOS Safari the entire Client Management page and all other core pages scroll correctly, and no content is hidden under the browser chrome or home indicator.
