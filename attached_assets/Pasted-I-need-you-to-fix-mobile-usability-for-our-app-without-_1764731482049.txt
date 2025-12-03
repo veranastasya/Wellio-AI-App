@@ -1,0 +1,43 @@
+I need you to fix mobile usability for our app without breaking desktop.
+
+Context:
+	•	We have several pages that are not optimized for mobile. The bottom of the page is often cropped and key buttons are outside the viewport.
+	•	The Plan Builder currently has an AI chat section and a canvas based plan builder. The canvas layout is designed for desktop and is basically unusable on mobile.
+
+Requirements:
+	1.	Global mobile optimization
+	•	Go through all core pages and make them responsive for mobile:
+	•	Client Management
+	•	Client Card
+	•	Plan Builder
+	•	Calendar and scheduling related pages
+	•	Fix layouts so that:
+	•	No content is cropped at the bottom of the screen on small devices.
+	•	The page can scroll vertically when needed instead of cutting off content.
+	•	Primary action buttons (Save, Submit, Next, etc) are visible and reachable on common mobile breakpoints (for example 320 to 430 width).
+	•	Use responsive layout techniques (media queries, flexbox, grid, etc) instead of hard coded heights or widths where possible.
+	•	Do not change desktop layouts or behavior. Desktop experience should stay the same or better.
+	2.	Mobile behavior for Plan Builder and AI canvas
+	•	Detect when the user is on a mobile sized viewport.
+	•	When on mobile:
+	•	The AI Plan Chat must behave like a standard chat:
+	•	Full height scrollable chat container.
+	•	Input box pinned at the bottom above any fixed navigation.
+	•	User can send messages and see AI responses without any overlap or cropping.
+	•	The canvas based plan builder should not render on mobile.
+	•	Instead, hide or disable the canvas and show a clear message in its place, such as:
+	•	“Canvas view is not supported on mobile yet. Please use a desktop to build or edit plans. You can still chat with AI and download existing plans here.”
+	•	On mobile, the user must still be able to:
+	•	See a list of existing plans for the client.
+	•	Open and download ready plans.
+	•	Make sure the download experience works cleanly on mobile browsers.
+	3.	Technical notes
+	•	Where you introduce mobile specific behavior, keep the logic tied to viewport size or existing responsive utilities in the codebase, rather than duplicating pages.
+	•	Preserve all existing functionality. We are changing layouts and visibility, not removing features.
+
+Deliverables:
+	•	Updated components and styles so that:
+	•	No core page is cropped on mobile.
+	•	Plan Builder on mobile shows AI chat only and a “canvas not supported on mobile” message.
+	•	Existing plans are visible and downloadable on mobile.
+	•	Any new helper functions or components documented in comments where needed.
