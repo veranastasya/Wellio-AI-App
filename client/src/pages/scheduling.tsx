@@ -91,33 +91,33 @@ function formatTimeDisplay(time24: string): string {
 type ViewMode = "week" | "month";
 
 const sessionTypeColors: Record<string, string> = {
-  "Progress Review": "bg-blue-500",
-  "Initial Consultation": "bg-cyan-500",
+  "Consultation": "bg-cyan-500",
+  "Follow-up": "bg-blue-500",
   "Check-in": "bg-amber-500",
-  "Nutrition Planning": "bg-emerald-500",
-  training: "bg-blue-500",
+  "Other": "bg-gray-500",
   consultation: "bg-cyan-500",
-  follow_up: "bg-amber-500",
-  assessment: "bg-emerald-500",
+  follow_up: "bg-blue-500",
+  check_in: "bg-amber-500",
+  other: "bg-gray-500",
 };
 
 const sessionTypeDotColors: Record<string, string> = {
-  "Progress Review": "bg-blue-500",
-  "Initial Consultation": "bg-cyan-500",
+  "Consultation": "bg-cyan-500",
+  "Follow-up": "bg-blue-500",
   "Check-in": "bg-amber-500",
-  "Nutrition Planning": "bg-emerald-500",
-  training: "bg-blue-500",
+  "Other": "bg-gray-500",
   consultation: "bg-cyan-500",
-  follow_up: "bg-amber-500",
-  assessment: "bg-emerald-500",
+  follow_up: "bg-blue-500",
+  check_in: "bg-amber-500",
+  other: "bg-gray-500",
 };
 
 function formatSessionType(type: string): string {
   const typeMap: Record<string, string> = {
-    training: "Progress Review",
-    consultation: "Initial Consultation",
-    follow_up: "Check-in",
-    assessment: "Nutrition Planning",
+    consultation: "Consultation",
+    follow_up: "Follow-up",
+    check_in: "Check-in",
+    other: "Other",
   };
   return typeMap[type] || type;
 }
@@ -546,10 +546,10 @@ export default function Scheduling() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="training">Progress Review</SelectItem>
-                          <SelectItem value="consultation">Initial Consultation</SelectItem>
-                          <SelectItem value="follow_up">Check-in</SelectItem>
-                          <SelectItem value="assessment">Nutrition Planning</SelectItem>
+                          <SelectItem value="consultation">Consultation</SelectItem>
+                          <SelectItem value="follow_up">Follow-up</SelectItem>
+                          <SelectItem value="check_in">Check-in</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1181,10 +1181,10 @@ export default function Scheduling() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="training">Progress Review</SelectItem>
-                        <SelectItem value="consultation">Initial Consultation</SelectItem>
-                        <SelectItem value="follow_up">Check-in</SelectItem>
-                        <SelectItem value="assessment">Nutrition Planning</SelectItem>
+                        <SelectItem value="consultation">Consultation</SelectItem>
+                        <SelectItem value="follow_up">Follow-up</SelectItem>
+                        <SelectItem value="check_in">Check-in</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
