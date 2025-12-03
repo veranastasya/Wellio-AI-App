@@ -47,7 +47,7 @@ const navigationItems = [
     locked: false,
   },
   {
-    title: "Smart Scheduling",
+    title: "Calendar",
     url: "/scheduling",
     icon: Calendar,
     locked: false,
