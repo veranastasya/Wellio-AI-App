@@ -576,7 +576,7 @@ export default function CoachClientDetail() {
 
           {/* Plan Tab */}
           <TabsContent value="plan" className="space-y-6">
-            <div className="min-h-[600px]">
+            <div className="min-h-[400px] sm:min-h-[500px] lg:min-h-[600px]">
               {planBuilderState.isLoadingContext || planBuilderState.isLoadingSession ? (
                 <div className="flex items-center justify-center h-96">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" data-testid="loader-plan-context" />

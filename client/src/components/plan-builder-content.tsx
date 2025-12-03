@@ -1,4 +1,4 @@
-import { Activity, FileText, Send, Loader2, Download, Minimize2, Maximize2, ArrowLeft, UserPlus, CheckCircle } from "lucide-react";
+import { Activity, FileText, Send, Loader2, Download, Minimize2, Maximize2, ArrowLeft, UserPlus, CheckCircle, Monitor } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Message {
   role: "user" | "assistant";
@@ -69,18 +70,156 @@ export function PlanBuilderContent({
   handleSavePlan,
   handleAssignToClient,
 }: PlanBuilderContentProps) {
+  const isMobile = useIsMobile();
   const isAssigned = planStatus === "ASSIGNED";
-  return (
-    <div className="flex flex-col h-full gap-3 sm:gap-4">
-      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
-        <Card className="flex-1 lg:flex-[0.8]">
-          <CardHeader className="pb-3">
+
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-full">
+        <Card className="flex flex-col flex-1 min-h-0">
+          <CardHeader className="pb-3 flex-shrink-0">
             <CardTitle className="flex items-center gap-2 text-base">
               <Activity className="w-4 h-4" />
               AI Chat
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col h-[calc(100%-60px)]">
+          <CardContent className="flex flex-col flex-1 min-h-0 pb-4">
+            <ScrollArea className="flex-1 mb-4">
+              <div className="space-y-3 pr-4">
+                {messages.length === 0 && (
+                  <div className="text-center text-muted-foreground py-8">
+                    <Activity className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                    <p className="font-medium text-sm">Chat with AI to generate plan content</p>
+                    <p className="text-xs mt-2">Ask questions, request sections, or get suggestions</p>
+                  </div>
+                )}
+                {messages.map((message, idx) => (
+                  <div key={idx} className="space-y-2">
+                    <div
+                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[90%] rounded-lg p-3 ${
+                          message.role === "user"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted"
+                        }`}
+                        data-testid={`message-${message.role}-${idx}`}
+                      >
+                        <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {chatMutation.isPending && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted rounded-lg p-3">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </ScrollArea>
+
+            <div className="flex gap-2 flex-shrink-0">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Ask AI to create plan sections..."
+                className="flex-1 min-h-10 text-base"
+                rows={2}
+                data-testid="input-message"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={chatMutation.isPending || !input.trim()}
+                size="icon"
+                className="h-auto min-h-10 self-end"
+                data-testid="button-send"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-3 flex-shrink-0">
+          <CardContent className="py-4 px-4">
+            <div className="flex items-center gap-3 text-muted-foreground mb-3">
+              <Monitor className="w-5 h-5 flex-shrink-0" />
+              <p className="text-sm" data-testid="text-mobile-canvas-notice">
+                Canvas view is not supported on mobile yet. Please use a desktop to build or edit plans.
+              </p>
+            </div>
+            {planContent.trim() && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Plan filename"
+                    value={planName}
+                    onChange={(e) => setPlanName(e.target.value)}
+                    className="text-sm min-h-9 flex-1"
+                    data-testid="input-canvas-filename-mobile"
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSavePlan}
+                    disabled={isSaving || !planContent.trim() || !planName.trim()}
+                    className="flex-1 min-h-9"
+                    data-testid="button-download-pdf-mobile"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    {isSaving ? "Generating..." : "Download PDF"}
+                  </Button>
+                  {isAssigned ? (
+                    <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-3 flex items-center">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Assigned
+                    </Badge>
+                  ) : (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleAssignToClient}
+                      disabled={isAssigning || !planContent.trim() || !planName.trim()}
+                      className="flex-1 min-h-9"
+                      data-testid="button-assign-to-client-mobile"
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      {isAssigning ? "Assigning..." : "Assign"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full gap-3 sm:gap-4">
+      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
+        <Card className="flex-1 lg:flex-[0.8] flex flex-col">
+          <CardHeader className="pb-3 flex-shrink-0">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Activity className="w-4 h-4" />
+              AI Chat
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col flex-1 min-h-0">
             <ScrollArea className="flex-1 mb-4">
               <div className="space-y-3 pr-4">
                 {messages.length === 0 && (
@@ -133,7 +272,7 @@ export function PlanBuilderContent({
               </div>
             </ScrollArea>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0">
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -152,7 +291,7 @@ export function PlanBuilderContent({
                 onClick={handleSendMessage}
                 disabled={chatMutation.isPending || !input.trim()}
                 size="icon"
-                className="h-full min-h-10"
+                className="h-auto min-h-10 self-end"
                 data-testid="button-send"
               >
                 <Send className="w-4 h-4" />
@@ -168,7 +307,7 @@ export function PlanBuilderContent({
                 <FileText className="w-4 h-4" />
                 Plan Canvas
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Input
                   type="text"
                   placeholder="Plan filename"
@@ -196,7 +335,6 @@ export function PlanBuilderContent({
                   variant="ghost"
                   size="icon"
                   onClick={() => setIsCanvasExpanded(!isCanvasExpanded)}
-                  className="h-8 w-8"
                   data-testid="button-toggle-canvas-expand"
                 >
                   {isCanvasExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
