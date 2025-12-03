@@ -32,14 +32,14 @@ export function ClientProtectedLayout({ children }: ClientProtectedLayoutProps) 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <SidebarAutoClose>
-        <div className="flex min-h-screen h-screen w-full">
+        <div className="flex h-screen-safe w-full">
           <ClientSidebar />
-          <div className="flex flex-col flex-1 min-h-0 h-full">
+          <div className="flex flex-col flex-1 min-w-0 min-h-0">
             <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background flex-shrink-0">
               <SidebarTriggerWithBadge role="client" />
               <ThemeToggle />
             </header>
-            <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+            <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 safe-area-bottom">
               {children}
             </main>
           </div>

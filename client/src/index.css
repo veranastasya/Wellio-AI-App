@@ -11,25 +11,36 @@
 
 html {
   height: 100%;
-  height: -webkit-fill-available;
   margin: 0;
 }
 
 body {
   margin: 0;
-  min-height: 100%;
-  min-height: -webkit-fill-available;
+  height: 100%;
   overflow: hidden;
 }
 
 /* iOS Safari safe area utilities */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .safe-area-bottom {
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-  }
-  
-  .safe-area-bottom-sm {
-    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+.safe-area-bottom {
+  padding-bottom: 1rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+.safe-area-bottom-sm {
+  padding-bottom: 0.5rem;
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Mobile-safe height that works with iOS Safari dynamic viewport */
+.h-screen-safe {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height - accounts for browser chrome */
+}
+
+@supports (-webkit-touch-callout: none) {
+  /* iOS-specific: use -webkit-fill-available for better Safari support */
+  .h-screen-safe {
+    height: -webkit-fill-available;
   }
 }
 

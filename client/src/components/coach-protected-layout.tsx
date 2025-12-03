@@ -57,14 +57,14 @@ export function CoachProtectedLayout({ children }: CoachProtectedLayoutProps) {
   return (
     <SidebarProvider style={style as React.CSSProperties}>
       <SidebarAutoClose>
-        <div className="flex min-h-screen w-full" style={{ minHeight: '-webkit-fill-available' }}>
+        <div className="flex h-screen-safe w-full">
           <AppSidebar />
-          <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex flex-col flex-1 min-w-0 min-h-0">
             <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background flex-shrink-0">
               <SidebarTriggerWithBadge role="coach" />
               <ThemeToggle />
             </header>
-            <main className="flex-1 overflow-y-auto overflow-x-hidden safe-area-bottom">
+            <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 safe-area-bottom">
               {children}
             </main>
           </div>
