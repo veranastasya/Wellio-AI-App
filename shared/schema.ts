@@ -148,6 +148,7 @@ export const sessions = pgTable("sessions", {
   endTime: text("end_time").notNull(),
   status: text("status").notNull().default("scheduled"),
   notes: text("notes"),
+  meetingLink: text("meeting_link"),
 });
 
 export const messages = pgTable("messages", {

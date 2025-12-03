@@ -303,6 +303,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/sessions/:id", requireCoachAuth, async (req, res) => {
+    try {
+      const session = await storage.getSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      const updatedSession = await storage.updateSession(req.params.id, req.body);
+      res.json(updatedSession);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update session" });
+    }
+  });
+
+  app.delete("/api/sessions/:id", requireCoachAuth, async (req, res) => {
+    try {
+      const session = await storage.getSession(req.params.id);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      const deleted = await storage.deleteSession(req.params.id);
+      if (deleted) {
+        res.status(204).send();
+      } else {
+        res.status(500).json({ error: "Failed to delete session" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete session" });
+    }
+  });
+
   // Message routes
   app.get("/api/messages", requireClientAuth, async (req, res) => {
     try {

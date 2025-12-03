@@ -82,6 +82,8 @@ export interface IStorage {
   getSessions(): Promise<Session[]>;
   getSession(id: string): Promise<Session | undefined>;
   createSession(session: InsertSession): Promise<Session>;
+  updateSession(id: string, session: Partial<InsertSession>): Promise<Session | undefined>;
+  deleteSession(id: string): Promise<boolean>;
 
   // Messages
   getMessages(): Promise<Message[]>;
@@ -595,6 +597,20 @@ export class DatabaseStorage implements IStorage {
   async createSession(insertSession: InsertSession): Promise<Session> {
     const [session] = await db.insert(sessions).values(insertSession).returning();
     return session;
+  }
+
+  async updateSession(id: string, updateData: Partial<InsertSession>): Promise<Session | undefined> {
+    const [session] = await db
+      .update(sessions)
+      .set(updateData)
+      .where(eq(sessions.id, id))
+      .returning();
+    return session || undefined;
+  }
+
+  async deleteSession(id: string): Promise<boolean> {
+    const result = await db.delete(sessions).where(eq(sessions.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   // Message methods
