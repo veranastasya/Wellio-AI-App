@@ -10,7 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Send, Download, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, ChevronRight, ChevronLeft, Maximize2, Minimize2, CheckCircle, Share2 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Loader2, Send, Download, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, ChevronRight, ChevronLeft, Maximize2, Minimize2, CheckCircle, Share2, Monitor, UserPlus } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, Goal, PlanSession, PlanMessage } from "@shared/schema";
 import { getGoalTypeLabel, PLAN_SESSION_STATUSES } from "@shared/schema";
@@ -184,6 +185,7 @@ export default function PlanBuilder() {
   const clientId = params?.clientId;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -686,7 +688,130 @@ export default function PlanBuilder() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0 overflow-hidden">
+      {isMobile ? (
+        <div className="flex flex-col flex-1 gap-3 min-h-0">
+          <Card className="flex flex-col flex-1 min-h-0">
+            <CardHeader className="pb-3 flex-shrink-0">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Activity className="w-4 h-4" />
+                AI Chat
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col flex-1 min-h-0 pb-4">
+              <ScrollArea className="flex-1 mb-4">
+                <div className="space-y-3 pr-4">
+                  {messages.length === 0 && (
+                    <div className="text-center text-muted-foreground py-8">
+                      <Activity className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                      <p className="font-medium text-sm">Chat with AI to generate plan content</p>
+                      <p className="text-xs mt-2">Ask questions, request sections, or get suggestions</p>
+                    </div>
+                  )}
+                  {messages.map((message, idx) => (
+                    <div key={idx} className="space-y-2">
+                      <div
+                        className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[90%] rounded-lg p-3 ${
+                            message.role === "user"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
+                          }`}
+                          data-testid={`message-${message.role}-${idx}`}
+                        >
+                          <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {chatMutation.isPending && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted rounded-lg p-3">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
+
+              <div className="flex gap-2 flex-shrink-0">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Ask AI to create plan sections..."
+                  className="flex-1 min-h-10 text-base"
+                  rows={2}
+                  data-testid="input-message"
+                />
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={chatMutation.isPending || !input.trim()}
+                  size="icon"
+                  className="h-auto min-h-10 self-end"
+                  data-testid="button-send"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="flex-shrink-0">
+            <CardContent className="py-4 px-4">
+              <div className="flex items-center gap-3 text-muted-foreground mb-3">
+                <Monitor className="w-5 h-5 flex-shrink-0" />
+                <p className="text-sm" data-testid="text-mobile-canvas-notice">
+                  Canvas view is not supported on mobile yet. Please use a desktop to build or edit plans.
+                </p>
+              </div>
+              {planContent.trim() && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSavePlan}
+                      disabled={isSaving || !planContent.trim() || !planName.trim()}
+                      className="flex-1 min-h-9"
+                      data-testid="button-download-pdf-mobile"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      {isSaving ? "Generating..." : "Download PDF"}
+                    </Button>
+                    {planStatus === "ASSIGNED" ? (
+                      <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-3 flex items-center">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Assigned
+                      </Badge>
+                    ) : (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => assignPlanMutation.mutate()}
+                        disabled={assignPlanMutation.isPending || !planContent.trim() || !planName.trim()}
+                        className="flex-1 min-h-9"
+                        data-testid="button-assign-to-client-mobile"
+                      >
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        {assignPlanMutation.isPending ? "Assigning..." : "Assign"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0 overflow-hidden">
           <Card className="flex-1 lg:flex-[0.8] flex flex-col min-h-[300px] lg:min-h-0">
             <CardHeader className="pb-3 flex-shrink-0">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -694,178 +819,169 @@ export default function PlanBuilder() {
                 AI Chat
               </CardTitle>
             </CardHeader>
-          <CardContent className="flex flex-col flex-1 min-h-0">
-            <ScrollArea className="flex-1 mb-4">
-              <div className="space-y-3 pr-4">
-                {messages.length === 0 && (
-                  <div className="text-center text-muted-foreground py-12">
-                    <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p className="font-medium">Chat with AI to generate plan content</p>
-                    <p className="text-sm mt-2">Ask questions, request sections, or get suggestions</p>
-                  </div>
-                )}
-                {messages.map((message, idx) => (
-                  <div key={idx} className="space-y-2">
-                    <div
-                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
+            <CardContent className="flex flex-col flex-1 min-h-0">
+              <ScrollArea className="flex-1 mb-4">
+                <div className="space-y-3 pr-4">
+                  {messages.length === 0 && (
+                    <div className="text-center text-muted-foreground py-12">
+                      <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p className="font-medium">Chat with AI to generate plan content</p>
+                      <p className="text-sm mt-2">Ask questions, request sections, or get suggestions</p>
+                    </div>
+                  )}
+                  {messages.map((message, idx) => (
+                    <div key={idx} className="space-y-2">
                       <div
-                        className={`max-w-[85%] rounded-lg p-3 ${
-                          message.role === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
-                        }`}
-                        data-testid={`message-${message.role}-${idx}`}
+                        className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                       >
-                        <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
-                      </div>
-                    </div>
-                    {message.role === "assistant" && (
-                      <div className="flex justify-start">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAddToCanvas(message.content)}
-                          className="ml-2 min-h-8"
-                          data-testid={`button-add-to-canvas-${idx}`}
+                        <div
+                          className={`max-w-[85%] rounded-lg p-3 ${
+                            message.role === "user"
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
+                          }`}
+                          data-testid={`message-${message.role}-${idx}`}
                         >
-                          <ArrowLeft className="w-3 h-3 mr-1 rotate-180" />
-                          Add to Canvas
-                        </Button>
+                          <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
-                {chatMutation.isPending && (
-                  <div className="flex justify-start">
-                    <div className="bg-muted rounded-lg p-3">
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {message.role === "assistant" && (
+                        <div className="flex justify-start">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAddToCanvas(message.content)}
+                            className="ml-2 min-h-8"
+                            data-testid={`button-add-to-canvas-${idx}`}
+                          >
+                            <ArrowLeft className="w-3 h-3 mr-1 rotate-180" />
+                            Add to Canvas
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                  ))}
+                  {chatMutation.isPending && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted rounded-lg p-3">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
 
-            <div className="flex gap-2">
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                placeholder="Ask AI to create plan sections..."
-                className="flex-1 min-h-10"
-                rows={2}
-                data-testid="input-message"
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={chatMutation.isPending || !input.trim()}
-                size="icon"
-                className="h-full min-h-10"
-                data-testid="button-send"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
+              <div className="flex gap-2">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder="Ask AI to create plan sections..."
+                  className="flex-1 min-h-10"
+                  rows={2}
+                  data-testid="input-message"
+                />
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={chatMutation.isPending || !input.trim()}
+                  size="icon"
+                  className="h-full min-h-10"
+                  data-testid="button-send"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
           <Card className={`flex-1 lg:flex-[1.2] flex flex-col ${isCanvasExpanded ? 'fixed inset-2 sm:inset-4 z-50' : ''}`}>
-          <CardHeader className="pb-3 flex-shrink-0">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="w-4 h-4" />
-                  Plan Canvas
-                </CardTitle>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsCanvasExpanded(!isCanvasExpanded)}
-                    className="h-8 w-8"
-                    data-testid="button-toggle-canvas-expand"
-                  >
-                    {isCanvasExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSavePlan}
-                    disabled={isSaving || !planContent.trim() || !planName.trim()}
-                    className="min-h-8 hidden sm:flex"
-                    data-testid="button-download-pdf"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    {isSaving ? "Generating..." : "Download PDF"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleSavePlan}
-                    disabled={isSaving || !planContent.trim() || !planName.trim()}
-                    className="min-h-8 sm:hidden"
-                    data-testid="button-download-pdf-mobile"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
+            <CardHeader className="pb-3 flex-shrink-0">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <FileText className="w-4 h-4" />
+                    Plan Canvas
+                  </CardTitle>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsCanvasExpanded(!isCanvasExpanded)}
+                      className="h-8 w-8"
+                      data-testid="button-toggle-canvas-expand"
+                    >
+                      {isCanvasExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSavePlan}
+                      disabled={isSaving || !planContent.trim() || !planName.trim()}
+                      className="min-h-8"
+                      data-testid="button-download-pdf"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      {isSaving ? "Generating..." : "Download PDF"}
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Plan filename"
+                    value={planName}
+                    onChange={(e) => setPlanName(e.target.value)}
+                    className="text-sm min-h-10 w-full sm:w-48"
+                    data-testid="input-canvas-filename"
+                  />
+                  <Select onValueChange={(value) => {
+                    const template = SECTION_TEMPLATES.find(t => t.heading === value);
+                    if (template) handleAddSection(template);
+                  }}>
+                    <SelectTrigger className="w-full sm:w-40 min-h-10 text-sm">
+                      <SelectValue placeholder="Add section..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SECTION_TEMPLATES.map((template) => (
+                        <SelectItem key={template.heading} value={template.heading}>
+                          {template.heading}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  type="text"
-                  placeholder="Plan filename"
-                  value={planName}
-                  onChange={(e) => setPlanName(e.target.value)}
-                  className="text-sm min-h-10 w-full sm:w-48"
-                  data-testid="input-canvas-filename"
+            </CardHeader>
+            <CardContent className="flex-1 min-h-0 flex flex-col">
+              {!planContent.trim() ? (
+                <div className="text-center text-muted-foreground py-12">
+                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-medium">Your plan canvas is empty</p>
+                  <p className="text-sm mt-2">Chat with AI and click "Add to Canvas" to start building</p>
+                  <p className="text-sm mt-1">Or use the dropdown above to add pre-structured sections</p>
+                </div>
+              ) : (
+                <Textarea
+                  ref={canvasTextareaRef}
+                  value={planContent}
+                  onChange={(e) => setPlanContent(e.target.value)}
+                  className={`flex-1 text-sm resize-none border focus-visible:ring-1 font-mono leading-relaxed ${
+                    isCanvasExpanded ? 'min-h-[calc(100vh-200px)]' : 'min-h-[200px] sm:min-h-[400px]'
+                  }`}
+                  placeholder="Your plan content will appear here..."
+                  data-testid="textarea-plan-canvas"
                 />
-                <Select onValueChange={(value) => {
-                  const template = SECTION_TEMPLATES.find(t => t.heading === value);
-                  if (template) handleAddSection(template);
-                }}>
-                  <SelectTrigger className="w-full sm:w-40 min-h-10 text-sm">
-                    <SelectValue placeholder="Add section..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SECTION_TEMPLATES.map((template) => (
-                      <SelectItem key={template.heading} value={template.heading}>
-                        {template.heading}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1 min-h-0 flex flex-col">
-            {!planContent.trim() ? (
-              <div className="text-center text-muted-foreground py-12">
-                <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">Your plan canvas is empty</p>
-                <p className="text-sm mt-2">Chat with AI and click "Add to Canvas" to start building</p>
-                <p className="text-sm mt-1">Or use the dropdown above to add pre-structured sections</p>
-              </div>
-            ) : (
-              <Textarea
-                ref={canvasTextareaRef}
-                value={planContent}
-                onChange={(e) => setPlanContent(e.target.value)}
-                className={`flex-1 text-sm resize-none border focus-visible:ring-1 font-mono leading-relaxed ${
-                  isCanvasExpanded ? 'min-h-[calc(100vh-200px)]' : 'min-h-[200px] sm:min-h-[400px]'
-                }`}
-                placeholder="Your plan content will appear here..."
-                data-testid="textarea-plan-canvas"
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
