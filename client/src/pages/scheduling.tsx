@@ -674,12 +674,32 @@ export default function Scheduling() {
                           return (
                             <div 
                               key={dayIndex} 
-                              className={`py-1 px-1 border-r last:border-r-0 relative min-h-16 cursor-pointer transition-colors ${
+                              role="button"
+                              tabIndex={0}
+                              className={`border-r last:border-r-0 relative min-h-16 cursor-pointer transition-colors ${
                                 isToday ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/50"
                               }`}
-                              onClick={() => openBookingWithDate(day, timeStr)}
                               data-testid={`week-slot-${day.toLocaleDateString("en-CA")}-${hour}`}
+                              onClick={(e) => {
+                                if (e.target === e.currentTarget) {
+                                  openBookingWithDate(day, timeStr);
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  openBookingWithDate(day, timeStr);
+                                }
+                              }}
+                              aria-label={`Book session on ${day.toLocaleDateString()} at ${timeStr}`}
                             >
+                              {/* Clickable area for empty slots */}
+                              {daySessions.length === 0 && (
+                                <div 
+                                  className="absolute inset-0"
+                                  onClick={() => openBookingWithDate(day, timeStr)}
+                                  data-testid={`week-slot-click-${day.toLocaleDateString("en-CA")}-${hour}`}
+                                />
+                              )}
                               {daySessions.map((session: Session) => {
                                 const duration = session.endTime 
                                   ? calculateDuration(session.startTime, session.endTime)
