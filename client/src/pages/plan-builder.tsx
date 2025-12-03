@@ -686,15 +686,15 @@ export default function PlanBuilder() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0">
-          <Card className="flex-1 lg:flex-[0.8]">
-            <CardHeader className="pb-3">
+      <div className="flex flex-col lg:flex-row flex-1 gap-3 sm:gap-4 min-h-0 overflow-hidden">
+          <Card className="flex-1 lg:flex-[0.8] flex flex-col min-h-[300px] lg:min-h-0">
+            <CardHeader className="pb-3 flex-shrink-0">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Activity className="w-4 h-4" />
                 AI Chat
               </CardTitle>
             </CardHeader>
-          <CardContent className="flex flex-col h-[calc(100%-60px)]">
+          <CardContent className="flex flex-col flex-1 min-h-0">
             <ScrollArea className="flex-1 mb-4">
               <div className="space-y-3 pr-4">
                 {messages.length === 0 && (
@@ -775,27 +775,61 @@ export default function PlanBuilder() {
             </CardContent>
           </Card>
 
-          <Card className={`flex-1 lg:flex-[1.2] flex flex-col ${isCanvasExpanded ? 'fixed inset-4 z-50' : ''}`}>
+          <Card className={`flex-1 lg:flex-[1.2] flex flex-col ${isCanvasExpanded ? 'fixed inset-2 sm:inset-4 z-50' : ''}`}>
           <CardHeader className="pb-3 flex-shrink-0">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="w-4 h-4" />
-                Plan Canvas
-              </CardTitle>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="w-4 h-4" />
+                  Plan Canvas
+                </CardTitle>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsCanvasExpanded(!isCanvasExpanded)}
+                    className="h-8 w-8"
+                    data-testid="button-toggle-canvas-expand"
+                  >
+                    {isCanvasExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSavePlan}
+                    disabled={isSaving || !planContent.trim() || !planName.trim()}
+                    className="min-h-8 hidden sm:flex"
+                    data-testid="button-download-pdf"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    {isSaving ? "Generating..." : "Download PDF"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleSavePlan}
+                    disabled={isSaving || !planContent.trim() || !planName.trim()}
+                    className="min-h-8 sm:hidden"
+                    data-testid="button-download-pdf-mobile"
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   type="text"
                   placeholder="Plan filename"
                   value={planName}
                   onChange={(e) => setPlanName(e.target.value)}
-                  className="text-sm min-h-8 w-48"
+                  className="text-sm min-h-10 w-full sm:w-48"
                   data-testid="input-canvas-filename"
                 />
                 <Select onValueChange={(value) => {
                   const template = SECTION_TEMPLATES.find(t => t.heading === value);
                   if (template) handleAddSection(template);
                 }}>
-                  <SelectTrigger className="w-40 min-h-8 text-sm">
+                  <SelectTrigger className="w-full sm:w-40 min-h-10 text-sm">
                     <SelectValue placeholder="Add section..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -806,26 +840,6 @@ export default function PlanBuilder() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsCanvasExpanded(!isCanvasExpanded)}
-                  className="h-8 w-8"
-                  data-testid="button-toggle-canvas-expand"
-                >
-                  {isCanvasExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSavePlan}
-                  disabled={isSaving || !planContent.trim() || !planName.trim()}
-                  className="min-h-8"
-                  data-testid="button-download-pdf"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  {isSaving ? "Generating..." : "Download PDF"}
-                </Button>
               </div>
             </div>
           </CardHeader>
@@ -843,7 +857,7 @@ export default function PlanBuilder() {
                 value={planContent}
                 onChange={(e) => setPlanContent(e.target.value)}
                 className={`flex-1 text-sm resize-none border focus-visible:ring-1 font-mono leading-relaxed ${
-                  isCanvasExpanded ? 'min-h-[calc(100vh-200px)]' : 'min-h-[400px]'
+                  isCanvasExpanded ? 'min-h-[calc(100vh-200px)]' : 'min-h-[200px] sm:min-h-[400px]'
                 }`}
                 placeholder="Your plan content will appear here..."
                 data-testid="textarea-plan-canvas"
