@@ -772,41 +772,44 @@ export default function PlanBuilder() {
                   Canvas view is not supported on mobile yet. Please use a desktop to build or edit plans.
                 </p>
               </div>
-              {planContent.trim() && (
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2 flex-wrap">
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSavePlan}
+                    disabled={isSaving || !planContent.trim() || !planName.trim()}
+                    className="flex-1 min-h-9"
+                    data-testid="button-download-pdf-mobile"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    {isSaving ? "Generating..." : "Download PDF"}
+                  </Button>
+                  {planStatus === "ASSIGNED" ? (
+                    <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-3 flex items-center">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Assigned
+                    </Badge>
+                  ) : (
                     <Button
-                      variant="outline"
+                      variant="default"
                       size="sm"
-                      onClick={handleSavePlan}
-                      disabled={isSaving || !planContent.trim() || !planName.trim()}
+                      onClick={() => assignPlanMutation.mutate()}
+                      disabled={assignPlanMutation.isPending || !planContent.trim() || !planName.trim()}
                       className="flex-1 min-h-9"
-                      data-testid="button-download-pdf-mobile"
+                      data-testid="button-assign-to-client-mobile"
                     >
-                      <Download className="w-4 h-4 mr-2" />
-                      {isSaving ? "Generating..." : "Download PDF"}
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      {assignPlanMutation.isPending ? "Assigning..." : "Assign"}
                     </Button>
-                    {planStatus === "ASSIGNED" ? (
-                      <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-3 flex items-center">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Assigned
-                      </Badge>
-                    ) : (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => assignPlanMutation.mutate()}
-                        disabled={assignPlanMutation.isPending || !planContent.trim() || !planName.trim()}
-                        className="flex-1 min-h-9"
-                        data-testid="button-assign-to-client-mobile"
-                      >
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        {assignPlanMutation.isPending ? "Assigning..." : "Assign"}
-                      </Button>
-                    )}
-                  </div>
+                  )}
                 </div>
-              )}
+                {!planContent.trim() && (
+                  <p className="text-xs text-muted-foreground text-center mt-1">
+                    Chat with AI to generate plan content first
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
