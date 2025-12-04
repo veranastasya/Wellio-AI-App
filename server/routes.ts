@@ -69,7 +69,7 @@ import {
   mapRookBodyToCheckIn,
   generateRookConnectionUrl
 } from "./rook";
-import { sendInviteEmail, sendPlanAssignmentEmail } from "./email";
+import { sendInviteEmail, sendPlanAssignmentEmail, sendSessionBookingEmail } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Coach authentication routes
@@ -297,6 +297,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertSessionSchema.parse(req.body);
       const session = await storage.createSession(validatedData);
+      
+      // Send booking confirmation email to client (don't fail session creation if email fails)
+      try {
+        const client = await storage.getClient(session.clientId);
+        if (client && client.email && !client.email.endsWith('@pending.com')) {
+          await sendSessionBookingEmail({
+            to: client.email,
+            clientName: client.name,
+            coachName: 'Your Coach',
+            sessionDate: session.date,
+            sessionTime: session.startTime,
+            endTime: session.endTime || undefined,
+            sessionType: session.sessionType,
+            locationType: session.locationType || 'video',
+            meetingLink: session.meetingLink,
+            notes: session.notes || undefined,
+          });
+          console.log(`[Sessions] Booking confirmation email sent to ${client.email}`);
+        }
+      } catch (emailError) {
+        console.error('[Sessions] Failed to send booking confirmation email:', emailError);
+        // Don't fail the session creation - email is a nice-to-have
+      }
+      
       res.status(201).json(session);
     } catch (error) {
       res.status(400).json({ error: "Invalid session data" });
