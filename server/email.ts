@@ -479,3 +479,273 @@ Questions? Contact ${coachName} directly.
     throw error;
   }
 }
+
+interface SendSessionBookingEmailParams {
+  to: string;
+  clientName: string;
+  coachName: string;
+  sessionDate: string;
+  sessionTime: string;
+  endTime?: string;
+  sessionType: string;
+  locationType: string;
+  meetingLink?: string | null;
+  notes?: string;
+}
+
+const SESSION_TYPE_LABELS: Record<string, string> = {
+  consultation: 'Consultation',
+  follow_up: 'Follow-up Session',
+  check_in: 'Check-in',
+  other: 'Session',
+};
+
+const LOCATION_TYPE_LABELS: Record<string, string> = {
+  video: 'Video Call',
+  phone: 'Phone Call',
+  in_person: 'In Person',
+};
+
+export async function sendSessionBookingEmail({
+  to,
+  clientName,
+  coachName,
+  sessionDate,
+  sessionTime,
+  endTime,
+  sessionType,
+  locationType,
+  meetingLink,
+  notes
+}: SendSessionBookingEmailParams) {
+  const { client, fromEmail } = await getUncachableResendClient();
+  
+  const sessionTypeLabel = SESSION_TYPE_LABELS[sessionType] || sessionType;
+  const locationTypeLabel = LOCATION_TYPE_LABELS[locationType] || locationType;
+  
+  const formattedDate = new Date(sessionDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  
+  const timeDisplay = endTime ? `${sessionTime} - ${endTime}` : sessionTime;
+  
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Session Scheduled</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+          line-height: 1.6;
+          color: #333333;
+          margin: 0;
+          padding: 0;
+          background-color: #f5f5f5;
+        }
+        .container {
+          max-width: 600px;
+          margin: 40px auto;
+          background-color: #ffffff;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+          background: linear-gradient(135deg, #28A0AE 0%, #E2F9AD 100%);
+          padding: 40px 30px;
+          text-align: center;
+        }
+        .header h1 {
+          margin: 0;
+          color: #ffffff;
+          font-size: 28px;
+          font-weight: 700;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .content {
+          padding: 40px 30px;
+        }
+        .content h2 {
+          color: #28A0AE;
+          font-size: 24px;
+          margin-top: 0;
+          margin-bottom: 20px;
+        }
+        .content p {
+          margin: 16px 0;
+          color: #555555;
+        }
+        .session-details {
+          background-color: #f8f9fa;
+          border-radius: 8px;
+          padding: 24px;
+          margin: 24px 0;
+        }
+        .session-details h3 {
+          color: #28A0AE;
+          font-size: 18px;
+          margin-top: 0;
+          margin-bottom: 16px;
+        }
+        .detail-row {
+          display: flex;
+          padding: 12px 0;
+          border-bottom: 1px solid #e9ecef;
+        }
+        .detail-row:last-child {
+          border-bottom: none;
+        }
+        .detail-label {
+          font-weight: 600;
+          color: #555555;
+          width: 120px;
+          flex-shrink: 0;
+        }
+        .detail-value {
+          color: #333333;
+        }
+        .meeting-link-box {
+          background-color: #28A0AE;
+          color: #ffffff;
+          padding: 16px 20px;
+          border-radius: 6px;
+          margin: 24px 0;
+          text-align: center;
+        }
+        .meeting-link-box a {
+          color: #ffffff;
+          text-decoration: underline;
+          font-weight: 600;
+        }
+        .notes-box {
+          background-color: #f8f9fa;
+          border-left: 4px solid #E2F9AD;
+          padding: 16px 20px;
+          margin: 24px 0;
+          border-radius: 4px;
+        }
+        .notes-box p {
+          margin: 0;
+          font-style: italic;
+          color: #666666;
+        }
+        .footer {
+          background-color: #f8f9fa;
+          padding: 24px 30px;
+          text-align: center;
+          border-top: 1px solid #e9ecef;
+        }
+        .footer p {
+          margin: 8px 0;
+          font-size: 14px;
+          color: #666666;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Session Scheduled</h1>
+        </div>
+        
+        <div class="content">
+          <h2>Hi ${clientName}!</h2>
+          
+          <p><strong>${coachName}</strong> has scheduled a coaching session with you. Here are the details:</p>
+          
+          <div class="session-details">
+            <h3>Session Details</h3>
+            <div class="detail-row">
+              <span class="detail-label">Type</span>
+              <span class="detail-value">${sessionTypeLabel}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Date</span>
+              <span class="detail-value">${formattedDate}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Time</span>
+              <span class="detail-value">${timeDisplay}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Location</span>
+              <span class="detail-value">${locationTypeLabel}</span>
+            </div>
+          </div>
+          
+          ${meetingLink ? `
+            <div class="meeting-link-box">
+              <p style="margin: 0 0 8px 0; font-size: 14px;">Join the session:</p>
+              <a href="${meetingLink}">${meetingLink}</a>
+            </div>
+          ` : ''}
+          
+          ${notes ? `
+            <div class="notes-box">
+              <p><strong>Notes:</strong> ${notes}</p>
+            </div>
+          ` : ''}
+          
+          <p style="margin-top: 32px; font-size: 14px; color: #666666;">
+            If you need to reschedule or have any questions, please contact ${coachName} directly.
+          </p>
+        </div>
+        
+        <div class="footer">
+          <p><strong>Wellio</strong> - AI-Powered Fitness & Wellness Coaching</p>
+          <p>Questions? Contact ${coachName} directly.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const emailText = `
+Session Scheduled!
+
+Hi ${clientName},
+
+${coachName} has scheduled a coaching session with you. Here are the details:
+
+Session Details:
+- Type: ${sessionTypeLabel}
+- Date: ${formattedDate}
+- Time: ${timeDisplay}
+- Location: ${locationTypeLabel}
+${meetingLink ? `- Meeting Link: ${meetingLink}` : ''}
+${notes ? `- Notes: ${notes}` : ''}
+
+If you need to reschedule or have any questions, please contact ${coachName} directly.
+
+---
+Wellio - AI-Powered Fitness & Wellness Coaching
+Questions? Contact ${coachName} directly.
+  `;
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject: `Session Scheduled with ${coachName} - ${formattedDate}`,
+      html: emailHtml,
+      text: emailText,
+    });
+
+    if (error) {
+      console.error('[Email] Failed to send session booking email:', error);
+      throw error;
+    }
+
+    console.log('[Email] Session booking email sent successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('[Email] Error sending session booking email:', error);
+    throw error;
+  }
+}
