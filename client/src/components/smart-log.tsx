@@ -21,7 +21,7 @@ import {
   Clock,
   CheckCircle2
 } from "lucide-react";
-import type { SmartLog, AIClassification } from "@shared/schema";
+import type { SmartLog, AIClassification, AIParsedData } from "@shared/schema";
 import { format, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
 
 interface SmartLogInputProps {
@@ -205,9 +205,125 @@ function getStatusIcon(status: string) {
   }
 }
 
+function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) {
+  if (!parsedData) return null;
+
+  const { nutrition, workout, weight, sleep, mood } = parsedData;
+  const hasData = nutrition || workout || weight || sleep || mood;
+  if (!hasData) return null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      {nutrition && (
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-sm">
+          {nutrition.food_description && (
+            <p className="font-medium text-green-800 dark:text-green-300 mb-2">
+              {nutrition.food_description}
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            {(nutrition.calories ?? nutrition.calories_est) && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Calories:</span>
+                <span className="font-medium text-foreground">
+                  ~{Math.round(nutrition.calories ?? nutrition.calories_est ?? 0)} kcal
+                </span>
+              </div>
+            )}
+            {(nutrition.protein_g ?? nutrition.protein_est_g) && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Protein:</span>
+                <span className="font-medium text-foreground">
+                  ~{Math.round(nutrition.protein_g ?? nutrition.protein_est_g ?? 0)}g
+                </span>
+              </div>
+            )}
+            {(nutrition.carbs_g ?? nutrition.carbs_est_g) && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Carbs:</span>
+                <span className="font-medium text-foreground">
+                  ~{Math.round(nutrition.carbs_g ?? nutrition.carbs_est_g ?? 0)}g
+                </span>
+              </div>
+            )}
+            {(nutrition.fat_g ?? nutrition.fat_est_g) && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Fat:</span>
+                <span className="font-medium text-foreground">
+                  ~{Math.round(nutrition.fat_g ?? nutrition.fat_est_g ?? 0)}g
+                </span>
+              </div>
+            )}
+          </div>
+          {nutrition.estimated && (
+            <p className="text-xs text-muted-foreground mt-2 italic">
+              AI-estimated ({Math.round((nutrition.confidence || 0) * 100)}% confidence)
+            </p>
+          )}
+        </div>
+      )}
+
+      {workout && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-sm">
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="font-medium text-orange-800 dark:text-orange-300 capitalize">
+              {workout.type} workout
+            </span>
+            {workout.duration_min && (
+              <span className="text-muted-foreground">
+                {workout.duration_min} min
+              </span>
+            )}
+            {workout.intensity !== "unknown" && (
+              <span className="text-muted-foreground capitalize">
+                {workout.intensity} intensity
+              </span>
+            )}
+          </div>
+          {workout.body_focus && workout.body_focus.length > 0 && workout.body_focus[0] !== "unspecified" && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Focus: {workout.body_focus.join(", ")}
+            </p>
+          )}
+          {workout.notes && (
+            <p className="text-xs text-foreground mt-1">{workout.notes}</p>
+          )}
+        </div>
+      )}
+
+      {weight && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
+          <p className="font-medium text-blue-800 dark:text-blue-300">
+            Weight: {weight.value} {weight.unit}
+          </p>
+        </div>
+      )}
+
+      {sleep && (
+        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 text-sm">
+          <p className="font-medium text-indigo-800 dark:text-indigo-300">
+            Sleep: {sleep.hours} hours
+            {sleep.quality && ` (${sleep.quality} quality)`}
+          </p>
+        </div>
+      )}
+
+      {mood && (
+        <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-3 text-sm">
+          <p className="font-medium text-pink-800 dark:text-pink-300">
+            Mood: {mood.rating}/10
+            {mood.notes && ` - ${mood.notes}`}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SmartLogCard({ log }: { log: SmartLog }) {
   const classification = log.aiClassificationJson as AIClassification | null;
   const detectedEvents = classification?.detected_event_types || [];
+  const parsedData = log.aiParsedJson as AIParsedData | null;
 
   return (
     <div className="p-4 rounded-lg border bg-card hover-elevate transition-all duration-150" data-testid={`smart-log-card-${log.id}`}>
@@ -246,6 +362,8 @@ function SmartLogCard({ log }: { log: SmartLog }) {
           </Badge>
         )}
       </div>
+      
+      <ParsedDataDisplay parsedData={parsedData} />
     </div>
   );
 }
