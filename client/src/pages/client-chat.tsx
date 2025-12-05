@@ -437,7 +437,7 @@ export default function ClientChat() {
             <h1 className="text-lg font-semibold text-foreground" data-testid="text-chat-title">
               {coachName}
             </h1>
-            <p className="text-sm text-muted-foreground">Your wellness coach</p>
+            <p className="text-sm text-muted-foreground">Your personal coach</p>
           </div>
         </div>
       </div>
