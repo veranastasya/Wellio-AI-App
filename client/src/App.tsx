@@ -28,6 +28,7 @@ import ClientProgress from "@/pages/client-progress";
 import ClientAITracker from "@/pages/client-ai-tracker";
 import CoachLogin from "@/pages/coach-login";
 import CoachClientDetail from "@/pages/coach-client-detail";
+import CoachSettings from "@/pages/coach-settings";
 import PlanBuilder from "@/pages/plan-builder";
 import NotFound from "@/pages/not-found";
 
@@ -151,6 +152,11 @@ export default function App() {
           <Route path="/client-logs">
             <CoachProtectedLayout>
               <ClientLogs />
+            </CoachProtectedLayout>
+          </Route>
+          <Route path="/settings">
+            <CoachProtectedLayout>
+              <CoachSettings />
             </CoachProtectedLayout>
           </Route>
 

@@ -1,4 +1,4 @@
-import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock, ClipboardList, Brain, FileText } from "lucide-react";
+import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock, ClipboardList, Brain, FileText, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -78,6 +78,12 @@ const navigationItems = [
     url: "#",
     icon: LineChart,
     locked: true,
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+    locked: false,
   },
 ];
 
