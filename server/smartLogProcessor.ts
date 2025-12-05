@@ -35,16 +35,27 @@ Return a JSON object with this exact structure:
   "overall_confidence": number (0.0 to 1.0)
 }
 
-Only include event types that are actually mentioned or shown. Be conservative - if something is ambiguous, set has_* to false.
+IMPORTANT - Be LIBERAL about detecting NUTRITION:
+- ANY mention of food, eating, meals, snacks, drinks, or dining -> has_nutrition: true
+- Keywords like: breakfast, lunch, dinner, ate, had, meal, food, snack, drink, etc. -> has_nutrition: true
+- Even vague food references like "had lunch" or "grabbed a bite" -> has_nutrition: true
+- Photos showing any food items -> has_nutrition: true
 
-Examples:
-- "Weighed in at 165 lbs today" -> has_weight: true
+Examples that MUST be classified as nutrition:
 - "Had a chicken salad for lunch, about 400 calories" -> has_nutrition: true
+- "Ate some pasta" -> has_nutrition: true
+- "Had lunch" -> has_nutrition: true  
+- "Grabbed breakfast" -> has_nutrition: true
+- "Snack time" -> has_nutrition: true
+- "This is my dinner" -> has_nutrition: true
+- Photo of food (meal, snack, drink) -> has_nutrition: true
+
+For other categories, be more conservative:
+- "Weighed in at 165 lbs today" -> has_weight: true
 - "Did a 30 min leg workout" -> has_workout: true
 - "10k steps today!" -> has_steps: true
 - "Slept 7 hours last night" -> has_sleep: true
 - "Feeling great today, energy is 8/10" -> has_mood: true
-- Photo of food (meal, snack, drink) -> has_nutrition: true
 - Photo showing gym/workout equipment or exercise -> has_workout: true
 - Photo of a scale display -> has_weight: true
 - Progress/body photo -> has_weight: true (likely tracking body changes)
@@ -104,14 +115,28 @@ Return a JSON object with only the fields that have data:
   }
 }
 
-For food images, estimate calories and macros based on what you see:
-- Identify the food items visible
-- Estimate portion sizes
-- Calculate approximate nutritional values
-- Set estimated: true and use _est fields for estimates
-- Set confidence based on how clearly you can identify the food
+IMPORTANT - NUTRITION EXTRACTION RULES:
+For ANY food-related content (images OR text), you MUST ALWAYS provide nutrition estimates:
+1. ALWAYS include food_description - describe what food was eaten/shown
+2. ALWAYS estimate calories_est, protein_est_g, carbs_est_g, fat_est_g based on typical nutritional values
+3. Set estimated: true and source: "estimated" when you're making estimates
+4. Set confidence based on how specific the food information is (0.4-0.6 for vague descriptions, 0.7-0.9 for detailed/visual)
 
-Only include fields that are explicitly mentioned, visible, or can be reasonably inferred. Set confidence lower for inferred values.`;
+Examples of text that MUST get nutrition estimates:
+- "I had a sandwich" -> estimate typical sandwich macros (300-500 cal, 15-25g protein, etc.)
+- "Ate some pasta" -> estimate typical pasta serving (400-600 cal)
+- "Had lunch" -> estimate average lunch (500-700 cal)
+- "Breakfast with eggs" -> estimate based on eggs + typical breakfast items
+
+For food images:
+- Identify all visible food items
+- Estimate portion sizes from visual cues
+- Calculate approximate nutritional values
+- Provide detailed food_description
+
+The goal is to give users USEFUL nutritional feedback on every food log, even if it's an estimate.
+
+For other data types, only include fields that are explicitly mentioned or visible.`;
 
 function extractObjectPath(fullUrl: string): string {
   // If it's already in the correct format, return as-is
