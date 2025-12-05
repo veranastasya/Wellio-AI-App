@@ -197,6 +197,11 @@ export default function ClientChat() {
     refetchInterval: 5000,
   });
 
+  const { data: coachInfo } = useQuery<{ name: string; email: string | null; phone: string | null }>({
+    queryKey: ["/api/coach/info"],
+    enabled: !!clientData,
+  });
+
   const sendMessageMutation = useMutation({
     mutationFn: async (data: InsertMessage) => {
       return await apiRequest("POST", "/api/messages", data);
@@ -411,8 +416,13 @@ export default function ClientChat() {
     .filter((m) => m.clientId === clientData.id)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  const coachInitials = "MS";
-  const coachName = "Maria Smith";
+  const coachName = coachInfo?.name || "Your Coach";
+  const coachInitials = coachName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "C";
 
   return (
     <div className="flex flex-col h-full bg-background">

@@ -71,6 +71,11 @@ export default function Clients() {
     queryKey: ["/api/plan-sessions"],
   });
 
+  // Fetch coach profile for invite emails
+  const { data: coachProfile } = useQuery<{ id: string; name: string; email: string; phone: string | null }>({
+    queryKey: ["/api/coach/profile"],
+  });
+
   // Helper to get plan status for a client
   const getClientPlanStatus = (clientId: string): "NOT_STARTED" | "IN_PROGRESS" | "ASSIGNED" => {
     const session = planSessions.find(s => s.clientId === clientId);
@@ -299,6 +304,7 @@ export default function Clients() {
                     questionnaires={questionnaires.filter(q => q.status === "published")}
                     onSubmit={(data) => createInviteMutation.mutate(data)}
                     isLoading={createInviteMutation.isPending}
+                    coachName={coachProfile?.name || "Your Coach"}
                   />
                 ) : (
                   <div className="space-y-4">
@@ -1326,10 +1332,12 @@ function InviteForm({
   questionnaires,
   onSubmit,
   isLoading,
+  coachName,
 }: {
   questionnaires: Questionnaire[];
   onSubmit: (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string }) => void;
   isLoading: boolean;
+  coachName: string;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -1372,7 +1380,7 @@ function InviteForm({
       name,
       questionnaireId,
       message: message || undefined,
-      coachName: "Your Coach",
+      coachName: coachName,
     });
   };
 
