@@ -130,6 +130,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Coach profile routes
+  app.get("/api/coach/profile", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId;
+      let coach = await storage.getCoach(coachId!);
+      
+      // If no coach profile exists, create one with default values
+      if (!coach) {
+        coach = await storage.createCoach({
+          name: "Coach",
+          email: "coach@example.com",
+          phone: null,
+          passwordHash: null,
+        });
+        // Update session with actual coach id
+        req.session.coachId = coach.id;
+      }
+      
+      // Don't return password hash to frontend
+      const { passwordHash, ...coachProfile } = coach;
+      res.json(coachProfile);
+    } catch (error) {
+      console.error("Get coach profile error:", error);
+      res.status(500).json({ error: "Failed to fetch coach profile" });
+    }
+  });
+
+  app.patch("/api/coach/profile", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId;
+      let coach = await storage.getCoach(coachId!);
+      
+      // If no coach exists, create one first
+      if (!coach) {
+        coach = await storage.createCoach({
+          name: "Coach",
+          email: "coach@example.com",
+          phone: null,
+          passwordHash: null,
+        });
+        req.session.coachId = coach.id;
+      }
+      
+      // Only allow updating name, email, phone
+      const { name, email, phone } = req.body;
+      const updateData: { name?: string; email?: string; phone?: string | null } = {};
+      
+      if (name !== undefined) updateData.name = name;
+      if (email !== undefined) updateData.email = email;
+      if (phone !== undefined) updateData.phone = phone;
+      
+      const updated = await storage.updateCoach(coach.id, updateData);
+      if (!updated) {
+        return res.status(404).json({ error: "Coach not found" });
+      }
+      
+      // Don't return password hash to frontend
+      const { passwordHash, ...coachProfile } = updated;
+      res.json(coachProfile);
+    } catch (error) {
+      console.error("Update coach profile error:", error);
+      res.status(500).json({ error: "Failed to update coach profile" });
+    }
+  });
+
+  // Public endpoint for clients to get coach info (no auth required for coach, but client auth required)
+  app.get("/api/coach/info", requireClientAuth, async (_req, res) => {
+    try {
+      const coach = await storage.getDefaultCoach();
+      if (!coach) {
+        // Return default info if no coach profile exists yet
+        return res.json({ name: "Your Coach", email: null, phone: null });
+      }
+      
+      // Only return public info (name, email, phone)
+      res.json({
+        name: coach.name,
+        email: coach.email,
+        phone: coach.phone,
+      });
+    } catch (error) {
+      console.error("Get coach info error:", error);
+      res.status(500).json({ error: "Failed to fetch coach info" });
+    }
+  });
+
   // Client routes
   app.get("/api/clients", requireCoachAuth, async (_req, res) => {
     try {
