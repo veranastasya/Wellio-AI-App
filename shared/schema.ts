@@ -90,6 +90,18 @@ export function getActivityLevelMultiplier(activityLevel: string | null | undefi
   return ACTIVITY_LEVEL_MULTIPLIERS[activityLevel as ActivityLevel];
 }
 
+export const coaches = pgTable("coaches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone"),
+  passwordHash: text("password_hash"),
+});
+
+export const insertCoachSchema = createInsertSchema(coaches).omit({ id: true });
+export type InsertCoach = z.infer<typeof insertCoachSchema>;
+export type Coach = typeof coaches.$inferSelect;
+
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
