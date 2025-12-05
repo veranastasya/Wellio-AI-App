@@ -3582,8 +3582,9 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
       const smartLog = await storage.createSmartLog(validatedData);
       
-      // Process asynchronously if there's text
-      if (smartLog.rawText) {
+      // Process asynchronously if there's text or images
+      const hasContent = smartLog.rawText || (smartLog.mediaUrls && (smartLog.mediaUrls as string[]).length > 0);
+      if (hasContent) {
         processSmartLog(smartLog.id).catch((err: unknown) => {
           console.error("Error processing smart log:", err);
         });

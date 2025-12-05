@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { storage } from "./storage";
+import { ObjectStorageService } from "./objectStorage";
 import type { 
   SmartLog, 
   AIClassification, 
@@ -18,7 +19,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const CLASSIFICATION_PROMPT = `You are an AI that classifies wellness/fitness log entries. Analyze the text and identify what types of data it contains.
+const objectStorageService = new ObjectStorageService();
+
+const CLASSIFICATION_PROMPT = `You are an AI that classifies wellness/fitness log entries. Analyze the text and/or images and identify what types of data they contain.
 
 Return a JSON object with this exact structure:
 {
@@ -32,7 +35,7 @@ Return a JSON object with this exact structure:
   "overall_confidence": number (0.0 to 1.0)
 }
 
-Only include event types that are actually mentioned. Be conservative - if something is ambiguous, set has_* to false.
+Only include event types that are actually mentioned or shown. Be conservative - if something is ambiguous, set has_* to false.
 
 Examples:
 - "Weighed in at 165 lbs today" -> has_weight: true
@@ -41,10 +44,19 @@ Examples:
 - "10k steps today!" -> has_steps: true
 - "Slept 7 hours last night" -> has_sleep: true
 - "Feeling great today, energy is 8/10" -> has_mood: true
+- Photo of food (meal, snack, drink) -> has_nutrition: true
+- Photo showing gym/workout equipment or exercise -> has_workout: true
+- Photo of a scale display -> has_weight: true
+- Progress/body photo -> has_weight: true (likely tracking body changes)
 
-Text to classify:`;
+For images:
+- Food photos: classify as nutrition
+- Gym/exercise photos: classify as workout
+- Scale/weight display photos: classify as weight
+- Progress photos: classify as weight (body progress)
+- Screenshots of fitness apps: classify based on what data is shown`;
 
-const PARSING_PROMPT = `You are an AI that extracts structured wellness/fitness data from text. Extract specific values where mentioned.
+const PARSING_PROMPT = `You are an AI that extracts structured wellness/fitness data from text and/or images. Extract specific values where mentioned or visible.
 
 Return a JSON object with only the fields that have data:
 {
@@ -59,7 +71,8 @@ Return a JSON object with only the fields that have data:
     "fat_est_g": number if estimated,
     "source": "logged" | "estimated",
     "estimated": boolean,
-    "confidence": 0.0 to 1.0
+    "confidence": 0.0 to 1.0,
+    "food_description": string (describe what food is shown/mentioned)
   },
   "workout": {
     "type": "strength" | "cardio" | "hiit" | "mobility" | "mixed" | "unknown",
@@ -91,14 +104,85 @@ Return a JSON object with only the fields that have data:
   }
 }
 
-Only include fields that are explicitly mentioned or can be reasonably inferred. Set confidence lower for inferred values.
+For food images, estimate calories and macros based on what you see:
+- Identify the food items visible
+- Estimate portion sizes
+- Calculate approximate nutritional values
+- Set estimated: true and use _est fields for estimates
+- Set confidence based on how clearly you can identify the food
 
-Text to parse:`;
+Only include fields that are explicitly mentioned, visible, or can be reasonably inferred. Set confidence lower for inferred values.`;
 
-export async function classifySmartLog(text: string): Promise<AIClassification> {
+async function getSignedUrlForImage(objectUrl: string): Promise<string | null> {
   try {
+    // Use ObjectStorageService directly instead of HTTP request
+    const signedUrl = await objectStorageService.getSignedDownloadURL(objectUrl, 3600);
+    return signedUrl;
+  } catch (error) {
+    console.error("Error getting signed URL for image:", objectUrl, error);
+    return null;
+  }
+}
+
+export async function classifySmartLog(text?: string, imageUrls?: string[]): Promise<AIClassification> {
+  try {
+    const hasImages = imageUrls && imageUrls.length > 0;
+    const hasText = text && text.trim().length > 0;
+
+    if (!hasText && !hasImages) {
+      return {
+        detected_event_types: ["note"],
+        has_weight: false,
+        has_nutrition: false,
+        has_workout: false,
+        has_steps: false,
+        has_sleep: false,
+        has_mood: false,
+        overall_confidence: 0.5
+      };
+    }
+
+    const messageContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [];
+
+    if (hasText) {
+      messageContent.push({
+        type: "text",
+        text: text!
+      });
+    }
+
+    if (hasImages) {
+      for (const imageUrl of imageUrls!) {
+        const signedUrl = await getSignedUrlForImage(imageUrl);
+        if (signedUrl) {
+          messageContent.push({
+            type: "image_url",
+            image_url: {
+              url: signedUrl,
+              detail: "auto"
+            }
+          });
+        }
+      }
+    }
+
+    if (messageContent.length === 0) {
+      return {
+        detected_event_types: ["note"],
+        has_weight: false,
+        has_nutrition: false,
+        has_workout: false,
+        has_steps: false,
+        has_sleep: false,
+        has_mood: false,
+        overall_confidence: 0.5
+      };
+    }
+
+    const model = hasImages ? "gpt-4o" : "gpt-4o-mini";
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model,
       messages: [
         {
           role: "system",
@@ -106,11 +190,12 @@ export async function classifySmartLog(text: string): Promise<AIClassification> 
         },
         {
           role: "user",
-          content: text
+          content: messageContent
         }
       ],
       temperature: 0.1,
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      max_tokens: 500
     });
 
     const content = response.choices[0]?.message?.content;
@@ -135,17 +220,54 @@ export async function classifySmartLog(text: string): Promise<AIClassification> 
   }
 }
 
-export async function parseSmartLog(text: string, classification: AIClassification): Promise<AIParsedData> {
+export async function parseSmartLog(text?: string, imageUrls?: string[], classification?: AIClassification): Promise<AIParsedData> {
   try {
-    if (classification.overall_confidence < 0.3 || 
+    if (!classification || classification.overall_confidence < 0.3 || 
         (!classification.has_weight && !classification.has_nutrition && 
          !classification.has_workout && !classification.has_steps && 
          !classification.has_sleep && !classification.has_mood)) {
       return {};
     }
 
+    const hasImages = imageUrls && imageUrls.length > 0;
+    const hasText = text && text.trim().length > 0;
+
+    if (!hasText && !hasImages) {
+      return {};
+    }
+
+    const messageContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [];
+
+    if (hasText) {
+      messageContent.push({
+        type: "text",
+        text: text!
+      });
+    }
+
+    if (hasImages) {
+      for (const imageUrl of imageUrls!) {
+        const signedUrl = await getSignedUrlForImage(imageUrl);
+        if (signedUrl) {
+          messageContent.push({
+            type: "image_url",
+            image_url: {
+              url: signedUrl,
+              detail: "high"
+            }
+          });
+        }
+      }
+    }
+
+    if (messageContent.length === 0) {
+      return {};
+    }
+
+    const model = hasImages ? "gpt-4o" : "gpt-4o-mini";
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model,
       messages: [
         {
           role: "system",
@@ -153,11 +275,12 @@ export async function parseSmartLog(text: string, classification: AIClassificati
         },
         {
           role: "user",
-          content: text
+          content: messageContent
         }
       ],
       temperature: 0.1,
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      max_tokens: 1000
     });
 
     const content = response.choices[0]?.message?.content;
@@ -214,7 +337,8 @@ export async function processSmartLogToEvents(
         fat_g: parsedData.nutrition.fat_g || parsedData.nutrition.fat_est_g,
         fat_estimated: !!parsedData.nutrition.fat_est_g,
         source: parsedData.nutrition.source,
-        estimated: parsedData.nutrition.estimated
+        estimated: parsedData.nutrition.estimated,
+        food_description: (parsedData.nutrition as any).food_description
       },
       confidence: parsedData.nutrition.confidence,
       needsReview: parsedData.nutrition.confidence < 0.7
@@ -300,7 +424,9 @@ export async function processSmartLog(smartLogId: string): Promise<{
       return { success: false, error: "Smart log not found" };
     }
 
-    if (!smartLog.rawText) {
+    const hasContent = smartLog.rawText || (smartLog.mediaUrls && (smartLog.mediaUrls as string[]).length > 0);
+    
+    if (!hasContent) {
       await storage.updateSmartLog(smartLogId, {
         processingStatus: "completed",
         aiClassificationJson: null,
@@ -313,13 +439,22 @@ export async function processSmartLog(smartLogId: string): Promise<{
       processingStatus: "processing"
     });
 
-    const classification = await classifySmartLog(smartLog.rawText);
+    const mediaUrls = smartLog.mediaUrls as string[] | null;
+    
+    const classification = await classifySmartLog(
+      smartLog.rawText || undefined,
+      mediaUrls || undefined
+    );
     
     await storage.updateSmartLog(smartLogId, {
       aiClassificationJson: classification
     });
 
-    const parsed = await parseSmartLog(smartLog.rawText, classification);
+    const parsed = await parseSmartLog(
+      smartLog.rawText || undefined,
+      mediaUrls || undefined,
+      classification
+    );
     
     await storage.updateSmartLog(smartLogId, {
       aiParsedJson: parsed

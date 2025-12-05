@@ -16,7 +16,9 @@ import {
   Smile,
   Bot,
   User,
-  Sparkles
+  Sparkles,
+  ImageIcon,
+  X
 } from "lucide-react";
 import type { SmartLog, AIClassification } from "@shared/schema";
 import { format, parseISO } from "date-fns";
@@ -63,10 +65,100 @@ function getEventLabel(eventType: string): string {
   }
 }
 
+interface PendingImage {
+  id: string;
+  file: File;
+  previewUrl: string;
+}
+
+function ImagePreview({ image, onRemove }: { image: PendingImage; onRemove: () => void }) {
+  return (
+    <div className="relative inline-block">
+      <img
+        src={image.previewUrl}
+        alt="Preview"
+        className="w-16 h-16 rounded-lg object-cover border"
+      />
+      <Button
+        type="button"
+        size="icon"
+        variant="secondary"
+        className="absolute -top-2 -right-2 w-5 h-5 rounded-full shadow-md"
+        onClick={onRemove}
+        data-testid={`button-remove-image-${image.id}`}
+      >
+        <X className="w-3 h-3" />
+      </Button>
+    </div>
+  );
+}
+
+function LogImage({ url }: { url: string }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchSignedUrl = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/attachments/download-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ objectPath: url }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load image");
+        }
+
+        const data = await response.json();
+        setSignedUrl(data.signedUrl);
+      } catch (err) {
+        setError("Failed to load");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSignedUrl();
+  }, [url]);
+
+  if (isLoading) {
+    return (
+      <div className="w-40 h-40 rounded-lg bg-white/10 flex items-center justify-center">
+        <Loader2 className="w-5 h-5 animate-spin text-white/70" />
+      </div>
+    );
+  }
+
+  if (error || !signedUrl) {
+    return (
+      <div className="w-40 h-40 rounded-lg bg-white/10 flex items-center justify-center">
+        <ImageIcon className="w-5 h-5 text-white/50" />
+      </div>
+    );
+  }
+
+  return (
+    <a href={signedUrl} target="_blank" rel="noopener noreferrer">
+      <img
+        src={signedUrl}
+        alt="Log image"
+        className="max-w-[200px] max-h-[200px] rounded-lg object-cover"
+        loading="lazy"
+      />
+    </a>
+  );
+}
+
 export default function ClientAITracker() {
   const [inputText, setInputText] = useState("");
   const [clientId, setClientId] = useState<string | null>(null);
+  const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -89,12 +181,13 @@ export default function ClientAITracker() {
   });
 
   const createLogMutation = useMutation({
-    mutationFn: async (data: { clientId: string; rawText: string; localDateForClient: string }) => {
+    mutationFn: async (data: { clientId: string; rawText?: string; mediaUrls?: string[]; localDateForClient: string }) => {
       const response = await apiRequest("POST", "/api/smart-logs", data);
       return response.json();
     },
     onSuccess: () => {
       setInputText("");
+      setPendingImages([]);
       queryClient.invalidateQueries({ queryKey: ["/api/smart-logs", clientId] });
       toast({
         title: "Logged!",
@@ -110,15 +203,179 @@ export default function ClientAITracker() {
     },
   });
 
-  const handleSubmit = () => {
-    if (!inputText.trim() || !clientId) return;
-    
-    const today = new Date().toISOString().split("T")[0];
-    createLogMutation.mutate({
-      clientId,
-      rawText: inputText.trim(),
-      localDateForClient: today,
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const maxFiles = 3;
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+
+    if (pendingImages.length + files.length > maxFiles) {
+      toast({
+        title: "Too many images",
+        description: `Maximum ${maxFiles} images allowed`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not a supported image format`,
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds 10MB limit`,
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      const newImage: PendingImage = {
+        id: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        file,
+        previewUrl,
+      };
+      setPendingImages((prev) => [...prev, newImage]);
+    }
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const removeImage = (imageId: string) => {
+    setPendingImages((prev) => {
+      const image = prev.find((img) => img.id === imageId);
+      if (image) {
+        URL.revokeObjectURL(image.previewUrl);
+      }
+      return prev.filter((img) => img.id !== imageId);
     });
+  };
+
+  const uploadImages = async (): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+
+    for (const image of pendingImages) {
+      try {
+        // Step 1: Get upload URL from backend
+        const uploadUrlResponse = await fetch("/api/attachments/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+
+        if (!uploadUrlResponse.ok) {
+          throw new Error("Failed to get upload URL");
+        }
+
+        const { uploadURL } = await uploadUrlResponse.json();
+
+        // Step 2: Upload file directly to cloud storage
+        const uploadResponse = await fetch(uploadURL, {
+          method: "PUT",
+          body: image.file,
+          headers: {
+            "Content-Type": image.file.type,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload image");
+        }
+
+        // Get the object URL (remove query params from signed URL)
+        const objectURL = uploadURL.split("?")[0];
+
+        // Step 3: Save attachment metadata
+        const saveResponse = await fetch("/api/attachments/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            objectURL,
+            fileName: image.file.name,
+            fileType: image.file.type,
+            fileSize: image.file.size,
+            clientId,
+          }),
+        });
+
+        if (!saveResponse.ok) {
+          const errorData = await saveResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || "Failed to save image metadata");
+        }
+
+        uploadedUrls.push(objectURL);
+      } catch (error) {
+        console.error("Image upload error:", error);
+        toast({
+          title: "Upload failed",
+          description: `Failed to upload ${image.file.name}`,
+          variant: "destructive",
+        });
+      }
+    }
+
+    return uploadedUrls;
+  };
+
+  const handleSubmit = async () => {
+    if ((!inputText.trim() && pendingImages.length === 0) || !clientId) return;
+
+    setIsUploading(true);
+    
+    try {
+      let mediaUrls: string[] = [];
+      
+      if (pendingImages.length > 0) {
+        mediaUrls = await uploadImages();
+        
+        // If we had images to upload but none succeeded, abort submission
+        if (mediaUrls.length === 0) {
+          toast({
+            title: "Upload failed",
+            description: "Could not upload any images. Please try again.",
+            variant: "destructive",
+          });
+          setIsUploading(false);
+          return;
+        }
+      }
+
+      // Ensure we have either text or images before submitting
+      if (!inputText.trim() && mediaUrls.length === 0) {
+        setIsUploading(false);
+        return;
+      }
+
+      const today = new Date().toISOString().split("T")[0];
+      
+      createLogMutation.mutate({
+        clientId,
+        rawText: inputText.trim() || undefined,
+        mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
+        localDateForClient: today,
+      });
+    } catch (error) {
+      console.error("Submit error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -137,9 +394,17 @@ export default function ClientAITracker() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
 
+  useEffect(() => {
+    return () => {
+      pendingImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+    };
+  }, []);
+
   const sortedLogs = [...(logs || [])].sort((a, b) => 
     new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
   );
+
+  const isSubmitting = createLogMutation.isPending || isUploading;
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-primary/5 to-background">
@@ -198,7 +463,7 @@ export default function ClientAITracker() {
                   Hi! I'm your AI assistant for tracking progress. I'll help you log workouts, nutrition, weight, sleep, and other metrics.
                 </p>
                 <p className="text-sm text-foreground mt-2">
-                  What would you like to add today?
+                  You can type a description or attach photos of your meals, workouts, or progress!
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
                   {format(new Date(), "HH:mm")}
@@ -218,7 +483,7 @@ export default function ClientAITracker() {
                     Hi! I'm your AI assistant for tracking progress. I'll help you log workouts, nutrition, weight, sleep, and other metrics.
                   </p>
                   <p className="text-sm text-foreground mt-2">
-                    What would you like to add today?
+                    You can type a description or attach photos of your meals, workouts, or progress!
                   </p>
                 </div>
               </div>
@@ -227,13 +492,23 @@ export default function ClientAITracker() {
             {sortedLogs.map((log, index) => {
               const classification = log.aiClassificationJson as AIClassification | null;
               const detectedEvents = classification?.detected_event_types || [];
+              const mediaUrls = log.mediaUrls as string[] | null;
               
               return (
                 <div key={log.id} className="space-y-3">
                   <div className="flex flex-col items-end max-w-md ml-auto" data-testid={`log-entry-${index}`}>
                     <div className="flex gap-3">
                       <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm p-4 shadow-sm">
-                        <p className="text-sm">{log.rawText}</p>
+                        {log.rawText && (
+                          <p className="text-sm">{log.rawText}</p>
+                        )}
+                        {mediaUrls && mediaUrls.length > 0 && (
+                          <div className={`flex flex-wrap gap-2 ${log.rawText ? "mt-2" : ""}`}>
+                            {mediaUrls.map((url, imgIndex) => (
+                              <LogImage key={imgIndex} url={url} />
+                            ))}
+                          </div>
+                        )}
                         <p className="text-xs opacity-70 mt-2">
                           {format(parseISO(log.createdAt), "HH:mm")}
                         </p>
@@ -244,31 +519,40 @@ export default function ClientAITracker() {
                     </div>
                   </div>
 
-                  {detectedEvents.length > 0 && (
+                  {(detectedEvents.length > 0 || log.processingStatus === "pending" || log.processingStatus === "processing") && (
                     <div className="flex flex-col items-start max-w-md">
                       <div className="flex gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center">
                           <Bot className="w-4 h-4 text-primary" />
                         </div>
                         <div className="bg-card border rounded-2xl rounded-tl-sm p-4 shadow-sm">
-                          <p className="text-sm text-foreground mb-2">
-                            Got it! I detected:
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {detectedEvents.map((eventType) => {
-                              const Icon = getEventIcon(eventType);
-                              return (
-                                <Badge 
-                                  key={eventType}
-                                  variant="secondary"
-                                  className={`text-xs py-0.5 px-2 ${getEventColor(eventType)}`}
-                                >
-                                  <Icon className="w-3 h-3 mr-1" />
-                                  {getEventLabel(eventType)}
-                                </Badge>
-                              );
-                            })}
-                          </div>
+                          {(log.processingStatus === "pending" || log.processingStatus === "processing") ? (
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                              <p className="text-sm text-muted-foreground">Analyzing...</p>
+                            </div>
+                          ) : detectedEvents.length > 0 ? (
+                            <>
+                              <p className="text-sm text-foreground mb-2">
+                                Got it! I detected:
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {detectedEvents.map((eventType) => {
+                                  const Icon = getEventIcon(eventType);
+                                  return (
+                                    <Badge 
+                                      key={eventType}
+                                      variant="secondary"
+                                      className={`text-xs py-0.5 px-2 ${getEventColor(eventType)}`}
+                                    >
+                                      <Icon className="w-3 h-3 mr-1" />
+                                      {getEventLabel(eventType)}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -282,7 +566,39 @@ export default function ClientAITracker() {
       </div>
 
       <div className="flex-shrink-0 p-4 border-t bg-background">
+        {pendingImages.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
+            {pendingImages.map((image) => (
+              <ImagePreview
+                key={image.id}
+                image={image}
+                onRemove={() => removeImage(image.id)}
+              />
+            ))}
+          </div>
+        )}
+        
         <div className="flex gap-2 max-w-3xl mx-auto">
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            multiple
+            className="hidden"
+            onChange={handleImageSelect}
+            data-testid="input-image-upload"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="rounded-full w-12 h-12 flex-shrink-0"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={isSubmitting}
+            data-testid="button-attach-image"
+          >
+            <ImageIcon className="w-5 h-5" />
+          </Button>
           <input
             ref={inputRef}
             type="text"
@@ -291,17 +607,17 @@ export default function ClientAITracker() {
             onKeyDown={handleKeyDown}
             placeholder="Describe your progress..."
             className="flex-1 px-4 py-3 rounded-full border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-150"
-            disabled={createLogMutation.isPending}
+            disabled={isSubmitting}
             data-testid="input-smart-log"
           />
           <Button
             onClick={handleSubmit}
-            disabled={!inputText.trim() || createLogMutation.isPending}
+            disabled={(!inputText.trim() && pendingImages.length === 0) || isSubmitting}
             size="icon"
             className="rounded-full w-12 h-12"
             data-testid="button-submit-smart-log"
           >
-            {createLogMutation.isPending ? (
+            {isSubmitting ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <Send className="w-5 h-5" />
