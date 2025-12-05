@@ -113,10 +113,56 @@ For food images, estimate calories and macros based on what you see:
 
 Only include fields that are explicitly mentioned, visible, or can be reasonably inferred. Set confidence lower for inferred values.`;
 
+function extractObjectPath(fullUrl: string): string {
+  // If it's already in the correct format, return as-is
+  if (fullUrl.startsWith("/objects/")) {
+    return fullUrl;
+  }
+
+  // Handle full Google Cloud Storage URLs
+  // Format: https://storage.googleapis.com/bucket-name/.private/uploads/entity-id
+  if (fullUrl.startsWith("https://storage.googleapis.com/")) {
+    try {
+      const url = new URL(fullUrl);
+      const pathname = url.pathname; // e.g., /bucket-name/.private/uploads/entity-id
+      
+      // Find the .private/ part and extract everything after it
+      const privateIndex = pathname.indexOf("/.private/");
+      if (privateIndex !== -1) {
+        // Extract the path after .private/ (e.g., "uploads/entity-id")
+        const entityPath = pathname.slice(privateIndex + "/.private/".length);
+        return `/objects/${entityPath}`;
+      }
+      
+      // Fallback: try to extract path after first segment (bucket name)
+      const parts = pathname.split("/").filter(Boolean);
+      if (parts.length >= 2) {
+        const objectPath = parts.slice(1).join("/");
+        // If it starts with .private, strip it
+        if (objectPath.startsWith(".private/")) {
+          return `/objects/${objectPath.slice(".private/".length)}`;
+        }
+        return `/objects/${objectPath}`;
+      }
+    } catch (e) {
+      console.error("Error parsing URL:", e);
+    }
+  }
+
+  // If it's a relative path, convert to /objects/ format
+  if (fullUrl.startsWith(".private/")) {
+    return `/objects/${fullUrl.slice(".private/".length)}`;
+  }
+
+  // Last resort: assume it's the entity ID
+  return `/objects/${fullUrl}`;
+}
+
 async function getSignedUrlForImage(objectUrl: string): Promise<string | null> {
   try {
-    // Use ObjectStorageService directly instead of HTTP request
-    const signedUrl = await objectStorageService.getSignedDownloadURL(objectUrl, 3600);
+    // Convert full URL to /objects/ format that getSignedDownloadURL expects
+    const normalizedPath = extractObjectPath(objectUrl);
+    const signedUrl = await objectStorageService.getSignedDownloadURL(normalizedPath, 3600);
     return signedUrl;
   } catch (error) {
     console.error("Error getting signed URL for image:", objectUrl, error);

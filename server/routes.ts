@@ -660,6 +660,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to normalize object paths from various formats to /objects/ format
+  function normalizeObjectPath(rawPath: string): string {
+    // If it's already in the correct format, return as-is
+    if (rawPath.startsWith("/objects/")) {
+      return rawPath;
+    }
+
+    // Handle full Google Cloud Storage URLs
+    // Format: https://storage.googleapis.com/bucket-name/.private/uploads/entity-id
+    if (rawPath.startsWith("https://storage.googleapis.com/")) {
+      try {
+        const url = new URL(rawPath);
+        const pathname = url.pathname; // e.g., /bucket-name/.private/uploads/entity-id
+        
+        // Find the .private/ part and extract everything after it
+        const privateIndex = pathname.indexOf("/.private/");
+        if (privateIndex !== -1) {
+          // Extract the path after .private/ (e.g., "uploads/entity-id")
+          const entityPath = pathname.slice(privateIndex + "/.private/".length);
+          return `/objects/${entityPath}`;
+        }
+        
+        // Fallback: try to extract path after first segment (bucket name)
+        const parts = pathname.split("/").filter(Boolean);
+        if (parts.length >= 2) {
+          const objectPath = parts.slice(1).join("/");
+          // If it starts with .private, strip it
+          if (objectPath.startsWith(".private/")) {
+            return `/objects/${objectPath.slice(".private/".length)}`;
+          }
+          return `/objects/${objectPath}`;
+        }
+      } catch (e) {
+        console.error("Error parsing URL:", e);
+      }
+    }
+
+    // If it's a relative path, convert to /objects/ format
+    if (rawPath.startsWith(".private/")) {
+      return `/objects/${rawPath.slice(".private/".length)}`;
+    }
+
+    // Last resort: assume it's the entity ID
+    return `/objects/${rawPath}`;
+  }
+
   // Get signed download URL for an attachment
   app.post("/api/attachments/download-url", async (req, res) => {
     try {
@@ -668,11 +714,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Unauthorized - Please log in" });
       }
       
-      const { objectPath } = req.body;
+      const { objectPath: rawObjectPath } = req.body;
       
-      if (!objectPath || typeof objectPath !== 'string') {
+      if (!rawObjectPath || typeof rawObjectPath !== 'string') {
         return res.status(400).json({ error: "Missing objectPath" });
       }
+      
+      // Normalize the object path to /objects/ format
+      const objectPath = normalizeObjectPath(rawObjectPath);
       
       const objectStorageService = new ObjectStorageService();
       
