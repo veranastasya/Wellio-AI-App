@@ -1,5 +1,7 @@
 import bcrypt from "bcrypt";
 import {
+  type Coach,
+  type InsertCoach,
   type Client,
   type InsertClient,
   type Session,
@@ -44,6 +46,7 @@ import {
   type InsertPlanSession,
   type PlanMessage,
   type InsertPlanMessage,
+  coaches,
   clients,
   sessions,
   messages,
@@ -71,6 +74,12 @@ import { db } from "./db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
+  // Coaches
+  getCoach(id: string): Promise<Coach | undefined>;
+  getDefaultCoach(): Promise<Coach | undefined>;
+  createCoach(coach: InsertCoach): Promise<Coach>;
+  updateCoach(id: string, coach: Partial<InsertCoach>): Promise<Coach | undefined>;
+
   // Clients
   getClients(): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
@@ -553,6 +562,27 @@ export class DatabaseStorage implements IStorage {
     ];
 
     await db.insert(checkIns).values(sampleCheckIns);
+  }
+
+  // Coach methods
+  async getCoach(id: string): Promise<Coach | undefined> {
+    const result = await db.select().from(coaches).where(eq(coaches.id, id));
+    return result[0];
+  }
+
+  async getDefaultCoach(): Promise<Coach | undefined> {
+    const result = await db.select().from(coaches).limit(1);
+    return result[0];
+  }
+
+  async createCoach(coach: InsertCoach): Promise<Coach> {
+    const result = await db.insert(coaches).values(coach).returning();
+    return result[0];
+  }
+
+  async updateCoach(id: string, coach: Partial<InsertCoach>): Promise<Coach | undefined> {
+    const result = await db.update(coaches).set(coach).where(eq(coaches.id, id)).returning();
+    return result[0];
   }
 
   // Client methods
