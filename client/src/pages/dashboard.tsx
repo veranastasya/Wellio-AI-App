@@ -1,151 +1,76 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Video, Trophy, Lightbulb, TrendingUp, Target, ArrowUp, ArrowDown, Minus, Activity as ActivityIcon, Brain, Loader2 } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import type { Client, Session, Activity } from "@shared/schema";
-import { GoalsDashboardWidget } from "@/components/goals/goals-dashboard-widget";
-import { StatGrid } from "@/components/layout";
-import { Badge } from "@/components/ui/badge";
-import { apiRequest } from "@/lib/queryClient";
-
-interface TrendAnalysis {
-  category: string;
-  trend: "improving" | "declining" | "stable" | "plateau";
-  confidence: number;
-  description: string;
-  recommendation?: string;
-}
-
-interface GoalPrediction {
-  goalId: string;
-  goalTitle: string;
-  progressPercent: number;
-  successProbability: number;
-  trend: "ahead" | "on_track" | "behind" | "at_risk";
-  recommendation: string;
-}
-
-interface EnhancedClientInsight {
-  clientId: string;
-  clientName: string;
-  trends: TrendAnalysis[];
-  goalPredictions: GoalPrediction[];
-  summary: string;
-  quickStats: {
-    totalDataPoints: number;
-    trackingConsistency: number;
-    overallTrend: "improving" | "stable" | "declining";
-    topStrength: string | null;
-    topOpportunity: string | null;
-  };
-}
+import { Button } from "@/components/ui/button";
+import { 
+  Users, 
+  TrendingUp, 
+  Calendar,
+  MessageSquare,
+  ChevronRight,
+  Clock,
+  FileText,
+  Lightbulb,
+  Plus
+} from "lucide-react";
+import { Link } from "wouter";
+import type { Client, Session, Message } from "@shared/schema";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function Dashboard() {
-  const { data: clients = [], isLoading: clientsLoading, isError: clientsError } = useQuery<Client[]>({
+  const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 
-  const { data: sessions = [], isLoading: sessionsLoading, isError: sessionsError } = useQuery<Session[]>({
+  const { data: sessions = [], isLoading: sessionsLoading } = useQuery<Session[]>({
     queryKey: ["/api/sessions"],
   });
 
-  const { data: activities = [], isLoading: activitiesLoading, isError: activitiesError } = useQuery<Activity[]>({
-    queryKey: ["/api/activities"],
+  const { data: messages = [] } = useQuery<Message[]>({
+    queryKey: ["/api/messages"],
   });
 
-  const isLoading = clientsLoading || sessionsLoading || activitiesLoading;
-  const isError = clientsError || sessionsError || activitiesError;
+  const isLoading = clientsLoading || sessionsLoading;
 
   const totalClients = clients.length;
-  const activeSessions = sessions.filter((s) => s.status === "scheduled").length;
-  const completedSessions = sessions.filter((s) => s.status === "completed").length;
-  const totalSessions = activeSessions + completedSessions;
-  const successRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+  const activePrograms = clients.filter(c => c.status === "active").length;
+  
+  const today = new Date();
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  
+  const thisWeekSessions = sessions.filter(s => {
+    const sessionDate = new Date(s.date);
+    return sessionDate >= weekStart && sessionDate <= weekEnd;
+  }).length;
 
-  const progressData = (() => {
-    if (clients.length === 0) {
-      return [
-        { group: "Group 1", progress: 0 },
-        { group: "Group 2", progress: 0 },
-        { group: "Group 3", progress: 0 },
-        { group: "Group 4", progress: 0 },
-      ];
-    }
-
-    const sortedClients = [...clients].sort((a, b) => a.progressScore - b.progressScore);
-    const quarters = [
-      sortedClients.slice(0, Math.ceil(clients.length / 4)),
-      sortedClients.slice(Math.ceil(clients.length / 4), Math.ceil(clients.length / 2)),
-      sortedClients.slice(Math.ceil(clients.length / 2), Math.ceil((clients.length * 3) / 4)),
-      sortedClients.slice(Math.ceil((clients.length * 3) / 4)),
-    ];
-
-    return quarters.map((quarter, idx) => {
-      const avgProgress = quarter.length > 0
-        ? Math.round(quarter.reduce((sum, c) => sum + c.progressScore, 0) / quarter.length)
-        : 0;
-      return {
-        group: `Group ${idx + 1}`,
-        progress: avgProgress,
-      };
-    });
-  })();
-
-  const today = new Date().toLocaleDateString('en-CA');
-  const todaysSessions = sessions
-    .filter((s) => s.status === "scheduled" && s.date === today)
-    .sort((a, b) => {
-      const parseTime = (timeStr: string) => {
-        const [time, period] = timeStr.split(' ');
-        let [hours, minutes] = time.split(':').map(Number);
-        if (period === 'PM' && hours !== 12) hours += 12;
-        if (period === 'AM' && hours === 12) hours = 0;
-        return hours * 60 + minutes;
-      };
-      return parseTime(a.startTime) - parseTime(b.startTime);
-    })
-    .slice(0, 3);
-
-  const recentActivities = activities.slice(0, 3);
+  const unreadMessages = messages.filter(m => !m.read && m.sender !== "coach").length;
 
   const avgClientProgress = clients.length > 0
     ? Math.round(clients.reduce((sum, c) => sum + c.progressScore, 0) / clients.length)
     : 0;
 
-  const statsCards = [
-    {
-      title: "Total Clients",
-      value: totalClients,
-      subtitle: totalClients === 1 ? "active client" : "active clients",
-      icon: Users,
-      iconColor: "text-primary",
-      iconBg: "bg-primary/10",
-    },
-    {
-      title: "Active Sessions",
-      value: activeSessions,
-      subtitle: `${completedSessions} completed`,
-      icon: Video,
-      iconColor: "text-chart-2",
-      iconBg: "bg-chart-2/10",
-    },
-    {
-      title: "Success Rate",
-      value: `${successRate}%`,
-      subtitle: `${completedSessions}/${totalSessions} sessions`,
-      icon: Trophy,
-      iconColor: "text-chart-3",
-      iconBg: "bg-chart-3/10",
-    },
-    {
-      title: "Avg Progress",
-      value: `${avgClientProgress}%`,
-      subtitle: "client average",
-      icon: TrendingUp,
-      iconColor: "text-primary",
-      iconBg: "bg-primary/10",
-    },
-  ];
+  const completedSessions = sessions.filter(s => s.status === "completed").length;
+  const totalSessions = sessions.length;
+  const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+  const clientSatisfaction = 4.8;
+
+  const todayStr = today.toLocaleDateString('en-CA');
+  const tomorrowStr = new Date(today.getTime() + 86400000).toLocaleDateString('en-CA');
+  
+  const upcomingSessions = sessions
+    .filter(s => s.status === "scheduled" && (s.date === todayStr || s.date === tomorrowStr))
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.startTime.localeCompare(b.startTime);
+    })
+    .slice(0, 4);
+
+  const recentClients = [...clients]
+    .sort((a, b) => b.progressScore - a.progressScore)
+    .slice(0, 4);
 
   const getInitials = (name: string) => {
     return name
@@ -156,380 +81,291 @@ export default function Dashboard() {
       .slice(0, 2);
   };
 
+  const getStatusBadge = (progress: number) => {
+    if (progress >= 80) return { label: "Excellent", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
+    if (progress >= 50) return { label: "On Track", color: "bg-primary/20 text-primary dark:bg-primary/30" };
+    return { label: "Needs Attention", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
+  };
+
+  const avatarColors = [
+    "bg-primary text-primary-foreground",
+    "bg-accent text-accent-foreground", 
+    "bg-purple-500 text-white",
+    "bg-orange-500 text-white",
+  ];
+
+  const formatSessionTime = (date: string, time: string) => {
+    const isToday = date === todayStr;
+    const isTomorrow = date === tomorrowStr;
+    const dayLabel = isToday ? "Today" : isTomorrow ? "Tomorrow" : date;
+    return `${dayLabel}, ${time}`;
+  };
+
   if (isLoading) {
     return (
-      <div className="bg-background">
-        <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">Loading your dashboard...</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-background min-h-screen">
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+          <div className="h-8 bg-muted rounded animate-pulse w-64" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="border-t-2 border-t-primary">
-                <CardHeader className="pb-2">
-                  <div className="h-4 bg-muted rounded animate-pulse w-24" />
-                </CardHeader>
-                <CardContent>
-                  <div className="h-8 bg-muted rounded animate-pulse w-32 mb-2" />
-                  <div className="h-3 bg-muted rounded animate-pulse w-20" />
+              <Card key={i}>
+                <CardContent className="p-4">
+                  <div className="h-16 bg-muted rounded animate-pulse" />
                 </CardContent>
               </Card>
             ))}
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <div className="h-6 bg-muted rounded animate-pulse w-48" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 bg-muted rounded animate-pulse" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <div className="h-6 bg-muted rounded animate-pulse w-32" />
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 bg-muted rounded animate-pulse" />
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="bg-background">
-        <div className="max-w-7xl mx-auto p-4 sm:p-6">
-          <Card className="border-destructive">
-            <CardContent className="py-12 sm:py-16 text-center">
-              <TrendingUp className="w-16 h-16 mx-auto text-destructive mb-4" />
-              <p className="text-lg font-medium text-foreground">Failed to load dashboard</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Please try refreshing the page
-              </p>
-            </CardContent>
-          </Card>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-background">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-dashboard-title">Dashboard</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">Welcome back! Here's what's happening with your clients today.</p>
+    <div className="bg-background min-h-screen">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+        {/* Welcome Header */}
+        <div data-testid="dashboard-welcome">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-dashboard-title">
+            Welcome back, Coach!
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Here's what's happening with your clients today
+          </p>
         </div>
 
-        <StatGrid columns={{ base: 1, md: 2, lg: 4 }} gapClass="gap-4">
-          {statsCards.map((stat, index) => (
-            <Card key={stat.title} className="border-t-2 border-t-primary" data-testid={`card-stat-${index}`}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-                <div className={`p-2 rounded-lg ${stat.iconBg}`}>
-                  <stat.icon className={`w-4 h-4 ${stat.iconColor}`} />
+        {/* Top Stats Row - 4 Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card data-testid="card-stat-clients">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-start justify-between">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Users className="w-5 h-5 text-primary" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid={`text-stat-${index}-value`}>{stat.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stat.subtitle}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </StatGrid>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          <Card className="lg:col-span-2" data-testid="card-progress-overview">
-            <CardHeader>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <CardTitle className="text-base sm:text-lg">Client Progress Distribution</CardTitle>
-                <p className="text-xs sm:text-sm text-muted-foreground">Grouped by performance level</p>
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">+1</span>
               </div>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={progressData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="group" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" domain={[0, 100]} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "0.5rem",
-                    }}
-                  />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="progress"
-                    stroke="hsl(var(--chart-1))"
-                    strokeWidth={3}
-                    name="Average Progress Score"
-                    dot={{ fill: "hsl(var(--chart-1))", r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <div className="mt-3">
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">{totalClients}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Clients</p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card data-testid="card-todays-schedule">
-            <CardHeader>
-              <CardTitle className="text-base sm:text-lg">Today's Schedule</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4">
-              {todaysSessions.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">No sessions scheduled for today</p>
-              ) : (
-                todaysSessions.map((session, index) => (
-                  <div key={session.id} className="flex items-start gap-3" data-testid={`session-${index}`}>
-                    <div className="w-1 h-14 sm:h-16 bg-primary rounded-full flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm sm:text-base text-foreground truncate">{session.clientName}</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{session.sessionType}</p>
-                      <p className="text-xs text-primary mt-1">
-                        {session.startTime} - {session.endTime}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
+          <Card data-testid="card-stat-programs">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-start justify-between">
+                <div className="p-2 rounded-lg bg-chart-2/10">
+                  <TrendingUp className="w-5 h-5 text-chart-2" />
+                </div>
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">+2</span>
+              </div>
+              <div className="mt-3">
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">{activePrograms}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Active Programs</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-stat-sessions">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-start justify-between">
+                <div className="p-2 rounded-lg bg-chart-3/10">
+                  <Calendar className="w-5 h-5 text-chart-3" />
+                </div>
+                <span className="text-xs text-rose-600 dark:text-rose-400 font-medium">-2</span>
+              </div>
+              <div className="mt-3">
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">{thisWeekSessions}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">This Week Sessions</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-stat-messages">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-start justify-between">
+                <div className="p-2 rounded-lg bg-chart-4/10">
+                  <MessageSquare className="w-5 h-5 text-chart-4" />
+                </div>
+                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">+4</span>
+              </div>
+              <div className="mt-3">
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">{unreadMessages}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Unread Messages</p>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          <Card className="lg:col-span-2" data-testid="card-recent-activities">
-            <CardHeader>
-              <CardTitle className="text-base sm:text-lg">Recent Activities</CardTitle>
+        {/* Progress Cards Row - 3 Colored Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-primary rounded-xl p-4 sm:p-6 text-primary-foreground" data-testid="card-avg-progress">
+            <p className="text-sm font-medium opacity-90">Avg. Client Progress</p>
+            <p className="text-3xl sm:text-4xl font-bold mt-1">{avgClientProgress}%</p>
+          </div>
+
+          <div className="bg-primary rounded-xl p-4 sm:p-6 text-primary-foreground" data-testid="card-completion-rate">
+            <p className="text-sm font-medium opacity-90">Completion Rate</p>
+            <p className="text-3xl sm:text-4xl font-bold mt-1">{completionRate}%</p>
+          </div>
+
+          <div className="bg-primary rounded-xl p-4 sm:p-6 text-primary-foreground" data-testid="card-satisfaction">
+            <p className="text-sm font-medium opacity-90">Client Satisfaction</p>
+            <p className="text-3xl sm:text-4xl font-bold mt-1">{clientSatisfaction}/5</p>
+          </div>
+        </div>
+
+        {/* Two Column Layout: Recent Activity + Upcoming Sessions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Client Activity */}
+          <Card data-testid="card-recent-activity">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-4">
+              <CardTitle className="text-base sm:text-lg">Recent Client Activity</CardTitle>
+              <Link href="/clients">
+                <Button variant="ghost" size="sm" className="text-primary h-auto px-2">
+                  View All
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
             </CardHeader>
-            <CardContent className="space-y-3 sm:space-y-4">
-              {recentActivities.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-8 text-center">No recent activities</p>
+            <CardContent className="space-y-4">
+              {recentClients.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No clients yet. Add your first client to get started.
+                </p>
               ) : (
-                recentActivities.map((activity, index) => (
-                  <div key={activity.id} className="flex items-start gap-3 sm:gap-4" data-testid={`activity-${index}`}>
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs sm:text-sm font-semibold text-accent-foreground">
-                        {getInitials(activity.clientName)}
-                      </span>
+                recentClients.map((client, index) => {
+                  const status = getStatusBadge(client.progressScore);
+                  const lastActive = "Active " + (index === 0 ? "2 hours ago" : index === 1 ? "1 day ago" : index === 2 ? "30 min ago" : "5 hours ago");
+                  
+                  return (
+                    <div key={client.id} className="flex items-center gap-3" data-testid={`client-activity-${client.id}`}>
+                      <Avatar className={`w-10 h-10 ${avatarColors[index % avatarColors.length]}`}>
+                        <AvatarFallback className={avatarColors[index % avatarColors.length]}>
+                          {getInitials(client.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium text-sm truncate">{client.name}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${status.color}`}>
+                            {status.label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{lastActive}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary rounded-full transition-all"
+                              style={{ width: `${client.progressScore}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground w-8">{client.progressScore}%</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs sm:text-sm">
-                        <span className="font-medium text-primary">{activity.clientName}</span>{" "}
-                        <span className="text-muted-foreground">{activity.description}</span>
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">{activity.timestamp}</p>
-                    </div>
-                    {activity.status === "completed" && (
-                      <span className="text-xs bg-chart-3/10 text-chart-3 px-2 py-1 rounded-full font-medium flex-shrink-0">
-                        Completed
-                      </span>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )}
             </CardContent>
           </Card>
 
-          <GoalsDashboardWidget />
+          {/* Upcoming Sessions */}
+          <Card data-testid="card-upcoming-sessions">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-4">
+              <CardTitle className="text-base sm:text-lg">Upcoming Sessions</CardTitle>
+              <Link href="/scheduling">
+                <Button variant="ghost" size="sm" className="text-primary h-auto px-2">
+                  View Calendar
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {upcomingSessions.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No upcoming sessions scheduled.
+                </p>
+              ) : (
+                upcomingSessions.map((session, index) => (
+                  <div key={session.id} className="flex items-start justify-between gap-3" data-testid={`session-${session.id}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{session.clientName}</p>
+                      <p className="text-xs text-primary">{formatSessionTime(session.date, session.startTime)}</p>
+                      <p className="text-xs text-muted-foreground">{session.sessionType}</p>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
+                      <Clock className="w-3 h-3" />
+                      45 min
+                    </div>
+                  </div>
+                ))
+              )}
+              
+              <Link href="/scheduling" className="block">
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-2 border-primary text-primary hover:bg-primary/10"
+                  data-testid="button-schedule-session"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Schedule New Session
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
         </div>
 
-        <AIInsightsCard clients={clients} />
+        {/* Quick Actions */}
+        <div data-testid="quick-actions">
+          <h2 className="text-sm font-medium text-muted-foreground mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Link href="/clients">
+              <Card className="hover-elevate cursor-pointer h-full" data-testid="action-manage-clients">
+                <CardContent className="p-4 sm:p-6 flex flex-col items-center text-center">
+                  <div className="p-3 rounded-lg bg-muted mb-3">
+                    <Users className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium">Manage Clients</p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/questionnaires">
+              <Card className="hover-elevate cursor-pointer h-full" data-testid="action-create-questionnaire">
+                <CardContent className="p-4 sm:p-6 flex flex-col items-center text-center">
+                  <div className="p-3 rounded-lg bg-muted mb-3">
+                    <FileText className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium">Create Questionnaire</p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/communication">
+              <Card className="hover-elevate cursor-pointer h-full" data-testid="action-message-clients">
+                <CardContent className="p-4 sm:p-6 flex flex-col items-center text-center">
+                  <div className="p-3 rounded-lg bg-muted mb-3">
+                    <MessageSquare className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium">Message Clients</p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/ai-insights">
+              <Card className="hover-elevate cursor-pointer h-full" data-testid="action-view-insights">
+                <CardContent className="p-4 sm:p-6 flex flex-col items-center text-center">
+                  <div className="p-3 rounded-lg bg-muted mb-3">
+                    <Lightbulb className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium">View AI Insights</p>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
-  );
-}
-
-function AIInsightsCard({ clients }: { clients: Client[] }) {
-  const { data: allInsights, isLoading } = useQuery<EnhancedClientInsight[]>({
-    queryKey: ["/api/dashboard/insights"],
-    queryFn: async () => {
-      if (clients.length === 0) return [];
-      const insightPromises = clients.slice(0, 5).map(async (client) => {
-        try {
-          const response = await fetch(`/api/clients/${client.id}/insights`, { credentials: 'include' });
-          if (!response.ok) return null;
-          return response.json();
-        } catch {
-          return null;
-        }
-      });
-      const results = await Promise.all(insightPromises);
-      return results.filter((r): r is EnhancedClientInsight => r !== null && r.quickStats?.totalDataPoints > 0);
-    },
-    enabled: clients.length > 0,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case "improving":
-      case "ahead":
-        return <ArrowUp className="w-3 h-3" />;
-      case "declining":
-      case "behind":
-      case "at_risk":
-        return <ArrowDown className="w-3 h-3" />;
-      default:
-        return <Minus className="w-3 h-3" />;
-    }
-  };
-
-  const getTrendColor = (trend: string) => {
-    switch (trend) {
-      case "improving":
-      case "ahead":
-      case "on_track":
-        return "bg-emerald-500/20 text-emerald-300";
-      case "declining":
-      case "at_risk":
-        return "bg-rose-500/20 text-rose-300";
-      case "behind":
-        return "bg-amber-500/20 text-amber-300";
-      default:
-        return "bg-white/20 text-white";
-    }
-  };
-
-  const hasData = allInsights && allInsights.length > 0;
-  const totalDataPoints = hasData ? allInsights.reduce((sum, i) => sum + (i.quickStats?.totalDataPoints || 0), 0) : 0;
-  const improvingClients = hasData ? allInsights.filter(i => i.quickStats?.overallTrend === "improving").length : 0;
-  const avgConsistency = hasData ? Math.round(allInsights.reduce((sum, i) => sum + (i.quickStats?.trackingConsistency || 0), 0) / allInsights.length) : 0;
-
-  const topGoalPredictions = hasData
-    ? allInsights
-        .flatMap(i => i.goalPredictions?.map(g => ({ ...g, clientName: i.clientName })) || [])
-        .filter(g => g.successProbability > 0)
-        .sort((a, b) => b.progressPercent - a.progressPercent)
-        .slice(0, 3)
-    : [];
-
-  const significantTrends = hasData
-    ? allInsights
-        .flatMap(i => i.trends?.filter(t => t.confidence > 0.6).map(t => ({ ...t, clientName: i.clientName })) || [])
-        .slice(0, 3)
-    : [];
-
-  return (
-    <Card className="bg-gradient-to-br from-primary to-primary/80 text-white" data-testid="card-ai-insights">
-      <CardHeader>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5" />
-            <CardTitle className="text-white">AI Insights</CardTitle>
-          </div>
-          {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!hasData ? (
-          <div className="text-center py-4">
-            <ActivityIcon className="w-10 h-10 mx-auto mb-2 opacity-60" />
-            <p className="text-sm text-white/90">
-              {clients.length === 0
-                ? "Add clients to see AI-powered insights and trend analysis."
-                : "Waiting for client data... Insights will appear once clients log activities via the AI Tracker."}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="bg-white/10 rounded-lg p-2">
-                <p className="text-xl font-bold">{totalDataPoints}</p>
-                <p className="text-xs text-white/70">Data Points</p>
-              </div>
-              <div className="bg-white/10 rounded-lg p-2">
-                <p className="text-xl font-bold">{improvingClients}/{allInsights.length}</p>
-                <p className="text-xs text-white/70">Improving</p>
-              </div>
-              <div className="bg-white/10 rounded-lg p-2">
-                <p className="text-xl font-bold">{avgConsistency}%</p>
-                <p className="text-xs text-white/70">Consistency</p>
-              </div>
-            </div>
-
-            {topGoalPredictions.length > 0 && (
-              <div className="border-t border-white/20 pt-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Target className="w-4 h-4" />
-                  <p className="font-semibold text-sm">Goal Progress Predictions</p>
-                </div>
-                <div className="space-y-2">
-                  {topGoalPredictions.map((goal, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm bg-white/5 rounded px-2 py-1">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{goal.clientName}</p>
-                        <p className="text-xs text-white/70 truncate">{goal.goalTitle}</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-xs">{goal.progressPercent}%</span>
-                        <Badge variant="secondary" className={`text-[10px] px-1 py-0 ${getTrendColor(goal.trend)}`}>
-                          {getTrendIcon(goal.trend)}
-                          <span className="ml-1">{Math.round(goal.successProbability * 100)}%</span>
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {significantTrends.length > 0 && (
-              <div className="border-t border-white/20 pt-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4" />
-                  <p className="font-semibold text-sm">Detected Trends</p>
-                </div>
-                <div className="space-y-2">
-                  {significantTrends.map((trend, idx) => (
-                    <div key={idx} className="text-sm bg-white/5 rounded px-2 py-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{trend.clientName}</span>
-                        <Badge variant="secondary" className={`text-[10px] px-1 py-0 ${getTrendColor(trend.trend)}`}>
-                          {getTrendIcon(trend.trend)}
-                          <span className="ml-1 capitalize">{trend.category}</span>
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-white/70 mt-0.5">{trend.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {allInsights.some(i => i.quickStats?.topOpportunity) && (
-              <div className="border-t border-white/20 pt-3">
-                <p className="font-semibold text-sm flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4" />
-                  Recommendations
-                </p>
-                <ul className="mt-2 space-y-1">
-                  {allInsights
-                    .filter(i => i.quickStats?.topOpportunity)
-                    .slice(0, 2)
-                    .map((insight, idx) => (
-                      <li key={idx} className="text-xs text-white/90">
-                        <span className="font-medium">{insight.clientName}:</span> {insight.quickStats.topOpportunity}
-                      </li>
-                    ))}
-                </ul>
-              </div>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
   );
 }
