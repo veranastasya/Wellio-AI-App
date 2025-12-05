@@ -27,7 +27,7 @@ import {
   BarChart,
   Bar
 } from "recharts";
-import type { SmartLog, ProgressEvent, AIClassification, PlanTargetsRecord } from "@shared/schema";
+import type { SmartLog, ProgressEvent, AIClassification, PlanTargetsRecord, AIParsedData } from "@shared/schema";
 import { format, parseISO, subDays, eachDayOfInterval } from "date-fns";
 import { formatWeight, type UnitsPreference } from "@shared/units";
 
@@ -83,6 +83,100 @@ function getEventColor(eventType: string): string {
     default:
       return "bg-muted text-muted-foreground";
   }
+}
+
+function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) {
+  if (!parsedData) return null;
+
+  const { nutrition, workout, weight, sleep, mood } = parsedData;
+  const hasData = nutrition || workout || weight || sleep || mood;
+  if (!hasData) return null;
+
+  return (
+    <div className="mt-2 space-y-2">
+      {nutrition && (
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 text-sm">
+          {nutrition.food_description && (
+            <p className="font-medium text-green-800 dark:text-green-300 mb-1 text-xs">
+              {nutrition.food_description}
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-1 text-xs">
+            {(nutrition.calories ?? nutrition.calories_est) && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Cal:</span>
+                <span className="font-medium text-foreground">
+                  ~{Math.round(nutrition.calories ?? nutrition.calories_est ?? 0)}
+                </span>
+              </div>
+            )}
+            {(nutrition.protein_g ?? nutrition.protein_est_g) && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">P:</span>
+                <span className="font-medium text-foreground">
+                  ~{Math.round(nutrition.protein_g ?? nutrition.protein_est_g ?? 0)}g
+                </span>
+              </div>
+            )}
+            {(nutrition.carbs_g ?? nutrition.carbs_est_g) && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">C:</span>
+                <span className="font-medium text-foreground">
+                  ~{Math.round(nutrition.carbs_g ?? nutrition.carbs_est_g ?? 0)}g
+                </span>
+              </div>
+            )}
+            {(nutrition.fat_g ?? nutrition.fat_est_g) && (
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">F:</span>
+                <span className="font-medium text-foreground">
+                  ~{Math.round(nutrition.fat_g ?? nutrition.fat_est_g ?? 0)}g
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {workout && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-2 text-xs">
+          <span className="font-medium text-orange-800 dark:text-orange-300 capitalize">
+            {workout.type}
+          </span>
+          {workout.duration_min && (
+            <span className="text-muted-foreground ml-2">{workout.duration_min} min</span>
+          )}
+          {workout.intensity !== "unknown" && (
+            <span className="text-muted-foreground ml-2 capitalize">{workout.intensity}</span>
+          )}
+        </div>
+      )}
+
+      {weight && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs">
+          <span className="font-medium text-blue-800 dark:text-blue-300">
+            Weight: {weight.value} {weight.unit}
+          </span>
+        </div>
+      )}
+
+      {sleep && (
+        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-2 text-xs">
+          <span className="font-medium text-indigo-800 dark:text-indigo-300">
+            Sleep: {sleep.hours}h {sleep.quality && `(${sleep.quality})`}
+          </span>
+        </div>
+      )}
+
+      {mood && (
+        <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-2 text-xs">
+          <span className="font-medium text-pink-800 dark:text-pink-300">
+            Mood: {mood.rating}/10
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }: CoachProgressAnalyticsProps) {
@@ -355,6 +449,7 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
               {smartLogs.slice(0, 5).map((log, index) => {
                 const classification = log.aiClassificationJson as AIClassification | null;
                 const detectedEvents = classification?.detected_event_types || [];
+                const parsedData = log.aiParsedJson as AIParsedData | null;
                 
                 return (
                   <div 
@@ -382,6 +477,7 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
                         );
                       })}
                     </div>
+                    <ParsedDataDisplay parsedData={parsedData} />
                   </div>
                 );
               })}
