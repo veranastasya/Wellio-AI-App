@@ -878,6 +878,7 @@ export interface AIClassification {
 
 // AI Parsed data types
 export interface ParsedNutrition {
+  food_description?: string;
   calories?: number;
   calories_est?: number;
   protein_g?: number;
