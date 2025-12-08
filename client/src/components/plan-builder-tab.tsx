@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Copy, Eye, Calendar, Dumbbell, UtensilsCrossed, CheckCircle2, ClipboardList, Send, Trash2, Plus, GripVertical, Sparkles, Check, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Eye, Calendar, Dumbbell, UtensilsCrossed, CheckCircle2, ClipboardList, Send, Trash2, Plus, GripVertical, Sparkles, Check, Loader2, Edit2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,10 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { usePlanBuilder } from "@/hooks/use-plan-builder";
 import { PlanBuilderContent } from "@/components/plan-builder-content";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface PlanBuilderTabProps {
   clientId: string;
@@ -32,7 +36,9 @@ interface Exercise {
 }
 
 interface TrainingDay {
+  id: string;
   day: string;
+  date?: Date;
   title: string;
   exercises: Exercise[];
 }
@@ -48,7 +54,9 @@ interface Meal {
 }
 
 interface NutritionDay {
+  id: string;
   day: string;
+  date?: Date;
   title: string;
   meals: Meal[];
 }
@@ -67,8 +75,11 @@ interface Task {
   completed: boolean;
 }
 
-const mockTrainingDays: TrainingDay[] = [
+const generateId = () => Math.random().toString(36).substring(2, 11);
+
+const initialTrainingDays: TrainingDay[] = [
   {
+    id: "td1",
     day: "Monday",
     title: "Upper Body Strength",
     exercises: [
@@ -78,6 +89,7 @@ const mockTrainingDays: TrainingDay[] = [
     ],
   },
   {
+    id: "td2",
     day: "Wednesday",
     title: "Lower Body & Core",
     exercises: [
@@ -87,6 +99,7 @@ const mockTrainingDays: TrainingDay[] = [
     ],
   },
   {
+    id: "td3",
     day: "Friday",
     title: "Full Body Circuit",
     exercises: [
@@ -96,8 +109,9 @@ const mockTrainingDays: TrainingDay[] = [
   },
 ];
 
-const mockNutritionDays: NutritionDay[] = [
+const initialNutritionDays: NutritionDay[] = [
   {
+    id: "nd1",
     day: "Monday",
     title: "High protein day",
     meals: [
@@ -107,6 +121,7 @@ const mockNutritionDays: NutritionDay[] = [
     ],
   },
   {
+    id: "nd2",
     day: "Tuesday",
     title: "Recovery nutrition",
     meals: [
@@ -116,31 +131,48 @@ const mockNutritionDays: NutritionDay[] = [
   },
 ];
 
-const mockHabits: Habit[] = [
+const initialHabits: Habit[] = [
   { id: "h1", name: "Drink 2 liters of water", frequency: "Daily", completed: false },
   { id: "h2", name: "10 minutes stretching", frequency: "Daily", completed: true },
   { id: "h3", name: "Take vitamins", frequency: "Daily", completed: false },
   { id: "h4", name: "30 minute walk", frequency: "3x per week", completed: false },
 ];
 
-const mockTasks: Task[] = [
+const initialTasks: Task[] = [
   { id: "t1", name: "Submit food log", dueDay: "Mon", completed: true },
   { id: "t2", name: "Weigh in", dueDay: "Wed", completed: false },
   { id: "t3", name: "Send progress photos", dueDay: "Fri", completed: false },
 ];
 
-function AiProgramBuilderPanel({ clientName }: { clientName: string }) {
+interface WeeklyProgramState {
+  trainingDays: TrainingDay[];
+  nutritionDays: NutritionDay[];
+  habits: Habit[];
+  tasks: Task[];
+}
+
+interface AiProgramBuilderPanelProps {
+  clientName: string;
+  onAddTrainingDay: (day: TrainingDay) => void;
+  onAddMeal: (dayId: string, meal: Meal) => void;
+  onAddHabit: (habit: Habit) => void;
+  onAddTask: (task: Task) => void;
+  onAddExercise: (dayId: string, exercise: Exercise) => void;
+}
+
+function AiProgramBuilderPanel({ clientName, onAddTrainingDay, onAddMeal, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "initial",
       role: "assistant",
-      content: `Hi! I'm ready to help you build this week's program for ${clientName}. I can create:\n\n• Training sessions with exercises, sets, and reps\n• Meal plans with macros and recipes\n• Daily habits to track\n• Weekly tasks and goals\n\nWhat would you like to add to this week's program?`,
+      content: `Hi! I'm ready to help you build this week's program for ${clientName}. I can create:\n\n- Training sessions with exercises, sets, and reps\n- Meal plans with macros and recipes\n- Daily habits to track\n- Weekly tasks and goals\n\nWhat would you like to add to this week's program?`,
     },
   ]);
   const [inputValue, setInputValue] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleSend = () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isProcessing) return;
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -148,31 +180,148 @@ function AiProgramBuilderPanel({ clientName }: { clientName: string }) {
       content: inputValue,
     };
 
-    const assistantResponse: ChatMessage = {
-      id: `assistant-${Date.now()}`,
-      role: "assistant",
-      content: getAiResponse(inputValue),
-    };
-
-    setMessages((prev) => [...prev, userMessage, assistantResponse]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputValue("");
+    setIsProcessing(true);
+
+    setTimeout(() => {
+      const { response, action } = processAiRequest(inputValue);
+      
+      const assistantResponse: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: response,
+      };
+
+      setMessages((prev) => [...prev, assistantResponse]);
+      
+      if (action) {
+        action();
+      }
+      
+      setIsProcessing(false);
+    }, 800);
   };
 
-  const getAiResponse = (input: string): string => {
+  const processAiRequest = (input: string): { response: string; action?: () => void } => {
     const lower = input.toLowerCase();
-    if (lower.includes("workout") || lower.includes("training") || lower.includes("exercise") || lower.includes("upper body")) {
-      return "I've drafted a new workout on the right. You can see it in the Training tab. Would you like me to add more exercises or modify anything?";
+    
+    if (lower.includes("upper body") || lower.includes("chest") || lower.includes("back") || lower.includes("shoulders")) {
+      const dayName = lower.includes("tuesday") ? "Tuesday" : lower.includes("wednesday") ? "Wednesday" : lower.includes("thursday") ? "Thursday" : "Monday";
+      return {
+        response: `I've added a new ${dayName} upper body workout! It includes bench press, rows, and shoulder press. You can see it in the Training tab and edit any exercise by clicking on it.`,
+        action: () => {
+          const newDay: TrainingDay = {
+            id: generateId(),
+            day: dayName,
+            title: "Upper Body Workout",
+            exercises: [
+              { id: generateId(), name: "Barbell Bench Press", sets: 4, reps: 10, note: "Control the descent" },
+              { id: generateId(), name: "Lat Pulldowns", sets: 3, reps: 12 },
+              { id: generateId(), name: "Dumbbell Shoulder Press", sets: 3, reps: 10 },
+            ],
+          };
+          onAddTrainingDay(newDay);
+        }
+      };
     }
-    if (lower.includes("meal") || lower.includes("nutrition") || lower.includes("food")) {
-      return "I've added a meal plan to the Nutrition tab. It includes balanced macros for your client's goals.";
+    
+    if (lower.includes("lower body") || lower.includes("legs") || lower.includes("squat")) {
+      const dayName = lower.includes("tuesday") ? "Tuesday" : lower.includes("thursday") ? "Thursday" : "Wednesday";
+      return {
+        response: `Added a ${dayName} lower body session! Includes squats, deadlifts, and lunges. Check the Training tab and click any exercise to modify it.`,
+        action: () => {
+          const newDay: TrainingDay = {
+            id: generateId(),
+            day: dayName,
+            title: "Lower Body Power",
+            exercises: [
+              { id: generateId(), name: "Back Squats", sets: 4, reps: 8, note: "Go below parallel" },
+              { id: generateId(), name: "Leg Press", sets: 3, reps: 12 },
+              { id: generateId(), name: "Walking Lunges", sets: 3, reps: 10 },
+            ],
+          };
+          onAddTrainingDay(newDay);
+        }
+      };
     }
+
+    if (lower.includes("workout") || lower.includes("training") || lower.includes("exercise")) {
+      return {
+        response: "I've added a full body workout for Thursday! You can see it in the Training tab. Click on any exercise to edit the name, sets, or reps.",
+        action: () => {
+          const newDay: TrainingDay = {
+            id: generateId(),
+            day: "Thursday",
+            title: "Full Body Workout",
+            exercises: [
+              { id: generateId(), name: "Deadlifts", sets: 4, reps: 8 },
+              { id: generateId(), name: "Pull-ups", sets: 3, reps: 10 },
+              { id: generateId(), name: "Planks", sets: 3, reps: 60, note: "Hold for 60 seconds" },
+            ],
+          };
+          onAddTrainingDay(newDay);
+        }
+      };
+    }
+    
+    if (lower.includes("meal") || lower.includes("nutrition") || lower.includes("food") || lower.includes("diet")) {
+      return {
+        response: "I've added a high-protein meal plan for Wednesday! Check the Nutrition tab. Click any meal to edit the details or adjust the macros.",
+        action: () => {
+          const meal: Meal = {
+            id: generateId(),
+            type: "Lunch",
+            name: "Grilled Steak with Sweet Potato",
+            calories: 650,
+            protein: 48,
+            carbs: 42,
+            fat: 24,
+          };
+          onAddMeal("nd1", meal);
+        }
+      };
+    }
+    
     if (lower.includes("habit")) {
-      return "Added a new habit to track! Check the Habits tab to see it.";
+      const habitName = lower.includes("sleep") ? "Get 8 hours of sleep" : 
+                        lower.includes("water") ? "Drink 3 liters of water" :
+                        lower.includes("walk") ? "Take a 20-minute walk" :
+                        "Practice mindful breathing";
+      return {
+        response: `Added a new habit: "${habitName}"! Check the Habits tab. Click on it to edit.`,
+        action: () => {
+          onAddHabit({
+            id: generateId(),
+            name: habitName,
+            frequency: "Daily",
+            completed: false,
+          });
+        }
+      };
     }
+    
     if (lower.includes("task")) {
-      return "I've created a new task in the Tasks tab.";
+      const taskName = lower.includes("photo") ? "Take progress photos" :
+                       lower.includes("log") ? "Log all meals" :
+                       lower.includes("weigh") ? "Record morning weight" :
+                       "Complete weekly check-in";
+      return {
+        response: `Created a new task: "${taskName}"! You can find it in the Tasks tab. Click to edit the details.`,
+        action: () => {
+          onAddTask({
+            id: generateId(),
+            name: taskName,
+            dueDay: "Fri",
+            completed: false,
+          });
+        }
+      };
     }
-    return "Got it! I've made the updates in the weekly editor. Is there anything else you'd like to add?";
+
+    return {
+      response: "I can help you add workouts, meals, habits, or tasks. Try saying something like:\n\n- 'Add an upper body workout for Monday'\n- 'Create a high-protein meal plan'\n- 'Add a hydration habit'\n- 'Add a task to submit progress photos'"
+    };
   };
 
   return (
@@ -203,6 +352,12 @@ function AiProgramBuilderPanel({ clientName }: { clientName: string }) {
                 {msg.content}
               </div>
             ))}
+            {isProcessing && (
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Generating...</span>
+              </div>
+            )}
           </div>
         </ScrollArea>
         <div className="p-4 border-t bg-muted/30">
@@ -213,15 +368,17 @@ function AiProgramBuilderPanel({ clientName }: { clientName: string }) {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               className="text-sm bg-background"
+              disabled={isProcessing}
               data-testid="input-ai-message"
             />
             <Button 
               size="icon" 
               onClick={handleSend} 
+              disabled={isProcessing}
               className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white flex-shrink-0"
               data-testid="button-send-message"
             >
-              <Send className="w-4 h-4" />
+              {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>
         </div>
@@ -230,40 +387,283 @@ function AiProgramBuilderPanel({ clientName }: { clientName: string }) {
   );
 }
 
-function TrainingTab({ days }: { days: TrainingDay[] }) {
+interface EditableExerciseProps {
+  exercise: Exercise;
+  onUpdate: (updated: Exercise) => void;
+  onDelete: () => void;
+}
+
+function EditableExercise({ exercise, onUpdate, onDelete }: EditableExerciseProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(exercise.name);
+  const [editSets, setEditSets] = useState(exercise.sets);
+  const [editReps, setEditReps] = useState(exercise.reps);
+  const [editNote, setEditNote] = useState(exercise.note || "");
+
+  const handleSave = () => {
+    onUpdate({
+      ...exercise,
+      name: editName,
+      sets: editSets,
+      reps: editReps,
+      note: editNote || undefined,
+    });
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditName(exercise.name);
+    setEditSets(exercise.sets);
+    setEditReps(exercise.reps);
+    setEditNote(exercise.note || "");
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="p-3 rounded-lg border-2 border-[#28A0AE] bg-card space-y-3" data-testid={`exercise-edit-${exercise.id}`}>
+        <div className="space-y-2">
+          <Label className="text-xs">Exercise Name</Label>
+          <Input
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            className="h-8 text-sm"
+            placeholder="Exercise name"
+            data-testid="input-exercise-name"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label className="text-xs">Sets</Label>
+            <Input
+              type="number"
+              min={1}
+              value={editSets}
+              onChange={(e) => setEditSets(parseInt(e.target.value) || 1)}
+              className="h-8 text-sm"
+              data-testid="input-exercise-sets"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Reps</Label>
+            <Input
+              type="number"
+              min={1}
+              value={editReps}
+              onChange={(e) => setEditReps(parseInt(e.target.value) || 1)}
+              className="h-8 text-sm"
+              data-testid="input-exercise-reps"
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-xs">Coach Note (optional)</Label>
+          <Input
+            value={editNote}
+            onChange={(e) => setEditNote(e.target.value)}
+            className="h-8 text-sm"
+            placeholder="Add a note..."
+            data-testid="input-exercise-note"
+          />
+        </div>
+        <div className="flex gap-2 justify-end">
+          <Button variant="ghost" size="sm" onClick={handleCancel} data-testid="button-cancel-exercise">
+            Cancel
+          </Button>
+          <Button size="sm" onClick={handleSave} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white" data-testid="button-save-exercise">
+            Save
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="flex items-start gap-3 p-3 rounded-lg border bg-card hover-elevate cursor-pointer group" 
+      onClick={() => setIsEditing(true)}
+      data-testid={`exercise-${exercise.id}`}
+    >
+      <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-medium text-sm">{exercise.name}</p>
+          <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Sets: {exercise.sets} &nbsp;&nbsp; Reps: {exercise.reps}
+        </p>
+        {exercise.note && (
+          <p className="text-xs text-[#28A0AE] mt-1">Coach note: {exercise.note}</p>
+        )}
+      </div>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+        data-testid={`button-delete-exercise-${exercise.id}`}
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+}
+
+interface TrainingTabProps {
+  days: TrainingDay[];
+  onUpdateDay: (dayId: string, updates: Partial<TrainingDay>) => void;
+  onUpdateExercise: (dayId: string, exerciseId: string, updates: Exercise) => void;
+  onDeleteExercise: (dayId: string, exerciseId: string) => void;
+  onAddExercise: (dayId: string, exercise: Exercise) => void;
+  onDeleteDay: (dayId: string) => void;
+}
+
+function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, onAddExercise, onDeleteDay }: TrainingTabProps) {
+  const [addingExerciseToDay, setAddingExerciseToDay] = useState<string | null>(null);
+  const [newExerciseName, setNewExerciseName] = useState("");
+  const [newExerciseSets, setNewExerciseSets] = useState(3);
+  const [newExerciseReps, setNewExerciseReps] = useState(10);
+  const { toast } = useToast();
+
+  const handleAddExercise = (dayId: string) => {
+    if (!newExerciseName.trim()) {
+      toast({ title: "Please enter an exercise name", variant: "destructive" });
+      return;
+    }
+    onAddExercise(dayId, {
+      id: generateId(),
+      name: newExerciseName,
+      sets: newExerciseSets,
+      reps: newExerciseReps,
+    });
+    setNewExerciseName("");
+    setNewExerciseSets(3);
+    setNewExerciseReps(10);
+    setAddingExerciseToDay(null);
+    toast({ title: "Exercise added!" });
+  };
+
+  const handleDayChange = (dayId: string, newDay: string) => {
+    onUpdateDay(dayId, { day: newDay });
+  };
+
   return (
     <div className="space-y-4">
       {days.map((day) => (
-        <Card key={day.day} className="overflow-hidden border" data-testid={`card-training-${day.day.toLowerCase()}`}>
+        <Card key={day.id} className="overflow-hidden border" data-testid={`card-training-${day.id}`}>
           <div className="bg-[#28A0AE] px-4 py-2.5 flex items-center gap-3">
-            <GripVertical className="w-4 h-4 text-white/60" />
-            <Calendar className="w-4 h-4 text-white" />
-            <Badge variant="outline" className="bg-white/90 border-transparent text-[#28A0AE] font-semibold">
-              {day.day}
-            </Badge>
-            <span className="text-white font-medium text-sm">{day.title}</span>
+            <GripVertical className="w-4 h-4 text-white/60 cursor-grab" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/20" data-testid={`button-calendar-${day.id}`}>
+                  <Calendar className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={day.date}
+                  onSelect={(date) => date && onUpdateDay(day.id, { date })}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <Select value={day.day} onValueChange={(value) => handleDayChange(day.id, value)}>
+              <SelectTrigger className="w-auto h-7 bg-white/90 border-transparent text-[#28A0AE] font-semibold text-sm" data-testid={`select-day-${day.id}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Monday">Monday</SelectItem>
+                <SelectItem value="Tuesday">Tuesday</SelectItem>
+                <SelectItem value="Wednesday">Wednesday</SelectItem>
+                <SelectItem value="Thursday">Thursday</SelectItem>
+                <SelectItem value="Friday">Friday</SelectItem>
+                <SelectItem value="Saturday">Saturday</SelectItem>
+                <SelectItem value="Sunday">Sunday</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={day.title}
+              onChange={(e) => onUpdateDay(day.id, { title: e.target.value })}
+              className="flex-1 h-7 bg-transparent border-none text-white font-medium text-sm placeholder:text-white/60 focus-visible:ring-0 focus-visible:ring-offset-0"
+              placeholder="Workout title..."
+              data-testid={`input-day-title-${day.id}`}
+            />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 text-white/60 hover:text-white hover:bg-white/20"
+              onClick={() => onDeleteDay(day.id)}
+              data-testid={`button-delete-day-${day.id}`}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
           </div>
           <CardContent className="p-4 space-y-3">
             {day.exercises.map((exercise) => (
-              <div key={exercise.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover-elevate" data-testid={`exercise-${exercise.id}`}>
-                <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{exercise.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Sets: {exercise.sets} &nbsp;&nbsp; Reps: {exercise.reps}
-                  </p>
-                  {exercise.note && (
-                    <p className="text-xs text-[#28A0AE] mt-1">Coach note: {exercise.note}</p>
-                  )}
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0">
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
+              <EditableExercise
+                key={exercise.id}
+                exercise={exercise}
+                onUpdate={(updated) => onUpdateExercise(day.id, exercise.id, updated)}
+                onDelete={() => onDeleteExercise(day.id, exercise.id)}
+              />
             ))}
-            <Button variant="ghost" size="sm" className="text-[#28A0AE] w-full justify-start" data-testid={`button-add-exercise-${day.day.toLowerCase()}`}>
-              <Plus className="w-4 h-4 mr-1" /> Add exercise
-            </Button>
+            
+            {addingExerciseToDay === day.id ? (
+              <div className="p-3 rounded-lg border-2 border-dashed border-[#28A0AE]/50 bg-muted/30 space-y-3">
+                <Input
+                  value={newExerciseName}
+                  onChange={(e) => setNewExerciseName(e.target.value)}
+                  placeholder="Exercise name (e.g., Bench Press)"
+                  className="h-8 text-sm"
+                  autoFocus
+                  data-testid="input-new-exercise-name"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs w-10">Sets:</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={newExerciseSets}
+                      onChange={(e) => setNewExerciseSets(parseInt(e.target.value) || 1)}
+                      className="h-8 text-sm"
+                      data-testid="input-new-exercise-sets"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs w-10">Reps:</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={newExerciseReps}
+                      onChange={(e) => setNewExerciseReps(parseInt(e.target.value) || 1)}
+                      className="h-8 text-sm"
+                      data-testid="input-new-exercise-reps"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="ghost" size="sm" onClick={() => setAddingExerciseToDay(null)} data-testid="button-cancel-new-exercise">
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={() => handleAddExercise(day.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white" data-testid="button-add-new-exercise">
+                    Add
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-[#28A0AE] w-full justify-start" 
+                onClick={() => setAddingExerciseToDay(day.id)}
+                data-testid={`button-add-exercise-${day.id}`}
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add exercise
+              </Button>
+            )}
           </CardContent>
         </Card>
       ))}
@@ -271,11 +671,153 @@ function TrainingTab({ days }: { days: TrainingDay[] }) {
   );
 }
 
-function NutritionTab({ days }: { days: NutritionDay[] }) {
+interface EditableMealProps {
+  meal: Meal;
+  onUpdate: (updated: Meal) => void;
+  onDelete: () => void;
+}
+
+function EditableMeal({ meal, onUpdate, onDelete }: EditableMealProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editType, setEditType] = useState(meal.type);
+  const [editName, setEditName] = useState(meal.name);
+  const [editCalories, setEditCalories] = useState(meal.calories);
+  const [editProtein, setEditProtein] = useState(meal.protein);
+  const [editCarbs, setEditCarbs] = useState(meal.carbs);
+  const [editFat, setEditFat] = useState(meal.fat);
+
+  const handleSave = () => {
+    onUpdate({
+      ...meal,
+      type: editType,
+      name: editName,
+      calories: editCalories,
+      protein: editProtein,
+      carbs: editCarbs,
+      fat: editFat,
+    });
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <div className="p-3 rounded-lg border-2 border-[#28A0AE] bg-card space-y-3" data-testid={`meal-edit-${meal.id}`}>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label className="text-xs">Meal Type</Label>
+            <Select value={editType} onValueChange={setEditType}>
+              <SelectTrigger className="h-8 text-sm" data-testid="select-meal-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Breakfast">Breakfast</SelectItem>
+                <SelectItem value="Lunch">Lunch</SelectItem>
+                <SelectItem value="Dinner">Dinner</SelectItem>
+                <SelectItem value="Snack">Snack</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">Meal Name</Label>
+            <Input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="h-8 text-sm"
+              data-testid="input-meal-name"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          <div className="space-y-1">
+            <Label className="text-xs">Calories</Label>
+            <Input type="number" value={editCalories} onChange={(e) => setEditCalories(parseInt(e.target.value) || 0)} className="h-8 text-sm" data-testid="input-meal-calories" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Protein (g)</Label>
+            <Input type="number" value={editProtein} onChange={(e) => setEditProtein(parseInt(e.target.value) || 0)} className="h-8 text-sm" data-testid="input-meal-protein" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Carbs (g)</Label>
+            <Input type="number" value={editCarbs} onChange={(e) => setEditCarbs(parseInt(e.target.value) || 0)} className="h-8 text-sm" data-testid="input-meal-carbs" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Fat (g)</Label>
+            <Input type="number" value={editFat} onChange={(e) => setEditFat(parseInt(e.target.value) || 0)} className="h-8 text-sm" data-testid="input-meal-fat" />
+          </div>
+        </div>
+        <div className="flex gap-2 justify-end">
+          <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Cancel</Button>
+          <Button size="sm" onClick={handleSave} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Save</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="flex items-start gap-3 p-3 rounded-lg border bg-card hover-elevate cursor-pointer group" 
+      onClick={() => setIsEditing(true)}
+      data-testid={`meal-${meal.id}`}
+    >
+      <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm">{meal.type}</span>
+          <span className="text-sm text-muted-foreground">- {meal.name}</span>
+          <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {meal.calories} kcal | {meal.protein}g P | {meal.carbs}g C | {meal.fat}g F
+        </p>
+      </div>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100"
+        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+}
+
+interface NutritionTabProps {
+  days: NutritionDay[];
+  onUpdateMeal: (dayId: string, mealId: string, updates: Meal) => void;
+  onDeleteMeal: (dayId: string, mealId: string) => void;
+  onAddMeal: (dayId: string, meal: Meal) => void;
+}
+
+function NutritionTab({ days, onUpdateMeal, onDeleteMeal, onAddMeal }: NutritionTabProps) {
+  const [addingMealToDay, setAddingMealToDay] = useState<string | null>(null);
+  const [newMealType, setNewMealType] = useState("Lunch");
+  const [newMealName, setNewMealName] = useState("");
+  const { toast } = useToast();
+
+  const handleAddMeal = (dayId: string) => {
+    if (!newMealName.trim()) {
+      toast({ title: "Please enter a meal name", variant: "destructive" });
+      return;
+    }
+    onAddMeal(dayId, {
+      id: generateId(),
+      type: newMealType,
+      name: newMealName,
+      calories: 400,
+      protein: 30,
+      carbs: 40,
+      fat: 15,
+    });
+    setNewMealName("");
+    setAddingMealToDay(null);
+    toast({ title: "Meal added!" });
+  };
+
   return (
     <div className="space-y-4">
       {days.map((day) => (
-        <Card key={day.day} className="overflow-hidden border" data-testid={`card-nutrition-${day.day.toLowerCase()}`}>
+        <Card key={day.id} className="overflow-hidden border" data-testid={`card-nutrition-${day.id}`}>
           <div className="bg-[#28A0AE] px-4 py-2.5 flex items-center gap-3">
             <GripVertical className="w-4 h-4 text-white/60" />
             <Calendar className="w-4 h-4 text-white" />
@@ -286,25 +828,51 @@ function NutritionTab({ days }: { days: NutritionDay[] }) {
           </div>
           <CardContent className="p-4 space-y-3">
             {day.meals.map((meal) => (
-              <div key={meal.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover-elevate" data-testid={`meal-${meal.id}`}>
-                <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">{meal.type}</span>
-                    <span className="text-sm text-muted-foreground">- {meal.name}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {meal.calories} kcal • {meal.protein}g protein • {meal.carbs}g carbs • {meal.fat}g fat
-                  </p>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0">
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
+              <EditableMeal
+                key={meal.id}
+                meal={meal}
+                onUpdate={(updated) => onUpdateMeal(day.id, meal.id, updated)}
+                onDelete={() => onDeleteMeal(day.id, meal.id)}
+              />
             ))}
-            <Button variant="ghost" size="sm" className="text-[#28A0AE] w-full justify-start" data-testid={`button-add-meal-${day.day.toLowerCase()}`}>
-              <Plus className="w-4 h-4 mr-1" /> Add meal
-            </Button>
+            {addingMealToDay === day.id ? (
+              <div className="p-3 rounded-lg border-2 border-dashed border-[#28A0AE]/50 bg-muted/30 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={newMealType} onValueChange={setNewMealType}>
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Breakfast">Breakfast</SelectItem>
+                      <SelectItem value="Lunch">Lunch</SelectItem>
+                      <SelectItem value="Dinner">Dinner</SelectItem>
+                      <SelectItem value="Snack">Snack</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    value={newMealName}
+                    onChange={(e) => setNewMealName(e.target.value)}
+                    placeholder="Meal name..."
+                    className="h-8 text-sm"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <Button variant="ghost" size="sm" onClick={() => setAddingMealToDay(null)}>Cancel</Button>
+                  <Button size="sm" onClick={() => handleAddMeal(day.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Add</Button>
+                </div>
+              </div>
+            ) : (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-[#28A0AE] w-full justify-start" 
+                onClick={() => setAddingMealToDay(day.id)}
+                data-testid={`button-add-meal-${day.id}`}
+              >
+                <Plus className="w-4 h-4 mr-1" /> Add meal
+              </Button>
+            )}
           </CardContent>
         </Card>
       ))}
@@ -312,7 +880,50 @@ function NutritionTab({ days }: { days: NutritionDay[] }) {
   );
 }
 
-function HabitsTab({ habits }: { habits: Habit[] }) {
+interface HabitsTabProps {
+  habits: Habit[];
+  onUpdateHabit: (habitId: string, updates: Partial<Habit>) => void;
+  onDeleteHabit: (habitId: string) => void;
+  onAddHabit: (habit: Habit) => void;
+  onToggleHabit: (habitId: string) => void;
+}
+
+function HabitsTab({ habits, onUpdateHabit, onDeleteHabit, onAddHabit, onToggleHabit }: HabitsTabProps) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newHabitName, setNewHabitName] = useState("");
+  const [newHabitFreq, setNewHabitFreq] = useState("Daily");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editFreq, setEditFreq] = useState("");
+  const { toast } = useToast();
+
+  const handleAdd = () => {
+    if (!newHabitName.trim()) {
+      toast({ title: "Please enter a habit name", variant: "destructive" });
+      return;
+    }
+    onAddHabit({
+      id: generateId(),
+      name: newHabitName,
+      frequency: newHabitFreq,
+      completed: false,
+    });
+    setNewHabitName("");
+    setIsAdding(false);
+    toast({ title: "Habit added!" });
+  };
+
+  const startEditing = (habit: Habit) => {
+    setEditingId(habit.id);
+    setEditName(habit.name);
+    setEditFreq(habit.frequency);
+  };
+
+  const handleSaveEdit = (habitId: string) => {
+    onUpdateHabit(habitId, { name: editName, frequency: editFreq });
+    setEditingId(null);
+  };
+
   return (
     <Card data-testid="card-habits">
       <CardHeader className="pb-3">
@@ -320,25 +931,120 @@ function HabitsTab({ habits }: { habits: Habit[] }) {
       </CardHeader>
       <CardContent className="space-y-2">
         {habits.map((habit) => (
-          <div key={habit.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover-elevate" data-testid={`habit-${habit.id}`}>
-            <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <CheckCircle2 className={cn("w-5 h-5 flex-shrink-0", habit.completed ? "text-[#28A0AE]" : "text-muted-foreground")} />
-            <span className="flex-1 text-sm">{habit.name}</span>
-            <Badge variant="outline" className="text-xs">{habit.frequency}</Badge>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0">
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
+          editingId === habit.id ? (
+            <div key={habit.id} className="p-3 rounded-lg border-2 border-[#28A0AE] bg-card space-y-3">
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Habit name" className="h-8 text-sm" />
+              <Select value={editFreq} onValueChange={setEditFreq}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Daily">Daily</SelectItem>
+                  <SelectItem value="3x per week">3x per week</SelectItem>
+                  <SelectItem value="Weekly">Weekly</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
+                <Button size="sm" onClick={() => handleSaveEdit(habit.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Save</Button>
+              </div>
+            </div>
+          ) : (
+            <div key={habit.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover-elevate group" data-testid={`habit-${habit.id}`}>
+              <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <button onClick={() => onToggleHabit(habit.id)} className="focus:outline-none">
+                <CheckCircle2 className={cn("w-5 h-5 flex-shrink-0 transition-colors", habit.completed ? "text-[#28A0AE]" : "text-muted-foreground")} />
+              </button>
+              <span 
+                className={cn("flex-1 text-sm cursor-pointer", habit.completed && "line-through text-muted-foreground")}
+                onClick={() => startEditing(habit)}
+              >
+                {habit.name}
+              </span>
+              <Badge variant="outline" className="text-xs">{habit.frequency}</Badge>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100"
+                onClick={() => onDeleteHabit(habit.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          )
         ))}
-        <Button variant="ghost" size="sm" className="text-[#28A0AE] w-full justify-start mt-2" data-testid="button-add-habit">
-          <Plus className="w-4 h-4 mr-1" /> Add habit
-        </Button>
+        {isAdding ? (
+          <div className="p-3 rounded-lg border-2 border-dashed border-[#28A0AE]/50 bg-muted/30 space-y-3">
+            <Input value={newHabitName} onChange={(e) => setNewHabitName(e.target.value)} placeholder="Habit name (e.g., Drink 8 glasses of water)" className="h-8 text-sm" autoFocus />
+            <Select value={newHabitFreq} onValueChange={setNewHabitFreq}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Daily">Daily</SelectItem>
+                <SelectItem value="3x per week">3x per week</SelectItem>
+                <SelectItem value="Weekly">Weekly</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleAdd} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Add</Button>
+            </div>
+          </div>
+        ) : (
+          <Button variant="ghost" size="sm" className="text-[#28A0AE] w-full justify-start mt-2" onClick={() => setIsAdding(true)} data-testid="button-add-habit">
+            <Plus className="w-4 h-4 mr-1" /> Add habit
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function TasksTab({ tasks }: { tasks: Task[] }) {
+interface TasksTabProps {
+  tasks: Task[];
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
+  onDeleteTask: (taskId: string) => void;
+  onAddTask: (task: Task) => void;
+  onToggleTask: (taskId: string) => void;
+}
+
+function TasksTab({ tasks, onUpdateTask, onDeleteTask, onAddTask, onToggleTask }: TasksTabProps) {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newTaskName, setNewTaskName] = useState("");
+  const [newTaskDue, setNewTaskDue] = useState("Mon");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDue, setEditDue] = useState("");
+  const { toast } = useToast();
+
+  const handleAdd = () => {
+    if (!newTaskName.trim()) {
+      toast({ title: "Please enter a task name", variant: "destructive" });
+      return;
+    }
+    onAddTask({
+      id: generateId(),
+      name: newTaskName,
+      dueDay: newTaskDue,
+      completed: false,
+    });
+    setNewTaskName("");
+    setIsAdding(false);
+    toast({ title: "Task added!" });
+  };
+
+  const startEditing = (task: Task) => {
+    setEditingId(task.id);
+    setEditName(task.name);
+    setEditDue(task.dueDay);
+  };
+
+  const handleSaveEdit = (taskId: string) => {
+    onUpdateTask(taskId, { name: editName, dueDay: editDue });
+    setEditingId(null);
+  };
+
   return (
     <Card data-testid="card-tasks">
       <CardHeader className="pb-3">
@@ -346,25 +1052,123 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
       </CardHeader>
       <CardContent className="space-y-2">
         {tasks.map((task) => (
-          <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover-elevate" data-testid={`task-${task.id}`}>
-            <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <CheckCircle2 className={cn("w-5 h-5 flex-shrink-0", task.completed ? "text-[#28A0AE]" : "text-muted-foreground")} />
-            <span className="flex-1 text-sm">{task.name}</span>
-            <Badge variant="outline" className="text-xs">{task.dueDay}</Badge>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0">
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
+          editingId === task.id ? (
+            <div key={task.id} className="p-3 rounded-lg border-2 border-[#28A0AE] bg-card space-y-3">
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Task name" className="h-8 text-sm" />
+              <Select value={editDue} onValueChange={setEditDue}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Mon">Monday</SelectItem>
+                  <SelectItem value="Tue">Tuesday</SelectItem>
+                  <SelectItem value="Wed">Wednesday</SelectItem>
+                  <SelectItem value="Thu">Thursday</SelectItem>
+                  <SelectItem value="Fri">Friday</SelectItem>
+                  <SelectItem value="Sat">Saturday</SelectItem>
+                  <SelectItem value="Sun">Sunday</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
+                <Button size="sm" onClick={() => handleSaveEdit(task.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Save</Button>
+              </div>
+            </div>
+          ) : (
+            <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover-elevate group" data-testid={`task-${task.id}`}>
+              <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              <button onClick={() => onToggleTask(task.id)} className="focus:outline-none">
+                <CheckCircle2 className={cn("w-5 h-5 flex-shrink-0 transition-colors", task.completed ? "text-[#28A0AE]" : "text-muted-foreground")} />
+              </button>
+              <span 
+                className={cn("flex-1 text-sm cursor-pointer", task.completed && "line-through text-muted-foreground")}
+                onClick={() => startEditing(task)}
+              >
+                {task.name}
+              </span>
+              <Badge variant="outline" className="text-xs">{task.dueDay}</Badge>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100"
+                onClick={() => onDeleteTask(task.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          )
         ))}
-        <Button variant="ghost" size="sm" className="text-[#28A0AE] w-full justify-start mt-2" data-testid="button-add-task">
-          <Plus className="w-4 h-4 mr-1" /> Add task
-        </Button>
+        {isAdding ? (
+          <div className="p-3 rounded-lg border-2 border-dashed border-[#28A0AE]/50 bg-muted/30 space-y-3">
+            <Input value={newTaskName} onChange={(e) => setNewTaskName(e.target.value)} placeholder="Task name (e.g., Submit progress photos)" className="h-8 text-sm" autoFocus />
+            <Select value={newTaskDue} onValueChange={setNewTaskDue}>
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Mon">Monday</SelectItem>
+                <SelectItem value="Tue">Tuesday</SelectItem>
+                <SelectItem value="Wed">Wednesday</SelectItem>
+                <SelectItem value="Thu">Thursday</SelectItem>
+                <SelectItem value="Fri">Friday</SelectItem>
+                <SelectItem value="Sat">Saturday</SelectItem>
+                <SelectItem value="Sun">Sunday</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleAdd} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Add</Button>
+            </div>
+          </div>
+        ) : (
+          <Button variant="ghost" size="sm" className="text-[#28A0AE] w-full justify-start mt-2" onClick={() => setIsAdding(true)} data-testid="button-add-task">
+            <Plus className="w-4 h-4 mr-1" /> Add task
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-function WeeklyEditor() {
+interface WeeklyEditorProps {
+  programState: WeeklyProgramState;
+  onUpdateTrainingDay: (dayId: string, updates: Partial<TrainingDay>) => void;
+  onUpdateExercise: (dayId: string, exerciseId: string, updates: Exercise) => void;
+  onDeleteExercise: (dayId: string, exerciseId: string) => void;
+  onAddExercise: (dayId: string, exercise: Exercise) => void;
+  onDeleteTrainingDay: (dayId: string) => void;
+  onUpdateMeal: (dayId: string, mealId: string, updates: Meal) => void;
+  onDeleteMeal: (dayId: string, mealId: string) => void;
+  onAddMeal: (dayId: string, meal: Meal) => void;
+  onUpdateHabit: (habitId: string, updates: Partial<Habit>) => void;
+  onDeleteHabit: (habitId: string) => void;
+  onAddHabit: (habit: Habit) => void;
+  onToggleHabit: (habitId: string) => void;
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
+  onDeleteTask: (taskId: string) => void;
+  onAddTask: (task: Task) => void;
+  onToggleTask: (taskId: string) => void;
+}
+
+function WeeklyEditor({ 
+  programState, 
+  onUpdateTrainingDay, 
+  onUpdateExercise, 
+  onDeleteExercise, 
+  onAddExercise, 
+  onDeleteTrainingDay,
+  onUpdateMeal,
+  onDeleteMeal,
+  onAddMeal,
+  onUpdateHabit,
+  onDeleteHabit,
+  onAddHabit,
+  onToggleHabit,
+  onUpdateTask,
+  onDeleteTask,
+  onAddTask,
+  onToggleTask
+}: WeeklyEditorProps) {
   return (
     <Card className="h-full flex flex-col border-2 border-[#28A0AE]/20" data-testid="card-weekly-editor">
       <Tabs defaultValue="training" className="flex-1 flex flex-col">
@@ -390,16 +1194,40 @@ function WeeklyEditor() {
         </div>
         <CardContent className="flex-1 overflow-auto p-4">
           <TabsContent value="training" className="m-0 mt-0">
-            <TrainingTab days={mockTrainingDays} />
+            <TrainingTab 
+              days={programState.trainingDays} 
+              onUpdateDay={onUpdateTrainingDay}
+              onUpdateExercise={onUpdateExercise}
+              onDeleteExercise={onDeleteExercise}
+              onAddExercise={onAddExercise}
+              onDeleteDay={onDeleteTrainingDay}
+            />
           </TabsContent>
           <TabsContent value="nutrition" className="m-0 mt-0">
-            <NutritionTab days={mockNutritionDays} />
+            <NutritionTab 
+              days={programState.nutritionDays}
+              onUpdateMeal={onUpdateMeal}
+              onDeleteMeal={onDeleteMeal}
+              onAddMeal={onAddMeal}
+            />
           </TabsContent>
           <TabsContent value="habits" className="m-0 mt-0">
-            <HabitsTab habits={mockHabits} />
+            <HabitsTab 
+              habits={programState.habits}
+              onUpdateHabit={onUpdateHabit}
+              onDeleteHabit={onDeleteHabit}
+              onAddHabit={onAddHabit}
+              onToggleHabit={onToggleHabit}
+            />
           </TabsContent>
           <TabsContent value="tasks" className="m-0 mt-0">
-            <TasksTab tasks={mockTasks} />
+            <TasksTab 
+              tasks={programState.tasks}
+              onUpdateTask={onUpdateTask}
+              onDeleteTask={onDeleteTask}
+              onAddTask={onAddTask}
+              onToggleTask={onToggleTask}
+            />
           </TabsContent>
         </CardContent>
       </Tabs>
@@ -415,6 +1243,161 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
   const { toast } = useToast();
 
   const planBuilder = usePlanBuilder(clientId || undefined);
+
+  const [programState, setProgramState] = useState<WeeklyProgramState>({
+    trainingDays: initialTrainingDays,
+    nutritionDays: initialNutritionDays,
+    habits: initialHabits,
+    tasks: initialTasks,
+  });
+
+  const handleAddTrainingDay = (day: TrainingDay) => {
+    setProgramState(prev => ({
+      ...prev,
+      trainingDays: [...prev.trainingDays, day],
+    }));
+  };
+
+  const handleUpdateTrainingDay = (dayId: string, updates: Partial<TrainingDay>) => {
+    setProgramState(prev => ({
+      ...prev,
+      trainingDays: prev.trainingDays.map(d => d.id === dayId ? { ...d, ...updates } : d),
+    }));
+  };
+
+  const handleDeleteTrainingDay = (dayId: string) => {
+    setProgramState(prev => ({
+      ...prev,
+      trainingDays: prev.trainingDays.filter(d => d.id !== dayId),
+    }));
+    toast({ title: "Training day deleted" });
+  };
+
+  const handleUpdateExercise = (dayId: string, exerciseId: string, updates: Exercise) => {
+    setProgramState(prev => ({
+      ...prev,
+      trainingDays: prev.trainingDays.map(d => 
+        d.id === dayId 
+          ? { ...d, exercises: d.exercises.map(e => e.id === exerciseId ? updates : e) }
+          : d
+      ),
+    }));
+  };
+
+  const handleDeleteExercise = (dayId: string, exerciseId: string) => {
+    setProgramState(prev => ({
+      ...prev,
+      trainingDays: prev.trainingDays.map(d => 
+        d.id === dayId 
+          ? { ...d, exercises: d.exercises.filter(e => e.id !== exerciseId) }
+          : d
+      ),
+    }));
+    toast({ title: "Exercise deleted" });
+  };
+
+  const handleAddExercise = (dayId: string, exercise: Exercise) => {
+    setProgramState(prev => ({
+      ...prev,
+      trainingDays: prev.trainingDays.map(d => 
+        d.id === dayId 
+          ? { ...d, exercises: [...d.exercises, exercise] }
+          : d
+      ),
+    }));
+  };
+
+  const handleAddMealToDay = (dayId: string, meal: Meal) => {
+    setProgramState(prev => ({
+      ...prev,
+      nutritionDays: prev.nutritionDays.map(d => 
+        d.id === dayId 
+          ? { ...d, meals: [...d.meals, meal] }
+          : d
+      ),
+    }));
+  };
+
+  const handleUpdateMeal = (dayId: string, mealId: string, updates: Meal) => {
+    setProgramState(prev => ({
+      ...prev,
+      nutritionDays: prev.nutritionDays.map(d => 
+        d.id === dayId 
+          ? { ...d, meals: d.meals.map(m => m.id === mealId ? updates : m) }
+          : d
+      ),
+    }));
+  };
+
+  const handleDeleteMeal = (dayId: string, mealId: string) => {
+    setProgramState(prev => ({
+      ...prev,
+      nutritionDays: prev.nutritionDays.map(d => 
+        d.id === dayId 
+          ? { ...d, meals: d.meals.filter(m => m.id !== mealId) }
+          : d
+      ),
+    }));
+    toast({ title: "Meal deleted" });
+  };
+
+  const handleAddHabit = (habit: Habit) => {
+    setProgramState(prev => ({
+      ...prev,
+      habits: [...prev.habits, habit],
+    }));
+  };
+
+  const handleUpdateHabit = (habitId: string, updates: Partial<Habit>) => {
+    setProgramState(prev => ({
+      ...prev,
+      habits: prev.habits.map(h => h.id === habitId ? { ...h, ...updates } : h),
+    }));
+  };
+
+  const handleDeleteHabit = (habitId: string) => {
+    setProgramState(prev => ({
+      ...prev,
+      habits: prev.habits.filter(h => h.id !== habitId),
+    }));
+    toast({ title: "Habit deleted" });
+  };
+
+  const handleToggleHabit = (habitId: string) => {
+    setProgramState(prev => ({
+      ...prev,
+      habits: prev.habits.map(h => h.id === habitId ? { ...h, completed: !h.completed } : h),
+    }));
+  };
+
+  const handleAddTask = (task: Task) => {
+    setProgramState(prev => ({
+      ...prev,
+      tasks: [...prev.tasks, task],
+    }));
+  };
+
+  const handleUpdateTask = (taskId: string, updates: Partial<Task>) => {
+    setProgramState(prev => ({
+      ...prev,
+      tasks: prev.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t),
+    }));
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    setProgramState(prev => ({
+      ...prev,
+      tasks: prev.tasks.filter(t => t.id !== taskId),
+    }));
+    toast({ title: "Task deleted" });
+  };
+
+  const handleToggleTask = (taskId: string) => {
+    setProgramState(prev => ({
+      ...prev,
+      tasks: prev.tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t),
+    }));
+  };
 
   const getWeekStartDate = (weekNum: number) => {
     const baseDate = new Date(2025, 0, 6);
@@ -541,10 +1524,35 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             <div className="lg:col-span-4 flex flex-col min-h-[600px]">
-              <AiProgramBuilderPanel clientName={clientName} />
+              <AiProgramBuilderPanel 
+                clientName={clientName} 
+                onAddTrainingDay={handleAddTrainingDay}
+                onAddMeal={handleAddMealToDay}
+                onAddHabit={handleAddHabit}
+                onAddTask={handleAddTask}
+                onAddExercise={handleAddExercise}
+              />
             </div>
             <div className="lg:col-span-8 flex flex-col min-h-[600px]">
-              <WeeklyEditor />
+              <WeeklyEditor 
+                programState={programState}
+                onUpdateTrainingDay={handleUpdateTrainingDay}
+                onUpdateExercise={handleUpdateExercise}
+                onDeleteExercise={handleDeleteExercise}
+                onAddExercise={handleAddExercise}
+                onDeleteTrainingDay={handleDeleteTrainingDay}
+                onUpdateMeal={handleUpdateMeal}
+                onDeleteMeal={handleDeleteMeal}
+                onAddMeal={handleAddMealToDay}
+                onUpdateHabit={handleUpdateHabit}
+                onDeleteHabit={handleDeleteHabit}
+                onAddHabit={handleAddHabit}
+                onToggleHabit={handleToggleHabit}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+                onAddTask={handleAddTask}
+                onToggleTask={handleToggleTask}
+              />
             </div>
           </div>
         </TabsContent>
