@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Copy, Eye, Calendar, Dumbbell, UtensilsCrossed, CheckCircle2, ClipboardList, Send, Trash2, Plus, GripVertical, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, Eye, Calendar, Dumbbell, UtensilsCrossed, CheckCircle2, ClipboardList, Send, Trash2, Plus, GripVertical, Sparkles, Check, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface PlanBuilderTabProps {
@@ -173,25 +173,27 @@ function AiProgramBuilderPanel({ clientName }: { clientName: string }) {
   };
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden" data-testid="card-ai-builder">
-      <div className="bg-[#E2F9AD] px-4 py-3 flex items-center gap-2">
-        <Sparkles className="w-5 h-5 text-[#1a1a1a]" />
+    <Card className="h-full flex flex-col overflow-hidden border-2 border-[#28A0AE]/20" data-testid="card-ai-builder">
+      <div className="bg-[#28A0AE] px-4 py-3 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+          <Sparkles className="w-4 h-4 text-white" />
+        </div>
         <div>
-          <h3 className="text-[#1a1a1a] font-semibold text-sm">AI Program Builder</h3>
-          <p className="text-[#1a1a1a]/70 text-xs">Tell me what to add - training, meals, habits, or tasks</p>
+          <h3 className="text-white font-semibold text-sm">AI Program Builder</h3>
+          <p className="text-white/80 text-xs">Tell me what to add - training, meals, habits, or tasks</p>
         </div>
       </div>
-      <CardContent className="flex-1 flex flex-col p-4 gap-4 min-h-0">
-        <ScrollArea className="flex-1">
-          <div className="space-y-3 pr-2">
+      <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+        <ScrollArea className="flex-1 p-4">
+          <div className="space-y-3">
             {messages.map((msg) => (
               <div
                 key={msg.id}
                 className={cn(
-                  "rounded-lg p-3 text-sm whitespace-pre-line",
+                  "rounded-xl p-3 text-sm whitespace-pre-line",
                   msg.role === "assistant"
-                    ? "bg-muted text-foreground"
-                    : "bg-primary text-primary-foreground ml-6"
+                    ? "bg-[#E2F9AD]/30 text-foreground border border-[#E2F9AD]"
+                    : "bg-[#28A0AE] text-white ml-6"
                 )}
                 data-testid={`message-${msg.role}-${msg.id}`}
               >
@@ -200,18 +202,25 @@ function AiProgramBuilderPanel({ clientName }: { clientName: string }) {
             ))}
           </div>
         </ScrollArea>
-        <div className="flex gap-2 pt-2 border-t">
-          <Input
-            placeholder="e.g. Add upper body workout for Monday"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            className="text-sm"
-            data-testid="input-ai-message"
-          />
-          <Button size="icon" onClick={handleSend} data-testid="button-send-message">
-            <Send className="w-4 h-4" />
-          </Button>
+        <div className="p-4 border-t bg-muted/30">
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g. Add upper body workout for Monday"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              className="text-sm bg-background"
+              data-testid="input-ai-message"
+            />
+            <Button 
+              size="icon" 
+              onClick={handleSend} 
+              className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white flex-shrink-0"
+              data-testid="button-send-message"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -222,18 +231,18 @@ function TrainingTab({ days }: { days: TrainingDay[] }) {
   return (
     <div className="space-y-4">
       {days.map((day) => (
-        <Card key={day.day} className="overflow-hidden" data-testid={`card-training-${day.day.toLowerCase()}`}>
-          <div className="bg-[#E2F9AD] px-4 py-2.5 flex items-center gap-3">
-            <GripVertical className="w-4 h-4 text-[#1a1a1a]/50" />
-            <Calendar className="w-4 h-4 text-[#1a1a1a]" />
-            <Badge variant="outline" className="bg-white border-[#1a1a1a]/20 text-[#1a1a1a] font-medium">
+        <Card key={day.day} className="overflow-hidden border" data-testid={`card-training-${day.day.toLowerCase()}`}>
+          <div className="bg-[#28A0AE] px-4 py-2.5 flex items-center gap-3">
+            <GripVertical className="w-4 h-4 text-white/60" />
+            <Calendar className="w-4 h-4 text-white" />
+            <Badge variant="outline" className="bg-white/90 border-transparent text-[#28A0AE] font-semibold">
               {day.day}
             </Badge>
-            <span className="text-[#1a1a1a] font-medium text-sm">{day.title}</span>
+            <span className="text-white font-medium text-sm">{day.title}</span>
           </div>
           <CardContent className="p-4 space-y-3">
             {day.exercises.map((exercise) => (
-              <div key={exercise.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card" data-testid={`exercise-${exercise.id}`}>
+              <div key={exercise.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover-elevate" data-testid={`exercise-${exercise.id}`}>
                 <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{exercise.name}</p>
@@ -241,7 +250,7 @@ function TrainingTab({ days }: { days: TrainingDay[] }) {
                     Sets: {exercise.sets} &nbsp;&nbsp; Reps: {exercise.reps}
                   </p>
                   {exercise.note && (
-                    <p className="text-xs text-primary mt-1">Coach note: {exercise.note}</p>
+                    <p className="text-xs text-[#28A0AE] mt-1">Coach note: {exercise.note}</p>
                   )}
                 </div>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0">
@@ -249,7 +258,7 @@ function TrainingTab({ days }: { days: TrainingDay[] }) {
                 </Button>
               </div>
             ))}
-            <Button variant="ghost" size="sm" className="text-primary w-full justify-start" data-testid={`button-add-exercise-${day.day.toLowerCase()}`}>
+            <Button variant="ghost" size="sm" className="text-[#28A0AE] w-full justify-start" data-testid={`button-add-exercise-${day.day.toLowerCase()}`}>
               <Plus className="w-4 h-4 mr-1" /> Add exercise
             </Button>
           </CardContent>
@@ -263,18 +272,18 @@ function NutritionTab({ days }: { days: NutritionDay[] }) {
   return (
     <div className="space-y-4">
       {days.map((day) => (
-        <Card key={day.day} className="overflow-hidden" data-testid={`card-nutrition-${day.day.toLowerCase()}`}>
-          <div className="bg-[#E2F9AD] px-4 py-2.5 flex items-center gap-3">
-            <GripVertical className="w-4 h-4 text-[#1a1a1a]/50" />
-            <Calendar className="w-4 h-4 text-[#1a1a1a]" />
-            <Badge variant="outline" className="bg-white border-[#1a1a1a]/20 text-[#1a1a1a] font-medium">
+        <Card key={day.day} className="overflow-hidden border" data-testid={`card-nutrition-${day.day.toLowerCase()}`}>
+          <div className="bg-[#28A0AE] px-4 py-2.5 flex items-center gap-3">
+            <GripVertical className="w-4 h-4 text-white/60" />
+            <Calendar className="w-4 h-4 text-white" />
+            <Badge variant="outline" className="bg-white/90 border-transparent text-[#28A0AE] font-semibold">
               {day.day}
             </Badge>
-            <span className="text-[#1a1a1a] font-medium text-sm">{day.title}</span>
+            <span className="text-white font-medium text-sm">{day.title}</span>
           </div>
           <CardContent className="p-4 space-y-3">
             {day.meals.map((meal) => (
-              <div key={meal.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card" data-testid={`meal-${meal.id}`}>
+              <div key={meal.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card hover-elevate" data-testid={`meal-${meal.id}`}>
                 <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -290,7 +299,7 @@ function NutritionTab({ days }: { days: NutritionDay[] }) {
                 </Button>
               </div>
             ))}
-            <Button variant="ghost" size="sm" className="text-primary w-full justify-start" data-testid={`button-add-meal-${day.day.toLowerCase()}`}>
+            <Button variant="ghost" size="sm" className="text-[#28A0AE] w-full justify-start" data-testid={`button-add-meal-${day.day.toLowerCase()}`}>
               <Plus className="w-4 h-4 mr-1" /> Add meal
             </Button>
           </CardContent>
@@ -308,9 +317,9 @@ function HabitsTab({ habits }: { habits: Habit[] }) {
       </CardHeader>
       <CardContent className="space-y-2">
         {habits.map((habit) => (
-          <div key={habit.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card" data-testid={`habit-${habit.id}`}>
+          <div key={habit.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover-elevate" data-testid={`habit-${habit.id}`}>
             <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <CheckCircle2 className={cn("w-5 h-5 flex-shrink-0", habit.completed ? "text-primary" : "text-muted-foreground")} />
+            <CheckCircle2 className={cn("w-5 h-5 flex-shrink-0", habit.completed ? "text-[#28A0AE]" : "text-muted-foreground")} />
             <span className="flex-1 text-sm">{habit.name}</span>
             <Badge variant="outline" className="text-xs">{habit.frequency}</Badge>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0">
@@ -318,7 +327,7 @@ function HabitsTab({ habits }: { habits: Habit[] }) {
             </Button>
           </div>
         ))}
-        <Button variant="ghost" size="sm" className="text-primary w-full justify-start mt-2" data-testid="button-add-habit">
+        <Button variant="ghost" size="sm" className="text-[#28A0AE] w-full justify-start mt-2" data-testid="button-add-habit">
           <Plus className="w-4 h-4 mr-1" /> Add habit
         </Button>
       </CardContent>
@@ -334,9 +343,9 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
       </CardHeader>
       <CardContent className="space-y-2">
         {tasks.map((task) => (
-          <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card" data-testid={`task-${task.id}`}>
+          <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover-elevate" data-testid={`task-${task.id}`}>
             <GripVertical className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <CheckCircle2 className={cn("w-5 h-5 flex-shrink-0", task.completed ? "text-primary" : "text-muted-foreground")} />
+            <CheckCircle2 className={cn("w-5 h-5 flex-shrink-0", task.completed ? "text-[#28A0AE]" : "text-muted-foreground")} />
             <span className="flex-1 text-sm">{task.name}</span>
             <Badge variant="outline" className="text-xs">{task.dueDay}</Badge>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0">
@@ -344,7 +353,7 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
             </Button>
           </div>
         ))}
-        <Button variant="ghost" size="sm" className="text-primary w-full justify-start mt-2" data-testid="button-add-task">
+        <Button variant="ghost" size="sm" className="text-[#28A0AE] w-full justify-start mt-2" data-testid="button-add-task">
           <Plus className="w-4 h-4 mr-1" /> Add task
         </Button>
       </CardContent>
@@ -354,23 +363,23 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
 
 function WeeklyEditor() {
   return (
-    <Card className="h-full flex flex-col" data-testid="card-weekly-editor">
+    <Card className="h-full flex flex-col border-2 border-[#28A0AE]/20" data-testid="card-weekly-editor">
       <Tabs defaultValue="training" className="flex-1 flex flex-col">
-        <div className="border-b px-4 pt-3">
+        <div className="border-b px-4 pt-3 bg-muted/30">
           <TabsList className="inline-flex h-10 items-center gap-1 bg-transparent p-0">
-            <TabsTrigger value="training" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none" data-testid="tab-training">
+            <TabsTrigger value="training" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none" data-testid="tab-training">
               <Dumbbell className="w-4 h-4" />
               Training
             </TabsTrigger>
-            <TabsTrigger value="nutrition" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none" data-testid="tab-nutrition">
+            <TabsTrigger value="nutrition" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none" data-testid="tab-nutrition">
               <UtensilsCrossed className="w-4 h-4" />
               Nutrition
             </TabsTrigger>
-            <TabsTrigger value="habits" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none" data-testid="tab-habits">
+            <TabsTrigger value="habits" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none" data-testid="tab-habits">
               <CheckCircle2 className="w-4 h-4" />
               Habits
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none" data-testid="tab-tasks">
+            <TabsTrigger value="tasks" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none" data-testid="tab-tasks">
               <ClipboardList className="w-4 h-4" />
               Tasks
             </TabsTrigger>
@@ -397,11 +406,39 @@ function WeeklyEditor() {
 
 export function PlanBuilderTab({ clientName, onSwitchToClientView }: PlanBuilderTabProps) {
   const [weekIndex, setWeekIndex] = useState(1);
+  const [isCopying, setIsCopying] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [isAssigned, setIsAssigned] = useState(false);
+  const { toast } = useToast();
 
   const getWeekStartDate = (weekNum: number) => {
     const baseDate = new Date(2025, 0, 6);
     baseDate.setDate(baseDate.getDate() + (weekNum - 1) * 7);
     return baseDate.toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" });
+  };
+
+  const handleCopyToNextWeek = () => {
+    setIsCopying(true);
+    setTimeout(() => {
+      setIsCopying(false);
+      setWeekIndex((prev) => prev + 1);
+      toast({
+        title: "Week copied!",
+        description: `Week ${weekIndex} has been copied to Week ${weekIndex + 1}. You can now edit the new week.`,
+      });
+    }, 800);
+  };
+
+  const handleAssignToClient = () => {
+    setIsAssigning(true);
+    setTimeout(() => {
+      setIsAssigning(false);
+      setIsAssigned(true);
+      toast({
+        title: "Plan assigned!",
+        description: `Week ${weekIndex} program has been sent to ${clientName}. They can now view it in their portal.`,
+      });
+    }, 1000);
   };
 
   return (
@@ -410,14 +447,14 @@ export function PlanBuilderTab({ clientName, onSwitchToClientView }: PlanBuilder
         <TabsList className="inline-flex h-10 items-center gap-1 bg-transparent p-0 border-b w-full justify-start rounded-none">
           <TabsTrigger 
             value="this-week" 
-            className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4"
+            className="data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none px-4"
             data-testid="tab-this-week"
           >
             This Week
           </TabsTrigger>
           <TabsTrigger 
             value="main-plan" 
-            className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-4"
+            className="data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none px-4"
             data-testid="tab-main-plan"
           >
             Main Plan
@@ -434,11 +471,43 @@ export function PlanBuilderTab({ clientName, onSwitchToClientView }: PlanBuilder
               <div className="flex flex-wrap gap-2">
                 {onSwitchToClientView && (
                   <Button variant="outline" size="sm" onClick={onSwitchToClientView} data-testid="button-switch-view">
-                    <Eye className="w-4 h-4 mr-2" /> Switch to Client View
+                    <Eye className="w-4 h-4 mr-2" /> Client View
                   </Button>
                 )}
-                <Button variant="outline" size="sm" data-testid="button-copy-week">
-                  <Copy className="w-4 h-4 mr-2" /> Copy to Next Week
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleCopyToNextWeek}
+                  disabled={isCopying}
+                  data-testid="button-copy-week"
+                >
+                  {isCopying ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Copy className="w-4 h-4 mr-2" />
+                  )}
+                  Copy to Next Week
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={handleAssignToClient}
+                  disabled={isAssigning || isAssigned}
+                  className={cn(
+                    "transition-all",
+                    isAssigned 
+                      ? "bg-green-600 hover:bg-green-600 text-white" 
+                      : "bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white"
+                  )}
+                  data-testid="button-assign-plan"
+                >
+                  {isAssigning ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : isAssigned ? (
+                    <Check className="w-4 h-4 mr-2" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  {isAssigned ? "Assigned" : "Assign to Client"}
                 </Button>
               </div>
             </div>
@@ -447,17 +516,17 @@ export function PlanBuilderTab({ clientName, onSwitchToClientView }: PlanBuilder
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setWeekIndex((prev) => Math.max(1, prev - 1))}
+                onClick={() => { setWeekIndex((prev) => Math.max(1, prev - 1)); setIsAssigned(false); }}
                 disabled={weekIndex === 1}
                 data-testid="button-prev-week"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" /> Previous
               </Button>
-              <Badge variant="secondary" className="px-3">Week {weekIndex}</Badge>
+              <Badge className="px-3 bg-[#E2F9AD] text-[#1a1a1a] hover:bg-[#E2F9AD]">Week {weekIndex}</Badge>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setWeekIndex((prev) => prev + 1)}
+                onClick={() => { setWeekIndex((prev) => prev + 1); setIsAssigned(false); }}
                 data-testid="button-next-week"
               >
                 Next <ChevronRight className="w-4 h-4 ml-1" />
@@ -465,24 +534,25 @@ export function PlanBuilderTab({ clientName, onSwitchToClientView }: PlanBuilder
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-4">
-              <div className="lg:sticky lg:top-4">
-                <AiProgramBuilderPanel clientName={clientName} />
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            <div className="lg:col-span-4 flex flex-col min-h-[600px]">
+              <AiProgramBuilderPanel clientName={clientName} />
             </div>
-            <div className="lg:col-span-8">
+            <div className="lg:col-span-8 flex flex-col min-h-[600px]">
               <WeeklyEditor />
             </div>
           </div>
         </TabsContent>
 
         <TabsContent value="main-plan" className="mt-6">
-          <Card className="p-8 text-center" data-testid="card-main-plan-placeholder">
+          <Card className="p-8 text-center border-2 border-[#28A0AE]/20" data-testid="card-main-plan-placeholder">
             <CardContent className="py-12">
+              <div className="w-16 h-16 rounded-full bg-[#E2F9AD] flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-[#28A0AE]" />
+              </div>
               <h3 className="text-lg font-semibold mb-2">Main Plan</h3>
-              <p className="text-muted-foreground">
-                The overall training program and long-term plan for {clientName} will be displayed here.
+              <p className="text-muted-foreground max-w-md mx-auto">
+                The overall training program and long-term plan for {clientName} will be displayed here. This includes training phases, periodization, and long-term goals.
               </p>
             </CardContent>
           </Card>
