@@ -1173,20 +1173,20 @@ function WeeklyEditor({
     <Card className="h-full flex flex-col border-2 border-[#28A0AE]/20" data-testid="card-weekly-editor">
       <Tabs defaultValue="training" className="flex-1 flex flex-col">
         <div className="border-b px-4 pt-3 bg-muted/30">
-          <TabsList className="inline-flex h-10 items-center gap-1 bg-transparent p-0">
-            <TabsTrigger value="training" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none" data-testid="tab-training">
+          <TabsList className="grid grid-cols-4 h-auto p-1 bg-muted rounded-lg">
+            <TabsTrigger value="training" className="gap-1.5 py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-training">
               <Dumbbell className="w-4 h-4" />
               Training
             </TabsTrigger>
-            <TabsTrigger value="nutrition" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none" data-testid="tab-nutrition">
+            <TabsTrigger value="nutrition" className="gap-1.5 py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-nutrition">
               <UtensilsCrossed className="w-4 h-4" />
               Nutrition
             </TabsTrigger>
-            <TabsTrigger value="habits" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none" data-testid="tab-habits">
+            <TabsTrigger value="habits" className="gap-1.5 py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-habits">
               <CheckCircle2 className="w-4 h-4" />
               Habits
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="gap-1.5 data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none" data-testid="tab-tasks">
+            <TabsTrigger value="tasks" className="gap-1.5 py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-tasks">
               <ClipboardList className="w-4 h-4" />
               Tasks
             </TabsTrigger>
@@ -1432,17 +1432,17 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
   return (
     <div className="space-y-6">
       <Tabs defaultValue="this-week">
-        <TabsList className="inline-flex h-10 items-center gap-1 bg-transparent p-0 border-b w-full justify-start rounded-none">
+        <TabsList className="inline-flex h-auto p-1 bg-muted rounded-lg">
           <TabsTrigger 
             value="this-week" 
-            className="data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none px-4"
+            className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md"
             data-testid="tab-this-week"
           >
             This Week
           </TabsTrigger>
           <TabsTrigger 
             value="main-plan" 
-            className="data-[state=active]:border-b-2 data-[state=active]:border-[#28A0AE] data-[state=active]:text-[#28A0AE] rounded-none px-4"
+            className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md"
             data-testid="tab-main-plan"
           >
             Main Plan
