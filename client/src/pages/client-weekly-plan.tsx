@@ -430,17 +430,22 @@ export default function ClientWeeklyPlan() {
                   <div 
                     key={habit.id} 
                     className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
-                      habit.completed ? "bg-[#E2F9AD]/20 border-[#E2F9AD]" : "bg-card hover:bg-muted/50"
+                      "flex items-center gap-3 p-3 rounded-lg border transition-colors",
+                      habit.completed ? "bg-[#E2F9AD]/20 border-[#E2F9AD]" : "bg-card"
                     )}
-                    onClick={() => toggleHabit(habit.id)}
                     data-testid={`habit-${habit.id}`}
                   >
                     <Checkbox 
                       checked={habit.completed}
+                      onCheckedChange={() => toggleHabit(habit.id)}
                       className="data-[state=checked]:bg-[#28A0AE] data-[state=checked]:border-[#28A0AE]"
                     />
-                    <span className={cn("flex-1 text-sm", habit.completed && "line-through opacity-70")}>{habit.name}</span>
+                    <label 
+                      className={cn("flex-1 text-sm cursor-pointer", habit.completed && "line-through opacity-70")}
+                      onClick={() => toggleHabit(habit.id)}
+                    >
+                      {habit.name}
+                    </label>
                     <Badge variant="outline" className="text-xs">{habit.frequency}</Badge>
                   </div>
                 ))}
@@ -461,17 +466,22 @@ export default function ClientWeeklyPlan() {
                   <div 
                     key={task.id} 
                     className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer",
-                      task.completed ? "bg-[#E2F9AD]/20 border-[#E2F9AD]" : "bg-card hover:bg-muted/50"
+                      "flex items-center gap-3 p-3 rounded-lg border transition-colors",
+                      task.completed ? "bg-[#E2F9AD]/20 border-[#E2F9AD]" : "bg-card"
                     )}
-                    onClick={() => toggleTask(task.id)}
                     data-testid={`task-${task.id}`}
                   >
                     <Checkbox 
                       checked={task.completed}
+                      onCheckedChange={() => toggleTask(task.id)}
                       className="data-[state=checked]:bg-[#28A0AE] data-[state=checked]:border-[#28A0AE]"
                     />
-                    <span className={cn("flex-1 text-sm", task.completed && "line-through opacity-70")}>{task.name}</span>
+                    <label 
+                      className={cn("flex-1 text-sm cursor-pointer", task.completed && "line-through opacity-70")}
+                      onClick={() => toggleTask(task.id)}
+                    >
+                      {task.name}
+                    </label>
                     <Badge variant="outline" className="text-xs">Due: {task.dueDay}</Badge>
                   </div>
                 ))}
