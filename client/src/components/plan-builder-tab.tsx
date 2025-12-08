@@ -499,6 +499,7 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
   const [newExerciseName, setNewExerciseName] = useState("");
   const [newExerciseSets, setNewExerciseSets] = useState(3);
   const [newExerciseReps, setNewExerciseReps] = useState(10);
+  const [newExerciseNote, setNewExerciseNote] = useState("");
   const { toast } = useToast();
 
   const handleAddExercise = (dayId: string) => {
@@ -511,12 +512,13 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
       name: newExerciseName,
       sets: newExerciseSets,
       reps: newExerciseReps,
+      note: newExerciseNote.trim() || undefined,
     });
     setNewExerciseName("");
     setNewExerciseSets(3);
     setNewExerciseReps(10);
+    setNewExerciseNote("");
     setAddingExerciseToDay(null);
-    toast({ title: "Exercise added!" });
   };
 
   const handleDayChange = (dayId: string, newDay: string) => {
@@ -619,6 +621,13 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
                     />
                   </div>
                 </div>
+                <Input
+                  value={newExerciseNote}
+                  onChange={(e) => setNewExerciseNote(e.target.value)}
+                  placeholder="Coach notes (optional)"
+                  className="h-8 text-sm"
+                  data-testid="input-new-exercise-note"
+                />
                 <div className="flex gap-2 justify-end">
                   <Button variant="ghost" size="sm" onClick={() => setAddingExerciseToDay(null)} data-testid="button-cancel-new-exercise">
                     Cancel
@@ -1268,7 +1277,6 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
           : d
       ),
     }));
-    toast({ title: "Exercise deleted" });
   };
 
   const handleAddExercise = (dayId: string, exercise: Exercise) => {
