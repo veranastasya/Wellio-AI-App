@@ -455,7 +455,7 @@ function EditableExercise({ exercise, onUpdate, onDelete }: EditableExerciseProp
 
   return (
     <div 
-      className="flex items-start gap-3 p-4 rounded-lg bg-[#28A0AE]/5 border border-[#28A0AE]/10 hover:bg-[#28A0AE]/10 cursor-pointer group transition-colors" 
+      className="flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-card border border-border/50 hover:border-[#28A0AE]/30 cursor-pointer group transition-colors shadow-sm" 
       onClick={() => setIsEditing(true)}
       data-testid={`exercise-${exercise.id}`}
     >
@@ -534,8 +534,8 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
       {days.map((day) => {
         const isCollapsed = collapsedDays[day.id] || false;
         return (
-        <Card key={day.id} className="overflow-hidden border border-border/50 shadow-sm" data-testid={`card-training-${day.id}`}>
-          <div className="bg-card border-b px-4 py-3 flex items-center gap-3">
+        <Card key={day.id} className="overflow-hidden border-0 shadow-sm" data-testid={`card-training-${day.id}`}>
+          <div className="bg-[#28A0AE]/10 px-4 py-3 flex items-center gap-3 rounded-t-lg">
             <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab flex-shrink-0" />
             <Popover>
               <PopoverTrigger asChild>
@@ -594,7 +594,7 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
             </Button>
           </div>
           {!isCollapsed && (
-          <CardContent className="p-4 space-y-3 bg-muted/20">
+          <CardContent className="p-4 space-y-3 bg-[#28A0AE]/5">
             {day.exercises.map((exercise) => (
               <EditableExercise
                 key={exercise.id}
