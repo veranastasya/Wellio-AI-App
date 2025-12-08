@@ -344,7 +344,7 @@ export default function ClientWeeklyPlan() {
                       key={exercise.id} 
                       className={cn(
                         "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-                        exercise.completed ? "bg-[#E2F9AD]/20 border-[#E2F9AD]" : "bg-card"
+                        exercise.completed ? "bg-muted/50 border-muted" : "bg-card"
                       )}
                       data-testid={`exercise-${exercise.id}`}
                     >
@@ -392,7 +392,7 @@ export default function ClientWeeklyPlan() {
                       key={meal.id} 
                       className={cn(
                         "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-                        meal.completed ? "bg-[#E2F9AD]/20 border-[#E2F9AD]" : "bg-card"
+                        meal.completed ? "bg-muted/50 border-muted" : "bg-card"
                       )}
                       data-testid={`meal-${meal.id}`}
                     >
@@ -431,7 +431,7 @@ export default function ClientWeeklyPlan() {
                     key={habit.id} 
                     className={cn(
                       "flex items-center gap-3 p-3 rounded-lg border transition-colors",
-                      habit.completed ? "bg-[#E2F9AD]/20 border-[#E2F9AD]" : "bg-card"
+                      habit.completed ? "bg-muted/50 border-muted" : "bg-card"
                     )}
                     data-testid={`habit-${habit.id}`}
                   >
@@ -467,7 +467,7 @@ export default function ClientWeeklyPlan() {
                     key={task.id} 
                     className={cn(
                       "flex items-center gap-3 p-3 rounded-lg border transition-colors",
-                      task.completed ? "bg-[#E2F9AD]/20 border-[#E2F9AD]" : "bg-card"
+                      task.completed ? "bg-muted/50 border-muted" : "bg-card"
                     )}
                     data-testid={`task-${task.id}`}
                   >
