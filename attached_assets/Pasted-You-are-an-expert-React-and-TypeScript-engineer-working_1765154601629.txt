@@ -1,0 +1,208 @@
+You are an expert React and TypeScript engineer working inside a Replit project.
+
+Build a Plan view for a wellness coaching app called Wellio.
+
+There are two top level tabs inside this view.
+
+1. "This Week"
+2. "Main Plan"
+
+For now, focus on the "This Week" tab for the coach. You can stub the "Main Plan" tab with a simple placeholder panel.
+
+Use a responsive layout that works on desktop and mobile. On desktop, "This Week" uses a two column layout. On mobile, the columns stack, AI chat first, weekly editor second.
+
+Use a single page component called WeeklyProgramView with this interface.
+
+props:
+role: "coach" or "client"
+clientName: string
+
+Inside the component, manage internal state with React useState. No real API calls are needed. Use mocked data where required.
+
+General layout for the "This Week" tab for the coach.
+
+1. Top level tabs.
+
+At the top of the page show two tabs.
+
+[ This Week ] [ Main Plan ]
+
+"This Week" is selected. "Main Plan" can render a simple card that says the main plan will be displayed here.
+
+2. Header section for the weekly program.
+
+Below the top tabs show a header bar with:
+
+Left side.
+Text "Weekly Program for {clientName}"
+Text in smaller font "Week 1, starting 2025 01 06"
+
+Right side.
+Button "Switch to Client View"
+Button "Copy to Next Week"
+
+Under this header show a second row with:
+
+A simple pager.
+[ < Previous ]   [ Week 1 ]   [ Next > ]
+
+You can keep the week index as simple state.
+
+3. Two column layout under the header.
+
+On desktop break the content into two columns.
+
+Left column around 35 percent width.
+Right column around 65 percent width.
+
+On mobile stack them. Left column first, then right column.
+
+Left column content. AI Program Builder.
+
+Create a card with a purple header strip so it looks like a panel.
+
+Header text: "AI Program Builder"
+Subtitle: "Tell me what to add, training, meals, habits, tasks"
+
+Inside the card show a chat like area:
+
+a. At the top, a grey bubble from the assistant.
+
+Example content:
+
+"Hi, I am ready to help you build this week’s program for {clientName}. I can create:
+• Training sessions with exercises, sets and reps
+• Meal plans with macros and recipes
+• Daily habits to track
+• Weekly tasks and goals
+
+What would you like to add to this week’s program"
+
+b. Under the messages, show a text input that looks like a chat box with placeholder text "e.g. Add upper body workout for Monday" and a send icon button.
+
+You do not need to implement real AI logic. When the coach sends a message, simply append it as a user bubble in the message list and optionally append a fake assistant bubble, for example "Drafted a Monday workout on the right".
+
+Right column content. Weekly editor with tabs.
+
+At the top of the right column put a card that fills the width. Inside this card, create four inner tabs.
+
+1. Training
+2. Nutrition
+3. Habits
+4. Tasks
+
+Training tab is selected by default.
+
+Use a classic tab bar look. The active tab has a colored underline and different background. Each tab icon can be a simple emoji, for example a dumbbell for Training, a plate for Nutrition, a check mark for Habits, a clipboard for Tasks.
+
+Inside each tab build the following structures.
+
+Training tab.
+
+The Training tab contains a vertical list of day sections, built as accordions. Each day is a card with a header row.
+
+Header row example:
+
+[ calendar icon ] [ Monday ] [ pill "Upper Body Strength" ] [ caret icon for collapse or expand ]
+
+When expanded, the day card shows the exercises planned for that day as smaller cards inside.
+
+Example exercise card layout.
+
+Title row with exercise name, such as "Dumbbell Bench Press".
+Secondary row with small text "Sets: 3   Reps: 12".
+Optional small blue line "Coach note: Focus on controlled movement".
+Right side of the card has a small delete icon.
+
+Stack several exercise cards inside the day card. Under the list of exercises, show a small text button "Add exercise".
+
+Create at least two day cards in mock data, for example Monday and Wednesday. One can be Upper Body Strength and the other Lower Body and Core.
+
+Nutrition tab.
+
+Similar vertical list of day accordions.
+
+Each day header shows the day name and an optional title text, for example "High protein, moderate carbs".
+
+Inside each day body show meal cards for Breakfast, Lunch, Dinner and Snacks.
+
+Each meal card shows:
+
+Line one. "Breakfast" and maybe a short name such as "Oats and berries".
+Line two. Macros, for example "420 kcal, 30 protein, 45 carbs, 12 fat".
+Optional small link "View recipe".
+
+Under the meal cards show a button "Add meal".
+
+Habits tab.
+
+Here you can use a simpler layout, no need for day accordions if you do not want them. You can still reuse the day sections if you prefer.
+
+Example.
+
+Section title "Weekly habits".
+List of habit rows such as:
+
+Row structure.
+Checkbox or toggle.
+Habit name, for example "Drink 2 liters of water".
+Right side badge that shows frequency, for example "Daily" or "3 times per week".
+
+At the bottom of this tab show a button "Add habit".
+
+Tasks tab.
+
+Show a weekly checklist.
+
+Each task is a horizontal row inside a card:
+
+Checkbox.
+Task text, for example "Send Friday check in".
+Optional due day badge, for example "Fri".
+
+At the bottom show a button "Add task".
+
+4. Switch to Client View.
+
+When the coach clicks "Switch to Client View" in the header, update the component into a simple read only client layout for the same week.
+
+You can implement this by toggling an internal state flag, or by calling the same WeeklyProgramView component with role set to "client".
+
+Client view for "This Week" can be simple:
+
+Header.
+
+Text "Your plan for this week".
+Week range.
+A circular progress indicator that shows "72 percent complete" with a mocked value.
+
+Below header, two tabs.
+
+"This Week" and "All Weeks".
+Only "This Week" needs to have real content in this version.
+
+"This Week" content for client.
+
+Show a card "Today" with four sections: Workout today, Meals today, Habits today, Tasks. Each section should use clear checkboxes and buttons so the client can mark items as done. For example a checkbox for each exercise, three small buttons "Done, Modified, Skipped" for each meal, simple checkboxes for habits and tasks.
+
+You can re use data from the weekly editor, for example show the Monday workout if today is Monday.
+
+"All Weeks" can simply list Week 1 as a card with label "Week 1, starting 2025 01 06, 72 percent complete".
+
+5. Visual and technical requirements.
+
+Use modern clean styling. Use CSS modules or styled components or a basic global CSS file. Keep the color palette simple. White background, light grey cards, one accent color that can be similar to the purple in the screenshot.
+
+Buttons should have proper hover states. Cards should have subtle shadow or border radius.
+
+Make sure the layout degrades gracefully on smaller screens. On narrow width stack the columns, AI Program Builder first and Weekly editor second. Tabs should still be easy to tap.
+
+You do not need routing or global state. Everything is local to the WeeklyProgramView component and its children. You may split parts of the layout into smaller components if that makes the file easier to read, for example AiProgramBuilderPanel, WeeklyEditor, DayAccordion, ClientView.
+
+Focus on getting the structure of the layout correct, including:
+top tabs "This Week" and "Main Plan",
+header with week title and navigation,
+left AI builder panel,
+right weekly editor with inner tabs Training, Nutrition, Habits, Tasks,
+Copy to Next Week button,
+and Switch to Client View button.
