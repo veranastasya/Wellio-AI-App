@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Copy, Eye, Calendar, Dumbbell, UtensilsCrossed, CheckCircle2, ClipboardList, Send, Trash2, Plus, GripVertical, Sparkles, Check, Loader2, Edit2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Copy, Eye, Calendar, Dumbbell, UtensilsCrossed, CheckCircle2, ClipboardList, Send, Trash2, Plus, GripVertical, Sparkles, Check, Loader2, Edit2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -455,27 +455,26 @@ function EditableExercise({ exercise, onUpdate, onDelete }: EditableExerciseProp
 
   return (
     <div 
-      className="flex items-start gap-3 p-3 rounded-lg border bg-card hover-elevate cursor-pointer group" 
+      className="flex items-start gap-3 p-4 rounded-lg bg-[#28A0AE]/5 border border-[#28A0AE]/10 hover:bg-[#28A0AE]/10 cursor-pointer group transition-colors" 
       onClick={() => setIsEditing(true)}
       data-testid={`exercise-${exercise.id}`}
     >
-      <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+      <GripVertical className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0 cursor-grab" />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="font-medium text-sm">{exercise.name}</p>
-          <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Sets: {exercise.sets} &nbsp;&nbsp; Reps: {exercise.reps}
+        <p className="font-semibold text-sm text-foreground">{exercise.name}</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Sets: {exercise.sets} &nbsp;&nbsp;&nbsp; Reps: {exercise.reps}
         </p>
         {exercise.note && (
-          <p className="text-xs text-[#28A0AE] mt-1">Coach note: {exercise.note}</p>
+          <p className="text-xs text-[#28A0AE] mt-1.5">
+            <span className="font-medium">Coach note:</span> {exercise.note}
+          </p>
         )}
       </div>
       <Button 
         variant="ghost" 
         size="icon" 
-        className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
         data-testid={`button-delete-exercise-${exercise.id}`}
       >
@@ -500,7 +499,12 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
   const [newExerciseSets, setNewExerciseSets] = useState(3);
   const [newExerciseReps, setNewExerciseReps] = useState(10);
   const [newExerciseNote, setNewExerciseNote] = useState("");
+  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
+
+  const toggleDayCollapse = (dayId: string) => {
+    setCollapsedDays(prev => ({ ...prev, [dayId]: !prev[dayId] }));
+  };
 
   const handleAddExercise = (dayId: string) => {
     if (!newExerciseName.trim()) {
@@ -527,13 +531,15 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
 
   return (
     <div className="space-y-4">
-      {days.map((day) => (
-        <Card key={day.id} className="overflow-hidden border" data-testid={`card-training-${day.id}`}>
-          <div className="bg-[#28A0AE] px-4 py-2.5 flex items-center gap-3">
-            <GripVertical className="w-4 h-4 text-white/60 cursor-grab" />
+      {days.map((day) => {
+        const isCollapsed = collapsedDays[day.id] || false;
+        return (
+        <Card key={day.id} className="overflow-hidden border border-border/50 shadow-sm" data-testid={`card-training-${day.id}`}>
+          <div className="bg-card border-b px-4 py-3 flex items-center gap-3">
+            <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab flex-shrink-0" />
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/20" data-testid={`button-calendar-${day.id}`}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-[#28A0AE] hover:bg-[#28A0AE]/10" data-testid={`button-calendar-${day.id}`}>
                   <Calendar className="w-4 h-4" />
                 </Button>
               </PopoverTrigger>
@@ -547,7 +553,7 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
               </PopoverContent>
             </Popover>
             <Select value={day.day} onValueChange={(value) => handleDayChange(day.id, value)}>
-              <SelectTrigger className="w-auto h-7 bg-white/90 border-transparent text-[#28A0AE] font-semibold text-sm" data-testid={`select-day-${day.id}`}>
+              <SelectTrigger className="w-auto h-7 bg-[#28A0AE]/10 border-[#28A0AE]/20 text-[#28A0AE] font-semibold text-sm" data-testid={`select-day-${day.id}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -560,24 +566,35 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
                 <SelectItem value="Sunday">Sunday</SelectItem>
               </SelectContent>
             </Select>
+            <span className="text-muted-foreground">|</span>
             <Input
               value={day.title}
               onChange={(e) => onUpdateDay(day.id, { title: e.target.value })}
-              className="flex-1 h-7 bg-transparent border-none text-white font-medium text-sm placeholder:text-white/60 focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="flex-1 h-7 bg-transparent border-none font-medium text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               placeholder="Workout title..."
               data-testid={`input-day-title-${day.id}`}
             />
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-6 w-6 text-white/60 hover:text-white hover:bg-white/20"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
               onClick={() => onDeleteDay(day.id)}
               data-testid={`button-delete-day-${day.id}`}
             >
               <Trash2 className="w-4 h-4" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={() => toggleDayCollapse(day.id)}
+              data-testid={`button-collapse-${day.id}`}
+            >
+              {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </Button>
           </div>
-          <CardContent className="p-4 space-y-3">
+          {!isCollapsed && (
+          <CardContent className="p-4 space-y-3 bg-muted/20">
             {day.exercises.map((exercise) => (
               <EditableExercise
                 key={exercise.id}
@@ -649,8 +666,10 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
               </Button>
             )}
           </CardContent>
+          )}
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }
