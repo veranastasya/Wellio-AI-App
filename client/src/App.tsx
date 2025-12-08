@@ -30,6 +30,7 @@ import CoachLogin from "@/pages/coach-login";
 import CoachClientDetail from "@/pages/coach-client-detail";
 import CoachSettings from "@/pages/coach-settings";
 import PlanBuilder from "@/pages/plan-builder";
+import WeeklyProgramView from "@/pages/weekly-program-view";
 import NotFound from "@/pages/not-found";
 
 export default function App() {
@@ -107,6 +108,11 @@ export default function App() {
           <Route path="/coach/plan-builder/:clientId">
             <CoachProtectedLayout>
               <PlanBuilder />
+            </CoachProtectedLayout>
+          </Route>
+          <Route path="/coach/weekly-program/:clientId">
+            <CoachProtectedLayout>
+              <WeeklyProgramView />
             </CoachProtectedLayout>
           </Route>
           <Route path="/questionnaires">
