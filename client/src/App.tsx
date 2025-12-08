@@ -24,6 +24,7 @@ import ClientProfile from "@/pages/client-profile";
 import ClientChat from "@/pages/client-chat";
 import ClientForms from "@/pages/client-forms";
 import ClientPlan from "@/pages/client-plan";
+import ClientWeeklyPlan from "@/pages/client-weekly-plan";
 import ClientProgress from "@/pages/client-progress";
 import ClientAITracker from "@/pages/client-ai-tracker";
 import CoachLogin from "@/pages/coach-login";
@@ -70,6 +71,11 @@ export default function App() {
             <Route path="/client/plan">
               <ClientProtectedLayout>
                 <ClientPlan />
+              </ClientProtectedLayout>
+            </Route>
+            <Route path="/client/weekly-plan">
+              <ClientProtectedLayout>
+                <ClientWeeklyPlan />
               </ClientProtectedLayout>
             </Route>
             <Route path="/client/progress">

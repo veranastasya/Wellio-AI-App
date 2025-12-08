@@ -1,4 +1,4 @@
-import { Home, MessageSquare, FileText, TrendingUp, User, Bot, LogOut } from "lucide-react";
+import { Home, MessageSquare, FileText, TrendingUp, User, Bot, LogOut, Calendar } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -28,6 +28,11 @@ const navigationItems = [
     title: "Profile",
     url: "/client/profile",
     icon: User,
+  },
+  {
+    title: "Weekly Program",
+    url: "/client/weekly-plan",
+    icon: Calendar,
   },
   {
     title: "My Plan",
