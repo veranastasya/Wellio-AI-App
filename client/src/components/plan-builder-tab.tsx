@@ -153,6 +153,7 @@ interface WeeklyProgramState {
 
 interface AiProgramBuilderPanelProps {
   clientName: string;
+  trainingDays: TrainingDay[];
   onAddTrainingDay: (day: TrainingDay) => void;
   onAddMeal: (dayId: string, meal: Meal) => void;
   onAddHabit: (habit: Habit) => void;
@@ -160,7 +161,7 @@ interface AiProgramBuilderPanelProps {
   onAddExercise: (dayId: string, exercise: Exercise) => void;
 }
 
-function AiProgramBuilderPanel({ clientName, onAddTrainingDay, onAddMeal, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
+function AiProgramBuilderPanel({ clientName, trainingDays, onAddTrainingDay, onAddMeal, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "initial",
@@ -171,7 +172,7 @@ function AiProgramBuilderPanel({ clientName, onAddTrainingDay, onAddMeal, onAddH
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!inputValue.trim() || isProcessing) return;
 
     const userMessage: ChatMessage = {
@@ -181,147 +182,121 @@ function AiProgramBuilderPanel({ clientName, onAddTrainingDay, onAddMeal, onAddH
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const messageText = inputValue;
     setInputValue("");
     setIsProcessing(true);
 
-    setTimeout(() => {
-      const { response, action } = processAiRequest(inputValue);
+    try {
+      const response = await fetch("/api/program-builder/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          message: messageText,
+          clientName,
+          existingTrainingDays: trainingDays.map(d => ({
+            day: d.day,
+            title: d.title,
+            exercises: d.exercises.map(e => ({ name: e.name, sets: e.sets, reps: e.reps })),
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to process request");
+      }
+
+      const result = await response.json();
       
       const assistantResponse: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
-        content: response,
+        content: result.response,
       };
 
       setMessages((prev) => [...prev, assistantResponse]);
-      
-      if (action) {
-        action();
+
+      if (result.type === "add_training" && result.data) {
+        const newDay: TrainingDay = {
+          id: generateId(),
+          day: result.data.day || "Monday",
+          title: result.data.title || "New Workout",
+          exercises: (result.data.exercises || []).map((e: any) => ({
+            id: generateId(),
+            name: e.name,
+            sets: e.sets || 3,
+            reps: e.reps || 10,
+            note: e.note,
+          })),
+        };
+        onAddTrainingDay(newDay);
+      } else if (result.type === "modify_training" && result.data?.exercisesToAdd) {
+        const targetDay = result.data.targetDay;
+        const existingDay = trainingDays.find(d => 
+          d.day.toLowerCase() === targetDay?.toLowerCase()
+        );
+        if (existingDay) {
+          for (const exercise of result.data.exercisesToAdd) {
+            onAddExercise(existingDay.id, {
+              id: generateId(),
+              name: exercise.name,
+              sets: exercise.sets || 3,
+              reps: exercise.reps || 10,
+              note: exercise.note,
+            });
+          }
+        } else if (result.data.exercisesToAdd.length > 0) {
+          const newDay: TrainingDay = {
+            id: generateId(),
+            day: targetDay || "Wednesday",
+            title: `${targetDay || "Wednesday"} Workout`,
+            exercises: result.data.exercisesToAdd.map((e: any) => ({
+              id: generateId(),
+              name: e.name,
+              sets: e.sets || 3,
+              reps: e.reps || 10,
+              note: e.note,
+            })),
+          };
+          onAddTrainingDay(newDay);
+        }
+      } else if (result.type === "add_meal" && result.data?.meal) {
+        const meal: Meal = {
+          id: generateId(),
+          type: result.data.meal.type || "Lunch",
+          name: result.data.meal.name || "New Meal",
+          calories: result.data.meal.calories || 500,
+          protein: result.data.meal.protein || 30,
+          carbs: result.data.meal.carbs || 40,
+          fat: result.data.meal.fat || 20,
+        };
+        onAddMeal("nd1", meal);
+      } else if (result.type === "add_habit" && result.data?.habit) {
+        onAddHabit({
+          id: generateId(),
+          name: result.data.habit.name || "New Habit",
+          frequency: result.data.habit.frequency || "Daily",
+          completed: false,
+        });
+      } else if (result.type === "add_task" && result.data?.task) {
+        onAddTask({
+          id: generateId(),
+          name: result.data.task.name || "New Task",
+          dueDay: result.data.task.dueDay || "Fri",
+          completed: false,
+        });
       }
-      
+    } catch (error) {
+      console.error("Error processing AI request:", error);
+      const errorResponse: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: "I'm having trouble processing your request right now. Please try again with something like 'Add an upper body workout for Monday' or 'Add Bulgarian split squats to Wednesday'.",
+      };
+      setMessages((prev) => [...prev, errorResponse]);
+    } finally {
       setIsProcessing(false);
-    }, 800);
-  };
-
-  const processAiRequest = (input: string): { response: string; action?: () => void } => {
-    const lower = input.toLowerCase();
-    
-    if (lower.includes("upper body") || lower.includes("chest") || lower.includes("back") || lower.includes("shoulders")) {
-      const dayName = lower.includes("tuesday") ? "Tuesday" : lower.includes("wednesday") ? "Wednesday" : lower.includes("thursday") ? "Thursday" : "Monday";
-      return {
-        response: `I've added a new ${dayName} upper body workout! It includes bench press, rows, and shoulder press. You can see it in the Training tab and edit any exercise by clicking on it.`,
-        action: () => {
-          const newDay: TrainingDay = {
-            id: generateId(),
-            day: dayName,
-            title: "Upper Body Workout",
-            exercises: [
-              { id: generateId(), name: "Barbell Bench Press", sets: 4, reps: 10, note: "Control the descent" },
-              { id: generateId(), name: "Lat Pulldowns", sets: 3, reps: 12 },
-              { id: generateId(), name: "Dumbbell Shoulder Press", sets: 3, reps: 10 },
-            ],
-          };
-          onAddTrainingDay(newDay);
-        }
-      };
     }
-    
-    if (lower.includes("lower body") || lower.includes("legs") || lower.includes("squat")) {
-      const dayName = lower.includes("tuesday") ? "Tuesday" : lower.includes("thursday") ? "Thursday" : "Wednesday";
-      return {
-        response: `Added a ${dayName} lower body session! Includes squats, deadlifts, and lunges. Check the Training tab and click any exercise to modify it.`,
-        action: () => {
-          const newDay: TrainingDay = {
-            id: generateId(),
-            day: dayName,
-            title: "Lower Body Power",
-            exercises: [
-              { id: generateId(), name: "Back Squats", sets: 4, reps: 8, note: "Go below parallel" },
-              { id: generateId(), name: "Leg Press", sets: 3, reps: 12 },
-              { id: generateId(), name: "Walking Lunges", sets: 3, reps: 10 },
-            ],
-          };
-          onAddTrainingDay(newDay);
-        }
-      };
-    }
-
-    if (lower.includes("workout") || lower.includes("training") || lower.includes("exercise")) {
-      return {
-        response: "I've added a full body workout for Thursday! You can see it in the Training tab. Click on any exercise to edit the name, sets, or reps.",
-        action: () => {
-          const newDay: TrainingDay = {
-            id: generateId(),
-            day: "Thursday",
-            title: "Full Body Workout",
-            exercises: [
-              { id: generateId(), name: "Deadlifts", sets: 4, reps: 8 },
-              { id: generateId(), name: "Pull-ups", sets: 3, reps: 10 },
-              { id: generateId(), name: "Planks", sets: 3, reps: 60, note: "Hold for 60 seconds" },
-            ],
-          };
-          onAddTrainingDay(newDay);
-        }
-      };
-    }
-    
-    if (lower.includes("meal") || lower.includes("nutrition") || lower.includes("food") || lower.includes("diet")) {
-      return {
-        response: "I've added a high-protein meal plan for Wednesday! Check the Nutrition tab. Click any meal to edit the details or adjust the macros.",
-        action: () => {
-          const meal: Meal = {
-            id: generateId(),
-            type: "Lunch",
-            name: "Grilled Steak with Sweet Potato",
-            calories: 650,
-            protein: 48,
-            carbs: 42,
-            fat: 24,
-          };
-          onAddMeal("nd1", meal);
-        }
-      };
-    }
-    
-    if (lower.includes("habit")) {
-      const habitName = lower.includes("sleep") ? "Get 8 hours of sleep" : 
-                        lower.includes("water") ? "Drink 3 liters of water" :
-                        lower.includes("walk") ? "Take a 20-minute walk" :
-                        "Practice mindful breathing";
-      return {
-        response: `Added a new habit: "${habitName}"! Check the Habits tab. Click on it to edit.`,
-        action: () => {
-          onAddHabit({
-            id: generateId(),
-            name: habitName,
-            frequency: "Daily",
-            completed: false,
-          });
-        }
-      };
-    }
-    
-    if (lower.includes("task")) {
-      const taskName = lower.includes("photo") ? "Take progress photos" :
-                       lower.includes("log") ? "Log all meals" :
-                       lower.includes("weigh") ? "Record morning weight" :
-                       "Complete weekly check-in";
-      return {
-        response: `Created a new task: "${taskName}"! You can find it in the Tasks tab. Click to edit the details.`,
-        action: () => {
-          onAddTask({
-            id: generateId(),
-            name: taskName,
-            dueDay: "Fri",
-            completed: false,
-          });
-        }
-      };
-    }
-
-    return {
-      response: "I can help you add workouts, meals, habits, or tasks. Try saying something like:\n\n- 'Add an upper body workout for Monday'\n- 'Create a high-protein meal plan'\n- 'Add a hydration habit'\n- 'Add a task to submit progress photos'"
-    };
   };
 
   return (
@@ -1525,7 +1500,8 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
             <div className="lg:col-span-4 flex flex-col min-h-[600px]">
               <AiProgramBuilderPanel 
-                clientName={clientName} 
+                clientName={clientName}
+                trainingDays={programState.trainingDays}
                 onAddTrainingDay={handleAddTrainingDay}
                 onAddMeal={handleAddMealToDay}
                 onAddHabit={handleAddHabit}

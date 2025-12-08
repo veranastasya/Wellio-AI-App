@@ -58,7 +58,7 @@ import {
   type GoalType,
 } from "@shared/schema";
 import { classifySmartLog, parseSmartLog, processSmartLogToEvents, processSmartLog } from "./smartLogProcessor";
-import { analyzeClientData, analyzeProgressEventsWithGoals, type EnhancedClientInsight } from "./ai";
+import { analyzeClientData, analyzeProgressEventsWithGoals, processProgramBuilderRequest, type EnhancedClientInsight, type ProgramBuilderAction } from "./ai";
 import { syncAppleHealthData } from "./sync";
 import OpenAI from "openai";
 import PDFDocument from "pdfkit";
@@ -2452,6 +2452,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating client insights:", error);
       res.status(500).json({ error: "Failed to generate insights" });
+    }
+  });
+
+  // AI Program Builder - processes natural language requests for weekly programs
+  app.post("/api/program-builder/process", requireCoachAuth, async (req, res) => {
+    try {
+      const requestSchema = z.object({
+        message: z.string(),
+        clientName: z.string(),
+        existingTrainingDays: z.array(z.object({
+          day: z.string(),
+          title: z.string(),
+          exercises: z.array(z.object({
+            name: z.string(),
+            sets: z.number(),
+            reps: z.number(),
+          })),
+        })).optional(),
+      });
+
+      const parsed = requestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request", details: parsed.error });
+      }
+
+      const { message, clientName, existingTrainingDays } = parsed.data;
+      const result = await processProgramBuilderRequest(message, clientName, existingTrainingDays);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error processing program builder request:", error);
+      res.status(500).json({ error: "Failed to process request" });
     }
   });
 

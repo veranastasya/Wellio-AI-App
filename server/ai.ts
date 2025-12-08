@@ -1036,3 +1036,123 @@ function generateFallbackSummary(
   
   return summary;
 }
+
+export interface ProgramBuilderAction {
+  type: "add_training" | "add_meal" | "add_habit" | "add_task" | "modify_training" | "none";
+  response: string;
+  data?: {
+    day?: string;
+    title?: string;
+    exercises?: Array<{
+      name: string;
+      sets: number;
+      reps: number;
+      note?: string;
+    }>;
+    meal?: {
+      type: string;
+      name: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+    };
+    habit?: {
+      name: string;
+      frequency: string;
+    };
+    task?: {
+      name: string;
+      dueDay: string;
+    };
+    exercisesToAdd?: Array<{
+      name: string;
+      sets: number;
+      reps: number;
+      note?: string;
+    }>;
+    targetDay?: string;
+  };
+}
+
+export async function processProgramBuilderRequest(
+  userMessage: string,
+  clientName: string,
+  existingTrainingDays?: Array<{ day: string; title: string; exercises: Array<{ name: string; sets: number; reps: number }> }>
+): Promise<ProgramBuilderAction> {
+  try {
+    const existingContext = existingTrainingDays && existingTrainingDays.length > 0
+      ? `\n\nExisting Training Days:\n${existingTrainingDays.map(d => 
+          `- ${d.day}: ${d.title} (${d.exercises.map(e => e.name).join(", ")})`
+        ).join("\n")}`
+      : "\n\nNo existing training days yet.";
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are an AI fitness program builder assistant. Parse user requests to create or modify workout programs.
+
+Your job is to understand what the user wants to add or change, even if they make typos or use informal language.
+Common corrections:
+- "split squad" or "split squads" = "Bulgarian Split Squat"
+- "taylor" or "tailer" = "tailor" (modify)
+- "bench" = "Bench Press"
+- "dead" or "deads" = "Deadlifts"
+
+You must respond with a JSON object in this exact format:
+{
+  "type": "add_training" | "add_meal" | "add_habit" | "add_task" | "modify_training" | "none",
+  "response": "A friendly confirmation message describing what you did",
+  "data": {
+    // For add_training:
+    "day": "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday",
+    "title": "Workout Title",
+    "exercises": [{ "name": "Exercise Name", "sets": 4, "reps": 10, "note": "optional note" }]
+    
+    // For modify_training (adding exercises to existing day):
+    "targetDay": "Wednesday",
+    "exercisesToAdd": [{ "name": "Bulgarian Split Squat", "sets": 3, "reps": 12 }]
+    
+    // For add_meal:
+    "meal": { "type": "Breakfast|Lunch|Dinner|Snack", "name": "Meal name", "calories": 500, "protein": 30, "carbs": 40, "fat": 20 }
+    
+    // For add_habit:
+    "habit": { "name": "Habit description", "frequency": "Daily|Weekly" }
+    
+    // For add_task:
+    "task": { "name": "Task description", "dueDay": "Mon|Tue|Wed|Thu|Fri|Sat|Sun" }
+  }
+}
+
+If you don't understand the request or it's unrelated to fitness programming, use type "none" and provide a helpful response explaining what you can do.`
+        },
+        {
+          role: "user",
+          content: `Client: ${clientName}${existingContext}\n\nUser request: "${userMessage}"`
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 500,
+      response_format: { type: "json_object" }
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) {
+      return {
+        type: "none",
+        response: "I couldn't process that request. Try asking me to add a workout, meal, habit, or task."
+      };
+    }
+
+    const parsed = JSON.parse(content) as ProgramBuilderAction;
+    return parsed;
+  } catch (error) {
+    console.error("OpenAI Program Builder error:", error);
+    return {
+      type: "none",
+      response: "I'm having trouble processing your request right now. Please try again, or use simple phrases like 'Add upper body workout for Monday' or 'Add a habit to drink more water'."
+    };
+  }
+}
