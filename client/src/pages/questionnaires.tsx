@@ -585,11 +585,11 @@ export default function Questionnaires() {
         ) : (
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "active" | "archived")}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-              <TabsList data-testid="tabs-list">
-                <TabsTrigger value="active" data-testid="tab-active" className="min-h-10">
+              <TabsList data-testid="tabs-list" className="h-auto p-1 bg-muted rounded-lg">
+                <TabsTrigger value="active" data-testid="tab-active" className="min-h-10 py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
                   Active ({activeQuestionnaires.length})
                 </TabsTrigger>
-                <TabsTrigger value="archived" data-testid="tab-archived" className="min-h-10">
+                <TabsTrigger value="archived" data-testid="tab-archived" className="min-h-10 py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
                   Archived ({archivedQuestionnaires.length})
                 </TabsTrigger>
               </TabsList>

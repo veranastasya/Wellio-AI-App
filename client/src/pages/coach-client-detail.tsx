@@ -208,21 +208,21 @@ export default function CoachClientDetail() {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="inline-flex h-11 items-center gap-1 rounded-lg bg-muted/60 p-1.5">
-            <TabsTrigger value="overview" data-testid="tab-overview">
+          <TabsList className="inline-flex h-auto items-center gap-1 rounded-lg bg-muted p-1">
+            <TabsTrigger value="overview" className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-overview">
               Overview
             </TabsTrigger>
-            <TabsTrigger value="progress" data-testid="tab-progress">
+            <TabsTrigger value="progress" className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-progress">
               <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:inline" />
               Progress
             </TabsTrigger>
-            <TabsTrigger value="intake" data-testid="tab-intake">
+            <TabsTrigger value="intake" className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-intake">
               Intake
             </TabsTrigger>
             <TabsTrigger 
               value="plan" 
               data-testid="tab-plan"
-              className="bg-[#E2F9AD] text-[#1a1a1a] data-[state=active]:bg-[#d4f089] data-[state=active]:text-[#1a1a1a] hover:bg-[#d4f089]"
+              className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md"
             >
               Plan Builder
             </TabsTrigger>

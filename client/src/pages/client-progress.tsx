@@ -373,18 +373,18 @@ export default function ClientProgress() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 gap-1">
-            <TabsTrigger value="nutrition" data-testid="tab-nutrition" className="text-xs sm:text-sm">
+          <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1 bg-muted rounded-lg">
+            <TabsTrigger value="nutrition" data-testid="tab-nutrition" className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
               <Apple className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Nutrition</span>
               <span className="sm:hidden">Food</span>
             </TabsTrigger>
-            <TabsTrigger value="workout" data-testid="tab-workout" className="text-xs sm:text-sm">
+            <TabsTrigger value="workout" data-testid="tab-workout" className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
               <Dumbbell className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Workout</span>
               <span className="sm:hidden">Train</span>
             </TabsTrigger>
-            <TabsTrigger value="checkin" data-testid="tab-checkin" className="text-xs sm:text-sm">
+            <TabsTrigger value="checkin" data-testid="tab-checkin" className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
               <Scale className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Check-in</span>
               <span className="sm:hidden">Body</span>
