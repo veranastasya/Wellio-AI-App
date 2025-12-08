@@ -491,9 +491,10 @@ interface TrainingTabProps {
   onDeleteExercise: (dayId: string, exerciseId: string) => void;
   onAddExercise: (dayId: string, exercise: Exercise) => void;
   onDeleteDay: (dayId: string) => void;
+  onAddDay: (day: TrainingDay) => void;
 }
 
-function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, onAddExercise, onDeleteDay }: TrainingTabProps) {
+function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, onAddExercise, onDeleteDay, onAddDay }: TrainingTabProps) {
   const [addingExerciseToDay, setAddingExerciseToDay] = useState<string | null>(null);
   const [newExerciseName, setNewExerciseName] = useState("");
   const [newExerciseSets, setNewExerciseSets] = useState(3);
@@ -527,6 +528,20 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
 
   const handleDayChange = (dayId: string, newDay: string) => {
     onUpdateDay(dayId, { day: newDay });
+  };
+
+  const handleAddTrainingDay = () => {
+    const usedDays = days.map(d => d.day);
+    const allDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const availableDay = allDays.find(d => !usedDays.includes(d)) || "Monday";
+    
+    onAddDay({
+      id: generateId(),
+      day: availableDay,
+      title: "New Workout",
+      date: new Date(),
+      exercises: [],
+    });
   };
 
   return (
@@ -670,6 +685,14 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
         </Card>
         );
       })}
+      <Button 
+        variant="outline" 
+        className="w-full border-dashed border-[#28A0AE]/50 text-[#28A0AE] hover:bg-[#28A0AE]/10"
+        onClick={handleAddTrainingDay}
+        data-testid="button-add-training-day"
+      >
+        <Plus className="w-4 h-4 mr-2" /> Add Training Day
+      </Button>
     </div>
   );
 }
@@ -758,25 +781,21 @@ function EditableMeal({ meal, onUpdate, onDelete }: EditableMealProps) {
 
   return (
     <div 
-      className="flex items-start gap-3 p-3 rounded-lg border bg-card hover-elevate cursor-pointer group" 
+      className="flex items-start gap-3 p-4 rounded-lg bg-white dark:bg-card border border-border/50 hover:border-[#28A0AE]/30 cursor-pointer group transition-colors shadow-sm" 
       onClick={() => setIsEditing(true)}
       data-testid={`meal-${meal.id}`}
     >
-      <GripVertical className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+      <GripVertical className="w-4 h-4 text-muted-foreground mt-1 flex-shrink-0 cursor-grab" />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">{meal.type}</span>
-          <span className="text-sm text-muted-foreground">- {meal.name}</span>
-          <Edit2 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        <p className="font-semibold text-sm text-foreground">{meal.type} - {meal.name}</p>
+        <p className="text-xs text-muted-foreground mt-1">
           {meal.calories} kcal | {meal.protein}g P | {meal.carbs}g C | {meal.fat}g F
         </p>
       </div>
       <Button 
         variant="ghost" 
         size="icon" 
-        className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100"
+        className="h-8 w-8 text-muted-foreground hover:text-destructive flex-shrink-0"
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
       >
         <Trash2 className="w-4 h-4" />
@@ -787,16 +806,24 @@ function EditableMeal({ meal, onUpdate, onDelete }: EditableMealProps) {
 
 interface NutritionTabProps {
   days: NutritionDay[];
+  onUpdateDay: (dayId: string, updates: Partial<NutritionDay>) => void;
+  onDeleteDay: (dayId: string) => void;
+  onAddDay: (day: NutritionDay) => void;
   onUpdateMeal: (dayId: string, mealId: string, updates: Meal) => void;
   onDeleteMeal: (dayId: string, mealId: string) => void;
   onAddMeal: (dayId: string, meal: Meal) => void;
 }
 
-function NutritionTab({ days, onUpdateMeal, onDeleteMeal, onAddMeal }: NutritionTabProps) {
+function NutritionTab({ days, onUpdateDay, onDeleteDay, onAddDay, onUpdateMeal, onDeleteMeal, onAddMeal }: NutritionTabProps) {
   const [addingMealToDay, setAddingMealToDay] = useState<string | null>(null);
   const [newMealType, setNewMealType] = useState("Lunch");
   const [newMealName, setNewMealName] = useState("");
+  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
+
+  const toggleDayCollapse = (dayId: string) => {
+    setCollapsedDays(prev => ({ ...prev, [dayId]: !prev[dayId] }));
+  };
 
   const handleAddMeal = (dayId: string) => {
     if (!newMealName.trim()) {
@@ -814,22 +841,92 @@ function NutritionTab({ days, onUpdateMeal, onDeleteMeal, onAddMeal }: Nutrition
     });
     setNewMealName("");
     setAddingMealToDay(null);
-    toast({ title: "Meal added!" });
+  };
+
+  const handleAddNutritionDay = () => {
+    const usedDays = days.map(d => d.day);
+    const allDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const availableDay = allDays.find(d => !usedDays.includes(d)) || "Monday";
+    
+    onAddDay({
+      id: generateId(),
+      day: availableDay,
+      title: "Meal Plan",
+      date: new Date(),
+      meals: [],
+    });
+  };
+
+  const handleDayChange = (dayId: string, newDay: string) => {
+    onUpdateDay(dayId, { day: newDay });
   };
 
   return (
     <div className="space-y-4">
-      {days.map((day) => (
-        <Card key={day.id} className="overflow-hidden border" data-testid={`card-nutrition-${day.id}`}>
-          <div className="bg-[#28A0AE] px-4 py-2.5 flex items-center gap-3">
-            <GripVertical className="w-4 h-4 text-white/60" />
-            <Calendar className="w-4 h-4 text-white" />
-            <Badge variant="outline" className="bg-white/90 border-transparent text-[#28A0AE] font-semibold">
-              {day.day}
-            </Badge>
-            <span className="text-white font-medium text-sm">{day.title}</span>
+      {days.map((day) => {
+        const isCollapsed = collapsedDays[day.id] || false;
+        return (
+        <Card key={day.id} className="overflow-hidden border-0 shadow-sm" data-testid={`card-nutrition-${day.id}`}>
+          <div className="bg-[#28A0AE]/10 px-4 py-3 flex items-center gap-3 rounded-t-lg">
+            <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab flex-shrink-0" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-[#28A0AE] hover:bg-[#28A0AE]/10" data-testid={`button-calendar-nutrition-${day.id}`}>
+                  <Calendar className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={day.date}
+                  onSelect={(date) => date && onUpdateDay(day.id, { date })}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <Select value={day.day} onValueChange={(value) => handleDayChange(day.id, value)}>
+              <SelectTrigger className="w-auto h-7 bg-[#28A0AE]/10 border-[#28A0AE]/20 text-[#28A0AE] font-semibold text-sm" data-testid={`select-nutrition-day-${day.id}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Monday">Monday</SelectItem>
+                <SelectItem value="Tuesday">Tuesday</SelectItem>
+                <SelectItem value="Wednesday">Wednesday</SelectItem>
+                <SelectItem value="Thursday">Thursday</SelectItem>
+                <SelectItem value="Friday">Friday</SelectItem>
+                <SelectItem value="Saturday">Saturday</SelectItem>
+                <SelectItem value="Sunday">Sunday</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-muted-foreground">|</span>
+            <Input
+              value={day.title}
+              onChange={(e) => onUpdateDay(day.id, { title: e.target.value })}
+              className="flex-1 h-7 bg-transparent border-none font-medium text-sm placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+              placeholder="Day title..."
+              data-testid={`input-nutrition-title-${day.id}`}
+            />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={() => onDeleteDay(day.id)}
+              data-testid={`button-delete-nutrition-day-${day.id}`}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={() => toggleDayCollapse(day.id)}
+              data-testid={`button-collapse-nutrition-${day.id}`}
+            >
+              {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+            </Button>
           </div>
-          <CardContent className="p-4 space-y-3">
+          {!isCollapsed && (
+          <CardContent className="p-4 space-y-3 bg-[#28A0AE]/5">
             {day.meals.map((meal) => (
               <EditableMeal
                 key={meal.id}
@@ -839,7 +936,7 @@ function NutritionTab({ days, onUpdateMeal, onDeleteMeal, onAddMeal }: Nutrition
               />
             ))}
             {addingMealToDay === day.id ? (
-              <div className="p-3 rounded-lg border-2 border-dashed border-[#28A0AE]/50 bg-muted/30 space-y-3">
+              <div className="p-3 rounded-lg border-2 border-dashed border-[#28A0AE]/50 bg-white dark:bg-card space-y-3">
                 <div className="grid grid-cols-2 gap-2">
                   <Select value={newMealType} onValueChange={setNewMealType}>
                     <SelectTrigger className="h-8 text-sm">
@@ -877,8 +974,18 @@ function NutritionTab({ days, onUpdateMeal, onDeleteMeal, onAddMeal }: Nutrition
               </Button>
             )}
           </CardContent>
+          )}
         </Card>
-      ))}
+        );
+      })}
+      <Button 
+        variant="outline" 
+        className="w-full border-dashed border-[#28A0AE]/50 text-[#28A0AE] hover:bg-[#28A0AE]/10"
+        onClick={handleAddNutritionDay}
+        data-testid="button-add-nutrition-day"
+      >
+        <Plus className="w-4 h-4 mr-2" /> Add Nutrition Day
+      </Button>
     </div>
   );
 }
@@ -1140,6 +1247,10 @@ interface WeeklyEditorProps {
   onDeleteExercise: (dayId: string, exerciseId: string) => void;
   onAddExercise: (dayId: string, exercise: Exercise) => void;
   onDeleteTrainingDay: (dayId: string) => void;
+  onAddTrainingDay: (day: TrainingDay) => void;
+  onUpdateNutritionDay: (dayId: string, updates: Partial<NutritionDay>) => void;
+  onDeleteNutritionDay: (dayId: string) => void;
+  onAddNutritionDay: (day: NutritionDay) => void;
   onUpdateMeal: (dayId: string, mealId: string, updates: Meal) => void;
   onDeleteMeal: (dayId: string, mealId: string) => void;
   onAddMeal: (dayId: string, meal: Meal) => void;
@@ -1160,6 +1271,10 @@ function WeeklyEditor({
   onDeleteExercise, 
   onAddExercise, 
   onDeleteTrainingDay,
+  onAddTrainingDay,
+  onUpdateNutritionDay,
+  onDeleteNutritionDay,
+  onAddNutritionDay,
   onUpdateMeal,
   onDeleteMeal,
   onAddMeal,
@@ -1204,11 +1319,15 @@ function WeeklyEditor({
               onDeleteExercise={onDeleteExercise}
               onAddExercise={onAddExercise}
               onDeleteDay={onDeleteTrainingDay}
+              onAddDay={onAddTrainingDay}
             />
           </TabsContent>
           <TabsContent value="nutrition" className="m-0 mt-0">
             <NutritionTab 
               days={programState.nutritionDays}
+              onUpdateDay={onUpdateNutritionDay}
+              onDeleteDay={onDeleteNutritionDay}
+              onAddDay={onAddNutritionDay}
               onUpdateMeal={onUpdateMeal}
               onDeleteMeal={onDeleteMeal}
               onAddMeal={onAddMeal}
@@ -1340,7 +1459,27 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
           : d
       ),
     }));
-    toast({ title: "Meal deleted" });
+  };
+
+  const handleAddNutritionDay = (day: NutritionDay) => {
+    setProgramState(prev => ({
+      ...prev,
+      nutritionDays: [...prev.nutritionDays, day],
+    }));
+  };
+
+  const handleUpdateNutritionDay = (dayId: string, updates: Partial<NutritionDay>) => {
+    setProgramState(prev => ({
+      ...prev,
+      nutritionDays: prev.nutritionDays.map(d => d.id === dayId ? { ...d, ...updates } : d),
+    }));
+  };
+
+  const handleDeleteNutritionDay = (dayId: string) => {
+    setProgramState(prev => ({
+      ...prev,
+      nutritionDays: prev.nutritionDays.filter(d => d.id !== dayId),
+    }));
   };
 
   const handleAddHabit = (habit: Habit) => {
@@ -1544,6 +1683,10 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
                 onDeleteExercise={handleDeleteExercise}
                 onAddExercise={handleAddExercise}
                 onDeleteTrainingDay={handleDeleteTrainingDay}
+                onAddTrainingDay={handleAddTrainingDay}
+                onUpdateNutritionDay={handleUpdateNutritionDay}
+                onDeleteNutritionDay={handleDeleteNutritionDay}
+                onAddNutritionDay={handleAddNutritionDay}
                 onUpdateMeal={handleUpdateMeal}
                 onDeleteMeal={handleDeleteMeal}
                 onAddMeal={handleAddMealToDay}
