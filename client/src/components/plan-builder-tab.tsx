@@ -344,7 +344,7 @@ function AiProgramBuilderPanel({ clientName, onAddTrainingDay, onAddMeal, onAddH
                 className={cn(
                   "rounded-xl p-3 text-sm whitespace-pre-line",
                   msg.role === "assistant"
-                    ? "bg-[#E2F9AD]/30 text-foreground border border-[#E2F9AD]"
+                    ? "bg-muted text-foreground border border-border"
                     : "bg-[#28A0AE] text-white ml-6"
                 )}
                 data-testid={`message-${msg.role}-${msg.id}`}
