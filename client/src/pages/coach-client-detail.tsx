@@ -211,18 +211,18 @@ export default function CoachClientDetail() {
 
         {/* Tabbed Content */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="flex w-full max-w-2xl overflow-x-auto">
-            <TabsTrigger value="overview" className="flex-1 min-w-fit" data-testid="tab-overview">
+          <TabsList className="grid w-full max-w-md grid-cols-4">
+            <TabsTrigger value="overview" data-testid="tab-overview">
               Overview
             </TabsTrigger>
-            <TabsTrigger value="progress" className="flex-1 min-w-fit" data-testid="tab-progress">
+            <TabsTrigger value="progress" data-testid="tab-progress">
               <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:inline" />
               Progress
             </TabsTrigger>
-            <TabsTrigger value="intake" className="flex-1 min-w-fit" data-testid="tab-intake">
+            <TabsTrigger value="intake" data-testid="tab-intake">
               Intake
             </TabsTrigger>
-            <TabsTrigger value="plan" className="flex-1 min-w-fit" data-testid="tab-plan">
+            <TabsTrigger value="plan" data-testid="tab-plan">
               Plan
             </TabsTrigger>
           </TabsList>
