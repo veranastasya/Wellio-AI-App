@@ -8,8 +8,11 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { usePlanBuilder } from "@/hooks/use-plan-builder";
+import { PlanBuilderContent } from "@/components/plan-builder-content";
 
 interface PlanBuilderTabProps {
+  clientId: string;
   clientName: string;
   onSwitchToClientView?: () => void;
 }
@@ -404,12 +407,14 @@ function WeeklyEditor() {
   );
 }
 
-export function PlanBuilderTab({ clientName, onSwitchToClientView }: PlanBuilderTabProps) {
+export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: PlanBuilderTabProps) {
   const [weekIndex, setWeekIndex] = useState(1);
   const [isCopying, setIsCopying] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isAssigned, setIsAssigned] = useState(false);
   const { toast } = useToast();
+
+  const planBuilder = usePlanBuilder(clientId || undefined);
 
   const getWeekStartDate = (weekNum: number) => {
     const baseDate = new Date(2025, 0, 6);
@@ -545,17 +550,48 @@ export function PlanBuilderTab({ clientName, onSwitchToClientView }: PlanBuilder
         </TabsContent>
 
         <TabsContent value="main-plan" className="mt-6">
-          <Card className="p-8 text-center border-2 border-[#28A0AE]/20" data-testid="card-main-plan-placeholder">
-            <CardContent className="py-12">
-              <div className="w-16 h-16 rounded-full bg-[#E2F9AD] flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-8 h-8 text-[#28A0AE]" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Main Plan</h3>
-              <p className="text-muted-foreground max-w-md mx-auto">
-                The overall training program and long-term plan for {clientName} will be displayed here. This includes training phases, periodization, and long-term goals.
-              </p>
-            </CardContent>
-          </Card>
+          {!clientId ? (
+            <Card className="p-8 text-center border-2 border-[#28A0AE]/20" data-testid="card-main-plan-no-client">
+              <CardContent className="py-12">
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No Client Selected</h3>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  Please select a client to view or create their plan.
+                </p>
+              </CardContent>
+            </Card>
+          ) : planBuilder.isLoadingContext || planBuilder.isLoadingSession ? (
+            <div className="flex items-center justify-center h-[600px]">
+              <Loader2 className="w-8 h-8 animate-spin text-[#28A0AE]" data-testid="loader-main-plan" />
+            </div>
+          ) : (
+            <div className="h-[700px]" data-testid="main-plan-content">
+              <PlanBuilderContent
+                messages={planBuilder.messages}
+                input={planBuilder.input}
+                planName={planBuilder.planName}
+                planContent={planBuilder.planContent}
+                planStatus={planBuilder.planStatus}
+                isSaving={planBuilder.isSaving}
+                isAssigning={planBuilder.isAssigning}
+                isCanvasExpanded={planBuilder.isCanvasExpanded}
+                messagesEndRef={planBuilder.messagesEndRef}
+                canvasTextareaRef={planBuilder.canvasTextareaRef}
+                chatMutation={planBuilder.chatMutation}
+                setInput={planBuilder.setInput}
+                setPlanName={planBuilder.setPlanName}
+                setPlanContent={planBuilder.setPlanContent}
+                setIsCanvasExpanded={planBuilder.setIsCanvasExpanded}
+                handleSendMessage={planBuilder.handleSendMessage}
+                handleAddToCanvas={planBuilder.handleAddToCanvas}
+                handleAddSection={planBuilder.handleAddSection}
+                handleSavePlan={planBuilder.handleSavePlan}
+                handleAssignToClient={planBuilder.handleAssignToClient}
+              />
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

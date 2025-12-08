@@ -577,7 +577,7 @@ export default function CoachClientDetail() {
 
           {/* Plan Builder Tab */}
           <TabsContent value="plan" className="space-y-6">
-            <PlanBuilderTab clientName={client?.name || "Client"} />
+            <PlanBuilderTab clientId={clientId || ""} clientName={client?.name || "Client"} />
           </TabsContent>
         </Tabs>
       </div>
