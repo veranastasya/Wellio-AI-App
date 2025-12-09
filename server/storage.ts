@@ -76,12 +76,13 @@ import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
 export interface IStorage {
   // Coaches
   getCoach(id: string): Promise<Coach | undefined>;
+  getCoachByEmail(email: string): Promise<Coach | undefined>;
   getDefaultCoach(): Promise<Coach | undefined>;
   createCoach(coach: InsertCoach): Promise<Coach>;
   updateCoach(id: string, coach: Partial<InsertCoach>): Promise<Coach | undefined>;
 
   // Clients
-  getClients(): Promise<Client[]>;
+  getClients(coachId?: string): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, client: Partial<InsertClient>): Promise<Client | undefined>;
@@ -570,6 +571,11 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getCoachByEmail(email: string): Promise<Coach | undefined> {
+    const result = await db.select().from(coaches).where(eq(coaches.email, email));
+    return result[0];
+  }
+
   async getDefaultCoach(): Promise<Coach | undefined> {
     const result = await db.select().from(coaches).limit(1);
     return result[0];
@@ -586,7 +592,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Client methods
-  async getClients(): Promise<Client[]> {
+  async getClients(coachId?: string): Promise<Client[]> {
+    if (coachId) {
+      return await db.select().from(clients).where(eq(clients.coachId, coachId));
+    }
     return await db.select().from(clients);
   }
 

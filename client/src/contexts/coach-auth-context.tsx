@@ -6,7 +6,8 @@ import { useLocation } from "wouter";
 interface CoachAuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: (password: string, username?: string) => Promise<void>;
+  signIn: (password: string, email?: string, username?: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -32,11 +33,11 @@ export function CoachAuthProvider({ children }: { children: ReactNode }) {
   });
 
   const signInMutation = useMutation({
-    mutationFn: async ({ password, username }: { password: string; username?: string }) => {
+    mutationFn: async ({ password, email, username }: { password: string; email?: string; username?: string }) => {
       const res = await fetch("/api/coach/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, username }),
+        body: JSON.stringify({ password, email, username }),
         credentials: "include",
       });
       if (!res.ok) {
@@ -49,6 +50,26 @@ export function CoachAuthProvider({ children }: { children: ReactNode }) {
       // Set the session data directly in the cache to ensure immediate availability
       queryClient.setQueryData(["coach-session"], { authenticated: true });
       // Also refetch to confirm with server
+      await queryClient.refetchQueries({ queryKey: ["coach-session"] });
+    },
+  });
+
+  const signUpMutation = useMutation({
+    mutationFn: async ({ email, password, name }: { email: string; password: string; name: string }) => {
+      const res = await fetch("/api/coach/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Registration failed");
+      }
+      return res.json();
+    },
+    onSuccess: async () => {
+      queryClient.setQueryData(["coach-session"], { authenticated: true });
       await queryClient.refetchQueries({ queryKey: ["coach-session"] });
     },
   });
@@ -72,8 +93,11 @@ export function CoachAuthProvider({ children }: { children: ReactNode }) {
   const value: CoachAuthContextType = {
     isAuthenticated: session?.authenticated ?? false,
     isLoading,
-    signIn: async (password: string, username?: string) => {
-      await signInMutation.mutateAsync({ password, username });
+    signIn: async (password: string, email?: string, username?: string) => {
+      await signInMutation.mutateAsync({ password, email, username });
+    },
+    signUp: async (email: string, password: string, name: string) => {
+      await signUpMutation.mutateAsync({ email, password, name });
     },
     signOut: async () => {
       await signOutMutation.mutateAsync();

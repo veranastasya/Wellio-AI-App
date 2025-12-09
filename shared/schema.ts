@@ -104,6 +104,7 @@ export type Coach = typeof coaches.$inferSelect;
 
 export const clients = pgTable("clients", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coachId: varchar("coach_id"),
   name: text("name").notNull(),
   email: text("email").notNull(),
   passwordHash: text("password_hash"),

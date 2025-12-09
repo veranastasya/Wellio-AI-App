@@ -72,10 +72,45 @@ import {
 import { sendInviteEmail, sendPlanAssignmentEmail, sendSessionBookingEmail } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Coach registration endpoint
+  app.post("/api/coach/register", async (req, res) => {
+    try {
+      const { email, password, name } = req.body;
+      
+      if (!email || !password || !name) {
+        return res.status(400).json({ error: "Email, password, and name are required" });
+      }
+      
+      // Check if coach with this email already exists
+      const existingCoach = await storage.getCoachByEmail(email);
+      if (existingCoach) {
+        return res.status(400).json({ error: "A coach with this email already exists" });
+      }
+      
+      // Hash the password
+      const passwordHash = await bcrypt.hash(password, 10);
+      
+      // Create the coach
+      const coach = await storage.createCoach({
+        email,
+        name,
+        passwordHash,
+        phone: null,
+      });
+      
+      // Log them in automatically
+      req.session.coachId = coach.id;
+      res.json({ success: true, coachId: coach.id, name: coach.name });
+    } catch (error) {
+      console.error("Coach registration error:", error);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
   // Coach authentication routes
   app.post("/api/coach/login", async (req, res) => {
     try {
-      const { password, username } = req.body;
+      const { password, email, username } = req.body;
       
       // Test account for automated testing (username: coach_test, password: coach123)
       if (username === "coach_test" && password === "coach123") {
@@ -83,20 +118,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: true, coachId: "test-coach" });
       }
       
-      // Regular coach login with COACH_PASSWORD
+      // Email-based login against coaches table
+      if (email) {
+        const coach = await storage.getCoachByEmail(email);
+        if (!coach) {
+          return res.status(401).json({ error: "Invalid email or password" });
+        }
+        
+        if (!coach.passwordHash) {
+          return res.status(401).json({ error: "Account not set up. Please contact support." });
+        }
+        
+        const passwordMatch = await bcrypt.compare(password, coach.passwordHash);
+        if (!passwordMatch) {
+          return res.status(401).json({ error: "Invalid email or password" });
+        }
+        
+        req.session.coachId = coach.id;
+        return res.json({ success: true, coachId: coach.id, name: coach.name });
+      }
+      
+      // Legacy fallback: shared COACH_PASSWORD (will be deprecated)
       const coachPassword = process.env.COACH_PASSWORD;
       
-      if (!coachPassword) {
-        console.error("COACH_PASSWORD environment variable not set");
-        return res.status(500).json({ error: "Server configuration error - coach authentication not configured" });
+      if (coachPassword && password === coachPassword) {
+        // Create or get default coach for legacy login
+        let defaultCoach = await storage.getDefaultCoach();
+        if (!defaultCoach) {
+          defaultCoach = await storage.createCoach({
+            name: "Coach",
+            email: "coach@example.com",
+            phone: null,
+            passwordHash: null,
+          });
+        }
+        req.session.coachId = defaultCoach.id;
+        return res.json({ success: true, coachId: defaultCoach.id, name: defaultCoach.name });
       }
       
-      if (password !== coachPassword) {
-        return res.status(401).json({ error: "Invalid password" });
-      }
-
-      req.session.coachId = "default-coach";
-      res.json({ success: true, coachId: "default-coach" });
+      return res.status(401).json({ error: "Invalid credentials" });
     } catch (error) {
       console.error("Coach login error:", error);
       res.status(500).json({ error: "Login failed" });
@@ -195,10 +255,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public endpoint for clients to get coach info (no auth required for coach, but client auth required)
-  app.get("/api/coach/info", requireClientAuth, async (_req, res) => {
+  // Public endpoint for clients to get coach info (returns their coach's info)
+  app.get("/api/coach/info", requireClientAuth, async (req, res) => {
     try {
-      const coach = await storage.getDefaultCoach();
+      // Get the client to find their coach
+      const client = await storage.getClient(req.session.clientId!);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Get the client's coach
+      let coach = null;
+      if (client.coachId) {
+        coach = await storage.getCoach(client.coachId);
+      }
+      
+      if (!coach) {
+        // Fallback to default coach if client has no assigned coach
+        coach = await storage.getDefaultCoach();
+      }
+      
       if (!coach) {
         // Return default info if no coach profile exists yet
         return res.json({ name: "Your Coach", email: null, phone: null });
@@ -217,9 +293,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Client routes
-  app.get("/api/clients", requireCoachAuth, async (_req, res) => {
+  app.get("/api/clients", requireCoachAuth, async (req, res) => {
     try {
-      const clients = await storage.getClients();
+      const coachId = req.session.coachId!;
+      const clients = await storage.getClients(coachId);
       res.json(clients);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch clients" });
@@ -228,9 +305,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/clients/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
       const client = await storage.getClient(req.params.id);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
+      }
+      // Verify coach ownership
+      if (client.coachId && client.coachId !== coachId) {
+        return res.status(403).json({ error: "Access denied" });
       }
       res.json(client);
     } catch (error) {
@@ -240,7 +322,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/clients", requireCoachAuth, async (req, res) => {
     try {
-      const validatedData = insertClientSchema.parse(req.body);
+      const coachId = req.session.coachId!;
+      const validatedData = insertClientSchema.parse({
+        ...req.body,
+        coachId, // Automatically assign to the logged-in coach
+      });
       const client = await storage.createClient(validatedData);
       res.status(201).json(client);
     } catch (error) {
@@ -250,12 +336,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/clients/:id", requireCoachAuth, async (req, res) => {
     try {
-      const validatedData = updateClientSchema.parse(req.body);
-      const client = await storage.updateClient(req.params.id, validatedData);
+      const coachId = req.session.coachId!;
+      const client = await storage.getClient(req.params.id);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
       }
-      res.json(client);
+      // Verify coach ownership
+      if (client.coachId && client.coachId !== coachId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      const validatedData = updateClientSchema.parse(req.body);
+      const updatedClient = await storage.updateClient(req.params.id, validatedData);
+      res.json(updatedClient);
     } catch (error) {
       res.status(400).json({ error: "Invalid client data" });
     }
@@ -263,6 +355,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/clients/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      const client = await storage.getClient(req.params.id);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      // Verify coach ownership
+      if (client.coachId && client.coachId !== coachId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const success = await storage.deleteClient(req.params.id);
       if (!success) {
         return res.status(404).json({ error: "Client not found" });
