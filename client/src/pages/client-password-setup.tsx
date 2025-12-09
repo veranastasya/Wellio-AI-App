@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Loader2, Lock, Eye, EyeOff, CheckCircle2, LogIn } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -260,6 +261,29 @@ export default function ClientPasswordSetup() {
               ) : (
                 "Create Account & Continue"
               )}
+            </Button>
+
+            <div className="relative my-4">
+              <Separator />
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+                or
+              </span>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                // Store token in sessionStorage for OAuth flow
+                sessionStorage.setItem("clientOnboardToken", token);
+                window.location.href = "/api/client-oauth/login?token=" + encodeURIComponent(token);
+              }}
+              disabled={isSubmitting}
+              data-testid="button-oauth-signup"
+            >
+              <LogIn className="mr-2 h-4 w-4" />
+              Sign up with Google, Apple, or GitHub
             </Button>
           </form>
         </CardContent>

@@ -112,6 +112,10 @@ export const clients = pgTable("clients", {
   email: text("email").notNull(),
   passwordHash: text("password_hash"),
   phone: text("phone"),
+  // OAuth fields for social login
+  oauthProvider: text("oauth_provider"), // "replit", "google", etc.
+  oauthId: text("oauth_id"), // Unique ID from OAuth provider
+  profileImageUrl: text("profile_image_url"),
   status: text("status").notNull().default("active"),
   goalType: text("goal_type"),
   goalDescription: text("goal_description"),
