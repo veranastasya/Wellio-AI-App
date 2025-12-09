@@ -77,6 +77,7 @@ export interface IStorage {
   // Coaches
   getCoach(id: string): Promise<Coach | undefined>;
   getCoachByEmail(email: string): Promise<Coach | undefined>;
+  getCoachByOAuthId(oauthId: string): Promise<Coach | undefined>;
   getDefaultCoach(): Promise<Coach | undefined>;
   createCoach(coach: InsertCoach): Promise<Coach>;
   updateCoach(id: string, coach: Partial<InsertCoach>): Promise<Coach | undefined>;
@@ -573,6 +574,11 @@ export class DatabaseStorage implements IStorage {
 
   async getCoachByEmail(email: string): Promise<Coach | undefined> {
     const result = await db.select().from(coaches).where(eq(coaches.email, email));
+    return result[0];
+  }
+
+  async getCoachByOAuthId(oauthId: string): Promise<Coach | undefined> {
+    const result = await db.select().from(coaches).where(eq(coaches.oauthId, oauthId));
     return result[0];
   }
 

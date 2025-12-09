@@ -96,6 +96,9 @@ export const coaches = pgTable("coaches", {
   email: text("email").notNull(),
   phone: text("phone"),
   passwordHash: text("password_hash"),
+  oauthProvider: text("oauth_provider"),
+  oauthId: text("oauth_id"),
+  profileImageUrl: text("profile_image_url"),
 });
 
 export const insertCoachSchema = createInsertSchema(coaches).omit({ id: true });

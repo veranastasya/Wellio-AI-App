@@ -1,9 +1,11 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
+import passport from "passport";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
+import { setupOAuth } from "./replitAuth";
 
 const app = express();
 
@@ -34,6 +36,10 @@ app.use(session({
     sameSite: 'lax', // CSRF protection
   },
 }));
+
+// Passport middleware for OAuth
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Store raw body for webhook signature verification
 app.use(express.json({
@@ -78,6 +84,9 @@ app.use((req, res, next) => {
 (async () => {
   await storage.seedData();
   log("Database seeded successfully");
+  
+  // Setup OAuth routes (Replit Auth for Google, Apple, GitHub login)
+  await setupOAuth(app);
   
   const server = await registerRoutes(app);
 
