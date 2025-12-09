@@ -138,25 +138,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ success: true, coachId: coach.id, name: coach.name });
       }
       
-      // Legacy fallback: shared COACH_PASSWORD (will be deprecated)
-      const coachPassword = process.env.COACH_PASSWORD;
-      
-      if (coachPassword && password === coachPassword) {
-        // Create or get default coach for legacy login
-        let defaultCoach = await storage.getDefaultCoach();
-        if (!defaultCoach) {
-          defaultCoach = await storage.createCoach({
-            name: "Coach",
-            email: "coach@example.com",
-            phone: null,
-            passwordHash: null,
-          });
-        }
-        req.session.coachId = defaultCoach.id;
-        return res.json({ success: true, coachId: defaultCoach.id, name: defaultCoach.name });
-      }
-      
-      return res.status(401).json({ error: "Invalid credentials" });
+      // No email provided - require email for login
+      return res.status(401).json({ error: "Email and password are required" });
     } catch (error) {
       console.error("Coach login error:", error);
       res.status(500).json({ error: "Login failed" });
@@ -1203,11 +1186,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/clients/:clientId/responses", requireCoachAuth, async (req, res) => {
     try {
       const { clientId } = req.params;
+      const coachId = req.session.coachId!;
       
-      // Validate client exists
+      // Validate client exists and belongs to this coach
       const client = await storage.getClient(clientId);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
+      }
+      if (client.coachId && client.coachId !== coachId) {
+        return res.status(403).json({ error: "Access denied" });
       }
       
       // Get all responses for this client
@@ -2368,6 +2355,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/clients/:clientId/plan-status", requireCoachAuth, async (req, res) => {
     try {
       const clientId = req.params.clientId;
+      const coachId = req.session.coachId!;
+      
+      // Verify coach ownership
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      if (client.coachId && client.coachId !== coachId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       
       // Check for active plan first
       const activePlan = await storage.getActiveClientPlan(clientId);
@@ -2410,9 +2407,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/clients/:id/context", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
       const client = await storage.getClient(req.params.id);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
+      }
+      if (client.coachId && client.coachId !== coachId) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       const goals = await storage.getGoalsByClientId(req.params.id);
@@ -2492,9 +2493,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/clients/:id/insights", requireCoachAuth, async (req, res) => {
     try {
       const clientId = req.params.id;
+      const coachId = req.session.coachId!;
       const client = await storage.getClient(clientId);
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
+      }
+      if (client.coachId && client.coachId !== coachId) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       // Get progress events from last 30 days
