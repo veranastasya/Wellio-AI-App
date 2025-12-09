@@ -39,6 +39,7 @@ export interface Recommendation {
   status: RecommendationStatus;
   createdAt: string;
   sentAt?: string;
+  sentVia?: string;
 }
 
 export interface NotificationPreference {
