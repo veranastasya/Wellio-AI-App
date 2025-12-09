@@ -4530,14 +4530,27 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
   });
 
   // Client-facing: Save push subscription
+  const pushSubscriptionSchema = z.object({
+    endpoint: z.string().url(),
+    keys: z.object({
+      p256dh: z.string().min(1),
+      auth: z.string().min(1),
+    }),
+  });
+
   app.post("/api/client/push/subscribe", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.session!.clientId!;
-      const { endpoint, keys } = req.body;
       
-      if (!endpoint || !keys?.p256dh || !keys?.auth) {
-        return res.status(400).json({ error: "Invalid subscription data" });
+      const parseResult = pushSubscriptionSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid subscription data",
+          details: parseResult.error.flatten() 
+        });
       }
+      
+      const { endpoint, keys } = parseResult.data;
       
       const subscription = await storage.createPushSubscription({
         clientId,
@@ -4627,17 +4640,29 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
                 data: { url: '/client' }
               });
               
-              await webpush.sendNotification(
-                {
-                  endpoint: subscription.endpoint,
-                  keys: {
-                    p256dh: subscription.p256dh,
-                    auth: subscription.auth,
+              try {
+                await webpush.sendNotification(
+                  {
+                    endpoint: subscription.endpoint,
+                    keys: {
+                      p256dh: subscription.p256dh,
+                      auth: subscription.auth,
+                    },
                   },
-                },
-                pushPayload
-              );
-              results.push({ channel: 'web_push', success: true });
+                  pushPayload
+                );
+                results.push({ channel: 'web_push', success: true });
+              } catch (pushErr: any) {
+                // 404 or 410 means the subscription is no longer valid
+                if (pushErr.statusCode === 404 || pushErr.statusCode === 410) {
+                  console.log(`[Push] Subscription expired for client ${clientId}, removing...`);
+                  await storage.deletePushSubscription(clientId);
+                  results.push({ channel: 'web_push', success: false, error: 'Subscription expired and was removed' });
+                } else {
+                  console.error("Web push send error:", pushErr);
+                  results.push({ channel: 'web_push', success: false, error: 'Failed to send push notification' });
+                }
+              }
             } else {
               results.push({ channel: 'web_push', success: false, error: 'Client has not enabled push notifications' });
             }

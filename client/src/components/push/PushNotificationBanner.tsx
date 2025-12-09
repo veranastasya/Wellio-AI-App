@@ -75,7 +75,6 @@ export function PushNotificationBanner() {
           size="sm"
           onClick={subscribe}
           disabled={isLoading}
-          className="bg-blue-600 hover:bg-blue-700"
           data-testid="button-enable-push"
         >
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enable'}

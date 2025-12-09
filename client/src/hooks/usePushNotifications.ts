@@ -89,10 +89,37 @@ export function usePushNotifications() {
 
       const subJson = subscription.toJSON();
       
-      await apiRequest('POST', '/api/client/push/subscribe', {
-        endpoint: subJson.endpoint,
-        keys: subJson.keys,
-      });
+      // Retry server persistence with backoff
+      let persistSuccess = false;
+      let lastError: unknown;
+      
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const response = await apiRequest('POST', '/api/client/push/subscribe', {
+            endpoint: subJson.endpoint,
+            keys: subJson.keys,
+          });
+          
+          if (response.ok) {
+            persistSuccess = true;
+            break;
+          }
+        } catch (err) {
+          lastError = err;
+          console.error(`[Push] Server persist attempt ${attempt + 1} failed:`, err);
+        }
+        
+        // Backoff: 1s, 2s, 4s
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+      }
+
+      if (!persistSuccess) {
+        // Unsubscribe from browser since server persist failed
+        await subscription.unsubscribe();
+        throw lastError || new Error('Failed to persist subscription to server');
+      }
 
       setState({
         isSupported: true,
@@ -112,7 +139,7 @@ export function usePushNotifications() {
       setState(prev => ({ ...prev, isLoading: false }));
       toast({
         title: 'Subscription Failed',
-        description: 'Failed to enable push notifications',
+        description: 'Failed to enable push notifications. Please try again.',
         variant: 'destructive',
       });
       return false;
