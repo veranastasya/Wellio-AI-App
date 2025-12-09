@@ -35,7 +35,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
         fetch(`/api/engagement/activity/${clientId}`),
         fetch(`/api/engagement/triggers/${clientId}`),
         fetch(`/api/engagement/recommendations/${clientId}`),
-        fetch('/api/engagement/notification-preferences'),
+        fetch(`/api/engagement/notification-preferences/${clientId}`),
       ]);
 
       const activity: ClientActivityEvent[] = activityRes.ok ? await activityRes.json() : [];
@@ -310,7 +310,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
         smsEnabled: updates.sms ?? state.notificationPreferences?.sms ?? false,
         webPushEnabled: updates.webPush ?? state.notificationPreferences?.webPush ?? false,
         inAppEnabled: updates.inApp ?? state.notificationPreferences?.inApp ?? true,
-        frequency: updates.frequency ?? state.notificationPreferences?.frequency ?? 'immediate',
+        frequency: updates.frequency ?? state.notificationPreferences?.frequency ?? 'moderate',
         dailyLimit: updates.dailyLimit ?? state.notificationPreferences?.dailyLimit ?? 5,
         quietHoursStart: updates.quietHoursEnabled 
           ? (updates.quietHoursStart ?? state.notificationPreferences?.quietHoursStart ?? '22:00')
@@ -320,7 +320,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
           : null,
       };
       
-      await apiRequest('PUT', '/api/engagement/notification-preferences', prefs);
+      await apiRequest('PUT', `/api/engagement/notification-preferences/${state.selectedClientId}`, prefs);
       
       setState(prev => ({
         ...prev,

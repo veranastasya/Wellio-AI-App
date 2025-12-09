@@ -4439,11 +4439,11 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
 
-  // Get notification preferences
-  app.get("/api/engagement/notification-preferences", requireCoachAuth, async (req, res) => {
+  // Get notification preferences for a specific client
+  app.get("/api/engagement/notification-preferences/:clientId", requireCoachAuth, async (req, res) => {
     try {
       const coachId = req.session!.coachId!;
-      const clientId = req.query.clientId as string | undefined;
+      const { clientId } = req.params;
       
       const preferences = await storage.getEngagementNotificationPreferences(coachId, clientId);
       res.json(preferences || null);
@@ -4453,13 +4453,15 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
 
-  // Update notification preferences
-  app.put("/api/engagement/notification-preferences", requireCoachAuth, async (req, res) => {
+  // Update notification preferences for a specific client
+  app.put("/api/engagement/notification-preferences/:clientId", requireCoachAuth, async (req, res) => {
     try {
       const coachId = req.session!.coachId!;
+      const { clientId } = req.params;
       const validatedData = insertEngagementNotificationPreferencesSchema.parse({
         ...req.body,
         coachId,
+        clientId,
       });
       
       const preferences = await storage.upsertEngagementNotificationPreferences(validatedData);
