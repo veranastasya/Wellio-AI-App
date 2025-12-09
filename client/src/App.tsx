@@ -31,6 +31,7 @@ import CoachLogin from "@/pages/coach-login";
 import CoachClientDetail from "@/pages/coach-client-detail";
 import CoachSettings from "@/pages/coach-settings";
 import PlanBuilder from "@/pages/plan-builder";
+import Engagement from "@/pages/engagement";
 import NotFound from "@/pages/not-found";
 
 export default function App() {
@@ -148,6 +149,11 @@ export default function App() {
           <Route path="/communication">
             <CoachProtectedLayout>
               <Communication />
+            </CoachProtectedLayout>
+          </Route>
+          <Route path="/engagement">
+            <CoachProtectedLayout>
+              <Engagement />
             </CoachProtectedLayout>
           </Route>
           <Route path="/ai-insights">

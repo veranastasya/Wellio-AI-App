@@ -1,4 +1,4 @@
-import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock, ClipboardList, Brain, FileText, Settings } from "lucide-react";
+import { Home, Users, TrendingUp, Calendar, MessageSquare, LineChart, Lock, ClipboardList, Brain, FileText, Settings, Bell } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -58,6 +58,12 @@ const navigationItems = [
     icon: MessageSquare,
     locked: false,
     showUnreadBadge: true,
+  },
+  {
+    title: "Engagement",
+    url: "/engagement",
+    icon: Bell,
+    locked: false,
   },
   {
     title: "AI Insights",
