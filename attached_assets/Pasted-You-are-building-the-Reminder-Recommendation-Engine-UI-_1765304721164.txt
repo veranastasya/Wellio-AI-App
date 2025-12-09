@@ -1,0 +1,88 @@
+You are building the Reminder & Recommendation Engine UI for the Wellio coaching platform.
+
+Create a front-end layout scaffold (React + Tailwind) that visualizes how reminders and recommendations flow between the client and the coach.
+
+GENERAL STRUCTURE:
+The page is split into two main vertical panels:
+1) Left: Client Activity Feed & Reminder Rules
+2) Right: Coach Recommendation Panel
+
+---------------------------------------------
+LEFT PANEL — CLIENT ACTIVITY & REMINDER LOGS
+---------------------------------------------
+Add the following sections:
+
+1. “Client Engagement Timeline”
+   - A vertical feed showing:
+     • log events (e.g., “Logged breakfast”, “Completed training task”)
+     • inactivity markers (“No activity for 6 hours”)
+     • missed tasks (“Task not completed: Training - Monday”)
+   - Each event displayed as a card with timestamp and category.
+
+2. “AI Trigger Detection”
+   - List triggers detected by the system:
+     • Missing meal log
+     • No log-ins for X hours
+     • Deviation from usual behavior pattern
+   - Each trigger card includes:
+     • Trigger description
+     • Severity (Low/Medium/High)
+     • CTA: “Generate Reminder”
+
+3. “Reminder Settings”
+   - Controls for notification channels the client enabled:
+     • toggle for SMS
+     • toggle for Web Push
+     • toggle for In-App
+   - A frequency slider: how often nudges can be sent.
+   - A preview of next scheduled reminder: “Next reminder in: 3 hours”.
+
+---------------------------------------------
+RIGHT PANEL — COACH RECOMMENDATION ENGINE
+---------------------------------------------
+Add the following UI components:
+
+1. “AI Recommendations for Coach”
+   - Each recommendation card shows:
+     • Reason: e.g., “Client has not logged lunch”
+     • Suggested message snippet
+     • Buttons:
+       - “Send to Client”
+       - “Edit Message”
+       - “Dismiss”
+
+2. “Quick Actions”
+   - Buttons:
+     • “Send Check-In”
+     • “Ask About Today’s Meals”
+     • “Prompt to Log Training”
+   - Each action triggers a modal with a templated message.
+
+3. “Auto-Suggestions”
+   - Section where the AI proposes follow-ups:
+     • Trend detection (e.g., sleep getting worse)
+     • Engagement drop
+     • Pattern recognition
+
+4. “Channel Simulation”
+   - A preview of how the message will appear:
+     • SMS preview bubble
+     • Web push notification mockup
+     • In-app notification card
+
+---------------------------------------------
+RESPONSIVE REQUIREMENTS
+---------------------------------------------
+- On desktop: left and right panels visible side by side.
+- On tablet/mobile: right panel collapses into a bottom sheet, left panel becomes primary.
+- All components should be built as placeholder or mock components ready for data integration.
+
+---------------------------------------------
+STYLE
+---------------------------------------------
+- Light, minimal UI
+- Cards with soft shadows
+- Consistent spacing
+- Clear hierarchy of severity and actions
+
+Generate the entire scaffold with placeholder data and mock interactions.
