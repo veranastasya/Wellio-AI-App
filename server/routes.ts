@@ -1858,10 +1858,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Client Invite routes (Coach creates invites for clients)
   app.post("/api/client-invites", async (req, res) => {
     try {
-      const { email, name, questionnaireId, message, coachName } = req.body;
+      const { email, name, questionnaireId, message, coachName, coachId } = req.body;
       
-      // Check if client already has an active invite
-      const existingInvite = await storage.getClientInviteByEmail(email);
+      // Get coachId from session or request body
+      const effectiveCoachId = coachId || (req.session as any)?.coachId || "default-coach";
+      
+      // Check if client already has an active invite from this coach
+      const existingInvite = await storage.getClientInviteByEmailAndCoach(email, effectiveCoachId);
       if (existingInvite && existingInvite.status === 'pending') {
         return res.status(400).json({ error: "Client already has a pending invite" });
       }
@@ -1869,20 +1872,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create client token for authentication
       const tokenData = insertClientTokenSchema.parse({
         email,
+        coachId: effectiveCoachId,
         coachName: coachName || "Your Coach",
         status: "pending",
       });
       const clientToken = await storage.createClientToken(tokenData);
-      console.log("[DEBUG] Created client token:", { id: clientToken.id, token: clientToken.token, email: clientToken.email });
+      console.log("[DEBUG] Created client token:", { id: clientToken.id, token: clientToken.token, email: clientToken.email, coachId: effectiveCoachId });
 
-      // Create invite
+      // Create invite with expiration (30 days from now)
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       const inviteData = insertClientInviteSchema.parse({
         email,
         name,
+        coachId: effectiveCoachId,
         tokenId: clientToken.id,
         questionnaireId,
         message,
         status: "pending",
+        expiresAt,
       });
       const invite = await storage.createClientInvite(inviteData);
 
@@ -1891,7 +1898,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.incrementQuestionnaireUsage(questionnaireId);
       }
 
-      const inviteLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/onboard?token=${clientToken.token}`;
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+        : 'http://localhost:5000';
+      const inviteLink = `${baseUrl}/client/onboard?token=${clientToken.token}`;
       console.log("[DEBUG] Returning invite link:", inviteLink);
 
       // Send invite email
@@ -1921,6 +1931,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating client invite:", error);
       res.status(500).json({ error: "Failed to create invite" });
+    }
+  });
+
+  // Bulk invite endpoint - send multiple invites at once
+  app.post("/api/client-invites/bulk", async (req, res) => {
+    try {
+      const { invites, coachId, coachName, questionnaireId, message } = req.body;
+      
+      const effectiveCoachId = coachId || (req.session as any)?.coachId || "default-coach";
+      
+      if (!invites || !Array.isArray(invites) || invites.length === 0) {
+        return res.status(400).json({ error: "Invites array is required" });
+      }
+      
+      if (invites.length > 50) {
+        return res.status(400).json({ error: "Maximum 50 invites per batch" });
+      }
+
+      const results: Array<{ email: string; success: boolean; error?: string; inviteLink?: string }> = [];
+      const questionnaires = await storage.getQuestionnaires();
+      const questionnaire = questionnaires.find(q => q.id === questionnaireId);
+      
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+        : 'http://localhost:5000';
+
+      for (const inviteReq of invites) {
+        const { email, name } = inviteReq;
+        
+        try {
+          // Check for existing pending invite
+          const existingInvite = await storage.getClientInviteByEmailAndCoach(email, effectiveCoachId);
+          if (existingInvite && existingInvite.status === 'pending') {
+            results.push({ email, success: false, error: "Already has pending invite" });
+            continue;
+          }
+
+          // Create token
+          const tokenData = insertClientTokenSchema.parse({
+            email,
+            coachId: effectiveCoachId,
+            coachName: coachName || "Your Coach",
+            status: "pending",
+          });
+          const clientToken = await storage.createClientToken(tokenData);
+
+          // Create invite
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+          const inviteData = insertClientInviteSchema.parse({
+            email,
+            name,
+            coachId: effectiveCoachId,
+            tokenId: clientToken.id,
+            questionnaireId,
+            message,
+            status: "pending",
+            expiresAt,
+          });
+          await storage.createClientInvite(inviteData);
+
+          const inviteLink = `${baseUrl}/client/onboard?token=${clientToken.token}`;
+
+          // Send email (non-blocking)
+          sendInviteEmail({
+            to: email,
+            clientName: name,
+            coachName: coachName || "Your Coach",
+            inviteLink,
+            questionnaireName: questionnaire?.name,
+            message,
+          }).catch(err => console.error(`[Email] Failed for ${email}:`, err));
+
+          results.push({ email, success: true, inviteLink });
+        } catch (err: any) {
+          results.push({ email, success: false, error: err.message || "Failed to create invite" });
+        }
+      }
+
+      // Increment questionnaire usage for successful invites
+      const successCount = results.filter(r => r.success).length;
+      if (questionnaireId && successCount > 0) {
+        for (let i = 0; i < successCount; i++) {
+          await storage.incrementQuestionnaireUsage(questionnaireId);
+        }
+      }
+
+      res.status(201).json({
+        total: invites.length,
+        successful: successCount,
+        failed: invites.length - successCount,
+        results,
+      });
+    } catch (error) {
+      console.error("Error creating bulk invites:", error);
+      res.status(500).json({ error: "Failed to create bulk invites" });
+    }
+  });
+
+  // Resend invite email
+  app.post("/api/client-invites/:id/resend", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const invite = await storage.getClientInvite(id);
+      
+      if (!invite) {
+        return res.status(404).json({ error: "Invite not found" });
+      }
+      
+      if (invite.status !== 'pending') {
+        return res.status(400).json({ error: "Can only resend pending invites" });
+      }
+
+      // Get the token
+      const allTokens = await storage.getClientTokens();
+      const clientToken = allTokens.find(t => t.id === invite.tokenId);
+      
+      if (!clientToken) {
+        return res.status(404).json({ error: "Token not found" });
+      }
+
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+        : 'http://localhost:5000';
+      const inviteLink = `${baseUrl}/client/onboard?token=${clientToken.token}`;
+
+      // Get questionnaire name
+      const questionnaires = await storage.getQuestionnaires();
+      const questionnaire = questionnaires.find(q => q.id === invite.questionnaireId);
+
+      // Send email
+      await sendInviteEmail({
+        to: invite.email,
+        clientName: invite.name || undefined,
+        coachName: clientToken.coachName,
+        inviteLink,
+        questionnaireName: questionnaire?.name,
+        message: invite.message || undefined,
+      });
+
+      // Update resend tracking
+      await storage.updateClientInvite(id, {
+        resendCount: (invite.resendCount || 0) + 1,
+        lastResendAt: new Date().toISOString(),
+      });
+
+      res.json({ success: true, message: "Invite resent successfully" });
+    } catch (error) {
+      console.error("Error resending invite:", error);
+      res.status(500).json({ error: "Failed to resend invite" });
     }
   });
 

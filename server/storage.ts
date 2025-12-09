@@ -171,7 +171,9 @@ export interface IStorage {
   getClientInvites(): Promise<ClientInvite[]>;
   getClientInvite(id: string): Promise<ClientInvite | undefined>;
   getClientInviteByEmail(email: string): Promise<ClientInvite | undefined>;
+  getClientInviteByEmailAndCoach(email: string, coachId: string): Promise<ClientInvite | undefined>;
   getClientInviteByClientId(clientId: string): Promise<ClientInvite | undefined>;
+  getClientInvitesByCoachId(coachId: string): Promise<ClientInvite[]>;
   createClientInvite(clientInvite: InsertClientInvite): Promise<ClientInvite>;
   updateClientInvite(id: string, clientInvite: Partial<InsertClientInvite>): Promise<ClientInvite | undefined>;
   deleteClientInvite(id: string): Promise<boolean>;
@@ -1014,6 +1016,19 @@ export class DatabaseStorage implements IStorage {
   async getClientInviteByClientId(clientId: string): Promise<ClientInvite | undefined> {
     const [invite] = await db.select().from(clientInvites).where(eq(clientInvites.clientId, clientId));
     return invite || undefined;
+  }
+
+  async getClientInviteByEmailAndCoach(email: string, coachId: string): Promise<ClientInvite | undefined> {
+    const [invite] = await db.select().from(clientInvites)
+      .where(and(
+        eq(clientInvites.email, email),
+        eq(clientInvites.coachId, coachId)
+      ));
+    return invite || undefined;
+  }
+
+  async getClientInvitesByCoachId(coachId: string): Promise<ClientInvite[]> {
+    return await db.select().from(clientInvites).where(eq(clientInvites.coachId, coachId));
   }
 
   async createClientInvite(insertInvite: InsertClientInvite): Promise<ClientInvite> {

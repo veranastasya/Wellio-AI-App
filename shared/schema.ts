@@ -300,6 +300,7 @@ export const connectionRequests = pgTable("connection_requests", {
 export const clientTokens = pgTable("client_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id"),
+  coachId: varchar("coach_id").notNull().default("default-coach"), // Coach who created the token
   token: text("token").notNull().unique(),
   email: text("email").notNull(),
   coachName: text("coach_name").notNull(),
@@ -312,13 +313,17 @@ export const clientTokens = pgTable("client_tokens", {
 export const clientInvites = pgTable("client_invites", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id"),
+  coachId: varchar("coach_id").notNull().default("default-coach"), // Coach who sent the invite
   email: text("email").notNull(),
   name: text("name"),
   tokenId: varchar("token_id").notNull(),
   questionnaireId: varchar("questionnaire_id"),
-  status: text("status").notNull().default("pending"),
+  status: text("status").notNull().default("pending"), // pending, completed, expired, cancelled
   sentAt: text("sent_at").notNull(),
   completedAt: text("completed_at"),
+  expiresAt: text("expires_at"), // Optional expiration for invites
+  resendCount: integer("resend_count").notNull().default(0), // Track how many times invite was resent
+  lastResendAt: text("last_resend_at"), // Last resend timestamp
   message: text("message"),
 });
 
