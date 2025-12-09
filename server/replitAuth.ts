@@ -116,7 +116,8 @@ async function upsertCoachFromOAuth(claims: any): Promise<{ coachId: string; isN
 export async function setupOAuth(app: Express) {
   const config = await getOidcConfig();
 
-  const verify: VerifyFunction = async (
+  // Coach verify function - for coach OAuth flows
+  const coachVerify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
@@ -131,11 +132,22 @@ export async function setupOAuth(app: Express) {
     verified(null, user);
   };
 
+  // Client verify function - for client OAuth flows (does NOT create coach records)
+  const clientVerify: VerifyFunction = async (
+    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
+    verified: passport.AuthenticateCallback
+  ) => {
+    const user = {};
+    updateUserSession(user, tokens);
+    // For client flows, we just need the claims - we handle client lookup in the callback
+    verified(null, user);
+  };
+
   // Keep track of registered strategies
   const registeredStrategies = new Set<string>();
 
-  // Helper function to ensure strategy exists for a domain
-  const ensureStrategy = (domain: string) => {
+  // Helper function to ensure COACH strategy exists for a domain
+  const ensureCoachStrategy = (domain: string) => {
     const strategyName = `replitauth:${domain}`;
     if (!registeredStrategies.has(strategyName)) {
       const strategy = new Strategy(
@@ -145,11 +157,30 @@ export async function setupOAuth(app: Express) {
           scope: "openid email profile offline_access",
           callbackURL: `https://${domain}/api/oauth/callback`,
         },
-        verify,
+        coachVerify,
       );
       passport.use(strategy);
       registeredStrategies.add(strategyName);
     }
+  };
+
+  // Helper function to ensure CLIENT strategy exists for a domain
+  const ensureClientStrategy = (domain: string, callbackPath: string) => {
+    const strategyName = `replitauth-client:${domain}:${callbackPath}`;
+    if (!registeredStrategies.has(strategyName)) {
+      const strategy = new Strategy(
+        {
+          name: strategyName,
+          config,
+          scope: "openid email profile offline_access",
+          callbackURL: `https://${domain}${callbackPath}`,
+        },
+        clientVerify,
+      );
+      passport.use(strategy);
+      registeredStrategies.add(strategyName);
+    }
+    return strategyName;
   };
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
@@ -157,7 +188,7 @@ export async function setupOAuth(app: Express) {
 
   // OAuth login route - redirects to Replit's OAuth flow (supports Google, Apple, GitHub, etc.)
   app.get("/api/oauth/login", (req, res, next) => {
-    ensureStrategy(req.hostname);
+    ensureCoachStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
@@ -166,7 +197,7 @@ export async function setupOAuth(app: Express) {
 
   // OAuth callback route
   app.get("/api/oauth/callback", (req, res, next) => {
-    ensureStrategy(req.hostname);
+    ensureCoachStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, (err: any, user: any) => {
       if (err || !user) {
         console.error("OAuth authentication failed:", err);
@@ -234,23 +265,8 @@ export async function setupOAuth(app: Express) {
         return res.redirect("/client/login?error=session_error");
       }
       
-      ensureStrategy(req.hostname);
-      
-      // Create a strategy for client callback
-      const clientStrategyName = `replitauth-client:${req.hostname}`;
-      if (!registeredStrategies.has(clientStrategyName)) {
-        const clientStrategy = new Strategy(
-          {
-            name: clientStrategyName,
-            config,
-            scope: "openid email profile offline_access",
-            callbackURL: `https://${req.hostname}/api/client-oauth/callback`,
-          },
-          verify,
-        );
-        passport.use(clientStrategy);
-        registeredStrategies.add(clientStrategyName);
-      }
+      // Use client-specific strategy that doesn't create coach records
+      const clientStrategyName = ensureClientStrategy(req.hostname, "/api/client-oauth/callback");
       
       passport.authenticate(clientStrategyName, {
         prompt: "login consent",
@@ -261,22 +277,8 @@ export async function setupOAuth(app: Express) {
 
   // Client OAuth callback route
   app.get("/api/client-oauth/callback", async (req, res, next) => {
-    const clientStrategyName = `replitauth-client:${req.hostname}`;
-    
-    // Ensure strategy exists
-    if (!registeredStrategies.has(clientStrategyName)) {
-      const clientStrategy = new Strategy(
-        {
-          name: clientStrategyName,
-          config,
-          scope: "openid email profile offline_access",
-          callbackURL: `https://${req.hostname}/api/client-oauth/callback`,
-        },
-        verify,
-      );
-      passport.use(clientStrategy);
-      registeredStrategies.add(clientStrategyName);
-    }
+    // Use client-specific strategy
+    const clientStrategyName = ensureClientStrategy(req.hostname, "/api/client-oauth/callback");
     
     passport.authenticate(clientStrategyName, async (err: any, user: any) => {
       if (err || !user) {
@@ -454,23 +456,10 @@ export async function setupOAuth(app: Express) {
         return res.redirect("/client/login?error=session_error");
       }
       
-      // Create or use strategy for returning client callback
-      const returningStrategyName = `replitauth-client-returning:${req.hostname}`;
-      if (!registeredStrategies.has(returningStrategyName)) {
-        const returningStrategy = new Strategy(
-          {
-            name: returningStrategyName,
-            config,
-            scope: "openid email profile offline_access",
-            callbackURL: `https://${req.hostname}/api/client-oauth/returning-callback`,
-          },
-          verify,
-        );
-        passport.use(returningStrategy);
-        registeredStrategies.add(returningStrategyName);
-      }
+      // Use client-specific strategy that doesn't create coach records
+      const clientStrategyName = ensureClientStrategy(req.hostname, "/api/client-oauth/returning-callback");
       
-      passport.authenticate(returningStrategyName, {
+      passport.authenticate(clientStrategyName, {
         prompt: "login consent",
         scope: ["openid", "email", "profile", "offline_access"],
       })(req, res, next);
@@ -479,24 +468,10 @@ export async function setupOAuth(app: Express) {
 
   // Returning client OAuth callback
   app.get("/api/client-oauth/returning-callback", async (req, res, next) => {
-    const returningStrategyName = `replitauth-client-returning:${req.hostname}`;
+    // Use client-specific strategy
+    const clientStrategyName = ensureClientStrategy(req.hostname, "/api/client-oauth/returning-callback");
     
-    // Ensure strategy exists
-    if (!registeredStrategies.has(returningStrategyName)) {
-      const returningStrategy = new Strategy(
-        {
-          name: returningStrategyName,
-          config,
-          scope: "openid email profile offline_access",
-          callbackURL: `https://${req.hostname}/api/client-oauth/returning-callback`,
-        },
-        verify,
-      );
-      passport.use(returningStrategy);
-      registeredStrategies.add(returningStrategyName);
-    }
-    
-    passport.authenticate(returningStrategyName, async (err: any, user: any) => {
+    passport.authenticate(clientStrategyName, async (err: any, user: any) => {
       if (err || !user) {
         console.error("Returning client OAuth authentication failed:", err);
         return res.redirect("/client/login?error=oauth_failed");
