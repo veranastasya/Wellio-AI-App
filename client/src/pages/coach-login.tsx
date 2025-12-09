@@ -1,16 +1,19 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useSearch } from "wouter";
 import { useCoachAuth } from "@/contexts/coach-auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { LogIn } from "lucide-react";
 import logoImage from "@assets/Group 626535_1761099357468.png";
 
 export default function CoachLogin() {
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [registerName, setRegisterName] = useState("");
@@ -20,6 +23,28 @@ export default function CoachLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp } = useCoachAuth();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const error = params.get("error");
+    if (error === "oauth_failed") {
+      toast({
+        title: "Login failed",
+        description: "Unable to sign in with your account. Please try again.",
+        variant: "destructive",
+      });
+    } else if (error === "session_failed") {
+      toast({
+        title: "Session error",
+        description: "There was a problem creating your session. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [searchString, toast]);
+
+  const handleOAuthLogin = () => {
+    window.location.href = "/api/oauth/login";
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,6 +184,25 @@ export default function CoachLogin() {
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
+
+                <div className="relative my-4">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+                    or
+                  </span>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleOAuthLogin}
+                  disabled={isLoading}
+                  data-testid="button-oauth-login"
+                >
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Continue with Google, Apple, or GitHub
+                </Button>
               </form>
             </TabsContent>
             <TabsContent value="register" className="mt-4">
@@ -218,6 +262,25 @@ export default function CoachLogin() {
                   data-testid="button-register"
                 >
                   {isLoading ? "Creating account..." : "Create Account"}
+                </Button>
+
+                <div className="relative my-4">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+                    or
+                  </span>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleOAuthLogin}
+                  disabled={isLoading}
+                  data-testid="button-oauth-register"
+                >
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Sign up with Google, Apple, or GitHub
                 </Button>
               </form>
             </TabsContent>
