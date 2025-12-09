@@ -54,6 +54,10 @@ import {
   insertPlanTargetsSchema,
   insertPlanSessionSchema,
   insertPlanMessageSchema,
+  insertEngagementTriggerSchema,
+  insertEngagementRecommendationSchema,
+  insertEngagementNotificationPreferencesSchema,
+  insertInAppNotificationSchema,
   GOAL_TYPES,
   type GoalType,
 } from "@shared/schema";
@@ -4288,6 +4292,424 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     } catch (error) {
       console.error("Error deleting plan target:", error);
       res.status(500).json({ error: "Failed to delete plan target" });
+    }
+  });
+
+  // ============ ENGAGEMENT SYSTEM ENDPOINTS ============
+
+  // Get client activity timeline (from progress events and smart logs)
+  app.get("/api/engagement/activity/:clientId", requireCoachAuth, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const coachId = req.session!.coachId!;
+      
+      // Verify client belongs to this coach
+      const client = await storage.getClient(clientId);
+      if (!client || client.coachId !== coachId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Get recent progress events for timeline
+      const events = await storage.getProgressEventsByClientId(clientId);
+      
+      // Transform to activity timeline format - take last 50
+      const activities = events.slice(0, 50).map(event => ({
+        id: event.id,
+        clientId: event.clientId,
+        type: event.eventType,
+        category: event.eventType,
+        summary: `${event.eventType} logged`,
+        details: event.dataJson,
+        timestamp: event.createdAt,
+        createdAt: event.createdAt,
+      }));
+
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching client activity:", error);
+      res.status(500).json({ error: "Failed to fetch client activity" });
+    }
+  });
+
+  // Get engagement triggers for a client
+  app.get("/api/engagement/triggers/:clientId", requireCoachAuth, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const coachId = req.session!.coachId!;
+      
+      const client = await storage.getClient(clientId);
+      if (!client || client.coachId !== coachId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const triggers = await storage.getEngagementTriggers(clientId, coachId);
+      res.json(triggers);
+    } catch (error) {
+      console.error("Error fetching engagement triggers:", error);
+      res.status(500).json({ error: "Failed to fetch engagement triggers" });
+    }
+  });
+
+  // Create engagement trigger
+  app.post("/api/engagement/triggers", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session!.coachId!;
+      const validatedData = insertEngagementTriggerSchema.parse({
+        ...req.body,
+        coachId,
+      });
+      
+      const trigger = await storage.createEngagementTrigger(validatedData);
+      res.status(201).json(trigger);
+    } catch (error) {
+      console.error("Error creating engagement trigger:", error);
+      res.status(400).json({ error: "Invalid data" });
+    }
+  });
+
+  // Resolve engagement trigger
+  app.patch("/api/engagement/triggers/:id/resolve", requireCoachAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const trigger = await storage.getEngagementTrigger(id);
+      if (!trigger) {
+        return res.status(404).json({ error: "Trigger not found" });
+      }
+
+      const resolved = await storage.resolveEngagementTrigger(id);
+      res.json(resolved);
+    } catch (error) {
+      console.error("Error resolving engagement trigger:", error);
+      res.status(500).json({ error: "Failed to resolve trigger" });
+    }
+  });
+
+  // Get recommendations for a client
+  app.get("/api/engagement/recommendations/:clientId", requireCoachAuth, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const coachId = req.session!.coachId!;
+      
+      const client = await storage.getClient(clientId);
+      if (!client || client.coachId !== coachId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const recommendations = await storage.getEngagementRecommendations(clientId, coachId);
+      res.json(recommendations);
+    } catch (error) {
+      console.error("Error fetching recommendations:", error);
+      res.status(500).json({ error: "Failed to fetch recommendations" });
+    }
+  });
+
+  // Create recommendation
+  app.post("/api/engagement/recommendations", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session!.coachId!;
+      const validatedData = insertEngagementRecommendationSchema.parse({
+        ...req.body,
+        coachId,
+      });
+      
+      const recommendation = await storage.createEngagementRecommendation(validatedData);
+      res.status(201).json(recommendation);
+    } catch (error) {
+      console.error("Error creating recommendation:", error);
+      res.status(400).json({ error: "Invalid data" });
+    }
+  });
+
+  // Update recommendation status (send/dismiss)
+  app.patch("/api/engagement/recommendations/:id", requireCoachAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const recommendation = await storage.getEngagementRecommendation(id);
+      if (!recommendation) {
+        return res.status(404).json({ error: "Recommendation not found" });
+      }
+
+      const updated = await storage.updateEngagementRecommendation(id, req.body);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating recommendation:", error);
+      res.status(500).json({ error: "Failed to update recommendation" });
+    }
+  });
+
+  // Get notification preferences
+  app.get("/api/engagement/notification-preferences", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session!.coachId!;
+      const clientId = req.query.clientId as string | undefined;
+      
+      const preferences = await storage.getEngagementNotificationPreferences(coachId, clientId);
+      res.json(preferences || null);
+    } catch (error) {
+      console.error("Error fetching notification preferences:", error);
+      res.status(500).json({ error: "Failed to fetch notification preferences" });
+    }
+  });
+
+  // Update notification preferences
+  app.put("/api/engagement/notification-preferences", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session!.coachId!;
+      const validatedData = insertEngagementNotificationPreferencesSchema.parse({
+        ...req.body,
+        coachId,
+      });
+      
+      const preferences = await storage.upsertEngagementNotificationPreferences(validatedData);
+      res.json(preferences);
+    } catch (error) {
+      console.error("Error updating notification preferences:", error);
+      res.status(400).json({ error: "Invalid data" });
+    }
+  });
+
+  // Client-facing: Get in-app notifications
+  app.get("/api/client/notifications", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session!.clientId!;
+      const notifications = await storage.getInAppNotifications(clientId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ error: "Failed to fetch notifications" });
+    }
+  });
+
+  // Client-facing: Get unread notifications count
+  app.get("/api/client/notifications/unread", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session!.clientId!;
+      const notifications = await storage.getUnreadInAppNotifications(clientId);
+      res.json({ count: notifications.length, notifications });
+    } catch (error) {
+      console.error("Error fetching unread notifications:", error);
+      res.status(500).json({ error: "Failed to fetch unread notifications" });
+    }
+  });
+
+  // Client-facing: Mark notification as read
+  app.patch("/api/client/notifications/:id/read", requireClientAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const notification = await storage.markInAppNotificationRead(id);
+      res.json(notification);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  // Send notification to client (email + in-app)
+  app.post("/api/engagement/send-notification", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session!.coachId!;
+      const { clientId, title, message, channels } = req.body;
+
+      if (!clientId || !title || !message) {
+        return res.status(400).json({ error: "clientId, title, and message are required" });
+      }
+
+      const client = await storage.getClient(clientId);
+      if (!client || client.coachId !== coachId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const results: { channel: string; success: boolean; error?: string }[] = [];
+
+      // Always create in-app notification
+      if (!channels || channels.includes('in_app')) {
+        try {
+          await storage.createInAppNotification({
+            clientId,
+            coachId,
+            title,
+            message,
+            type: 'reminder',
+          });
+          results.push({ channel: 'in_app', success: true });
+        } catch (err) {
+          results.push({ channel: 'in_app', success: false, error: 'Failed to create in-app notification' });
+        }
+      }
+
+      // Send email if requested
+      if (channels?.includes('email') && client.email) {
+        try {
+          const { Resend } = await import('resend');
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          
+          await resend.emails.send({
+            from: 'Wellio <noreply@resend.dev>',
+            to: client.email,
+            subject: title,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: #28A0AE; padding: 20px; text-align: center;">
+                  <h1 style="color: white; margin: 0;">Wellio</h1>
+                </div>
+                <div style="padding: 20px; background: #f9f9f9;">
+                  <p style="color: #333; font-size: 16px;">${message}</p>
+                </div>
+                <div style="padding: 10px; text-align: center; color: #888; font-size: 12px;">
+                  <p>You received this from your wellness coach.</p>
+                </div>
+              </div>
+            `,
+          });
+          results.push({ channel: 'email', success: true });
+        } catch (err) {
+          console.error("Email send error:", err);
+          results.push({ channel: 'email', success: false, error: 'Failed to send email' });
+        }
+      }
+
+      // SMS placeholder - queue for future Twilio integration
+      if (channels?.includes('sms')) {
+        results.push({ channel: 'sms', success: false, error: 'SMS not yet configured - Twilio integration pending' });
+      }
+
+      res.json({ success: true, results });
+    } catch (error) {
+      console.error("Error sending notification:", error);
+      res.status(500).json({ error: "Failed to send notification" });
+    }
+  });
+
+  // AI-powered trigger detection endpoint
+  app.post("/api/engagement/detect-triggers/:clientId", requireCoachAuth, async (req, res) => {
+    try {
+      const { clientId } = req.params;
+      const coachId = req.session!.coachId!;
+      
+      const client = await storage.getClient(clientId);
+      if (!client || client.coachId !== coachId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Get recent activity to analyze
+      const recentEvents = await storage.getProgressEventsByClientId(clientId);
+      const limitedEvents = recentEvents.slice(0, 30);
+      
+      if (limitedEvents.length < 3) {
+        return res.json({ triggers: [], message: "Not enough data for trigger detection" });
+      }
+
+      // Simple rule-based trigger detection (can be enhanced with AI)
+      type TriggerType = 'inactivity' | 'missed_workout' | 'declining_metrics' | 'goal_at_risk' | 'nutrition_concern' | 'sleep_issue' | 'engagement_drop';
+      const triggers: Array<{
+        type: TriggerType;
+        severity: 'high' | 'medium' | 'low';
+        reason: string;
+        recommendedAction: string;
+      }> = [];
+
+      // Check for inactivity (no events in last 3 days)
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const recentActivity = limitedEvents.filter(e => new Date(e.createdAt) > threeDaysAgo);
+      
+      if (recentActivity.length === 0) {
+        triggers.push({
+          type: 'inactivity',
+          severity: 'high',
+          reason: 'No logged activity in the past 3 days',
+          recommendedAction: 'Send a check-in message to encourage engagement',
+        });
+      }
+
+      // Check for declining workout frequency
+      const workouts = limitedEvents.filter(e => e.eventType === 'exercise' || e.eventType === 'workout');
+      if (workouts.length > 5) {
+        const recentWorkouts = workouts.slice(0, 5);
+        const olderWorkouts = workouts.slice(5, 10);
+        if (olderWorkouts.length > 0 && recentWorkouts.length < olderWorkouts.length * 0.5) {
+          triggers.push({
+            type: 'missed_workout',
+            severity: 'medium',
+            reason: 'Workout frequency has decreased significantly',
+            recommendedAction: 'Review workout plan and consider adjustments',
+          });
+        }
+      }
+
+      // Store detected triggers
+      const savedTriggers = [];
+      for (const t of triggers) {
+        const saved = await storage.createEngagementTrigger({
+          clientId,
+          coachId,
+          type: t.type,
+          severity: t.severity,
+          reason: t.reason,
+          recommendedAction: t.recommendedAction,
+        });
+        savedTriggers.push(saved);
+      }
+
+      res.json({ triggers: savedTriggers });
+    } catch (error) {
+      console.error("Error detecting triggers:", error);
+      res.status(500).json({ error: "Failed to detect triggers" });
+    }
+  });
+
+  // AI-powered recommendation generation
+  app.post("/api/engagement/generate-recommendation/:triggerId", requireCoachAuth, async (req, res) => {
+    try {
+      const { triggerId } = req.params;
+      const coachId = req.session!.coachId!;
+      
+      const trigger = await storage.getEngagementTrigger(triggerId);
+      if (!trigger || trigger.coachId !== coachId) {
+        return res.status(404).json({ error: "Trigger not found" });
+      }
+
+      const client = await storage.getClient(trigger.clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Generate recommendation message based on trigger type
+      let message = '';
+      let priority: 'high' | 'medium' | 'low' = 'medium';
+
+      switch (trigger.type) {
+        case 'inactivity':
+          message = `Hey ${client.name}! I noticed it's been a few days since your last check-in. How are you doing? I'm here to help if you need any adjustments to your plan or just want to chat about your progress. Let me know!`;
+          priority = 'high';
+          break;
+        case 'declining_workouts':
+          message = `Hi ${client.name}! I've been reviewing your recent activity and wanted to check in. Life gets busy sometimes! Would you like to discuss any adjustments to your workout schedule that might work better for you right now?`;
+          priority = 'medium';
+          break;
+        case 'missed_meals':
+          message = `Hey ${client.name}! I noticed some gaps in your meal logging recently. Remember, tracking helps us stay on course together. Is there anything making it difficult to log? I'm happy to help simplify the process!`;
+          priority = 'low';
+          break;
+        default:
+          message = `Hi ${client.name}! Just checking in to see how everything is going. Let me know if there's anything I can help with!`;
+      }
+
+      const recommendation = await storage.createEngagementRecommendation({
+        triggerId,
+        clientId: trigger.clientId,
+        coachId,
+        message,
+        reason: trigger.reason,
+        priority,
+      });
+
+      res.json(recommendation);
+    } catch (error) {
+      console.error("Error generating recommendation:", error);
+      res.status(500).json({ error: "Failed to generate recommendation" });
     }
   });
 
