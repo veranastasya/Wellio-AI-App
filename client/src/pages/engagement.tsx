@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, User } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import type { Client } from "@shared/schema";
 
+import { useEngagement } from "@/context/EngagementContext";
 import {
   ActivityTimeline,
   TriggerList,
@@ -18,113 +18,11 @@ import {
   AutoSuggestions,
   NotificationPreview,
   EditMessageModal,
-  type ActivityEvent,
-  type Trigger,
-  type Recommendation,
-  type AutoSuggestion,
   type QuickActionItem,
+  type AutoSuggestion,
 } from "@/components/engagement";
-
-const mockActivityEvents: ActivityEvent[] = [
-  {
-    id: "1",
-    type: "log",
-    category: "nutrition",
-    title: "Logged breakfast",
-    description: "Oatmeal with berries - 450 cal",
-    timestamp: "2024-12-09T08:30:00",
-  },
-  {
-    id: "2",
-    type: "log",
-    category: "workout",
-    title: "Completed training task",
-    description: "Upper body strength - 45 mins",
-    timestamp: "2024-12-09T10:15:00",
-  },
-  {
-    id: "3",
-    type: "inactivity",
-    category: "general",
-    title: "No activity for 6 hours",
-    description: "Last activity was at 10:15 AM",
-    timestamp: "2024-12-09T16:15:00",
-  },
-  {
-    id: "4",
-    type: "missed_task",
-    category: "nutrition",
-    title: "Task not completed: Log lunch",
-    description: "Expected by 2:00 PM",
-    timestamp: "2024-12-09T14:00:00",
-  },
-  {
-    id: "5",
-    type: "log",
-    category: "sleep",
-    title: "Sleep logged",
-    description: "7.5 hours - Quality: Good",
-    timestamp: "2024-12-09T07:00:00",
-  },
-  {
-    id: "6",
-    type: "log",
-    category: "nutrition",
-    title: "Logged dinner",
-    description: "Grilled chicken with vegetables - 680 cal",
-    timestamp: "2024-12-08T19:30:00",
-  },
-  {
-    id: "7",
-    type: "log",
-    category: "workout",
-    title: "Morning run",
-    description: "5K run - 28 mins",
-    timestamp: "2024-12-08T07:00:00",
-  },
-];
-
-const mockTriggers: Trigger[] = [
-  {
-    id: "1",
-    description: "Missing lunch log - no meal entry since 8:30 AM",
-    severity: "Medium",
-    detectedAt: "2024-12-09T14:30:00",
-  },
-  {
-    id: "2",
-    description: "No login for 8+ hours (unusual pattern)",
-    severity: "High",
-    detectedAt: "2024-12-09T18:30:00",
-  },
-  {
-    id: "3",
-    description: "Deviation from workout routine this week",
-    severity: "Low",
-    detectedAt: "2024-12-09T12:00:00",
-  },
-];
-
-const mockRecommendations: Recommendation[] = [
-  {
-    id: "1",
-    reason: "Client has not logged lunch",
-    suggestedMessage: "Hey! Just checking in - how did lunch go today? Don't forget to log it when you get a chance!",
-    priority: "medium",
-  },
-  {
-    id: "2",
-    reason: "No activity in 8 hours",
-    suggestedMessage: "Hope your day is going well! Haven't seen you in a bit - everything okay?",
-    priority: "high",
-  },
-  {
-    id: "3",
-    reason: "Missed 2 workouts this week",
-    suggestedMessage: "I noticed the workouts have been lighter this week. Want to chat about adjusting your schedule?",
-    priority: "low",
-  },
-];
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const mockAutoSuggestions: AutoSuggestion[] = [
   {
@@ -148,53 +46,112 @@ const mockAutoSuggestions: AutoSuggestion[] = [
 ];
 
 function RightPanelContent({
-  recommendations,
-  suggestions,
-  onSendRecommendation,
-  onEditRecommendation,
-  onDismissRecommendation,
   onQuickAction,
 }: {
-  recommendations: Recommendation[];
-  suggestions: AutoSuggestion[];
-  onSendRecommendation: (rec: Recommendation) => void;
-  onEditRecommendation: (rec: Recommendation) => void;
-  onDismissRecommendation: (rec: Recommendation) => void;
   onQuickAction: (action: QuickActionItem) => void;
 }) {
+  const {
+    recommendations,
+    sendRecommendation,
+    dismissRecommendation,
+  } = useEngagement();
+
+  const pendingRecommendations = recommendations
+    .filter(r => r.status === 'pending')
+    .map(r => ({
+      id: r.id,
+      reason: r.reason,
+      suggestedMessage: r.message,
+      priority: r.priority,
+    }));
+
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingMessage, setEditingMessage] = useState("");
+  const [editingRecId, setEditingRecId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const handleSend = (rec: { id: string }) => {
+    sendRecommendation(rec.id);
+  };
+
+  const handleEdit = (rec: { id: string; suggestedMessage: string }) => {
+    setEditingRecId(rec.id);
+    setEditingMessage(rec.suggestedMessage);
+    setEditModalOpen(true);
+  };
+
+  const handleDismiss = (rec: { id: string }) => {
+    dismissRecommendation(rec.id);
+  };
+
+  const handleEditSend = (message: string) => {
+    if (editingRecId) {
+      console.log(`[Engagement] Sending edited message for recommendation ${editingRecId}: "${message.substring(0, 50)}..."`);
+      sendRecommendation(editingRecId);
+    }
+    setEditModalOpen(false);
+    setEditingRecId(null);
+  };
+
   return (
     <div className="space-y-4">
       <RecommendationCard
-        recommendations={recommendations}
-        onSend={onSendRecommendation}
-        onEdit={onEditRecommendation}
-        onDismiss={onDismissRecommendation}
+        recommendations={pendingRecommendations}
+        onSend={handleSend}
+        onEdit={handleEdit}
+        onDismiss={handleDismiss}
       />
       <QuickActions onAction={onQuickAction} />
-      <AutoSuggestions suggestions={suggestions} />
+      <AutoSuggestions suggestions={mockAutoSuggestions} />
       <NotificationPreview />
+      
+      <EditMessageModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        title="Edit Message"
+        initialMessage={editingMessage}
+        recipientName="Client"
+        onSend={handleEditSend}
+      />
     </div>
   );
 }
 
 export default function Engagement() {
   const { toast } = useToast();
-  const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [messageModalOpen, setMessageModalOpen] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
   const [modalTitle, setModalTitle] = useState("");
-  const [dismissedRecommendations, setDismissedRecommendations] = useState<string[]>([]);
 
-  const { data: clients = [], isLoading } = useQuery<Client[]>({
+  const {
+    activityFeed,
+    triggers,
+    notificationPreferences,
+    selectedClientId,
+    isLoading: engagementLoading,
+    selectClient,
+    sendRecommendation,
+  } = useEngagement();
+
+  const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
 
   const selectedClient = clients.find((c) => c.id === selectedClientId);
-  const filteredRecommendations = mockRecommendations.filter(
-    (rec) => !dismissedRecommendations.includes(rec.id)
-  );
+  const isLoading = clientsLoading || engagementLoading;
+
+  useEffect(() => {
+    if (selectedClientId) {
+      console.log(`[Engagement] Client selected: ${selectedClientId}`);
+    }
+  }, [selectedClientId]);
+
+  const handleClientChange = (clientId: string) => {
+    selectClient(clientId);
+  };
 
   const handleSendMessage = (message: string) => {
+    console.log(`[Engagement] Sending message: "${message.substring(0, 50)}..."`);
     toast({
       title: "Message Sent",
       description: `Your message to ${selectedClient?.name || "the client"} has been sent successfully.`,
@@ -202,38 +159,36 @@ export default function Engagement() {
     setMessageModalOpen(false);
   };
 
-  const handleSendReminder = (trigger: Trigger, message: string) => {
+  const handleSendReminder = (trigger: { id: string; description: string }, message: string) => {
+    console.log(`[Engagement] Reminder sent for trigger ${trigger.id}: "${message.substring(0, 50)}..."`);
     toast({
       title: "Reminder Sent",
       description: `Reminder sent to ${selectedClient?.name || "the client"}.`,
     });
   };
 
-  const handleSendRecommendation = (rec: Recommendation) => {
-    setModalTitle("Send Recommendation");
-    setCurrentMessage(rec.suggestedMessage);
-    setMessageModalOpen(true);
-  };
-
-  const handleEditRecommendation = (rec: Recommendation) => {
-    setModalTitle("Edit Message");
-    setCurrentMessage(rec.suggestedMessage);
-    setMessageModalOpen(true);
-  };
-
-  const handleDismissRecommendation = (rec: Recommendation) => {
-    setDismissedRecommendations((prev) => [...prev, rec.id]);
-    toast({
-      title: "Recommendation Dismissed",
-      description: "The recommendation has been dismissed.",
-    });
-  };
-
   const handleQuickAction = (action: QuickActionItem) => {
+    console.log(`[Engagement] Quick action triggered: ${action.label}`);
     setModalTitle(action.label);
     setCurrentMessage(action.message);
     setMessageModalOpen(true);
   };
+
+  const timelineEvents = activityFeed.map(event => ({
+    id: event.id,
+    type: event.type,
+    category: event.category,
+    title: event.title,
+    description: event.description,
+    timestamp: event.timestamp,
+  }));
+
+  const triggerListItems = triggers.map(trigger => ({
+    id: trigger.id,
+    description: trigger.reason,
+    severity: trigger.severity,
+    detectedAt: trigger.detectedAt,
+  }));
 
   if (isLoading) {
     return (
@@ -255,7 +210,7 @@ export default function Engagement() {
           </p>
         </div>
 
-        <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+        <Select value={selectedClientId || ""} onValueChange={handleClientChange}>
           <SelectTrigger className="w-full sm:w-64" data-testid="select-client">
             <SelectValue placeholder="Select a client" />
           </SelectTrigger>
@@ -282,14 +237,16 @@ export default function Engagement() {
         <>
           <div className="mb-2">
             <h2 className="text-lg font-semibold text-foreground">Client Activity</h2>
-            <p className="text-sm text-muted-foreground">Recent activity and trigger detection</p>
+            <p className="text-sm text-muted-foreground">
+              Recent activity and trigger detection for {selectedClient?.name || 'this client'}
+            </p>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <ActivityTimeline events={mockActivityEvents} />
+              <ActivityTimeline events={timelineEvents} />
               <TriggerList
-                triggers={mockTriggers}
+                triggers={triggerListItems}
                 clientName={selectedClient?.name}
                 onSendReminder={handleSendReminder}
               />
@@ -302,14 +259,7 @@ export default function Engagement() {
                   <h2 className="text-lg font-semibold text-foreground">Coach Tools</h2>
                   <p className="text-sm text-muted-foreground">AI recommendations and quick actions</p>
                 </div>
-                <RightPanelContent
-                  recommendations={filteredRecommendations}
-                  suggestions={mockAutoSuggestions}
-                  onSendRecommendation={handleSendRecommendation}
-                  onEditRecommendation={handleEditRecommendation}
-                  onDismissRecommendation={handleDismissRecommendation}
-                  onQuickAction={handleQuickAction}
-                />
+                <RightPanelContent onQuickAction={handleQuickAction} />
               </div>
               
               <div className="lg:hidden">
@@ -329,14 +279,7 @@ export default function Engagement() {
                     </SheetHeader>
                     <ScrollArea className="h-[calc(85vh-80px)] mt-4">
                       <div className="pr-4 pb-4">
-                        <RightPanelContent
-                          recommendations={filteredRecommendations}
-                          suggestions={mockAutoSuggestions}
-                          onSendRecommendation={handleSendRecommendation}
-                          onEditRecommendation={handleEditRecommendation}
-                          onDismissRecommendation={handleDismissRecommendation}
-                          onQuickAction={handleQuickAction}
-                        />
+                        <RightPanelContent onQuickAction={handleQuickAction} />
                       </div>
                     </ScrollArea>
                   </SheetContent>

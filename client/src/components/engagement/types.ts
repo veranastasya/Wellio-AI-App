@@ -1,7 +1,7 @@
 export type ActivityEvent = {
   id: string;
-  type: "log" | "inactivity" | "missed_task";
-  category: "nutrition" | "workout" | "sleep" | "general";
+  type: "log" | "inactivity" | "missed_task" | "milestone" | "alert";
+  category: "nutrition" | "workout" | "sleep" | "hydration" | "mood" | "general";
   title: string;
   description: string;
   timestamp: string;

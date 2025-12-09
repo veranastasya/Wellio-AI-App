@@ -10,6 +10,10 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
+  Droplets,
+  Smile,
+  Star,
+  Bell,
 } from "lucide-react";
 import type { ActivityEvent } from "./types";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
@@ -21,6 +25,8 @@ interface ActivityTimelineProps {
 function getEventIcon(category: string, type: string) {
   if (type === "inactivity") return Clock;
   if (type === "missed_task") return XCircle;
+  if (type === "milestone") return Star;
+  if (type === "alert") return Bell;
   
   switch (category) {
     case "nutrition":
@@ -29,6 +35,10 @@ function getEventIcon(category: string, type: string) {
       return Dumbbell;
     case "sleep":
       return Moon;
+    case "hydration":
+      return Droplets;
+    case "mood":
+      return Smile;
     default:
       return Activity;
   }
@@ -66,6 +76,18 @@ function getCategoryStyles(category: string) {
         bg: "bg-indigo-100 dark:bg-indigo-900/30",
         text: "text-indigo-700 dark:text-indigo-400",
         badge: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800",
+      };
+    case "hydration":
+      return {
+        bg: "bg-cyan-100 dark:bg-cyan-900/30",
+        text: "text-cyan-700 dark:text-cyan-400",
+        badge: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800",
+      };
+    case "mood":
+      return {
+        bg: "bg-pink-100 dark:bg-pink-900/30",
+        text: "text-pink-700 dark:text-pink-400",
+        badge: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-200 dark:border-pink-800",
       };
     default:
       return {
@@ -127,6 +149,10 @@ function getCategoryLabel(category: string) {
       return "Training";
     case "sleep":
       return "Sleep";
+    case "hydration":
+      return "Hydration";
+    case "mood":
+      return "Mood";
     default:
       return "General";
   }
