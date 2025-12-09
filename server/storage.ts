@@ -46,6 +46,14 @@ import {
   type InsertPlanSession,
   type PlanMessage,
   type InsertPlanMessage,
+  type EngagementTrigger,
+  type InsertEngagementTrigger,
+  type EngagementRecommendation,
+  type InsertEngagementRecommendation,
+  type EngagementNotificationPreferences,
+  type InsertEngagementNotificationPreferences,
+  type InAppNotification,
+  type InsertInAppNotification,
   coaches,
   clients,
   sessions,
@@ -69,6 +77,10 @@ import {
   planTargets,
   planSessions,
   planMessages,
+  engagementTriggers,
+  engagementRecommendations,
+  engagementNotificationPreferences,
+  inAppNotifications,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
@@ -255,6 +267,29 @@ export interface IStorage {
   createPlanTarget(target: InsertPlanTargets): Promise<PlanTargetsRecord>;
   updatePlanTarget(id: string, target: Partial<InsertPlanTargets>): Promise<PlanTargetsRecord | undefined>;
   deletePlanTarget(id: string): Promise<boolean>;
+
+  // Engagement Triggers
+  getEngagementTriggers(clientId: string, coachId: string): Promise<EngagementTrigger[]>;
+  getEngagementTrigger(id: string): Promise<EngagementTrigger | undefined>;
+  createEngagementTrigger(trigger: InsertEngagementTrigger): Promise<EngagementTrigger>;
+  updateEngagementTrigger(id: string, trigger: Partial<InsertEngagementTrigger>): Promise<EngagementTrigger | undefined>;
+  resolveEngagementTrigger(id: string): Promise<EngagementTrigger | undefined>;
+
+  // Engagement Recommendations
+  getEngagementRecommendations(clientId: string, coachId: string): Promise<EngagementRecommendation[]>;
+  getEngagementRecommendation(id: string): Promise<EngagementRecommendation | undefined>;
+  createEngagementRecommendation(recommendation: InsertEngagementRecommendation): Promise<EngagementRecommendation>;
+  updateEngagementRecommendation(id: string, recommendation: Partial<InsertEngagementRecommendation>): Promise<EngagementRecommendation | undefined>;
+
+  // Engagement Notification Preferences
+  getEngagementNotificationPreferences(coachId: string, clientId?: string): Promise<EngagementNotificationPreferences | undefined>;
+  upsertEngagementNotificationPreferences(preferences: InsertEngagementNotificationPreferences): Promise<EngagementNotificationPreferences>;
+
+  // In-App Notifications
+  getInAppNotifications(clientId: string): Promise<InAppNotification[]>;
+  getUnreadInAppNotifications(clientId: string): Promise<InAppNotification[]>;
+  createInAppNotification(notification: InsertInAppNotification): Promise<InAppNotification>;
+  markInAppNotificationRead(id: string): Promise<InAppNotification | undefined>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -1551,6 +1586,143 @@ export class DatabaseStorage implements IStorage {
   async deletePlanTarget(id: string): Promise<boolean> {
     const result = await db.delete(planTargets).where(eq(planTargets.id, id));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // Engagement Triggers
+  async getEngagementTriggers(clientId: string, coachId: string): Promise<EngagementTrigger[]> {
+    return await db.select().from(engagementTriggers)
+      .where(and(
+        eq(engagementTriggers.clientId, clientId),
+        eq(engagementTriggers.coachId, coachId)
+      ))
+      .orderBy(desc(engagementTriggers.detectedAt));
+  }
+
+  async getEngagementTrigger(id: string): Promise<EngagementTrigger | undefined> {
+    const result = await db.select().from(engagementTriggers).where(eq(engagementTriggers.id, id));
+    return result[0];
+  }
+
+  async createEngagementTrigger(trigger: InsertEngagementTrigger): Promise<EngagementTrigger> {
+    const now = new Date().toISOString();
+    const result = await db.insert(engagementTriggers).values({
+      ...trigger,
+      detectedAt: trigger.detectedAt || now,
+      createdAt: trigger.createdAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updateEngagementTrigger(id: string, trigger: Partial<InsertEngagementTrigger>): Promise<EngagementTrigger | undefined> {
+    const result = await db.update(engagementTriggers)
+      .set(trigger)
+      .where(eq(engagementTriggers.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async resolveEngagementTrigger(id: string): Promise<EngagementTrigger | undefined> {
+    const now = new Date().toISOString();
+    const result = await db.update(engagementTriggers)
+      .set({ isResolved: true, resolvedAt: now })
+      .where(eq(engagementTriggers.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Engagement Recommendations
+  async getEngagementRecommendations(clientId: string, coachId: string): Promise<EngagementRecommendation[]> {
+    return await db.select().from(engagementRecommendations)
+      .where(and(
+        eq(engagementRecommendations.clientId, clientId),
+        eq(engagementRecommendations.coachId, coachId)
+      ))
+      .orderBy(desc(engagementRecommendations.createdAt));
+  }
+
+  async getEngagementRecommendation(id: string): Promise<EngagementRecommendation | undefined> {
+    const result = await db.select().from(engagementRecommendations).where(eq(engagementRecommendations.id, id));
+    return result[0];
+  }
+
+  async createEngagementRecommendation(recommendation: InsertEngagementRecommendation): Promise<EngagementRecommendation> {
+    const now = new Date().toISOString();
+    const result = await db.insert(engagementRecommendations).values({
+      ...recommendation,
+      createdAt: recommendation.createdAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updateEngagementRecommendation(id: string, recommendation: Partial<InsertEngagementRecommendation>): Promise<EngagementRecommendation | undefined> {
+    const result = await db.update(engagementRecommendations)
+      .set(recommendation)
+      .where(eq(engagementRecommendations.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Engagement Notification Preferences
+  async getEngagementNotificationPreferences(coachId: string, clientId?: string): Promise<EngagementNotificationPreferences | undefined> {
+    const conditions = clientId 
+      ? and(eq(engagementNotificationPreferences.coachId, coachId), eq(engagementNotificationPreferences.clientId, clientId))
+      : and(eq(engagementNotificationPreferences.coachId, coachId), sql`${engagementNotificationPreferences.clientId} IS NULL`);
+    
+    const result = await db.select().from(engagementNotificationPreferences).where(conditions);
+    return result[0];
+  }
+
+  async upsertEngagementNotificationPreferences(preferences: InsertEngagementNotificationPreferences): Promise<EngagementNotificationPreferences> {
+    const now = new Date().toISOString();
+    const existing = await this.getEngagementNotificationPreferences(preferences.coachId, preferences.clientId || undefined);
+    
+    if (existing) {
+      const result = await db.update(engagementNotificationPreferences)
+        .set({ ...preferences, updatedAt: now })
+        .where(eq(engagementNotificationPreferences.id, existing.id))
+        .returning();
+      return result[0];
+    } else {
+      const result = await db.insert(engagementNotificationPreferences).values({
+        ...preferences,
+        updatedAt: preferences.updatedAt || now,
+      }).returning();
+      return result[0];
+    }
+  }
+
+  // In-App Notifications
+  async getInAppNotifications(clientId: string): Promise<InAppNotification[]> {
+    return await db.select().from(inAppNotifications)
+      .where(eq(inAppNotifications.clientId, clientId))
+      .orderBy(desc(inAppNotifications.createdAt));
+  }
+
+  async getUnreadInAppNotifications(clientId: string): Promise<InAppNotification[]> {
+    return await db.select().from(inAppNotifications)
+      .where(and(
+        eq(inAppNotifications.clientId, clientId),
+        eq(inAppNotifications.isRead, false)
+      ))
+      .orderBy(desc(inAppNotifications.createdAt));
+  }
+
+  async createInAppNotification(notification: InsertInAppNotification): Promise<InAppNotification> {
+    const now = new Date().toISOString();
+    const result = await db.insert(inAppNotifications).values({
+      ...notification,
+      createdAt: notification.createdAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async markInAppNotificationRead(id: string): Promise<InAppNotification | undefined> {
+    const now = new Date().toISOString();
+    const result = await db.update(inAppNotifications)
+      .set({ isRead: true, readAt: now })
+      .where(eq(inAppNotifications.id, id))
+      .returning();
+    return result[0];
   }
 }
 

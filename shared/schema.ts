@@ -1096,3 +1096,130 @@ export const insertPlanTargetsSchema = createInsertSchema(planTargets).omit({
 
 export type InsertPlanTargets = z.infer<typeof insertPlanTargetsSchema>;
 export type PlanTargetsRecord = typeof planTargets.$inferSelect;
+
+// Engagement System Tables
+
+// Trigger severities and types
+export const TRIGGER_SEVERITIES = ["high", "medium", "low"] as const;
+export type TriggerSeverity = typeof TRIGGER_SEVERITIES[number];
+
+export const TRIGGER_TYPES = [
+  "inactivity",
+  "missed_workout",
+  "declining_metrics",
+  "goal_at_risk",
+  "nutrition_concern",
+  "sleep_issue",
+  "engagement_drop",
+] as const;
+export type TriggerType = typeof TRIGGER_TYPES[number];
+
+// Engagement Triggers - AI-detected issues for clients
+export const engagementTriggers = pgTable("engagement_triggers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  coachId: varchar("coach_id").notNull(),
+  type: text("type").notNull(), // TriggerType
+  severity: text("severity").notNull(), // TriggerSeverity
+  reason: text("reason").notNull(),
+  recommendedAction: text("recommended_action"),
+  isResolved: boolean("is_resolved").notNull().default(false),
+  resolvedAt: text("resolved_at"),
+  detectedAt: text("detected_at").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertEngagementTriggerSchema = createInsertSchema(engagementTriggers).omit({
+  id: true,
+}).extend({
+  type: z.enum(TRIGGER_TYPES),
+  severity: z.enum(TRIGGER_SEVERITIES),
+  createdAt: z.string().optional(),
+  detectedAt: z.string().optional(),
+});
+
+export type InsertEngagementTrigger = z.infer<typeof insertEngagementTriggerSchema>;
+export type EngagementTrigger = typeof engagementTriggers.$inferSelect;
+
+// Recommendation statuses
+export const RECOMMENDATION_STATUSES = ["pending", "sent", "dismissed", "failed"] as const;
+export type RecommendationStatus = typeof RECOMMENDATION_STATUSES[number];
+
+// Engagement Recommendations - AI-generated suggestions for coaches
+export const engagementRecommendations = pgTable("engagement_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  triggerId: varchar("trigger_id"), // Optional link to trigger
+  clientId: varchar("client_id").notNull(),
+  coachId: varchar("coach_id").notNull(),
+  message: text("message").notNull(),
+  reason: text("reason").notNull(),
+  priority: text("priority").notNull().default("medium"), // TriggerSeverity
+  status: text("status").notNull().default("pending"), // RecommendationStatus
+  sentAt: text("sent_at"),
+  sentVia: text("sent_via"), // "email" | "sms" | "in_app" | comma-separated
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertEngagementRecommendationSchema = createInsertSchema(engagementRecommendations).omit({
+  id: true,
+}).extend({
+  priority: z.enum(TRIGGER_SEVERITIES).optional(),
+  status: z.enum(RECOMMENDATION_STATUSES).optional(),
+  createdAt: z.string().optional(),
+});
+
+export type InsertEngagementRecommendation = z.infer<typeof insertEngagementRecommendationSchema>;
+export type EngagementRecommendation = typeof engagementRecommendations.$inferSelect;
+
+// Notification frequency options
+export const NOTIFICATION_FREQUENCIES = ["immediate", "daily", "weekly", "none"] as const;
+export type NotificationFrequency = typeof NOTIFICATION_FREQUENCIES[number];
+
+// Engagement Notification Preferences - Per-coach settings for client notifications
+export const engagementNotificationPreferences = pgTable("engagement_notification_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coachId: varchar("coach_id").notNull(),
+  clientId: varchar("client_id"), // Null = global coach preferences
+  smsEnabled: boolean("sms_enabled").notNull().default(false),
+  emailEnabled: boolean("email_enabled").notNull().default(true),
+  inAppEnabled: boolean("in_app_enabled").notNull().default(true),
+  webPushEnabled: boolean("web_push_enabled").notNull().default(false),
+  frequency: text("frequency").notNull().default("immediate"), // NotificationFrequency
+  dailyLimit: integer("daily_limit").notNull().default(5),
+  quietHoursStart: text("quiet_hours_start"), // "22:00"
+  quietHoursEnd: text("quiet_hours_end"), // "08:00"
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const insertEngagementNotificationPreferencesSchema = createInsertSchema(engagementNotificationPreferences).omit({
+  id: true,
+}).extend({
+  frequency: z.enum(NOTIFICATION_FREQUENCIES).optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type InsertEngagementNotificationPreferences = z.infer<typeof insertEngagementNotificationPreferencesSchema>;
+export type EngagementNotificationPreferences = typeof engagementNotificationPreferences.$inferSelect;
+
+// In-App Notifications - Stored notifications for clients
+export const inAppNotifications = pgTable("in_app_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  coachId: varchar("coach_id").notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type").notNull().default("reminder"), // "reminder" | "alert" | "message" | "update"
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: text("read_at"),
+  actionUrl: text("action_url"), // Optional link
+  createdAt: text("created_at").notNull(),
+});
+
+export const insertInAppNotificationSchema = createInsertSchema(inAppNotifications).omit({
+  id: true,
+}).extend({
+  createdAt: z.string().optional(),
+});
+
+export type InsertInAppNotification = z.infer<typeof insertInAppNotificationSchema>;
+export type InAppNotification = typeof inAppNotifications.$inferSelect;
