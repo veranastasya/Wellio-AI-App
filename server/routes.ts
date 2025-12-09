@@ -4508,7 +4508,64 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
 
-  // Send notification to client (email + in-app)
+  // Client-facing: Get VAPID public key for push subscription
+  app.get("/api/client/push/vapid-public-key", requireClientAuth, (req, res) => {
+    const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+    if (!vapidPublicKey) {
+      return res.status(500).json({ error: "Push notifications not configured" });
+    }
+    res.json({ publicKey: vapidPublicKey });
+  });
+
+  // Client-facing: Get push subscription status
+  app.get("/api/client/push/subscription", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session!.clientId!;
+      const subscription = await storage.getPushSubscription(clientId);
+      res.json({ subscribed: !!subscription, subscription: subscription || null });
+    } catch (error) {
+      console.error("Error fetching push subscription:", error);
+      res.status(500).json({ error: "Failed to fetch push subscription" });
+    }
+  });
+
+  // Client-facing: Save push subscription
+  app.post("/api/client/push/subscribe", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session!.clientId!;
+      const { endpoint, keys } = req.body;
+      
+      if (!endpoint || !keys?.p256dh || !keys?.auth) {
+        return res.status(400).json({ error: "Invalid subscription data" });
+      }
+      
+      const subscription = await storage.createPushSubscription({
+        clientId,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+      });
+      
+      res.json({ success: true, subscription });
+    } catch (error) {
+      console.error("Error saving push subscription:", error);
+      res.status(500).json({ error: "Failed to save push subscription" });
+    }
+  });
+
+  // Client-facing: Remove push subscription
+  app.delete("/api/client/push/subscription", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session!.clientId!;
+      await storage.deletePushSubscription(clientId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing push subscription:", error);
+      res.status(500).json({ error: "Failed to remove push subscription" });
+    }
+  });
+
+  // Send notification to client (web push + in-app)
   app.post("/api/engagement/send-notification", requireCoachAuth, async (req, res) => {
     try {
       const coachId = req.session!.coachId!;
@@ -4541,40 +4598,54 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         }
       }
 
-      // Send email if requested
-      if (channels?.includes('email') && client.email) {
+      // Send web push notification
+      if (!channels || channels.includes('web_push')) {
         try {
-          const { Resend } = await import('resend');
-          const resend = new Resend(process.env.RESEND_API_KEY);
+          const webpush = await import('web-push');
           
-          await resend.emails.send({
-            from: 'Wellio <noreply@resend.dev>',
-            to: client.email,
-            subject: title,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: #28A0AE; padding: 20px; text-align: center;">
-                  <h1 style="color: white; margin: 0;">Wellio</h1>
-                </div>
-                <div style="padding: 20px; background: #f9f9f9;">
-                  <p style="color: #333; font-size: 16px;">${message}</p>
-                </div>
-                <div style="padding: 10px; text-align: center; color: #888; font-size: 12px;">
-                  <p>You received this from your wellness coach.</p>
-                </div>
-              </div>
-            `,
-          });
-          results.push({ channel: 'email', success: true });
+          const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+          const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+          
+          if (!vapidPublicKey || !vapidPrivateKey) {
+            results.push({ channel: 'web_push', success: false, error: 'VAPID keys not configured' });
+          } else {
+            webpush.setVapidDetails(
+              'mailto:support@wellio.app',
+              vapidPublicKey,
+              vapidPrivateKey
+            );
+            
+            const subscription = await storage.getPushSubscription(clientId);
+            
+            if (subscription) {
+              const pushPayload = JSON.stringify({
+                title,
+                body: message,
+                icon: '/icon-192.png',
+                badge: '/icon-72.png',
+                tag: 'coach-message',
+                data: { url: '/client' }
+              });
+              
+              await webpush.sendNotification(
+                {
+                  endpoint: subscription.endpoint,
+                  keys: {
+                    p256dh: subscription.p256dh,
+                    auth: subscription.auth,
+                  },
+                },
+                pushPayload
+              );
+              results.push({ channel: 'web_push', success: true });
+            } else {
+              results.push({ channel: 'web_push', success: false, error: 'Client has not enabled push notifications' });
+            }
+          }
         } catch (err) {
-          console.error("Email send error:", err);
-          results.push({ channel: 'email', success: false, error: 'Failed to send email' });
+          console.error("Web push error:", err);
+          results.push({ channel: 'web_push', success: false, error: 'Failed to send push notification' });
         }
-      }
-
-      // SMS placeholder - queue for future Twilio integration
-      if (channels?.includes('sms')) {
-        results.push({ channel: 'sms', success: false, error: 'SMS not yet configured - Twilio integration pending' });
       }
 
       res.json({ success: true, results });

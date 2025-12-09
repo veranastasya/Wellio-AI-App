@@ -221,11 +221,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     }
     
     try {
-      const channels: string[] = [];
-      if (state.notificationPreferences?.inApp) channels.push('in_app');
-      if (state.notificationPreferences?.sms) channels.push('sms');
-      
-      channels.push('email');
+      const channels: string[] = ['in_app', 'web_push'];
       
       const response = await apiRequest('POST', '/api/engagement/send-notification', {
         clientId: recommendation.clientId,
@@ -354,8 +350,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     }
     
     try {
-      const channels: string[] = ['in_app'];
-      if (state.notificationPreferences?.sms) channels.push('sms');
+      const channels: string[] = ['in_app', 'web_push'];
       
       await apiRequest('POST', '/api/engagement/send-notification', {
         clientId: state.selectedClientId,
@@ -376,7 +371,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
         variant: 'destructive',
       });
     }
-  }, [state.selectedClientId, state.notificationPreferences, toast]);
+  }, [state.selectedClientId, toast]);
 
   const selectClient = useCallback((clientId: string) => {
     loadActivityFeed(clientId);
