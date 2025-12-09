@@ -54,6 +54,8 @@ import {
   type InsertEngagementNotificationPreferences,
   type InAppNotification,
   type InsertInAppNotification,
+  type PushSubscription,
+  type InsertPushSubscription,
   coaches,
   clients,
   sessions,
@@ -81,6 +83,7 @@ import {
   engagementRecommendations,
   engagementNotificationPreferences,
   inAppNotifications,
+  pushSubscriptions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
@@ -290,6 +293,13 @@ export interface IStorage {
   getUnreadInAppNotifications(clientId: string): Promise<InAppNotification[]>;
   createInAppNotification(notification: InsertInAppNotification): Promise<InAppNotification>;
   markInAppNotificationRead(id: string): Promise<InAppNotification | undefined>;
+
+  // Push Subscriptions
+  getPushSubscription(clientId: string): Promise<PushSubscription | undefined>;
+  getPushSubscriptionsByClientIds(clientIds: string[]): Promise<PushSubscription[]>;
+  createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription>;
+  updatePushSubscription(clientId: string, subscription: Partial<InsertPushSubscription>): Promise<PushSubscription | undefined>;
+  deletePushSubscription(clientId: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -1723,6 +1733,61 @@ export class DatabaseStorage implements IStorage {
       .where(eq(inAppNotifications.id, id))
       .returning();
     return result[0];
+  }
+
+  // Push Subscriptions
+  async getPushSubscription(clientId: string): Promise<PushSubscription | undefined> {
+    const result = await db.select().from(pushSubscriptions)
+      .where(eq(pushSubscriptions.clientId, clientId));
+    return result[0];
+  }
+
+  async getPushSubscriptionsByClientIds(clientIds: string[]): Promise<PushSubscription[]> {
+    if (clientIds.length === 0) return [];
+    const result = await db.select().from(pushSubscriptions)
+      .where(sql`${pushSubscriptions.clientId} = ANY(${clientIds})`);
+    return result;
+  }
+
+  async createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription> {
+    const now = new Date().toISOString();
+    const existing = await this.getPushSubscription(subscription.clientId);
+    
+    if (existing) {
+      const result = await db.update(pushSubscriptions)
+        .set({ 
+          endpoint: subscription.endpoint,
+          p256dh: subscription.p256dh,
+          auth: subscription.auth,
+          updatedAt: now,
+        })
+        .where(eq(pushSubscriptions.clientId, subscription.clientId))
+        .returning();
+      return result[0];
+    }
+    
+    const result = await db.insert(pushSubscriptions).values({
+      ...subscription,
+      createdAt: subscription.createdAt || now,
+      updatedAt: subscription.updatedAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updatePushSubscription(clientId: string, subscription: Partial<InsertPushSubscription>): Promise<PushSubscription | undefined> {
+    const now = new Date().toISOString();
+    const result = await db.update(pushSubscriptions)
+      .set({ ...subscription, updatedAt: now })
+      .where(eq(pushSubscriptions.clientId, clientId))
+      .returning();
+    return result[0];
+  }
+
+  async deletePushSubscription(clientId: string): Promise<boolean> {
+    const result = await db.delete(pushSubscriptions)
+      .where(eq(pushSubscriptions.clientId, clientId))
+      .returning();
+    return result.length > 0;
   }
 }
 
