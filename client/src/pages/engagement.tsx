@@ -102,7 +102,6 @@ export default function Engagement() {
     selectedClientId,
     isLoading: engagementLoading,
     selectClient,
-    sendRecommendation,
   } = useEngagement();
 
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
