@@ -12,38 +12,13 @@ import { useEngagement } from "@/context/EngagementContext";
 import {
   ActivityTimeline,
   TriggerList,
-  ReminderSettings,
   RecommendationCard,
   QuickActions,
-  AutoSuggestions,
-  NotificationPreview,
   EditMessageModal,
   type QuickActionItem,
-  type AutoSuggestion,
 } from "@/components/engagement";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-
-const mockAutoSuggestions: AutoSuggestion[] = [
-  {
-    id: "1",
-    type: "trend",
-    title: "Sleep quality declining",
-    description: "Average sleep quality dropped 15% over the past week. Consider discussing sleep habits.",
-  },
-  {
-    id: "2",
-    type: "engagement",
-    title: "Engagement drop detected",
-    description: "Logging frequency decreased by 40% compared to last week.",
-  },
-  {
-    id: "3",
-    type: "pattern",
-    title: "Weekend pattern identified",
-    description: "Client consistently misses logging on Saturdays. Consider weekend check-in.",
-  },
-];
 
 function RightPanelContent({
   onQuickAction,
@@ -56,8 +31,10 @@ function RightPanelContent({
     dismissRecommendation,
   } = useEngagement();
 
+  // Limit to max 3 pending recommendations for cleaner UI
   const pendingRecommendations = recommendations
     .filter(r => r.status === 'pending')
+    .slice(0, 3)
     .map(r => ({
       id: r.id,
       reason: r.reason,
@@ -68,7 +45,6 @@ function RightPanelContent({
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingMessage, setEditingMessage] = useState("");
   const [editingRecId, setEditingRecId] = useState<string | null>(null);
-  const { toast } = useToast();
 
   const handleSend = (rec: { id: string }) => {
     sendRecommendation(rec.id);
@@ -86,7 +62,6 @@ function RightPanelContent({
 
   const handleEditSend = (message: string) => {
     if (editingRecId) {
-      console.log(`[Engagement] Sending edited message for recommendation ${editingRecId}: "${message.substring(0, 50)}..."`);
       sendRecommendation(editingRecId);
     }
     setEditModalOpen(false);
@@ -102,8 +77,6 @@ function RightPanelContent({
         onDismiss={handleDismiss}
       />
       <QuickActions onAction={onQuickAction} />
-      <AutoSuggestions suggestions={mockAutoSuggestions} />
-      <NotificationPreview />
       
       <EditMessageModal
         open={editModalOpen}
@@ -126,7 +99,6 @@ export default function Engagement() {
   const {
     activityFeed,
     triggers,
-    notificationPreferences,
     selectedClientId,
     isLoading: engagementLoading,
     selectClient,
@@ -151,7 +123,6 @@ export default function Engagement() {
   };
 
   const handleSendMessage = (message: string) => {
-    console.log(`[Engagement] Sending message: "${message.substring(0, 50)}..."`);
     toast({
       title: "Message Sent",
       description: `Your message to ${selectedClient?.name || "the client"} has been sent successfully.`,
@@ -160,7 +131,6 @@ export default function Engagement() {
   };
 
   const handleSendReminder = (trigger: { id: string; description: string }, message: string) => {
-    console.log(`[Engagement] Reminder sent for trigger ${trigger.id}: "${message.substring(0, 50)}..."`);
     toast({
       title: "Reminder Sent",
       description: `Reminder sent to ${selectedClient?.name || "the client"}.`,
@@ -168,7 +138,6 @@ export default function Engagement() {
   };
 
   const handleQuickAction = (action: QuickActionItem) => {
-    console.log(`[Engagement] Quick action triggered: ${action.label}`);
     setModalTitle(action.label);
     setCurrentMessage(action.message);
     setMessageModalOpen(true);
@@ -206,7 +175,7 @@ export default function Engagement() {
             Engagement
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            AI-powered reminders and client activity monitoring
+            Monitor activity and take action
           </p>
         </div>
 
@@ -229,65 +198,63 @@ export default function Engagement() {
           <User className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
           <h3 className="text-xl font-semibold mb-2">Select a Client</h3>
           <p className="text-muted-foreground max-w-md mx-auto">
-            Choose a client from the dropdown above to view their engagement data, 
-            activity timeline, and AI-powered recommendations.
+            Choose a client from the dropdown to view their activity and AI recommendations.
           </p>
         </Card>
       ) : (
-        <>
-          <div className="mb-2">
-            <h2 className="text-lg font-semibold text-foreground">Client Activity</h2>
-            <p className="text-sm text-muted-foreground">
-              Recent activity and trigger detection for {selectedClient?.name || 'this client'}
-            </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* LEFT: What happened? */}
+          <div className="space-y-4">
+            <div className="mb-2">
+              <h2 className="text-base font-semibold text-foreground">What happened?</h2>
+              <p className="text-sm text-muted-foreground">
+                Activity & alerts for {selectedClient?.name}
+              </p>
+            </div>
+            <ActivityTimeline events={timelineEvents} />
+            <TriggerList
+              triggers={triggerListItems}
+              clientName={selectedClient?.name}
+              onSendReminder={handleSendReminder}
+            />
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <ActivityTimeline events={timelineEvents} />
-              <TriggerList
-                triggers={triggerListItems}
-                clientName={selectedClient?.name}
-                onSendReminder={handleSendReminder}
-              />
-              <ReminderSettings />
+          {/* RIGHT: What should coach do? */}
+          <div className="space-y-4">
+            <div className="hidden lg:block">
+              <div className="mb-2">
+                <h2 className="text-base font-semibold text-foreground">What to do?</h2>
+                <p className="text-sm text-muted-foreground">AI recommendations & quick actions</p>
+              </div>
+              <RightPanelContent onQuickAction={handleQuickAction} />
             </div>
             
-            <div className="space-y-4">
-              <div className="hidden lg:block">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-foreground">Coach Tools</h2>
-                  <p className="text-sm text-muted-foreground">AI recommendations and quick actions</p>
-                </div>
-                <RightPanelContent onQuickAction={handleQuickAction} />
-              </div>
-              
-              <div className="lg:hidden">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button className="w-full" size="lg" data-testid="button-open-coach-panel">
-                      <Bot className="w-5 h-5 mr-2" />
-                      Open Coach Recommendations
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="bottom" className="h-[85vh]">
-                    <SheetHeader className="pb-4 border-b">
-                      <SheetTitle className="flex items-center gap-2 text-lg">
-                        <Bot className="w-5 h-5 text-primary" />
-                        Coach Recommendation Panel
-                      </SheetTitle>
-                    </SheetHeader>
-                    <ScrollArea className="h-[calc(85vh-80px)] mt-4">
-                      <div className="pr-4 pb-4">
-                        <RightPanelContent onQuickAction={handleQuickAction} />
-                      </div>
-                    </ScrollArea>
-                  </SheetContent>
-                </Sheet>
-              </div>
+            {/* Mobile: Bottom sheet for coach tools */}
+            <div className="lg:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button className="w-full" size="lg" data-testid="button-open-coach-panel">
+                    <Bot className="w-5 h-5 mr-2" />
+                    View Recommendations
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[70vh]">
+                  <SheetHeader className="pb-4 border-b">
+                    <SheetTitle className="flex items-center gap-2 text-lg">
+                      <Bot className="w-5 h-5 text-primary" />
+                      What to do?
+                    </SheetTitle>
+                  </SheetHeader>
+                  <ScrollArea className="h-[calc(70vh-80px)] mt-4">
+                    <div className="pr-4 pb-4">
+                      <RightPanelContent onQuickAction={handleQuickAction} />
+                    </div>
+                  </ScrollArea>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       <EditMessageModal
