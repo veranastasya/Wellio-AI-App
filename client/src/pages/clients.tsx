@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Plus, Search, Mail, Phone, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, Users as UsersIcon, FileEdit, Eye } from "lucide-react";
 import type { Questionnaire, GoalType, PlanSession } from "@shared/schema";
+import { ClientAttentionIndicator } from "@/components/ClientAttentionIndicator";
 import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel, PLAN_SESSION_STATUSES } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -420,7 +421,7 @@ export default function Clients() {
               onClick={() => setLocation(`/coach/clients/${client.id}`)}
             >
               <CardContent className="p-5 space-y-4">
-                {/* Header: Avatar, Name, Status, Menu */}
+                {/* Header: Avatar, Name, Status, Attention, Menu */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className={`w-11 h-11 rounded-full ${getAvatarColor(index)} flex items-center justify-center flex-shrink-0`}>
@@ -428,12 +429,15 @@ export default function Clients() {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-semibold text-foreground truncate">{client.name}</h3>
-                      <Badge 
-                        variant={client.status === "active" ? "default" : "secondary"} 
-                        className={`mt-1 text-xs ${client.status === "active" ? "bg-emerald-500 hover:bg-emerald-500" : ""}`}
-                      >
-                        {client.status}
-                      </Badge>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge 
+                          variant={client.status === "active" ? "default" : "secondary"} 
+                          className={`text-xs ${client.status === "active" ? "bg-emerald-500 hover:bg-emerald-500" : ""}`}
+                        >
+                          {client.status}
+                        </Badge>
+                        <ClientAttentionIndicator clientId={client.id} />
+                      </div>
                     </div>
                   </div>
                   <DropdownMenu>

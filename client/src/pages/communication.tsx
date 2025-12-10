@@ -11,6 +11,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { InlineFileAttachment } from "@/components/InlineFileAttachment";
 import { DragDropFileZone } from "@/components/DragDropFileZone";
+import { AISuggestionsStrip } from "@/components/AISuggestionsStrip";
 
 export default function Communication() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -380,6 +381,14 @@ export default function Communication() {
                   </div>
                 </div>
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                    {/* AI Suggestions Strip - shows when relevant insights exist */}
+                    {selectedClientId && selectedClient && (
+                      <AISuggestionsStrip 
+                        clientId={selectedClientId}
+                        clientName={selectedClient.name}
+                      />
+                    )}
+                    
                     <div className="space-y-6 flex-1 overflow-y-auto p-3 sm:p-4">
                       {clientMessages.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">

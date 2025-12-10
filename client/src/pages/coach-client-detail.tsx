@@ -15,6 +15,7 @@ import { getGoalTypeLabel, getActivityLevelLabel } from "@shared/schema";
 import { type UnitsPreference, formatWeight, formatHeight } from "@shared/units";
 import { PlanBuilderTab } from "@/components/plan-builder-tab";
 import { CoachProgressAnalytics } from "@/components/coach-progress-analytics";
+import { AIInsightsCard } from "@/components/AIInsightsCard";
 
 export default function CoachClientDetail() {
   const [, params] = useRoute("/coach/clients/:clientId");
@@ -230,6 +231,12 @@ export default function CoachClientDetail() {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            {/* AI Insights - shows when relevant triggers exist */}
+            <AIInsightsCard 
+              clientId={clientId}
+              clientName={client.name}
+            />
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Contact Information */}
               <Card>
