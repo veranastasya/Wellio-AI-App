@@ -32,6 +32,7 @@ export interface Trigger {
 export interface Recommendation {
   id: string;
   clientId: string;
+  clientName?: string;
   triggerId?: string;
   message: string;
   reason: string;

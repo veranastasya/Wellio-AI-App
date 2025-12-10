@@ -7,7 +7,7 @@ import type {
   Recommendation,
   NotificationPreference,
 } from '@/models/engagement';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
 const initialState: EngagementState = {
@@ -181,6 +181,7 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
             id: rec.id,
             triggerId: rec.triggerId,
             clientId: rec.clientId,
+            clientName: rec.clientName,
             message: rec.message,
             reason: rec.reason,
             priority: rec.priority,
@@ -221,6 +222,23 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
     }
     
     try {
+      // First, create the message in the messages table so it appears in Communication
+      console.log('[Engagement] Creating message for recommendation:', recommendationId);
+      const messageResponse = await apiRequest('POST', '/api/coach/messages', {
+        clientId: recommendation.clientId,
+        clientName: recommendation.clientName || 'Client',
+        content: recommendation.message,
+        sender: 'coach',
+        timestamp: new Date().toISOString(),
+        read: false,
+      });
+      
+      if (!messageResponse.ok) {
+        throw new Error('Failed to create message');
+      }
+      console.log('[Engagement] Message created successfully');
+      
+      // Also send as notification (in-app and web push)
       const channels: string[] = ['in_app', 'web_push'];
       
       const response = await apiRequest('POST', '/api/engagement/send-notification', {
@@ -232,38 +250,41 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
       
       const result = await response.json();
       
-      if (result.success) {
-        const successChannels = result.results
-          .filter((r: any) => r.success)
-          .map((r: any) => r.channel);
+      const successChannels = result.success 
+        ? result.results.filter((r: any) => r.success).map((r: any) => r.channel)
+        : [];
         
-        await apiRequest('PATCH', `/api/engagement/recommendations/${recommendationId}`, {
-          status: 'sent',
-          sentAt: new Date().toISOString(),
-          sentVia: successChannels.join(','),
-        });
-        
-        setState(prev => ({
-          ...prev,
-          recommendations: prev.recommendations.map(r =>
-            r.id === recommendationId
-              ? { ...r, status: 'sent' as const, sentAt: new Date().toISOString(), sentVia: successChannels.join(',') }
-              : r
-          ),
-        }));
-        
-        toast({
-          title: 'Message Sent',
-          description: `Notification sent via ${successChannels.join(', ')}`,
-        });
-      } else {
-        throw new Error('Send failed');
-      }
+      await apiRequest('PATCH', `/api/engagement/recommendations/${recommendationId}`, {
+        status: 'sent',
+        sentAt: new Date().toISOString(),
+        sentVia: successChannels.length > 0 ? successChannels.join(',') : 'message',
+      });
+      
+      setState(prev => ({
+        ...prev,
+        recommendations: prev.recommendations.map(r =>
+          r.id === recommendationId
+            ? { ...r, status: 'sent' as const, sentAt: new Date().toISOString(), sentVia: successChannels.join(',') || 'message' }
+            : r
+        ),
+      }));
+      
+      // Invalidate message cache so Communication page refreshes
+      queryClient.invalidateQueries({ queryKey: ['/api/coach/messages'] });
+      
+      const notificationText = successChannels.length > 0 
+        ? ` and via ${successChannels.join(', ')}`
+        : '';
+      
+      toast({
+        title: 'Message Sent',
+        description: `Message sent to Communication${notificationText}`,
+      });
     } catch (error) {
       console.error('[Engagement] Failed to send recommendation:', error);
       toast({
         title: 'Send Failed',
-        description: 'Failed to send notification',
+        description: 'Failed to send message. Please try again.',
         variant: 'destructive',
       });
     }

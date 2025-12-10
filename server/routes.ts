@@ -4804,7 +4804,11 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         priority,
       });
 
-      res.json(recommendation);
+      // Include clientName in response for message sending
+      res.json({
+        ...recommendation,
+        clientName: client.name,
+      });
     } catch (error) {
       console.error("Error generating recommendation:", error);
       res.status(500).json({ error: "Failed to generate recommendation" });

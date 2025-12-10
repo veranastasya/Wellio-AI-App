@@ -117,9 +117,13 @@ export default function Engagement() {
   // Mutation to send real messages via the API (for Quick Actions)
   const sendMessageMutation = useMutation({
     mutationFn: async (data: InsertMessage) => {
-      return await apiRequest("POST", "/api/coach/messages", data);
+      console.log("[Engagement] Sending message:", data);
+      const result = await apiRequest("POST", "/api/coach/messages", data);
+      console.log("[Engagement] Message sent successfully:", result);
+      return result;
     },
     onSuccess: () => {
+      console.log("[Engagement] onSuccess - Invalidating cache and showing toast");
       queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
       toast({
         title: "Message Sent",
@@ -127,7 +131,8 @@ export default function Engagement() {
       });
       setMessageModalOpen(false);
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("[Engagement] onError - Failed to send message:", error);
       toast({
         title: "Error",
         description: "Failed to send message. Please try again.",
@@ -176,7 +181,12 @@ export default function Engagement() {
   };
 
   const handleSendMessage = (message: string) => {
+    console.log("[Engagement] handleSendMessage called with:", message);
+    console.log("[Engagement] selectedClientId:", selectedClientId);
+    console.log("[Engagement] selectedClient:", selectedClient);
+    
     if (!selectedClientId || !selectedClient) {
+      console.log("[Engagement] No client selected, showing error");
       toast({
         title: "Error",
         description: "Please select a client first",
@@ -194,6 +204,7 @@ export default function Engagement() {
       read: false,
     };
 
+    console.log("[Engagement] Calling mutation with message:", newMessage);
     sendMessageMutation.mutate(newMessage);
   };
 
