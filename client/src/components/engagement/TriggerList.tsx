@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,8 @@ interface TriggerListProps {
   triggers: Trigger[];
   clientName?: string;
   onSendReminder?: (trigger: Trigger, message: string) => void;
+  isSending?: boolean;
+  onSendSuccess?: boolean;
 }
 
 function getSeverityStyles(severity: string) {
@@ -77,10 +79,21 @@ function generateReminderMessage(trigger: Trigger, clientName: string): string {
   return `Hi ${name}! Just checking in to see how things are going. Let me know if you need any support!`;
 }
 
-export function TriggerList({ triggers, clientName = "Client", onSendReminder }: TriggerListProps) {
+export function TriggerList({ triggers, clientName = "Client", onSendReminder, isSending = false, onSendSuccess = false }: TriggerListProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTrigger, setSelectedTrigger] = useState<Trigger | null>(null);
   const [reminderMessage, setReminderMessage] = useState("");
+  const prevSuccessRef = useRef(onSendSuccess);
+  
+  // Close modal only when send succeeds (onSendSuccess goes from false to true)
+  useEffect(() => {
+    if (!prevSuccessRef.current && onSendSuccess && modalOpen) {
+      setModalOpen(false);
+      setSelectedTrigger(null);
+      setReminderMessage("");
+    }
+    prevSuccessRef.current = onSendSuccess;
+  }, [onSendSuccess, modalOpen]);
 
   const handleGenerateReminder = (trigger: Trigger) => {
     setSelectedTrigger(trigger);
@@ -89,12 +102,17 @@ export function TriggerList({ triggers, clientName = "Client", onSendReminder }:
   };
 
   const handleSendReminder = () => {
-    if (selectedTrigger && onSendReminder) {
+    if (selectedTrigger && onSendReminder && reminderMessage.trim()) {
       onSendReminder(selectedTrigger, reminderMessage);
     }
-    setModalOpen(false);
-    setSelectedTrigger(null);
-    setReminderMessage("");
+  };
+  
+  const handleCloseModal = () => {
+    if (!isSending) {
+      setModalOpen(false);
+      setSelectedTrigger(null);
+      setReminderMessage("");
+    }
   };
 
   return (
@@ -156,7 +174,7 @@ export function TriggerList({ triggers, clientName = "Client", onSendReminder }:
         </CardContent>
       </Card>
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+      <Dialog open={modalOpen} onOpenChange={handleCloseModal}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -191,12 +209,12 @@ export function TriggerList({ triggers, clientName = "Client", onSendReminder }:
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setModalOpen(false)}>
+            <Button variant="outline" onClick={handleCloseModal} disabled={isSending}>
               Cancel
             </Button>
-            <Button onClick={handleSendReminder} data-testid="button-send-reminder">
+            <Button onClick={handleSendReminder} disabled={isSending || !reminderMessage.trim()} data-testid="button-send-reminder">
               <Send className="w-4 h-4 mr-2" />
-              Send Reminder
+              {isSending ? "Sending..." : "Send Reminder"}
             </Button>
           </DialogFooter>
         </DialogContent>

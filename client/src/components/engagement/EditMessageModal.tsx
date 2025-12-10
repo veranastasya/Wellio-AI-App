@@ -18,6 +18,7 @@ interface EditMessageModalProps {
   initialMessage: string;
   recipientName?: string;
   onSend: (message: string) => void;
+  isSending?: boolean;
 }
 
 export function EditMessageModal({
@@ -27,6 +28,7 @@ export function EditMessageModal({
   initialMessage,
   recipientName = "Client",
   onSend,
+  isSending = false,
 }: EditMessageModalProps) {
   const [message, setMessage] = useState(initialMessage);
 
@@ -35,8 +37,9 @@ export function EditMessageModal({
   }, [initialMessage]);
 
   const handleSend = () => {
-    onSend(message);
-    onOpenChange(false);
+    if (message.trim()) {
+      onSend(message);
+    }
   };
 
   return (
@@ -79,9 +82,9 @@ export function EditMessageModal({
             <X className="w-4 h-4 mr-2" />
             Cancel
           </Button>
-          <Button onClick={handleSend} data-testid="button-send-message">
+          <Button onClick={handleSend} disabled={isSending || !message.trim()} data-testid="button-send-message">
             <Send className="w-4 h-4 mr-2" />
-            Send Message
+            {isSending ? "Sending..." : "Send Message"}
           </Button>
         </DialogFooter>
       </DialogContent>

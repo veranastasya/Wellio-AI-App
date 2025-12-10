@@ -1,12 +1,13 @@
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, User } from "lucide-react";
-import type { Client } from "@shared/schema";
+import type { Client, InsertMessage } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 import { useEngagement } from "@/context/EngagementContext";
 import {
@@ -95,6 +96,8 @@ export default function Engagement() {
   const [messageModalOpen, setMessageModalOpen] = useState(false);
   const [currentMessage, setCurrentMessage] = useState("");
   const [modalTitle, setModalTitle] = useState("");
+  const [isSendingTrigger, setIsSendingTrigger] = useState(false);
+  const [triggerSendSuccess, setTriggerSendSuccess] = useState(false);
 
   const {
     activityFeed,
@@ -111,6 +114,57 @@ export default function Engagement() {
   const selectedClient = clients.find((c) => c.id === selectedClientId);
   const isLoading = clientsLoading || engagementLoading;
 
+  // Mutation to send real messages via the API (for Quick Actions)
+  const sendMessageMutation = useMutation({
+    mutationFn: async (data: InsertMessage) => {
+      return await apiRequest("POST", "/api/coach/messages", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
+      toast({
+        title: "Message Sent",
+        description: `Your message to ${selectedClient?.name || "the client"} has been sent successfully.`,
+      });
+      setMessageModalOpen(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Mutation for trigger reminders (separate so we can track sending state for TriggerList)
+  const sendTriggerMutation = useMutation({
+    mutationFn: async (data: InsertMessage) => {
+      return await apiRequest("POST", "/api/coach/messages", data);
+    },
+    onMutate: () => {
+      setIsSendingTrigger(true);
+      setTriggerSendSuccess(false);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
+      toast({
+        title: "Reminder Sent",
+        description: `Your reminder to ${selectedClient?.name || "the client"} has been sent.`,
+      });
+      setIsSendingTrigger(false);
+      setTriggerSendSuccess(true);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to send reminder. Please try again.",
+        variant: "destructive",
+      });
+      setIsSendingTrigger(false);
+      // Don't set success to true - keep modal open for retry
+    },
+  });
+
   useEffect(() => {
     if (selectedClientId) {
       console.log(`[Engagement] Client selected: ${selectedClientId}`);
@@ -122,18 +176,47 @@ export default function Engagement() {
   };
 
   const handleSendMessage = (message: string) => {
-    toast({
-      title: "Message Sent",
-      description: `Your message to ${selectedClient?.name || "the client"} has been sent successfully.`,
-    });
-    setMessageModalOpen(false);
+    if (!selectedClientId || !selectedClient) {
+      toast({
+        title: "Error",
+        description: "Please select a client first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newMessage: InsertMessage = {
+      clientId: selectedClientId,
+      clientName: selectedClient.name,
+      content: message,
+      sender: "coach",
+      timestamp: new Date().toISOString(),
+      read: false,
+    };
+
+    sendMessageMutation.mutate(newMessage);
   };
 
   const handleSendReminder = (trigger: { id: string; description: string }, message: string) => {
-    toast({
-      title: "Reminder Sent",
-      description: `Reminder sent to ${selectedClient?.name || "the client"}.`,
-    });
+    if (!selectedClientId || !selectedClient) {
+      toast({
+        title: "Error",
+        description: "Please select a client first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newMessage: InsertMessage = {
+      clientId: selectedClientId,
+      clientName: selectedClient.name,
+      content: message,
+      sender: "coach",
+      timestamp: new Date().toISOString(),
+      read: false,
+    };
+
+    sendTriggerMutation.mutate(newMessage);
   };
 
   const handleQuickAction = (action: QuickActionItem) => {
@@ -215,6 +298,8 @@ export default function Engagement() {
               triggers={triggerListItems}
               clientName={selectedClient?.name}
               onSendReminder={handleSendReminder}
+              isSending={isSendingTrigger}
+              onSendSuccess={triggerSendSuccess}
             />
           </div>
           
@@ -263,6 +348,7 @@ export default function Engagement() {
         initialMessage={currentMessage}
         recipientName={selectedClient?.name || "Client"}
         onSend={handleSendMessage}
+        isSending={sendMessageMutation.isPending}
       />
     </div>
   );
