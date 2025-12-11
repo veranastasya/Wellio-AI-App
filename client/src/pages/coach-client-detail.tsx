@@ -1,6 +1,6 @@
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Mail, Phone, Calendar, Target, User, Scale, Ruler, Activity as ActivityIcon, FileText, Pin, Download, ChevronDown, Loader2, BarChart3 } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, Target, User, Scale, Ruler, Activity as ActivityIcon, FileText, Pin, Download, ChevronDown, Loader2, BarChart3, Send, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -104,6 +104,28 @@ export default function CoachClientDetail() {
     },
   });
 
+  const sendSetupInviteMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/clients/${clientId}/send-setup-invite`, {});
+    },
+    onSuccess: () => {
+      toast({
+        title: "Invite Sent",
+        description: "Account setup email has been sent to the client",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send invite",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Check if client needs account setup (no password set)
+  const needsAccountSetup = client && !client.passwordHash;
+
   if (!clientId) {
     return null;
   }
@@ -200,9 +222,30 @@ export default function CoachClientDetail() {
                     <Badge variant={client.status === "active" ? "default" : "secondary"} data-testid="badge-client-status">
                       {client.status}
                     </Badge>
+                    {needsAccountSetup && (
+                      <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        No portal access
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
+              {needsAccountSetup && (
+                <Button
+                  onClick={() => sendSetupInviteMutation.mutate()}
+                  disabled={sendSetupInviteMutation.isPending}
+                  data-testid="button-send-setup-invite"
+                  className="gap-2"
+                >
+                  {sendSetupInviteMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  Send Portal Invite
+                </Button>
+              )}
             </div>
           </CardHeader>
         </Card>

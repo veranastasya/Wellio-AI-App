@@ -73,7 +73,7 @@ import {
   mapRookBodyToCheckIn,
   generateRookConnectionUrl
 } from "./rook";
-import { sendInviteEmail, sendPlanAssignmentEmail, sendSessionBookingEmail } from "./email";
+import { sendInviteEmail, sendPlanAssignmentEmail, sendSessionBookingEmail, sendAccountSetupEmail } from "./email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Coach registration endpoint
@@ -358,6 +358,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete client" });
+    }
+  });
+
+  // Send account setup invite to an existing client (manually added)
+  app.post("/api/clients/:id/send-setup-invite", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const clientId = req.params.id;
+      const { message } = req.body;
+      
+      // Get client
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Verify coach ownership
+      if (client.coachId && client.coachId !== coachId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      // Check if client already has a password set
+      if (client.passwordHash) {
+        return res.status(400).json({ error: "Client already has an account set up" });
+      }
+      
+      // Get coach info for the email
+      const coach = await storage.getCoach(coachId);
+      const coachName = coach?.name || "Your Coach";
+      
+      // Create a client token linked to this client
+      const tokenData = insertClientTokenSchema.parse({
+        clientId: client.id,
+        email: client.email,
+        coachId: coachId,
+        coachName: coachName,
+        status: "pending",
+      });
+      const clientToken = await storage.createClientToken(tokenData);
+      
+      // Generate the setup link
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+        : 'http://localhost:5000';
+      const setupLink = `${baseUrl}/client/setup-password?token=${clientToken.token}`;
+      
+      // Send the email
+      try {
+        await sendAccountSetupEmail({
+          to: client.email,
+          clientName: client.name,
+          coachName: coachName,
+          setupLink,
+          message,
+        });
+        console.log("[Email] Successfully sent account setup email to:", client.email);
+      } catch (emailError) {
+        console.error("[Email] Failed to send account setup email:", emailError);
+        // Still return success - token is created even if email fails
+      }
+      
+      res.json({
+        success: true,
+        setupLink,
+        message: "Account setup invite sent successfully",
+      });
+    } catch (error) {
+      console.error("Error sending setup invite:", error);
+      res.status(500).json({ error: "Failed to send setup invite" });
     }
   });
 
