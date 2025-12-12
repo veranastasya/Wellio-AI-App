@@ -855,7 +855,7 @@ function ClientForm({
                 <FormControl>
                   <Input
                     type="number"
-                    step="0.1"
+                    step="any"
                     min="0"
                     max="1000"
                     placeholder={unitsPreference === "us" ? "155.5" : "70.5"}
@@ -912,9 +912,9 @@ function ClientForm({
                     <FormControl>
                       <Input
                         type="number"
-                        step="0.1"
+                        step="any"
                         min="0"
-                        max="11.9"
+                        max="11.99"
                         placeholder="8 in"
                         value={heightInches}
                         onChange={(e) => {
@@ -944,7 +944,7 @@ function ClientForm({
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.1"
+                      step="1"
                       min="0"
                       max="300"
                       placeholder="173"
@@ -1006,7 +1006,7 @@ function ClientForm({
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.1"
+                      step="any"
                       min="0"
                       max="100"
                       placeholder="18.5"
