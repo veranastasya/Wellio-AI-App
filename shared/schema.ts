@@ -155,6 +155,8 @@ export const clients = pgTable("clients", {
     dislikes?: string;
     scheduleConstraints?: string;
   }>(),
+  // End date for coach-client collaboration
+  endDate: text("end_date"),
 });
 
 export const sessions = pgTable("sessions", {
