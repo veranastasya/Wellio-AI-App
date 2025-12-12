@@ -563,24 +563,48 @@ export default function Clients() {
                     <ClientInsightBanners clientId={client.id} />
                   </div>
 
-                  {/* Expanded Section: Client Metrics */}
+                  {/* Expanded Section: Client Metrics + Progress Breakdown */}
                   {isExpanded && (
-                    <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
-                      {client.sex && (
-                        <Badge variant="outline" className="text-xs font-normal">
-                          {client.sex === "male" ? "Male" : client.sex === "female" ? "Female" : client.sex}
-                        </Badge>
-                      )}
-                      {client.weight && (
-                        <Badge variant="outline" className="text-xs font-normal">
-                          Weight {client.weight} kg
-                        </Badge>
-                      )}
-                      {client.height && (
-                        <Badge variant="outline" className="text-xs font-normal">
-                          Height {client.height} cm
-                        </Badge>
-                      )}
+                    <div className="space-y-3 pt-2 border-t border-border/50">
+                      {/* Progress Breakdown */}
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground">Progress Breakdown</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="text-center p-2 bg-muted/30 rounded-lg">
+                            <p className="text-lg font-semibold text-foreground">{client.goalProgress || 0}%</p>
+                            <p className="text-xs text-muted-foreground">Goals</p>
+                          </div>
+                          <div className="text-center p-2 bg-muted/30 rounded-lg">
+                            <p className="text-lg font-semibold text-foreground">{client.weeklyProgress || 0}%</p>
+                            <p className="text-xs text-muted-foreground">Weekly</p>
+                          </div>
+                          <div className="text-center p-2 bg-muted/30 rounded-lg">
+                            <p className="text-lg font-semibold text-foreground">{client.activityProgress || 0}%</p>
+                            <p className="text-xs text-muted-foreground">Activity</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-center">
+                          50% Goals + 30% Weekly + 20% Activity
+                        </p>
+                      </div>
+                      {/* Client Metrics */}
+                      <div className="flex flex-wrap gap-2">
+                        {client.sex && (
+                          <Badge variant="outline" className="text-xs font-normal">
+                            {client.sex === "male" ? "Male" : client.sex === "female" ? "Female" : client.sex}
+                          </Badge>
+                        )}
+                        {client.weight && (
+                          <Badge variant="outline" className="text-xs font-normal">
+                            Weight {client.weight} kg
+                          </Badge>
+                        )}
+                        {client.height && (
+                          <Badge variant="outline" className="text-xs font-normal">
+                            Height {client.height} cm
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   )}
 
