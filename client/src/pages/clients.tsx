@@ -404,10 +404,17 @@ export default function Clients() {
             const progressScore = client.progressScore || 0;
             const isExpanded = expandedCard === client.id;
             
+            // Check if coaching has ended (end date is in the past)
+            const hasEnded = client.endDate ? new Date(client.endDate) < new Date() : false;
+            
             return (
               <div 
                 key={client.id} 
-                className="group bg-card rounded-2xl shadow-sm hover:shadow-lg border border-border hover:border-border/80 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer flex flex-col" 
+                className={`group bg-card rounded-2xl shadow-sm hover:shadow-lg border overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer flex flex-col ${
+                  hasEnded 
+                    ? "border-amber-300 dark:border-amber-700 opacity-75" 
+                    : "border-border hover:border-border/80"
+                }`}
                 data-testid={`card-client-${index}`}
                 onClick={() => setLocation(`/coach/clients/${client.id}`)}
               >
@@ -429,7 +436,9 @@ export default function Clients() {
                         <Badge 
                           variant="outline"
                           className={`text-xs border ${
-                            progressScore >= 80 
+                            hasEnded
+                              ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700"
+                              : progressScore >= 80 
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800" 
                               : progressScore >= 50 
                               ? "bg-primary/10 text-primary border-primary/30" 
@@ -438,7 +447,7 @@ export default function Clients() {
                               : "bg-muted text-muted-foreground border-border"
                           }`}
                         >
-                          {progressStatus.label}
+                          {hasEnded ? "Ended" : progressStatus.label}
                         </Badge>
                       </div>
                     </div>
@@ -492,9 +501,13 @@ export default function Clients() {
 
                   {/* End Date */}
                   {endDateFormatted && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className={`flex items-center gap-2 text-sm ${
+                      hasEnded 
+                        ? "text-amber-600 dark:text-amber-400 font-medium" 
+                        : "text-muted-foreground"
+                    }`}>
                       <CalendarDays className="w-4 h-4 flex-shrink-0" />
-                      <span>Ends {endDateFormatted}</span>
+                      <span>{hasEnded ? `Ended ${endDateFormatted}` : `Ends ${endDateFormatted}`}</span>
                     </div>
                   )}
 
@@ -1055,45 +1068,30 @@ function ClientForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="goalType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Goal (Optional)</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value || ""}>
-                  <FormControl>
-                    <SelectTrigger data-testid="select-client-goal">
-                      <SelectValue placeholder="Select your goal" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {GOAL_TYPES.map((goalType) => (
-                      <SelectItem key={goalType} value={goalType}>
-                        {GOAL_TYPE_LABELS[goalType]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="joinedDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Joined Date</FormLabel>
+        <FormField
+          control={form.control}
+          name="goalType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Goal (Optional)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || ""}>
                 <FormControl>
-                  <Input type="date" {...field} data-testid="input-client-joined" />
+                  <SelectTrigger data-testid="select-client-goal">
+                    <SelectValue placeholder="Select your goal" />
+                  </SelectTrigger>
                 </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+                <SelectContent>
+                  {GOAL_TYPES.map((goalType) => (
+                    <SelectItem key={goalType} value={goalType}>
+                      {GOAL_TYPE_LABELS[goalType]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}
