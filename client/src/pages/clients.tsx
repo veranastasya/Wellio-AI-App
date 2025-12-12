@@ -585,7 +585,7 @@ export default function Clients() {
 
 // Component to display AI insights as small banners on client cards
 function ClientInsightBanners({ clientId }: { clientId: string }) {
-  const [triggers, setTriggers] = useState<Array<{ id: string; triggerType: string; message: string; severity: string; isResolved?: boolean }>>([]);
+  const [triggers, setTriggers] = useState<Array<{ id: string; triggerType: string; summary: string; message?: string; severity: string; isResolved?: boolean }>>([]);
 
   useEffect(() => {
     if (!clientId) return;
@@ -626,7 +626,7 @@ function ClientInsightBanners({ clientId }: { clientId: string }) {
           data-testid={`insight-banner-${trigger.id}`}
         >
           <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-          <span className="line-clamp-2">{trigger.message}</span>
+          <span className="line-clamp-2">{trigger.summary || trigger.message || ""}</span>
         </div>
       ))}
     </div>
