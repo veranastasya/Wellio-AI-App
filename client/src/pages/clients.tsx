@@ -404,10 +404,17 @@ export default function Clients() {
             const progressScore = client.progressScore || 0;
             const isExpanded = expandedCard === client.id;
             
+            // Check if end date has passed
+            const isEnded = client.endDate ? new Date(client.endDate) < new Date() : false;
+            
             return (
               <div 
                 key={client.id} 
-                className="group bg-card rounded-2xl shadow-sm hover:shadow-lg border border-border hover:border-border/80 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer flex flex-col" 
+                className={`group bg-card rounded-2xl shadow-sm hover:shadow-lg border overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer flex flex-col ${
+                  isEnded 
+                    ? "border-red-200 dark:border-red-800 opacity-80" 
+                    : "border-border hover:border-border/80"
+                }`}
                 data-testid={`card-client-${index}`}
                 onClick={() => setLocation(`/coach/clients/${client.id}`)}
               >
@@ -416,32 +423,85 @@ export default function Clients() {
                   <div className="flex items-start gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="relative flex-shrink-0">
-                        <div className={`w-14 h-14 rounded-2xl ${getAvatarColor(index)} flex items-center justify-center shadow-sm`}>
-                          <span className="text-lg font-semibold">{getInitials(client.name)}</span>
+                        <div className={`w-14 h-14 rounded-2xl ${isEnded ? "bg-muted" : getAvatarColor(index)} flex items-center justify-center shadow-sm`}>
+                          <span className={`text-lg font-semibold ${isEnded ? "text-muted-foreground" : ""}`}>{getInitials(client.name)}</span>
                         </div>
-                        {/* Status indicator dot on avatar - reflects active/inactive status */}
+                        {/* Status indicator dot on avatar - reflects active/inactive or ended status */}
                         <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-card shadow-sm ${
-                          client.status === "active" ? "bg-emerald-500" : "bg-muted-foreground"
+                          isEnded 
+                            ? "bg-red-500" 
+                            : client.status === "active" 
+                            ? "bg-emerald-500" 
+                            : "bg-muted-foreground"
                         }`} />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-foreground truncate mb-1.5">{client.name}</h3>
-                        <Badge 
-                          variant="outline"
-                          className={`text-xs border ${
-                            progressScore >= 80 
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800" 
-                              : progressScore >= 50 
-                              ? "bg-primary/10 text-primary border-primary/30" 
-                              : progressScore > 0
-                              ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800"
-                              : "bg-muted text-muted-foreground border-border"
-                          }`}
-                        >
-                          {progressStatus.label}
-                        </Badge>
+                        <h3 className={`font-semibold truncate mb-1.5 ${isEnded ? "text-muted-foreground" : "text-foreground"}`}>{client.name}</h3>
+                        {isEnded ? (
+                          <Badge 
+                            variant="outline"
+                            className="text-xs border bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800"
+                          >
+                            Ended
+                          </Badge>
+                        ) : (
+                          <Badge 
+                            variant="outline"
+                            className={`text-xs border ${
+                              progressScore >= 80 
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800" 
+                                : progressScore >= 50 
+                                ? "bg-primary/10 text-primary border-primary/30" 
+                                : progressScore > 0
+                                ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800"
+                                : "bg-muted text-muted-foreground border-border"
+                            }`}
+                          >
+                            {progressStatus.label}
+                          </Badge>
+                        )}
                       </div>
                     </div>
+                    {/* 3-dot Menu for Edit/Delete */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="flex-shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
+                          data-testid={`button-menu-${index}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedClient(client);
+                            setIsEditOpen(true);
+                          }}
+                          data-testid={`menu-edit-${index}`}
+                        >
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit Client
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-red-600 focus:text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Are you sure you want to delete ${client.name}?`)) {
+                              deleteClientMutation.mutate(client.id);
+                            }
+                          }}
+                          data-testid={`menu-delete-${index}`}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Client
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     {/* Expand/Collapse Toggle */}
                     <Button 
                       variant="ghost" 
@@ -1082,38 +1142,24 @@ function ClientForm({
           />
           <FormField
             control={form.control}
-            name="joinedDate"
+            name="endDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Joined Date</FormLabel>
+                <FormLabel>End Date (Optional)</FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} data-testid="input-client-joined" />
+                  <Input 
+                    type="date" 
+                    {...field} 
+                    value={field.value || ""} 
+                    onChange={(e) => field.onChange(e.target.value || undefined)}
+                    data-testid="input-client-end-date" 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-
-        <FormField
-          control={form.control}
-          name="endDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>End Date (Optional)</FormLabel>
-              <FormControl>
-                <Input 
-                  type="date" 
-                  {...field} 
-                  value={field.value || ""} 
-                  onChange={(e) => field.onChange(e.target.value || undefined)}
-                  data-testid="input-client-end-date" 
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         {selectedGoalType === "other" && (
           <FormField
