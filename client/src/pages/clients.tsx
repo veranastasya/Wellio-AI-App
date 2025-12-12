@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Plus, Search, Mail, Phone, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, Users as UsersIcon, FileEdit, Eye } from "lucide-react";
-import type { Questionnaire, GoalType, PlanSession } from "@shared/schema";
-import { ClientAttentionIndicator } from "@/components/ClientAttentionIndicator";
-import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel, PLAN_SESSION_STATUSES } from "@shared/schema";
+import { Plus, Search, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, Users as UsersIcon, Eye, AlertTriangle, CalendarDays } from "lucide-react";
+import type { Questionnaire, GoalType } from "@shared/schema";
+import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,48 +66,33 @@ export default function Clients() {
     queryKey: ["/api/questionnaires"],
   });
 
-  // Fetch plan sessions for all clients to show dynamic button labels
-  const { data: planSessions = [] } = useQuery<PlanSession[]>({
-    queryKey: ["/api/plan-sessions"],
-  });
-
   // Fetch coach profile for invite emails
   const { data: coachProfile } = useQuery<{ id: string; name: string; email: string; phone: string | null }>({
     queryKey: ["/api/coach/profile"],
   });
 
-  // Helper to get plan status for a client
-  const getClientPlanStatus = (clientId: string): "NOT_STARTED" | "IN_PROGRESS" | "ASSIGNED" => {
-    const session = planSessions.find(s => s.clientId === clientId);
-    if (!session) return "NOT_STARTED";
-    return session.status as "NOT_STARTED" | "IN_PROGRESS" | "ASSIGNED";
+  // Get status label and color based on progress score
+  const getProgressStatus = (progressScore: number | null | undefined) => {
+    const score = progressScore || 0;
+    if (score >= 80) {
+      return { label: "Excellent", className: "bg-emerald-500 text-white hover:bg-emerald-500" };
+    } else if (score >= 50) {
+      return { label: "On Track", className: "bg-primary text-white hover:bg-primary" };
+    } else if (score > 0) {
+      return { label: "Needs Attention", className: "bg-amber-500 text-white hover:bg-amber-500" };
+    } else {
+      return { label: "New", className: "bg-muted text-muted-foreground hover:bg-muted" };
+    }
   };
 
-  // Get button config based on plan status
-  const getPlanButtonConfig = (clientId: string) => {
-    const status = getClientPlanStatus(clientId);
-    switch (status) {
-      case "IN_PROGRESS":
-        return {
-          label: "Continue Plan",
-          icon: FileEdit,
-          variant: "outline" as const,
-          className: "w-full border-amber-500 text-amber-600 hover:bg-amber-500/10",
-        };
-      case "ASSIGNED":
-        return {
-          label: "Review Plan",
-          icon: Eye,
-          variant: "outline" as const,
-          className: "w-full border-green-500 text-green-600 hover:bg-green-500/10",
-        };
-      default:
-        return {
-          label: "Create AI Plan",
-          icon: Sparkles,
-          variant: "outline" as const,
-          className: "w-full border-primary text-primary hover:bg-primary/10",
-        };
+  // Format end date for display
+  const formatEndDate = (endDate: string | null | undefined) => {
+    if (!endDate) return null;
+    try {
+      const date = new Date(endDate);
+      return date.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+    } catch {
+      return null;
     }
   };
 
@@ -412,163 +396,146 @@ export default function Clients() {
         </div>
 
         {/* Client Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredClients.map((client, index) => (
-            <Card 
-              key={client.id} 
-              className="hover-elevate cursor-pointer overflow-visible" 
-              data-testid={`card-client-${index}`}
-              onClick={() => setLocation(`/coach/clients/${client.id}`)}
-            >
-              <CardContent className="p-5 space-y-4">
-                {/* Header: Avatar, Name, Status, Attention, Menu */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-11 h-11 rounded-full ${getAvatarColor(index)} flex items-center justify-center flex-shrink-0`}>
-                      <span className="text-base font-semibold">{getInitials(client.name)}</span>
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{client.name}</h3>
-                      <div className="flex items-center gap-2 mt-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {filteredClients.map((client, index) => {
+            const progressStatus = getProgressStatus(client.progressScore);
+            const endDateFormatted = formatEndDate(client.endDate);
+            
+            return (
+              <Card 
+                key={client.id} 
+                className="hover-elevate cursor-pointer overflow-visible" 
+                data-testid={`card-client-${index}`}
+                onClick={() => setLocation(`/coach/clients/${client.id}`)}
+              >
+                <CardContent className="p-5 space-y-4">
+                  {/* Header: Avatar with status dot, Name, Badge, Menu */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="relative flex-shrink-0">
+                        <div className={`w-11 h-11 rounded-full ${getAvatarColor(index)} flex items-center justify-center`}>
+                          <span className="text-base font-semibold">{getInitials(client.name)}</span>
+                        </div>
+                        {/* Status indicator dot on avatar */}
+                        <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card ${
+                          client.status === "active" ? "bg-emerald-500" : "bg-muted-foreground"
+                        }`} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-foreground truncate">{client.name}</h3>
                         <Badge 
-                          variant={client.status === "active" ? "default" : "secondary"} 
-                          className={`text-xs ${client.status === "active" ? "bg-emerald-500 hover:bg-emerald-500" : ""}`}
+                          className={`text-xs mt-1 ${progressStatus.className}`}
                         >
-                          {client.status}
+                          {progressStatus.label}
                         </Badge>
-                        <ClientAttentionIndicator clientId={client.id} />
                       </div>
                     </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="flex-shrink-0"
-                        data-testid={`button-client-menu-${index}`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedClient(client);
-                          setIsEditOpen(true);
-                        }}
-                        data-testid={`button-edit-client-${index}`}
-                      >
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteClientMutation.mutate(client.id);
-                        }}
-                        className="text-destructive"
-                        data-testid={`button-delete-client-${index}`}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                {/* Contact Info Rows */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                    <Mail className="w-4 h-4 flex-shrink-0" />
-                    <span className="truncate">{client.email}</span>
-                  </div>
-                  {client.phone && (
-                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <Phone className="w-4 h-4 flex-shrink-0" />
-                      <span>{client.phone}</span>
-                    </div>
-                  )}
-                  {client.goalType && (
-                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <Target className="w-4 h-4 flex-shrink-0" />
-                      <span className="truncate">{getGoalTypeLabel(client.goalType, client.goalDescription)}</span>
-                    </div>
-                  )}
-                  {client.joinedDate && (
-                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <Calendar className="w-4 h-4 flex-shrink-0" />
-                      <span>{new Date(client.joinedDate).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Physical Stats Pills */}
-                {(client.sex || client.weight || client.height) && (
-                  <div className="flex flex-wrap gap-2">
-                    {client.sex && (
-                      <span className="px-3 py-1 bg-muted rounded-md text-xs text-muted-foreground capitalize">
-                        {client.sex === "male" ? "Male" : client.sex === "female" ? "Female" : client.sex.replace('_', ' ')}
-                      </span>
-                    )}
-                    {client.weight && (
-                      <span className="px-3 py-1 bg-muted rounded-md text-xs text-muted-foreground">
-                        Weight {formatWeight(client.weight, (client.unitsPreference as UnitsPreference) || "us")}
-                      </span>
-                    )}
-                    {client.height && (
-                      <span className="px-3 py-1 bg-muted rounded-md text-xs text-muted-foreground">
-                        Height {formatHeight(client.height, (client.unitsPreference as UnitsPreference) || "us")}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Activity Level */}
-                {client.activityLevel && (
-                  <p className="text-xs text-muted-foreground">
-                    {getActivityLevelLabel(client.activityLevel)}
-                  </p>
-                )}
-
-                {/* Progress Bar */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Progress</span>
-                    <span className="font-medium text-foreground">{client.progressScore || 0}%</span>
-                  </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary rounded-full transition-all duration-300"
-                      style={{ width: `${client.progressScore || 0}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* AI Plan Button - Dynamic based on plan status */}
-                <div onClick={(e) => e.stopPropagation()}>
-                  <Link href={`/coach/plan-builder/${client.id}`}>
-                    {(() => {
-                      const config = getPlanButtonConfig(client.id);
-                      const IconComponent = config.icon;
-                      return (
-                        <Button
-                          variant={config.variant}
-                          className={config.className}
-                          data-testid={`button-plan-${index}`}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="flex-shrink-0"
+                          data-testid={`button-client-menu-${index}`}
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <IconComponent className="w-4 h-4 mr-2" />
-                          {config.label}
+                          <ChevronDown className="w-4 h-4" />
                         </Button>
-                      );
-                    })()}
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedClient(client);
+                            setIsEditOpen(true);
+                          }}
+                          data-testid={`button-edit-client-${index}`}
+                        >
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteClientMutation.mutate(client.id);
+                          }}
+                          className="text-destructive"
+                          data-testid={`button-delete-client-${index}`}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Primary Goal */}
+                  {client.goalType && (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Target className="w-3 h-3" />
+                        <span>Primary Goal</span>
+                      </div>
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {getGoalTypeLabel(client.goalType, client.goalDescription)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Progress Bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium text-foreground">{client.progressScore || 0}%</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          (client.progressScore || 0) >= 80 ? "bg-emerald-500" :
+                          (client.progressScore || 0) >= 50 ? "bg-primary" :
+                          (client.progressScore || 0) > 0 ? "bg-amber-500" : "bg-muted-foreground"
+                        }`}
+                        style={{ width: `${client.progressScore || 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* End Date */}
+                  {endDateFormatted && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CalendarDays className="w-4 h-4 flex-shrink-0" />
+                      <span>Ends {endDateFormatted}</span>
+                    </div>
+                  )}
+
+                  {/* AI Insights Banners */}
+                  <ClientInsightBanners clientId={client.id} />
+
+                  {/* Action Buttons: View and Plan */}
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      className="flex-1 bg-primary text-white hover:bg-primary/90"
+                      onClick={() => setLocation(`/coach/clients/${client.id}`)}
+                      data-testid={`button-view-${index}`}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      View
+                    </Button>
+                    <Link href={`/coach/plan-builder/${client.id}`} className="flex-1">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        data-testid={`button-plan-${index}`}
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Plan
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {filteredClients.length === 0 && (
@@ -605,6 +572,56 @@ export default function Clients() {
   );
 }
 
+// Component to display AI insights as small banners on client cards
+function ClientInsightBanners({ clientId }: { clientId: string }) {
+  const [triggers, setTriggers] = useState<Array<{ id: string; triggerType: string; message: string; severity: string; isResolved?: boolean }>>([]);
+
+  useEffect(() => {
+    if (!clientId) return;
+
+    const fetchTriggers = async () => {
+      try {
+        const response = await fetch(`/api/engagement/triggers/${clientId}`);
+        if (response.ok) {
+          const data = await response.json();
+          // Filter to only unresolved triggers, limit to 2 for card display
+          const unresolved = data.filter((t: { isResolved?: boolean }) => !t.isResolved).slice(0, 2);
+          setTriggers(unresolved);
+        }
+      } catch (error) {
+        console.error("[ClientInsightBanners] Failed to fetch triggers:", error);
+      }
+    };
+
+    fetchTriggers();
+  }, [clientId]);
+
+  if (triggers.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2">
+      {triggers.map((trigger) => (
+        <div
+          key={trigger.id}
+          className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs ${
+            trigger.severity === "High"
+              ? "bg-red-500/10 text-red-600 dark:text-red-400"
+              : trigger.severity === "Medium"
+              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          }`}
+          data-testid={`insight-banner-${trigger.id}`}
+        >
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+          <span className="truncate">{trigger.message}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ClientForm({
   client,
   onSubmit,
@@ -631,6 +648,7 @@ function ClientForm({
       goalDescription: client?.goalDescription || "",
       progressScore: client?.progressScore || 0,
       joinedDate: client?.joinedDate || new Date().toISOString().split("T")[0],
+      endDate: client?.endDate || undefined,
       lastSession: client?.lastSession || "",
       notes: client?.notes || "",
       sex: client?.sex || undefined,
@@ -662,6 +680,7 @@ function ClientForm({
         goalDescription: client.goalDescription || "",
         progressScore: client.progressScore || 0,
         joinedDate: client.joinedDate,
+        endDate: client.endDate || undefined,
         lastSession: client.lastSession || "",
         notes: client.notes || "",
         sex: client.sex || undefined,
@@ -1062,6 +1081,26 @@ function ClientForm({
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="endDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>End Date (Optional)</FormLabel>
+              <FormControl>
+                <Input 
+                  type="date" 
+                  {...field} 
+                  value={field.value || ""} 
+                  onChange={(e) => field.onChange(e.target.value || undefined)}
+                  data-testid="input-client-end-date" 
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {selectedGoalType === "other" && (
           <FormField
