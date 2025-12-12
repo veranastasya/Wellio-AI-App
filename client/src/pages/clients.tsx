@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Plus, Search, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, Users as UsersIcon, Eye, AlertTriangle, CalendarDays } from "lucide-react";
+import { Plus, Search, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, ChevronUp, Users as UsersIcon, Eye, AlertTriangle, CalendarDays, TrendingUp } from "lucide-react";
 import type { Questionnaire, GoalType } from "@shared/schema";
 import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
@@ -56,6 +56,7 @@ export default function Clients() {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const { toast } = useToast();
 
   const { data: clients = [], isLoading, isError } = useQuery<Client[]>({
@@ -401,6 +402,7 @@ export default function Clients() {
             const progressStatus = getProgressStatus(client.progressScore);
             const endDateFormatted = formatEndDate(client.endDate);
             const progressScore = client.progressScore || 0;
+            const isExpanded = expandedCard === client.id;
             
             return (
               <div 
@@ -410,7 +412,7 @@ export default function Clients() {
                 onClick={() => setLocation(`/coach/clients/${client.id}`)}
               >
                 <div className="p-5 flex flex-col flex-1 space-y-4">
-                  {/* Header: Avatar with status dot, Name, Badge, Menu */}
+                  {/* Header: Avatar with status dot, Name, Badge, Expand Toggle */}
                   <div className="flex items-start gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="relative flex-shrink-0">
@@ -440,49 +442,25 @@ export default function Clients() {
                         </Badge>
                       </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="flex-shrink-0 text-muted-foreground hover:text-foreground"
-                          data-testid={`button-client-menu-${index}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedClient(client);
-                            setIsEditOpen(true);
-                          }}
-                          data-testid={`button-edit-client-${index}`}
-                        >
-                          <Pencil className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteClientMutation.mutate(client.id);
-                          }}
-                          className="text-destructive"
-                          data-testid={`button-delete-client-${index}`}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* Expand/Collapse Toggle */}
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="flex-shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
+                      data-testid={`button-expand-${index}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedCard(isExpanded ? null : client.id);
+                      }}
+                    >
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </Button>
                   </div>
 
-                  {/* Primary Goal - Box Style */}
+                  {/* Primary Goal - Box Style with TrendingUp icon */}
                   <div className="p-3 bg-muted/50 rounded-xl border border-border/50 min-h-[72px] flex flex-col justify-center">
                     <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5">
-                      <Target className="w-3.5 h-3.5" />
+                      <TrendingUp className="w-3.5 h-3.5" />
                       Primary Goal
                     </p>
                     <p className="text-sm text-foreground line-clamp-2">
@@ -522,6 +500,27 @@ export default function Clients() {
 
                   {/* AI Insights Banners */}
                   <ClientInsightBanners clientId={client.id} />
+
+                  {/* Expanded Section: Client Metrics */}
+                  {isExpanded && (
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-border/50">
+                      {client.sex && (
+                        <Badge variant="outline" className="text-xs font-normal">
+                          {client.sex === "male" ? "Male" : client.sex === "female" ? "Female" : client.sex}
+                        </Badge>
+                      )}
+                      {client.weight && (
+                        <Badge variant="outline" className="text-xs font-normal">
+                          Weight {client.weight} kg
+                        </Badge>
+                      )}
+                      {client.height && (
+                        <Badge variant="outline" className="text-xs font-normal">
+                          Height {client.height} cm
+                        </Badge>
+                      )}
+                    </div>
+                  )}
 
                   {/* Action Buttons: View and Plan */}
                   <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
@@ -617,17 +616,17 @@ function ClientInsightBanners({ clientId }: { clientId: string }) {
       {triggers.map((trigger) => (
         <div
           key={trigger.id}
-          className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs ${
+          className={`flex items-start gap-2 px-3 py-2 rounded-lg text-xs ${
             trigger.severity === "High"
               ? "bg-red-500/10 text-red-600 dark:text-red-400"
               : trigger.severity === "Medium"
               ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : "bg-primary/10 text-primary"
           }`}
           data-testid={`insight-banner-${trigger.id}`}
         >
-          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-          <span className="truncate">{trigger.message}</span>
+          <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          <span className="line-clamp-2">{trigger.message}</span>
         </div>
       ))}
     </div>
