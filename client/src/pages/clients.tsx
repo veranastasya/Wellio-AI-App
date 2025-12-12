@@ -396,35 +396,45 @@ export default function Clients() {
         </div>
 
         {/* Client Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredClients.map((client, index) => {
             const progressStatus = getProgressStatus(client.progressScore);
             const endDateFormatted = formatEndDate(client.endDate);
+            const progressScore = client.progressScore || 0;
             
             return (
-              <Card 
+              <div 
                 key={client.id} 
-                className="hover-elevate cursor-pointer overflow-visible" 
+                className="group bg-card rounded-2xl shadow-sm hover:shadow-lg border border-border hover:border-border/80 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer flex flex-col" 
                 data-testid={`card-client-${index}`}
                 onClick={() => setLocation(`/coach/clients/${client.id}`)}
               >
-                <CardContent className="p-5 space-y-4">
+                <div className="p-5 flex flex-col flex-1 space-y-4">
                   {/* Header: Avatar with status dot, Name, Badge, Menu */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="relative flex-shrink-0">
-                        <div className={`w-11 h-11 rounded-full ${getAvatarColor(index)} flex items-center justify-center`}>
-                          <span className="text-base font-semibold">{getInitials(client.name)}</span>
+                        <div className={`w-14 h-14 rounded-2xl ${getAvatarColor(index)} flex items-center justify-center shadow-sm`}>
+                          <span className="text-lg font-semibold">{getInitials(client.name)}</span>
                         </div>
-                        {/* Status indicator dot on avatar */}
-                        <div className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-card ${
+                        {/* Status indicator dot on avatar - reflects active/inactive status */}
+                        <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-card shadow-sm ${
                           client.status === "active" ? "bg-emerald-500" : "bg-muted-foreground"
                         }`} />
                       </div>
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-foreground truncate">{client.name}</h3>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-foreground truncate mb-1.5">{client.name}</h3>
                         <Badge 
-                          className={`text-xs mt-1 ${progressStatus.className}`}
+                          variant="outline"
+                          className={`text-xs border ${
+                            progressScore >= 80 
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800" 
+                              : progressScore >= 50 
+                              ? "bg-primary/10 text-primary border-primary/30" 
+                              : progressScore > 0
+                              ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800"
+                              : "bg-muted text-muted-foreground border-border"
+                          }`}
                         >
                           {progressStatus.label}
                         </Badge>
@@ -435,7 +445,7 @@ export default function Clients() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="flex-shrink-0"
+                          className="flex-shrink-0 text-muted-foreground hover:text-foreground"
                           data-testid={`button-client-menu-${index}`}
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -469,33 +479,35 @@ export default function Clients() {
                     </DropdownMenu>
                   </div>
 
-                  {/* Primary Goal */}
-                  {client.goalType && (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Target className="w-3 h-3" />
-                        <span>Primary Goal</span>
-                      </div>
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {getGoalTypeLabel(client.goalType, client.goalDescription)}
-                      </p>
-                    </div>
-                  )}
+                  {/* Primary Goal - Box Style */}
+                  <div className="p-3 bg-muted/50 rounded-xl border border-border/50 min-h-[72px] flex flex-col justify-center">
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5">
+                      <Target className="w-3.5 h-3.5" />
+                      Primary Goal
+                    </p>
+                    <p className="text-sm text-foreground line-clamp-2">
+                      {client.goalType ? getGoalTypeLabel(client.goalType, client.goalDescription) : "Not set"}
+                    </p>
+                  </div>
 
-                  {/* Progress Bar */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Progress</span>
-                      <span className="font-medium text-foreground">{client.progressScore || 0}%</span>
+                  {/* Progress Bar with Gradient */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground">Progress</span>
+                      <span className="text-sm font-medium text-foreground">{progressScore}%</span>
                     </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="relative w-full bg-muted rounded-full h-2 overflow-hidden">
                       <div 
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          (client.progressScore || 0) >= 80 ? "bg-emerald-500" :
-                          (client.progressScore || 0) >= 50 ? "bg-primary" :
-                          (client.progressScore || 0) > 0 ? "bg-amber-500" : "bg-muted-foreground"
+                        className={`h-2 rounded-full transition-all duration-500 ease-out ${
+                          progressScore >= 80 
+                            ? "bg-gradient-to-r from-emerald-500 to-emerald-600" 
+                            : progressScore >= 50 
+                            ? "bg-gradient-to-r from-primary to-primary/80"
+                            : progressScore > 0
+                            ? "bg-gradient-to-r from-amber-500 to-amber-600"
+                            : "bg-muted-foreground"
                         }`}
-                        style={{ width: `${client.progressScore || 0}%` }}
+                        style={{ width: `${progressScore}%` }}
                       />
                     </div>
                   </div>
@@ -512,7 +524,7 @@ export default function Clients() {
                   <ClientInsightBanners clientId={client.id} />
 
                   {/* Action Buttons: View and Plan */}
-                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                     <Button
                       className="flex-1 bg-primary text-white hover:bg-primary/90"
                       onClick={() => setLocation(`/coach/clients/${client.id}`)}
@@ -532,8 +544,8 @@ export default function Clients() {
                       </Button>
                     </Link>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>
