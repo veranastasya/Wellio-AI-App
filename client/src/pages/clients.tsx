@@ -537,7 +537,7 @@ export default function Clients() {
                     </div>
                   )}
 
-                  {/* Action Buttons: View and Plan */}
+                  {/* Action Buttons: View, Edit, and Plan */}
                   <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                     <Button
                       className="flex-1 bg-primary text-white hover:bg-primary/90"
@@ -546,6 +546,17 @@ export default function Clients() {
                     >
                       <Eye className="w-4 h-4 mr-2" />
                       View
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        setSelectedClient(client);
+                        setIsEditOpen(true);
+                      }}
+                      data-testid={`button-edit-${index}`}
+                    >
+                      <Pencil className="w-4 h-4" />
                     </Button>
                     <Link href={`/coach/plan-builder/${client.id}`} className="flex-1">
                       <Button
