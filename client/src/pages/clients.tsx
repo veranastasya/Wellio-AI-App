@@ -404,17 +404,10 @@ export default function Clients() {
             const progressScore = client.progressScore || 0;
             const isExpanded = expandedCard === client.id;
             
-            // Check if coaching has ended (end date is in the past)
-            const hasEnded = client.endDate ? new Date(client.endDate) < new Date() : false;
-            
             return (
               <div 
                 key={client.id} 
-                className={`group bg-card rounded-2xl shadow-sm hover:shadow-lg border overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer flex flex-col ${
-                  hasEnded 
-                    ? "border-amber-300 dark:border-amber-700 opacity-75" 
-                    : "border-border hover:border-border/80"
-                }`}
+                className="group bg-card rounded-2xl shadow-sm hover:shadow-lg border border-border hover:border-border/80 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer flex flex-col" 
                 data-testid={`card-client-${index}`}
                 onClick={() => setLocation(`/coach/clients/${client.id}`)}
               >
@@ -436,9 +429,7 @@ export default function Clients() {
                         <Badge 
                           variant="outline"
                           className={`text-xs border ${
-                            hasEnded
-                              ? "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700"
-                              : progressScore >= 80 
+                            progressScore >= 80 
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800" 
                               : progressScore >= 50 
                               ? "bg-primary/10 text-primary border-primary/30" 
@@ -447,7 +438,7 @@ export default function Clients() {
                               : "bg-muted text-muted-foreground border-border"
                           }`}
                         >
-                          {hasEnded ? "Ended" : progressStatus.label}
+                          {progressStatus.label}
                         </Badge>
                       </div>
                     </div>
@@ -501,13 +492,9 @@ export default function Clients() {
 
                   {/* End Date */}
                   {endDateFormatted && (
-                    <div className={`flex items-center gap-2 text-sm ${
-                      hasEnded 
-                        ? "text-amber-600 dark:text-amber-400 font-medium" 
-                        : "text-muted-foreground"
-                    }`}>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <CalendarDays className="w-4 h-4 flex-shrink-0" />
-                      <span>{hasEnded ? `Ended ${endDateFormatted}` : `Ends ${endDateFormatted}`}</span>
+                      <span>Ends {endDateFormatted}</span>
                     </div>
                   )}
 
@@ -537,7 +524,7 @@ export default function Clients() {
                     </div>
                   )}
 
-                  {/* Action Buttons: View, Edit, and Plan */}
+                  {/* Action Buttons: View and Plan */}
                   <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                     <Button
                       className="flex-1 bg-primary text-white hover:bg-primary/90"
@@ -546,17 +533,6 @@ export default function Clients() {
                     >
                       <Eye className="w-4 h-4 mr-2" />
                       View
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => {
-                        setSelectedClient(client);
-                        setIsEditOpen(true);
-                      }}
-                      data-testid={`button-edit-${index}`}
-                    >
-                      <Pencil className="w-4 h-4" />
                     </Button>
                     <Link href={`/coach/plan-builder/${client.id}`} className="flex-1">
                       <Button
@@ -1079,30 +1055,45 @@ function ClientForm({
           </div>
         </div>
 
-        <FormField
-          control={form.control}
-          name="goalType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Goal (Optional)</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || ""}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="goalType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Goal (Optional)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value || ""}>
+                  <FormControl>
+                    <SelectTrigger data-testid="select-client-goal">
+                      <SelectValue placeholder="Select your goal" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {GOAL_TYPES.map((goalType) => (
+                      <SelectItem key={goalType} value={goalType}>
+                        {GOAL_TYPE_LABELS[goalType]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="joinedDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Joined Date</FormLabel>
                 <FormControl>
-                  <SelectTrigger data-testid="select-client-goal">
-                    <SelectValue placeholder="Select your goal" />
-                  </SelectTrigger>
+                  <Input type="date" {...field} data-testid="input-client-joined" />
                 </FormControl>
-                <SelectContent>
-                  {GOAL_TYPES.map((goalType) => (
-                    <SelectItem key={goalType} value={goalType}>
-                      {GOAL_TYPE_LABELS[goalType]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
