@@ -2212,7 +2212,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allInvites = await storage.getClientInvites();
       const invite = allInvites.find(i => i.tokenId === clientToken.id);
 
+      // For manual client setup (Send Portal Invite), there's no invite record
+      // The token is valid as long as the client exists and needs password setup
       if (!invite) {
+        // Check if this is a valid "account setup" token (client exists but no password)
+        if (client && !client.passwordHash) {
+          console.log("[DEBUG] Returning setup-only token data (no invite, client needs password):", { 
+            clientId: client.id,
+            clientName: client.name
+          });
+          return res.json({
+            token: clientToken,
+            client,
+            invite: null, // No questionnaire invite for this flow
+            isSetupOnly: true, // Flag to indicate this is just password setup
+          });
+        }
         return res.status(404).json({ error: "Invite not found for this token" });
       }
 
