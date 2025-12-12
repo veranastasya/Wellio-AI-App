@@ -120,6 +120,11 @@ export const clients = pgTable("clients", {
   goalType: text("goal_type"),
   goalDescription: text("goal_description"),
   progressScore: integer("progress_score").notNull().default(0),
+  // Progress breakdown for composite score calculation
+  goalProgress: integer("goal_progress").notNull().default(0), // 0-100: Long-term goal completion %
+  weeklyProgress: integer("weekly_progress").notNull().default(0), // 0-100: Weekly task completion %
+  activityProgress: integer("activity_progress").notNull().default(0), // 0-100: Activity consistency %
+  progressUpdatedAt: text("progress_updated_at"), // Last time progress was recalculated
   joinedDate: text("joined_date").notNull(),
   lastSession: text("last_session"),
   lastLoginAt: text("last_login_at"),
@@ -376,6 +381,10 @@ export const planMessages = pgTable("plan_messages", {
   createdAt: text("created_at").notNull(),
 });
 
+// Goal scope types for progress calculation
+export const GOAL_SCOPES = ["long_term", "weekly_task"] as const;
+export type GoalScope = typeof GOAL_SCOPES[number];
+
 export const goals = pgTable("goals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").notNull(),
@@ -385,10 +394,13 @@ export const goals = pgTable("goals", {
   description: text("description"),
   targetValue: real("target_value").notNull(),
   currentValue: real("current_value").notNull().default(0),
+  baselineValue: real("baseline_value"), // Starting value for progress calculation
   unit: text("unit").notNull(),
   deadline: text("deadline").notNull(),
   status: text("status").notNull().default("active"),
   priority: text("priority").notNull().default("medium"),
+  scope: text("scope").notNull().default("long_term"), // "long_term" or "weekly_task"
+  weekStartDate: text("week_start_date"), // For weekly tasks, the week they belong to
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

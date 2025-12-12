@@ -62,6 +62,7 @@ import {
   type GoalType,
 } from "@shared/schema";
 import { classifySmartLog, parseSmartLog, processSmartLogToEvents, processSmartLog } from "./smartLogProcessor";
+import { updateClientProgress, updateAllClientsProgress, calculateClientProgress } from "./progressCalculator";
 import { analyzeClientData, analyzeProgressEventsWithGoals, processProgramBuilderRequest, type EnhancedClientInsight, type ProgramBuilderAction } from "./ai";
 import { syncAppleHealthData } from "./sync";
 import OpenAI from "openai";
@@ -2808,6 +2809,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Progress Calculation Endpoints
+  
+  // Get progress breakdown for a specific client
+  app.get("/api/clients/:id/progress", requireCoachAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Calculate and return the breakdown
+      const breakdown = await calculateClientProgress(id);
+      
+      res.json({
+        clientId: id,
+        clientName: client.name,
+        compositeScore: breakdown.compositeScore,
+        breakdown: {
+          goalProgress: breakdown.goalProgress,
+          weeklyProgress: breakdown.weeklyProgress,
+          activityProgress: breakdown.activityProgress,
+        },
+        weights: {
+          longTermGoals: 0.5,
+          weeklyTasks: 0.3,
+          activity: 0.2,
+        }
+      });
+    } catch (error) {
+      console.error("Error calculating client progress:", error);
+      res.status(500).json({ error: "Failed to calculate progress" });
+    }
+  });
+
+  // Recalculate and update progress for a specific client
+  app.post("/api/clients/:id/progress/recalculate", requireCoachAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const client = await storage.getClient(id);
+      
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      const breakdown = await updateClientProgress(id);
+      
+      res.json({
+        success: true,
+        clientId: id,
+        progressScore: breakdown.compositeScore,
+        breakdown: {
+          goalProgress: breakdown.goalProgress,
+          weeklyProgress: breakdown.weeklyProgress,
+          activityProgress: breakdown.activityProgress,
+        }
+      });
+    } catch (error) {
+      console.error("Error recalculating client progress:", error);
+      res.status(500).json({ error: "Failed to recalculate progress" });
+    }
+  });
+
+  // Recalculate progress for all clients (coach's clients)
+  app.post("/api/progress/recalculate-all", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId;
+      await updateAllClientsProgress(coachId);
+      
+      res.json({ success: true, message: "Progress recalculated for all clients" });
+    } catch (error) {
+      console.error("Error recalculating all client progress:", error);
+      res.status(500).json({ error: "Failed to recalculate progress" });
+    }
+  });
+
   // AI Program Builder - processes natural language requests for weekly programs
   app.post("/api/program-builder/process", requireCoachAuth, async (req, res) => {
     try {
@@ -3782,6 +3860,12 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     try {
       const validatedData = insertGoalSchema.parse(req.body);
       const goal = await storage.createGoal(validatedData);
+      
+      // Recalculate progress after goal is created
+      updateClientProgress(validatedData.clientId).catch((err: unknown) => {
+        console.error("Error updating client progress after goal creation:", err);
+      });
+      
       res.status(201).json(goal);
     } catch (error) {
       console.error("Error creating goal:", error);
@@ -3796,6 +3880,12 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       if (!goal) {
         return res.status(404).json({ error: "Goal not found" });
       }
+      
+      // Recalculate progress after goal is updated
+      updateClientProgress(goal.clientId).catch((err: unknown) => {
+        console.error("Error updating client progress after goal update:", err);
+      });
+      
       res.json(goal);
     } catch (error) {
       console.error("Error updating goal:", error);
@@ -4019,9 +4109,16 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       // Process asynchronously if there's text or images
       const hasContent = smartLog.rawText || (smartLog.mediaUrls && (smartLog.mediaUrls as string[]).length > 0);
       if (hasContent) {
-        processSmartLog(smartLog.id).catch((err: unknown) => {
-          console.error("Error processing smart log:", err);
-        });
+        processSmartLog(smartLog.id)
+          .then(() => {
+            // Recalculate progress after processing completes
+            updateClientProgress(validatedData.clientId).catch((err: unknown) => {
+              console.error("Error updating client progress:", err);
+            });
+          })
+          .catch((err: unknown) => {
+            console.error("Error processing smart log:", err);
+          });
       }
       
       res.status(201).json(smartLog);
