@@ -1,0 +1,557 @@
+import { useState } from 'react';
+import { Search, Plus, Mail, Phone, Calendar, TrendingUp, MoreVertical, Filter, Sparkles, Grid3x3, List, ChevronDown, ChevronUp, MessageSquare, Eye, User, AlertTriangle, Clock, CalendarClock } from 'lucide-react';
+import { ClientProfileView } from './ClientProfileView';
+
+interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  avatar: string;
+  color: string;
+  status: 'active' | 'inactive';
+  goal: string;
+  joinDate: string;
+  programEndDate?: string;
+  progress: number;
+  metrics?: {
+    label: string;
+    value: string;
+  }[];
+  lastActive?: string;
+  aiWarnings?: {
+    type: 'warning' | 'info' | 'critical';
+    message: string;
+  }[];
+}
+
+export function ClientManagement() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+
+  const clients: Client[] = [
+    {
+      id: '1',
+      name: 'Sarah Wilson',
+      email: 'sarah.wilson@example.com',
+      phone: '+1 (555) 123-4567',
+      avatar: 'SW',
+      color: 'bg-blue-500',
+      status: 'active',
+      goal: 'Gain muscle / strength',
+      joinDate: '10/12/2024',
+      programEndDate: '04/12/2025',
+      progress: 85,
+      metrics: [
+        { label: 'Female', value: '' },
+        { label: 'Weight', value: '63 kg' },
+        { label: 'Height', value: '170 cm' },
+      ],
+      lastActive: 'Moderately Active (exercise 3-5 days/wk)',
+      aiWarnings: [
+        { type: 'info', message: 'On track to complete program ahead of schedule' },
+      ],
+    },
+    {
+      id: '2',
+      name: 'Alex Thompson',
+      email: 'alex.thompson@example.com',
+      phone: '+1 (555) 234-5678',
+      avatar: 'AT',
+      color: 'bg-amber-500',
+      status: 'active',
+      goal: 'Improve fitness / endurance',
+      joinDate: '10/12/2024',
+      programEndDate: '03/15/2025',
+      progress: 45,
+      metrics: [
+        { label: 'Male', value: '' },
+        { label: 'Weight', value: '78 kg' },
+        { label: 'Height', value: '180 cm' },
+      ],
+      aiWarnings: [
+        { type: 'warning', message: 'Missed 2 check-ins this week' },
+        { type: 'warning', message: 'Low engagement with meal plan' },
+      ],
+    },
+    {
+      id: '3',
+      name: 'Lisa Chen',
+      email: 'lisa.chen@example.com',
+      phone: '+1 (555) 345-6789',
+      avatar: 'LC',
+      color: 'bg-teal-500',
+      status: 'active',
+      goal: 'Eat healthier',
+      joinDate: '10/8/2024',
+      programEndDate: '01/08/2025',
+      progress: 92,
+      metrics: [
+        { label: 'Female', value: '' },
+        { label: 'Weight', value: '58 kg' },
+        { label: 'Height', value: '165 cm' },
+      ],
+    },
+    {
+      id: '4',
+      name: 'Michael Brown',
+      email: 'michael.brown@example.com',
+      phone: '+1 (555) 456-7890',
+      avatar: 'MB',
+      color: 'bg-purple-500',
+      status: 'active',
+      goal: 'Lose weight',
+      joinDate: '10/9/2024',
+      programEndDate: '03/09/2025',
+      progress: 78,
+      metrics: [
+        { label: 'Male', value: '' },
+        { label: 'Weight', value: '85 kg' },
+        { label: 'Height', value: '175 cm' },
+      ],
+      aiWarnings: [
+        { type: 'critical', message: 'Program ends in 2 weeks' },
+      ],
+    },
+    {
+      id: '5',
+      name: 'Emma Davis',
+      email: 'emma.davis@example.com',
+      phone: '+1 (555) 567-8901',
+      avatar: 'ED',
+      color: 'bg-cyan-500',
+      status: 'active',
+      goal: 'Improve overall health',
+      joinDate: '10/13/2024',
+      programEndDate: '06/13/2025',
+      progress: 62,
+      metrics: [
+        { label: 'Female', value: '' },
+        { label: 'Weight', value: '68 kg' },
+        { label: 'Height', value: '168 cm' },
+      ],
+    },
+    {
+      id: '6',
+      name: 'Anastasia',
+      email: 'aa.vanrishka@example.com',
+      phone: '+1 561579152',
+      avatar: 'A',
+      color: 'bg-lime-500',
+      status: 'active',
+      goal: 'Lose weight',
+      joinDate: '10/8/2024',
+      programEndDate: '02/20/2025',
+      progress: 55,
+      metrics: [
+        { label: 'Female', value: '' },
+        { label: 'Weight', value: '75 kg' },
+        { label: 'Height', value: '172 cm' },
+      ],
+      aiWarnings: [
+        { type: 'warning', message: 'Progress slower than expected' },
+      ],
+    },
+  ];
+
+  const filteredClients = clients.filter(client => {
+    const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         client.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filterStatus === 'all' || client.status === filterStatus;
+    return matchesSearch && matchesFilter;
+  });
+
+  // Show client profile if selected
+  if (selectedClient) {
+    return <ClientProfileView client={selectedClient} onBack={() => setSelectedClient(null)} />;
+  }
+
+  return (
+    <div className="p-4 md:p-8">
+      {/* Mobile Header */}
+      <div className="mb-6 md:mb-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-gray-900 mb-2">Client Management</h1>
+            <p className="text-gray-600 text-sm md:text-base">Manage your coaching clients and track their progress</p>
+          </div>
+          <button
+            onClick={() => setShowNewClientModal(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#28A0AE] text-white rounded-lg hover:bg-[#229099] transition-colors shadow-sm"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="hidden sm:inline">Add New Client</span>
+            <span className="sm:hidden">Add Client</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Search, Filters, and View Toggle */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
+        <div className="flex flex-col gap-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search clients..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#28A0AE] focus:border-transparent"
+            />
+          </div>
+          
+          {/* Filters and View Toggle */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#28A0AE] text-sm"
+              >
+                <option value="all">All Clients</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setViewMode('card')}
+                className={`p-2 rounded ${viewMode === 'card' ? 'bg-white shadow-sm' : 'text-gray-500'} transition-all`}
+                title="Card View"
+              >
+                <Grid3x3 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded ${viewMode === 'list' ? 'bg-white shadow-sm' : 'text-gray-500'} transition-all`}
+                title="List View"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Client Cards Grid - Minimal Design */}
+      {viewMode === 'card' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredClients.map((client) => {
+            const isExpanded = expandedCard === client.id;
+            const statusConfig = client.progress >= 80 
+              ? { badge: 'Excellent', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+              : client.progress >= 50 
+              ? { badge: 'On Track', color: 'bg-blue-50 text-blue-700 border-blue-200' }
+              : { badge: 'Needs Attention', color: 'bg-amber-50 text-amber-700 border-amber-200' };
+            
+            return (
+              <div 
+                key={client.id} 
+                className="group bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] border border-gray-100 hover:border-gray-200 overflow-hidden transition-all duration-300 ease-out hover:-translate-y-1 flex flex-col"
+              >
+                <div className="p-5 flex flex-col flex-1">
+                  {/* Compact Header */}
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className={`relative w-14 h-14 rounded-2xl ${client.color} flex items-center justify-center text-white text-lg flex-shrink-0 shadow-sm`}>
+                      <span>{client.avatar}</span>
+                      {/* Status indicator dot */}
+                      <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${
+                        client.progress >= 80 ? 'bg-emerald-500' :
+                        client.progress >= 50 ? 'bg-blue-500' :
+                        'bg-amber-500'
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-gray-900 truncate mb-1.5">{client.name}</h3>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs border ${statusConfig.color}`}>
+                        {statusConfig.badge}
+                      </span>
+                    </div>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedCard(isExpanded ? null : client.id);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                    >
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+
+                  {/* Key Metric - Goal - Fixed Height */}
+                  <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-100 min-h-[72px] flex flex-col justify-center">
+                    <p className="text-xs text-gray-500 mb-1 flex items-center gap-1.5">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      Primary Goal
+                    </p>
+                    <p className="text-sm text-gray-900 line-clamp-2">
+                      {client.goal}
+                    </p>
+                  </div>
+
+                  {/* Progress Bar - Always Visible */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-600">Progress</span>
+                      <span className="text-sm text-gray-900">{client.progress}%</span>
+                    </div>
+                    <div className="relative w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-500 ease-out ${
+                          client.progress >= 80 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600' :
+                          client.progress >= 50 ? 'bg-gradient-to-r from-[#28A0AE] to-[#229099]' :
+                          'bg-gradient-to-r from-amber-500 to-amber-600'
+                        }`}
+                        style={{ width: `${client.progress}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Program Timeline - Fixed Height Container */}
+                  <div className="mb-4 min-h-[40px] flex items-center">
+                    {client.programEndDate && (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 w-full">
+                        <CalendarClock className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-700">Ends {client.programEndDate}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* AI Warnings - Fixed Height Container */}
+                  <div className="mb-4 min-h-[60px]">
+                    {client.aiWarnings && client.aiWarnings.length > 0 && (
+                      <div className="space-y-2">
+                        {client.aiWarnings.slice(0, 2).map((warning, index) => (
+                          <div 
+                            key={index} 
+                            className={`flex items-start gap-2 p-2.5 rounded-lg border ${
+                              warning.type === 'critical' ? 'bg-red-50 border-red-100' :
+                              warning.type === 'warning' ? 'bg-amber-50 border-amber-100' :
+                              'bg-blue-50 border-blue-100'
+                            }`}
+                          >
+                            <AlertTriangle className={`w-3.5 h-3.5 flex-shrink-0 mt-0.5 ${
+                              warning.type === 'critical' ? 'text-red-500' :
+                              warning.type === 'warning' ? 'text-amber-500' :
+                              'text-blue-500'
+                            }`} />
+                            <span className={`flex-1 text-xs line-clamp-2 ${
+                              warning.type === 'critical' ? 'text-red-700' :
+                              warning.type === 'warning' ? 'text-amber-700' :
+                              'text-blue-700'
+                            }`}>{warning.message}</span>
+                          </div>
+                        ))}
+                        {client.aiWarnings.length > 2 && (
+                          <p className="text-xs text-gray-500 text-center">+{client.aiWarnings.length - 2} more</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Expanded Details - Progressive Disclosure */}
+                  {isExpanded && (
+                    <div className="pt-4 border-t border-gray-100 space-y-3 mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                      {client.metrics && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {client.metrics.map((metric, index) => (
+                            <span key={index} className="px-2.5 py-1 bg-white border border-gray-200 text-gray-700 rounded-lg text-xs">
+                              {metric.label} {metric.value}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Spacer to push buttons to bottom */}
+                  <div className="flex-1"></div>
+
+                  {/* Quick Actions - Always at Bottom */}
+                  <div className="flex gap-2 mt-auto pt-2">
+                    <button 
+                      onClick={() => setSelectedClient(client)}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-[#28A0AE] text-white rounded-xl hover:bg-[#229099] transition-all hover:shadow-lg hover:shadow-[#28A0AE]/20 text-sm"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>View</span>
+                    </button>
+                    <button 
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all text-sm"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>Plan</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* List View - Compact Table for Desktop */}
+      {viewMode === 'list' && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-6 py-4 text-xs text-gray-600 uppercase tracking-wider">Client</th>
+                  <th className="text-left px-6 py-4 text-xs text-gray-600 uppercase tracking-wider">Status</th>
+                  <th className="text-left px-6 py-4 text-xs text-gray-600 uppercase tracking-wider">Goal</th>
+                  <th className="text-left px-6 py-4 text-xs text-gray-600 uppercase tracking-wider">Progress</th>
+                  <th className="text-left px-6 py-4 text-xs text-gray-600 uppercase tracking-wider">Contact</th>
+                  <th className="text-right px-6 py-4 text-xs text-gray-600 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredClients.map((client) => (
+                  <tr key={client.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full ${client.color} flex items-center justify-center text-white flex-shrink-0`}>
+                          <span className="text-sm">{client.avatar}</span>
+                        </div>
+                        <div>
+                          <p className="text-gray-900">{client.name}</p>
+                          <p className="text-xs text-gray-500">Joined {client.joinDate}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs ${
+                        client.progress >= 80 ? 'bg-green-100 text-green-700' :
+                        client.progress >= 50 ? 'bg-blue-100 text-blue-700' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>
+                        {client.progress >= 80 ? 'Excellent' : client.progress >= 50 ? 'On Track' : 'Needs Attention'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm text-gray-700">{client.goal}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-gray-200 rounded-full h-2 max-w-[120px]">
+                          <div
+                            className={`h-2 rounded-full ${
+                              client.progress >= 80 ? 'bg-green-500' :
+                              client.progress >= 50 ? 'bg-[#28A0AE]' :
+                              'bg-amber-500'
+                            }`}
+                            style={{ width: `${client.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-gray-900 w-10 text-right">{client.progress}%</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <a href={`mailto:${client.email}`} className="p-1.5 text-gray-400 hover:text-[#28A0AE] hover:bg-[#E8F7F9] rounded transition-colors" title="Email">
+                          <Mail className="w-4 h-4" />
+                        </a>
+                        <a href={`tel:${client.phone}`} className="p-1.5 text-gray-400 hover:text-[#28A0AE] hover:bg-[#E8F7F9] rounded transition-colors" title="Call">
+                          <Phone className="w-4 h-4" />
+                        </a>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => setSelectedClient(client)}
+                          className="px-3 py-1.5 text-[#28A0AE] hover:bg-[#E8F7F9] rounded-lg transition-colors text-sm"
+                        >
+                          View Profile
+                        </button>
+                        <button className="p-1.5 text-gray-400 hover:text-gray-600 rounded transition-colors">
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile List */}
+          <div className="md:hidden divide-y divide-gray-200">
+            {filteredClients.map((client) => (
+              <div key={client.id} className="p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start gap-3 mb-3">
+                  <div className={`w-12 h-12 rounded-full ${client.color} flex items-center justify-center text-white flex-shrink-0`}>
+                    <span>{client.avatar}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-gray-900 mb-1">{client.name}</h3>
+                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${
+                      client.progress >= 80 ? 'bg-green-100 text-green-700' :
+                      client.progress >= 50 ? 'bg-blue-100 text-blue-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>
+                      {client.progress >= 80 ? 'Excellent' : client.progress >= 50 ? 'On Track' : 'Needs Attention'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">{client.goal}</p>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${
+                        client.progress >= 80 ? 'bg-green-500' :
+                        client.progress >= 50 ? 'bg-[#28A0AE]' :
+                        'bg-amber-500'
+                      }`}
+                      style={{ width: `${client.progress}%` }}
+                    />
+                  </div>
+                  <span className="text-sm text-gray-900">{client.progress}%</span>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setSelectedClient(client)}
+                    className="flex-1 px-3 py-2 bg-[#28A0AE] text-white rounded-lg hover:bg-[#229099] transition-colors text-sm"
+                  >
+                    View Profile
+                  </button>
+                  <button className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                    <MoreVertical className="w-4 h-4 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {filteredClients.length === 0 && (
+        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <User className="w-8 h-8 text-gray-400" />
+          </div>
+          <p className="text-gray-900 mb-2">No clients found</p>
+          <p className="text-gray-500 text-sm mb-4">Try adjusting your search or filters</p>
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setFilterStatus('all');
+            }}
+            className="text-[#28A0AE] hover:text-[#229099] text-sm"
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
