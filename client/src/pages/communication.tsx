@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip } from "lucide-react";
+import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip, Bell, BellOff, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { InlineFileAttachment } from "@/components/InlineFileAttachment";
 import { DragDropFileZone } from "@/components/DragDropFileZone";
 import { AISuggestionsStrip } from "@/components/AISuggestionsStrip";
+import { useCoachPushNotifications } from "@/hooks/useCoachPushNotifications";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function Communication() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -22,6 +24,7 @@ export default function Communication() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: subscribePush, unsubscribe: unsubscribePush } = useCoachPushNotifications();
 
   // Track window size for mobile/desktop view switching
   useEffect(() => {
@@ -263,8 +266,38 @@ export default function Communication() {
         {/* Header - hide on mobile when viewing chat */}
         {(!isMobile || !selectedClientId) && (
           <div className="mb-4 sm:mb-6 flex-shrink-0">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-chat-title">Chat</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">Message your clients and manage conversations</p>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-chat-title">Chat</h1>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">Message your clients and manage conversations</p>
+              </div>
+              {pushSupported && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant={pushSubscribed ? "default" : "outline"}
+                      onClick={() => pushSubscribed ? unsubscribePush() : subscribePush()}
+                      disabled={pushLoading}
+                      data-testid="button-notification-toggle"
+                    >
+                      {pushLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : pushSubscribed ? (
+                        <Bell className="h-4 w-4" />
+                      ) : (
+                        <BellOff className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {pushSubscribed 
+                      ? "Notifications enabled - click to disable" 
+                      : "Enable notifications for new messages"}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
         )}
 
