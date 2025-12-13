@@ -6,6 +6,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { setupOAuth } from "./replitAuth";
+import { logger, generateRequestId } from "./logger";
 
 const app = express();
 
@@ -51,9 +52,11 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false }));
 
-app.use((req, res, next) => {
+app.use((req: any, res, next) => {
   const start = Date.now();
   const path = req.path;
+  const requestId = generateRequestId();
+  req.requestId = requestId;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
@@ -75,6 +78,16 @@ app.use((req, res, next) => {
       }
 
       log(logLine);
+
+      if (res.statusCode >= 500) {
+        logger.error('API request failed', {
+          requestId,
+          method: req.method,
+          path,
+          statusCode: res.statusCode,
+          durationMs: duration,
+        });
+      }
     }
   });
 
@@ -82,20 +95,32 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  logger.info('Starting Wellio server', {
+    nodeEnv: process.env.NODE_ENV || 'development',
+  });
+  
   await storage.seedData();
   log("Database seeded successfully");
+  logger.info('Database seeded successfully');
   
   // Setup OAuth routes (Replit Auth for Google, Apple, GitHub login)
   await setupOAuth(app);
   
   const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
+    const requestId = (req as any).requestId || generateRequestId();
 
-    res.status(status).json({ message });
-    throw err;
+    logger.error('Unhandled request error', {
+      requestId,
+      method: req.method,
+      path: req.path,
+      statusCode: status,
+    }, err);
+
+    res.status(status).json({ message, requestId });
   });
 
   // importantly only setup vite in development and after
@@ -118,5 +143,6 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    logger.info('Server started successfully', { port });
   });
 })();
