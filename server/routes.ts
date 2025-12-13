@@ -75,6 +75,70 @@ import {
   generateRookConnectionUrl
 } from "./rook";
 import { sendInviteEmail, sendPlanAssignmentEmail, sendSessionBookingEmail, sendAccountSetupEmail } from "./email";
+import { logger } from "./logger";
+
+async function sendPushNotificationToClient(
+  clientId: string,
+  title: string,
+  body: string,
+  options?: { tag?: string; url?: string }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const webpush = await import('web-push');
+    
+    const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+    const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+    
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      logger.warn('Push notification skipped: VAPID keys not configured');
+      return { success: false, error: 'VAPID keys not configured' };
+    }
+    
+    webpush.setVapidDetails(
+      'mailto:support@wellio.app',
+      vapidPublicKey,
+      vapidPrivateKey
+    );
+    
+    const subscription = await storage.getPushSubscription(clientId);
+    
+    if (!subscription) {
+      logger.debug('Push notification skipped: Client has no subscription', { clientId });
+      return { success: false, error: 'Client has not enabled push notifications' };
+    }
+    
+    const pushPayload = JSON.stringify({
+      title,
+      body,
+      icon: '/icon-192.png',
+      badge: '/icon-72.png',
+      tag: options?.tag || 'wellio-notification',
+      data: { url: options?.url || '/client' }
+    });
+    
+    await webpush.sendNotification(
+      {
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: subscription.p256dh,
+          auth: subscription.auth,
+        },
+      },
+      pushPayload
+    );
+    
+    logger.info('Push notification sent', { clientId, title });
+    return { success: true };
+  } catch (error: any) {
+    if (error.statusCode === 404 || error.statusCode === 410) {
+      logger.info('Push subscription expired, removing', { clientId });
+      await storage.deletePushSubscription(clientId);
+      return { success: false, error: 'Subscription expired' };
+    }
+    logger.error('Failed to send push notification', { clientId }, error);
+    return { success: false, error: 'Failed to send push notification' };
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Coach registration endpoint
