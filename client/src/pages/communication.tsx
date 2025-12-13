@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -20,6 +20,7 @@ export default function Communication() {
   const [validationError, setValidationError] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Track window size for mobile/desktop view switching
@@ -48,10 +49,6 @@ export default function Communication() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
       setMessageText("");
-      toast({
-        title: "Success",
-        description: "Message sent successfully",
-      });
     },
   });
 
@@ -132,6 +129,11 @@ export default function Communication() {
       });
     }
   }, [selectedClientId, messages]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [clientMessages.length]);
 
   const handleSendMessage = () => {
     setValidationError("");
@@ -479,6 +481,7 @@ export default function Communication() {
                           </div>
                         ))
                       )}
+                      <div ref={messagesEndRef} />
                     </div>
                 </div>
                 <DragDropFileZone
