@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, real, timestamp, boolean, json } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, real, timestamp, boolean, json, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -162,7 +162,10 @@ export const clients = pgTable("clients", {
   }>(),
   // End date for coach-client collaboration
   endDate: text("end_date"),
-});
+}, (table) => ({
+  coachIdIdx: index("clients_coach_id_idx").on(table.coachId),
+  emailIdx: index("clients_email_idx").on(table.email),
+}));
 
 export const sessions = pgTable("sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -176,7 +179,9 @@ export const sessions = pgTable("sessions", {
   status: text("status").notNull().default("scheduled"),
   notes: text("notes"),
   meetingLink: text("meeting_link"),
-});
+}, (table) => ({
+  clientIdIdx: index("sessions_client_id_idx").on(table.clientId),
+}));
 
 export const messages = pgTable("messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -187,7 +192,9 @@ export const messages = pgTable("messages", {
   timestamp: text("timestamp").notNull(),
   read: boolean("read").notNull().default(false),
   attachments: json("attachments").$type<MessageAttachment[] | null>(),
-});
+}, (table) => ({
+  clientIdIdx: index("messages_client_id_idx").on(table.clientId),
+}));
 
 export const activities = pgTable("activities", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -403,7 +410,9 @@ export const goals = pgTable("goals", {
   weekStartDate: text("week_start_date"), // For weekly tasks, the week they belong to
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (table) => ({
+  clientIdIdx: index("goals_client_id_idx").on(table.clientId),
+}));
 
 export const QUESTION_TYPES = [
   "short_text",
@@ -988,7 +997,9 @@ export const smartLogs = pgTable("smart_logs", {
   processingStatus: text("processing_status").notNull().default("pending"), // "pending" | "processing" | "completed" | "failed"
   processingError: text("processing_error"),
   createdAt: text("created_at").notNull(),
-});
+}, (table) => ({
+  clientIdIdx: index("smart_logs_client_id_idx").on(table.clientId),
+}));
 
 export const insertSmartLogSchema = createInsertSchema(smartLogs).omit({
   id: true,
@@ -1015,7 +1026,10 @@ export const progressEvents = pgTable("progress_events", {
   confidence: real("confidence").notNull().default(1.0), // 0-1
   needsReview: boolean("needs_review").notNull().default(false),
   createdAt: text("created_at").notNull(),
-});
+}, (table) => ({
+  clientIdIdx: index("progress_events_client_id_idx").on(table.clientId),
+  dateIdx: index("progress_events_date_idx").on(table.dateForMetric),
+}));
 
 export const insertProgressEventSchema = createInsertSchema(progressEvents).omit({
   id: true,
