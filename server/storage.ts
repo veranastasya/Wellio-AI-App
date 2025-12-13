@@ -56,6 +56,8 @@ import {
   type InsertInAppNotification,
   type PushSubscription,
   type InsertPushSubscription,
+  type CoachPushSubscription,
+  type InsertCoachPushSubscription,
   coaches,
   clients,
   sessions,
@@ -84,6 +86,7 @@ import {
   engagementNotificationPreferences,
   inAppNotifications,
   pushSubscriptions,
+  coachPushSubscriptions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
@@ -300,6 +303,11 @@ export interface IStorage {
   createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription>;
   updatePushSubscription(clientId: string, subscription: Partial<InsertPushSubscription>): Promise<PushSubscription | undefined>;
   deletePushSubscription(clientId: string): Promise<boolean>;
+
+  // Coach Push Subscriptions
+  getCoachPushSubscription(coachId: string): Promise<CoachPushSubscription | undefined>;
+  createCoachPushSubscription(subscription: InsertCoachPushSubscription): Promise<CoachPushSubscription>;
+  deleteCoachPushSubscription(coachId: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -1786,6 +1794,45 @@ export class DatabaseStorage implements IStorage {
   async deletePushSubscription(clientId: string): Promise<boolean> {
     const result = await db.delete(pushSubscriptions)
       .where(eq(pushSubscriptions.clientId, clientId))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Coach Push Subscriptions
+  async getCoachPushSubscription(coachId: string): Promise<CoachPushSubscription | undefined> {
+    const result = await db.select().from(coachPushSubscriptions)
+      .where(eq(coachPushSubscriptions.coachId, coachId));
+    return result[0];
+  }
+
+  async createCoachPushSubscription(subscription: InsertCoachPushSubscription): Promise<CoachPushSubscription> {
+    const now = new Date().toISOString();
+    const existing = await this.getCoachPushSubscription(subscription.coachId);
+    
+    if (existing) {
+      const result = await db.update(coachPushSubscriptions)
+        .set({ 
+          endpoint: subscription.endpoint,
+          p256dh: subscription.p256dh,
+          auth: subscription.auth,
+          updatedAt: now,
+        })
+        .where(eq(coachPushSubscriptions.coachId, subscription.coachId))
+        .returning();
+      return result[0];
+    }
+    
+    const result = await db.insert(coachPushSubscriptions).values({
+      ...subscription,
+      createdAt: subscription.createdAt || now,
+      updatedAt: subscription.updatedAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async deleteCoachPushSubscription(coachId: string): Promise<boolean> {
+    const result = await db.delete(coachPushSubscriptions)
+      .where(eq(coachPushSubscriptions.coachId, coachId))
       .returning();
     return result.length > 0;
   }

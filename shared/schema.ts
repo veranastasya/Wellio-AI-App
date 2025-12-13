@@ -1272,3 +1272,24 @@ export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions
 
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+
+// Coach Push Subscriptions - Store coach push notification subscriptions for web push
+export const coachPushSubscriptions = pgTable("coach_push_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coachId: varchar("coach_id").notNull(),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const insertCoachPushSubscriptionSchema = createInsertSchema(coachPushSubscriptions).omit({
+  id: true,
+}).extend({
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type InsertCoachPushSubscription = z.infer<typeof insertCoachPushSubscriptionSchema>;
+export type CoachPushSubscription = typeof coachPushSubscriptions.$inferSelect;
