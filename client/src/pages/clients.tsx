@@ -50,6 +50,7 @@ export default function Clients() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "ended">("all");
+  const [sortBy, setSortBy] = useState<"dateAdded" | "name" | "endDate">("dateAdded");
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -115,6 +116,21 @@ export default function Clients() {
     // "all" shows everything
     
     return matchesSearch && matchesStatus;
+  });
+
+  // Sort clients based on selected sort option
+  const sortedClients = [...filteredClients].sort((a, b) => {
+    if (sortBy === "dateAdded") {
+      return new Date(b.joinedDate).getTime() - new Date(a.joinedDate).getTime();
+    } else if (sortBy === "name") {
+      return a.name.localeCompare(b.name);
+    } else if (sortBy === "endDate") {
+      if (!a.endDate && !b.endDate) return 0;
+      if (!a.endDate) return 1;
+      if (!b.endDate) return -1;
+      return new Date(a.endDate).getTime() - new Date(b.endDate).getTime();
+    }
+    return 0;
   });
 
   const createClientMutation = useMutation({
@@ -407,11 +423,30 @@ export default function Clients() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2 min-w-[140px]" data-testid="button-sort">
+                {sortBy === "dateAdded" ? "Date Added" : sortBy === "name" ? "Name A-Z" : "End Date"}
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setSortBy("dateAdded")} data-testid="sort-date-added">
+                Date Added
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy("name")} data-testid="sort-name">
+                Name A-Z
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy("endDate")} data-testid="sort-end-date">
+                End Date
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Client Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredClients.map((client, index) => {
+          {sortedClients.map((client, index) => {
             const progressStatus = getProgressStatus(client.progressScore);
             const endDateFormatted = formatEndDate(client.endDate);
             const progressScore = client.progressScore || 0;
