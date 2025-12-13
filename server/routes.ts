@@ -740,6 +740,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertMessageSchema.parse(req.body);
       const message = await storage.createMessage(validatedData);
+      
+      // Send push notification to client when coach sends a message (non-blocking)
+      if (validatedData.clientId) {
+        sendPushNotificationToClient(
+          validatedData.clientId,
+          'New Message from Your Coach',
+          validatedData.content.substring(0, 100) + (validatedData.content.length > 100 ? '...' : ''),
+          { tag: 'coach-message', url: '/client/chat' }
+        ).then(result => {
+          if (!result.success) {
+            logger.debug('Push notification not sent for coach message', { 
+              clientId: validatedData.clientId, 
+              reason: result.error 
+            });
+          }
+        }).catch(err => {
+          logger.error('Unexpected error sending push notification for coach message', { clientId: validatedData.clientId }, err);
+        });
+      }
+      
       res.status(201).json(message);
     } catch (error) {
       res.status(400).json({ error: "Invalid message data" });
@@ -3799,6 +3819,24 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         // Don't fail the assignment if email fails
       }
 
+      // Send push notification to client (non-blocking)
+      sendPushNotificationToClient(
+        client.id,
+        'New Plan Assigned!',
+        `${plan.planName || 'A new plan'} has been assigned to you`,
+        { tag: 'plan-assigned', url: '/client/plan' }
+      ).then(result => {
+        if (!result.success) {
+          logger.debug('Push notification not sent for plan assignment', { 
+            clientId: client.id, 
+            planId: plan.id,
+            reason: result.error 
+          });
+        }
+      }).catch(err => {
+        logger.error('Unexpected error sending push notification for plan assignment', { clientId: client.id, planId: plan.id }, err);
+      });
+
       res.json({ 
         success: true, 
         pdfUrl: objectPath,
@@ -3877,6 +3915,24 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         console.error("[Email] Failed to send plan assignment email:", emailError);
         // Don't fail the assignment if email fails
       }
+
+      // Send push notification to client (non-blocking)
+      sendPushNotificationToClient(
+        client.id,
+        'New Plan Assigned!',
+        `${planName || 'A new plan'} has been assigned to you`,
+        { tag: 'plan-assigned', url: '/client/plan' }
+      ).then(result => {
+        if (!result.success) {
+          logger.debug('Push notification not sent for manual plan assignment', { 
+            clientId: client.id, 
+            planName,
+            reason: result.error 
+          });
+        }
+      }).catch(err => {
+        logger.error('Unexpected error sending push notification for manual plan assignment', { clientId: client.id, planName }, err);
+      });
 
       res.json({ 
         success: true,
