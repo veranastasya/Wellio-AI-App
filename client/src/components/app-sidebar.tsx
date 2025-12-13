@@ -96,9 +96,10 @@ const navigationItems = [
 export function AppSidebar() {
   const [location] = useLocation();
 
-  // Fetch coach messages to count unread
+  // Fetch coach messages to count unread with polling for real-time updates
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/coach/messages"],
+    refetchInterval: 5000, // Poll every 5 seconds for new messages
   });
 
   // Count unread messages from clients

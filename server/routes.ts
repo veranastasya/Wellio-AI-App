@@ -84,7 +84,8 @@ async function sendPushNotificationToClient(
   options?: { tag?: string; url?: string }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const webpush = await import('web-push');
+    // Dynamic import with .default access for CommonJS module compatibility
+    const webpush = await import('web-push').then(m => m.default);
     
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
     const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;

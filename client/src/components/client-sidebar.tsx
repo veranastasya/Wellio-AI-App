@@ -55,8 +55,10 @@ const navigationItems = [
 export function ClientSidebar() {
   const [location, setLocation] = useLocation();
 
+  // Fetch messages with polling for real-time updates
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
+    refetchInterval: 5000, // Poll every 5 seconds for new messages
   });
 
   const unreadCount = messages.filter(
