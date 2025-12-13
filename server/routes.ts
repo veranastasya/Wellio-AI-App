@@ -141,6 +141,69 @@ async function sendPushNotificationToClient(
   }
 }
 
+async function sendPushNotificationToCoach(
+  coachId: string,
+  title: string,
+  body: string,
+  options?: { tag?: string; url?: string }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const webpush = await import('web-push').then(m => m.default);
+    
+    const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+    const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+    
+    if (!vapidPublicKey || !vapidPrivateKey) {
+      logger.warn('Push notification skipped: VAPID keys not configured');
+      return { success: false, error: 'VAPID keys not configured' };
+    }
+    
+    webpush.setVapidDetails(
+      'mailto:support@wellio.app',
+      vapidPublicKey,
+      vapidPrivateKey
+    );
+    
+    const subscription = await storage.getCoachPushSubscription(coachId);
+    
+    if (!subscription) {
+      logger.debug('Push notification skipped: Coach has no subscription', { coachId });
+      return { success: false, error: 'Coach has not enabled push notifications' };
+    }
+    
+    const pushPayload = JSON.stringify({
+      title,
+      body,
+      icon: '/icon-192.png',
+      badge: '/icon-72.png',
+      tag: options?.tag || 'wellio-notification',
+      data: { url: options?.url || '/communication' }
+    });
+    
+    await webpush.sendNotification(
+      {
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: subscription.p256dh,
+          auth: subscription.auth,
+        },
+      },
+      pushPayload
+    );
+    
+    logger.info('Push notification sent to coach', { coachId, title });
+    return { success: true };
+  } catch (error: any) {
+    if (error.statusCode === 404 || error.statusCode === 410) {
+      logger.info('Coach push subscription expired, removing', { coachId });
+      await storage.deleteCoachPushSubscription(coachId);
+      return { success: false, error: 'Subscription expired' };
+    }
+    logger.error('Failed to send push notification to coach', { coachId }, error);
+    return { success: false, error: 'Failed to send push notification' };
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Coach registration endpoint
   app.post("/api/coach/register", async (req, res) => {
@@ -703,6 +766,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const messageData = { ...req.body, clientId };
       const validatedData = insertMessageSchema.parse(messageData);
       const message = await storage.createMessage(validatedData);
+      
+      // Send push notification to coach when client sends a message
+      const client = await storage.getClient(clientId);
+      if (client?.coachId) {
+        sendPushNotificationToCoach(
+          client.coachId,
+          `New message from ${client.name}`,
+          validatedData.content.substring(0, 100) + (validatedData.content.length > 100 ? '...' : ''),
+          { tag: 'client-message', url: '/communication' }
+        ).then(result => {
+          if (!result.success) {
+            logger.debug('Push notification not sent for client message', { 
+              coachId: client.coachId, 
+              reason: result.error 
+            });
+          }
+        }).catch(err => {
+          logger.error('Unexpected error sending push notification to coach', { coachId: client.coachId }, err);
+        });
+      }
+      
       res.status(201).json(message);
     } catch (error) {
       res.status(400).json({ error: "Invalid message data" });
@@ -4877,6 +4961,66 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     } catch (error) {
       console.error("Error removing push subscription:", error);
       res.status(500).json({ error: "Failed to remove push subscription" });
+    }
+  });
+
+  // Coach Push Notification Routes
+  app.get("/api/coach/push/vapid-public-key", requireCoachAuth, (_req, res) => {
+    const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+    if (!vapidPublicKey) {
+      return res.status(500).json({ error: 'Push notifications not configured' });
+    }
+    res.json({ publicKey: vapidPublicKey });
+  });
+
+  app.post("/api/coach/push/subscribe", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      
+      const parseResult = pushSubscriptionSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid subscription data",
+          details: parseResult.error.flatten() 
+        });
+      }
+      
+      const { endpoint, keys } = parseResult.data;
+      
+      const subscription = await storage.createCoachPushSubscription({
+        coachId,
+        endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+      });
+      
+      logger.info('Coach push subscription created', { coachId });
+      res.json({ success: true, subscriptionId: subscription.id });
+    } catch (error) {
+      logger.error('Failed to save coach push subscription', {}, error);
+      res.status(500).json({ error: 'Failed to save subscription' });
+    }
+  });
+
+  app.delete("/api/coach/push/subscription", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      await storage.deleteCoachPushSubscription(coachId);
+      logger.info('Coach push subscription deleted', { coachId });
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('Failed to delete coach push subscription', {}, error);
+      res.status(500).json({ error: 'Failed to delete subscription' });
+    }
+  });
+
+  app.get("/api/coach/push/status", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const subscription = await storage.getCoachPushSubscription(coachId);
+      res.json({ enabled: !!subscription });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to check status' });
     }
   });
 

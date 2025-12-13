@@ -45,7 +45,8 @@ self.addEventListener('push', (event) => {
     badge: data.badge,
     tag: data.tag,
     data: data.data,
-    vibrate: [200, 100, 200],
+    silent: true,
+    requireInteraction: false,
     actions: [
       { action: 'open', title: 'Open' },
       { action: 'dismiss', title: 'Dismiss' }
