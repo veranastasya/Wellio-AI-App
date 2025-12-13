@@ -316,6 +316,22 @@ export default function CoachClientDetail() {
                       </div>
                     </div>
                   </div>
+                  {client.endDate && (
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5 text-muted-foreground" />
+                      <div>
+                        <div className="text-sm text-muted-foreground">Program End Date</div>
+                        <div className={`text-base ${new Date(client.endDate) < new Date() ? 'text-red-500 font-medium' : ''}`} data-testid="text-client-end-date">
+                          {new Date(client.endDate).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                          {new Date(client.endDate) < new Date() && ' (Ended)'}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {client.lastSession && (
                     <div className="flex items-center gap-3">
                       <Calendar className="w-5 h-5 text-muted-foreground" />

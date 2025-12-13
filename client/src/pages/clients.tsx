@@ -49,7 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Clients() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "ended">("all");
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -100,7 +100,20 @@ export default function Clients() {
   const filteredClients = clients.filter((client) => {
     const matchesSearch = client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || client.status === statusFilter;
+    
+    // Check if client's end date has passed
+    const isEnded = client.endDate ? new Date(client.endDate) < new Date() : false;
+    
+    let matchesStatus = true;
+    if (statusFilter === "active") {
+      // Active = not ended and status is active
+      matchesStatus = !isEnded && client.status === "active";
+    } else if (statusFilter === "ended") {
+      // Ended = end date passed OR status is inactive
+      matchesStatus = isEnded || client.status === "inactive";
+    }
+    // "all" shows everything
+    
     return matchesSearch && matchesStatus;
   });
 
@@ -378,7 +391,7 @@ export default function Clients() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2 min-w-[120px]" data-testid="button-status-filter">
-                {statusFilter === "all" ? "All Status" : statusFilter === "active" ? "Active" : "Inactive"}
+                {statusFilter === "all" ? "All Status" : statusFilter === "active" ? "Active" : "Ended"}
                 <ChevronDown className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -389,8 +402,8 @@ export default function Clients() {
               <DropdownMenuItem onClick={() => setStatusFilter("active")} data-testid="filter-active">
                 Active
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setStatusFilter("inactive")} data-testid="filter-inactive">
-                Inactive
+              <DropdownMenuItem onClick={() => setStatusFilter("ended")} data-testid="filter-ended">
+                Ended
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
