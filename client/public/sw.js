@@ -1,5 +1,5 @@
 // Wellio Service Worker for Push Notifications
-// Version: 2 - Fixed notification display
+// Version: 3 - Simplified options for maximum browser compatibility
 
 const NOTIFICATION_TYPES = {
   MESSAGE: 'message',
@@ -61,13 +61,11 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push notification received');
+  console.log('[SW] Push notification received at:', new Date().toISOString());
   
   let data = {
     title: 'Wellio',
     body: 'You have a new notification',
-    icon: '/icon-192.png',
-    badge: '/icon-72.png',
     tag: 'wellio-notification',
     data: { url: '/client', type: 'default' }
   };
@@ -75,11 +73,10 @@ self.addEventListener('push', (event) => {
   if (event.data) {
     try {
       const payload = event.data.json();
+      console.log('[SW] Push payload:', JSON.stringify(payload));
       data = {
         title: payload.title || data.title,
         body: payload.body || payload.message || data.body,
-        icon: payload.icon || data.icon,
-        badge: payload.badge || data.badge,
         tag: payload.tag || `wellio-${payload.data?.type || 'notification'}-${Date.now()}`,
         data: {
           ...data.data,
@@ -95,20 +92,22 @@ self.addEventListener('push', (event) => {
   
   const options = {
     body: data.body,
-    icon: data.icon,
-    badge: data.badge,
     tag: data.tag,
     data: data.data,
-    vibrate: [100, 50, 100],
-    requireInteraction: data.data?.type === NOTIFICATION_TYPES.MESSAGE,
-    actions: [
-      { action: 'open', title: 'Open' },
-      { action: 'dismiss', title: 'Dismiss' }
-    ]
+    silent: false,
+    renotify: true
   };
+  
+  console.log('[SW] Calling showNotification with title:', data.title, 'options:', JSON.stringify(options));
   
   event.waitUntil(
     self.registration.showNotification(data.title, options)
+      .then(() => {
+        console.log('[SW] showNotification completed successfully');
+      })
+      .catch((err) => {
+        console.error('[SW] showNotification failed:', err);
+      })
   );
 });
 
