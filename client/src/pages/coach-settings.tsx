@@ -264,57 +264,20 @@ export default function CoachSettings() {
                     </p>
                   </div>
                 ) : isSubscribed ? (
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2"
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/coach/push/test', {
-                            method: 'POST',
-                            credentials: 'include',
-                          });
-                          const data = await response.json();
-                          if (data.success) {
-                            toast({
-                              title: 'Test Sent',
-                              description: data.message,
-                            });
-                          } else {
-                            toast({
-                              title: 'Test Failed',
-                              description: data.error || 'Failed to send test notification',
-                              variant: 'destructive',
-                            });
-                          }
-                        } catch {
-                          toast({
-                            title: 'Error',
-                            description: 'Failed to send test notification',
-                            variant: 'destructive',
-                          });
-                        }
-                      }}
-                      data-testid="button-test-notification"
-                    >
-                      <Bell className="w-4 h-4" />
-                      Send Test Notification
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2"
-                      onClick={unsubscribe}
-                      disabled={isPushLoading}
-                      data-testid="button-disable-notifications"
-                    >
-                      {isPushLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <BellOff className="w-4 h-4" />
-                      )}
-                      Disable Notifications
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={unsubscribe}
+                    disabled={isPushLoading}
+                    data-testid="button-disable-notifications"
+                  >
+                    {isPushLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <BellOff className="w-4 h-4" />
+                    )}
+                    Disable Notifications
+                  </Button>
                 ) : (
                   <Button
                     className="w-full gap-2"

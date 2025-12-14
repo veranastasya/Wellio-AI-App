@@ -364,47 +364,20 @@ export default function ClientProfile() {
                     </p>
                   </div>
                 ) : isSubscribed ? (
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2"
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/client/push/test', {
-                            method: 'POST',
-                            credentials: 'include',
-                          });
-                          const data = await response.json();
-                          if (data.success) {
-                            // Use a simple alert since we don't have toast in this component
-                            alert(data.message);
-                          } else {
-                            alert(data.error || 'Failed to send test notification');
-                          }
-                        } catch {
-                          alert('Failed to send test notification');
-                        }
-                      }}
-                      data-testid="button-client-test-notification"
-                    >
-                      <Bell className="w-4 h-4" />
-                      Send Test Notification
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2"
-                      onClick={unsubscribe}
-                      disabled={isPushLoading}
-                      data-testid="button-client-disable-notifications"
-                    >
-                      {isPushLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <BellOff className="w-4 h-4" />
-                      )}
-                      Disable Notifications
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={unsubscribe}
+                    disabled={isPushLoading}
+                    data-testid="button-client-disable-notifications"
+                  >
+                    {isPushLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <BellOff className="w-4 h-4" />
+                    )}
+                    Disable Notifications
+                  </Button>
                 ) : (
                   <Button
                     className="w-full gap-2"

@@ -8,7 +8,6 @@ import { Loader2, Dumbbell, Flame, TrendingUp, Trophy, Apple, Droplets, MessageS
 import { apiRequest } from "@/lib/queryClient";
 import type { Client, SmartLog, ProgressEvent } from "@shared/schema";
 import { format, subDays, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
-import { PushNotificationBanner } from "@/components/push/PushNotificationBanner";
 
 interface TrendAnalysis {
   category: string;
@@ -215,8 +214,6 @@ export default function ClientDashboard() {
   return (
     <div className="bg-background min-h-screen">
       <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
-        <PushNotificationBanner />
-
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-dashboard-title">
             Welcome back, {clientData.name.split(" ")[0]}!
