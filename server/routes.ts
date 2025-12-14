@@ -813,7 +813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           client.coachId,
           `New message from ${client.name}`,
           validatedData.content.substring(0, 100) + (validatedData.content.length > 100 ? '...' : ''),
-          { tag: 'client-message', url: '/communication' }
+          { tag: 'client-message', url: `/communication?client=${clientId}`, type: 'message', metadata: { userType: 'coach' } }
         ).then(result => {
           if (!result.success) {
             logger.debug('Push notification not sent for client message', { 
@@ -871,7 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           validatedData.clientId,
           'New Message from Your Coach',
           validatedData.content.substring(0, 100) + (validatedData.content.length > 100 ? '...' : ''),
-          { tag: 'coach-message', url: '/client/chat' }
+          { tag: 'coach-message', url: '/client/coach-chat', type: 'message', metadata: { userType: 'client' } }
         ).then(result => {
           if (!result.success) {
             logger.debug('Push notification not sent for coach message', { 
