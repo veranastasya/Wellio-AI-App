@@ -81,10 +81,9 @@ async function sendPushNotificationToClient(
   clientId: string,
   title: string,
   body: string,
-  options?: { tag?: string; url?: string }
-): Promise<{ success: boolean; error?: string }> {
+  options?: { tag?: string; url?: string; type?: string; metadata?: Record<string, any> }
+): Promise<{ success: boolean; error?: string; sentCount?: number }> {
   try {
-    // Dynamic import with .default access for CommonJS module compatibility
     const webpush = await import('web-push').then(m => m.default);
     
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
@@ -101,41 +100,61 @@ async function sendPushNotificationToClient(
       vapidPrivateKey
     );
     
-    const subscription = await storage.getPushSubscription(clientId);
+    // Get ALL subscriptions for this client (multi-device support)
+    const subscriptions = await storage.getAllPushSubscriptions(clientId);
     
-    if (!subscription) {
-      logger.debug('Push notification skipped: Client has no subscription', { clientId });
+    if (subscriptions.length === 0) {
+      logger.debug('Push notification skipped: Client has no subscriptions', { clientId });
       return { success: false, error: 'Client has not enabled push notifications' };
     }
     
     const pushPayload = JSON.stringify({
+      type: options?.type || 'notification',
       title,
       body,
       icon: '/icon-192.png',
       badge: '/icon-72.png',
       tag: options?.tag || 'wellio-notification',
-      data: { url: options?.url || '/client' }
+      data: { 
+        url: options?.url || '/client',
+        ...options?.metadata
+      }
     });
     
-    await webpush.sendNotification(
-      {
-        endpoint: subscription.endpoint,
-        keys: {
-          p256dh: subscription.p256dh,
-          auth: subscription.auth,
-        },
-      },
-      pushPayload
-    );
+    let sentCount = 0;
+    const errors: string[] = [];
     
-    logger.info('Push notification sent', { clientId, title });
-    return { success: true };
-  } catch (error: any) {
-    if (error.statusCode === 404 || error.statusCode === 410) {
-      logger.info('Push subscription expired, removing', { clientId });
-      await storage.deletePushSubscription(clientId);
-      return { success: false, error: 'Subscription expired' };
+    // Send to all devices
+    for (const subscription of subscriptions) {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: subscription.endpoint,
+            keys: {
+              p256dh: subscription.p256dh,
+              auth: subscription.auth,
+            },
+          },
+          pushPayload
+        );
+        sentCount++;
+      } catch (error: any) {
+        if (error.statusCode === 404 || error.statusCode === 410) {
+          logger.info('Push subscription expired, removing', { clientId, endpoint: subscription.endpoint.slice(-20) });
+          await storage.deletePushSubscriptionByEndpoint(subscription.endpoint);
+        } else {
+          errors.push(error.message);
+        }
+      }
     }
+    
+    if (sentCount > 0) {
+      logger.info('Push notifications sent', { clientId, title, sentCount, totalDevices: subscriptions.length });
+      return { success: true, sentCount };
+    }
+    
+    return { success: false, error: errors.join(', ') || 'All subscriptions expired' };
+  } catch (error: any) {
     logger.error('Failed to send push notification', { clientId }, error);
     return { success: false, error: 'Failed to send push notification' };
   }
@@ -145,8 +164,8 @@ async function sendPushNotificationToCoach(
   coachId: string,
   title: string,
   body: string,
-  options?: { tag?: string; url?: string }
-): Promise<{ success: boolean; error?: string }> {
+  options?: { tag?: string; url?: string; type?: string; metadata?: Record<string, any> }
+): Promise<{ success: boolean; error?: string; sentCount?: number }> {
   try {
     const webpush = await import('web-push').then(m => m.default);
     
@@ -164,41 +183,61 @@ async function sendPushNotificationToCoach(
       vapidPrivateKey
     );
     
-    const subscription = await storage.getCoachPushSubscription(coachId);
+    // Get ALL subscriptions for this coach (multi-device support)
+    const subscriptions = await storage.getAllCoachPushSubscriptions(coachId);
     
-    if (!subscription) {
-      logger.debug('Push notification skipped: Coach has no subscription', { coachId });
+    if (subscriptions.length === 0) {
+      logger.debug('Push notification skipped: Coach has no subscriptions', { coachId });
       return { success: false, error: 'Coach has not enabled push notifications' };
     }
     
     const pushPayload = JSON.stringify({
+      type: options?.type || 'notification',
       title,
       body,
       icon: '/icon-192.png',
       badge: '/icon-72.png',
       tag: options?.tag || 'wellio-notification',
-      data: { url: options?.url || '/communication' }
+      data: { 
+        url: options?.url || '/communication',
+        ...options?.metadata
+      }
     });
     
-    await webpush.sendNotification(
-      {
-        endpoint: subscription.endpoint,
-        keys: {
-          p256dh: subscription.p256dh,
-          auth: subscription.auth,
-        },
-      },
-      pushPayload
-    );
+    let sentCount = 0;
+    const errors: string[] = [];
     
-    logger.info('Push notification sent to coach', { coachId, title });
-    return { success: true };
-  } catch (error: any) {
-    if (error.statusCode === 404 || error.statusCode === 410) {
-      logger.info('Coach push subscription expired, removing', { coachId });
-      await storage.deleteCoachPushSubscription(coachId);
-      return { success: false, error: 'Subscription expired' };
+    // Send to all devices
+    for (const subscription of subscriptions) {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: subscription.endpoint,
+            keys: {
+              p256dh: subscription.p256dh,
+              auth: subscription.auth,
+            },
+          },
+          pushPayload
+        );
+        sentCount++;
+      } catch (error: any) {
+        if (error.statusCode === 404 || error.statusCode === 410) {
+          logger.info('Coach push subscription expired, removing', { coachId, endpoint: subscription.endpoint.slice(-20) });
+          await storage.deleteCoachPushSubscriptionByEndpoint(subscription.endpoint);
+        } else {
+          errors.push(error.message);
+        }
+      }
     }
+    
+    if (sentCount > 0) {
+      logger.info('Push notifications sent to coach', { coachId, title, sentCount, totalDevices: subscriptions.length });
+      return { success: true, sentCount };
+    }
+    
+    return { success: false, error: errors.join(', ') || 'All subscriptions expired' };
+  } catch (error: any) {
     logger.error('Failed to send push notification to coach', { coachId }, error);
     return { success: false, error: 'Failed to send push notification' };
   }

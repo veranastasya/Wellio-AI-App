@@ -297,17 +297,21 @@ export interface IStorage {
   createInAppNotification(notification: InsertInAppNotification): Promise<InAppNotification>;
   markInAppNotificationRead(id: string): Promise<InAppNotification | undefined>;
 
-  // Push Subscriptions
+  // Push Subscriptions (multi-device support)
   getPushSubscription(clientId: string): Promise<PushSubscription | undefined>;
+  getAllPushSubscriptions(clientId: string): Promise<PushSubscription[]>;
   getPushSubscriptionsByClientIds(clientIds: string[]): Promise<PushSubscription[]>;
   createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription>;
   updatePushSubscription(clientId: string, subscription: Partial<InsertPushSubscription>): Promise<PushSubscription | undefined>;
   deletePushSubscription(clientId: string): Promise<boolean>;
+  deletePushSubscriptionByEndpoint(endpoint: string): Promise<boolean>;
 
-  // Coach Push Subscriptions
+  // Coach Push Subscriptions (multi-device support)
   getCoachPushSubscription(coachId: string): Promise<CoachPushSubscription | undefined>;
+  getAllCoachPushSubscriptions(coachId: string): Promise<CoachPushSubscription[]>;
   createCoachPushSubscription(subscription: InsertCoachPushSubscription): Promise<CoachPushSubscription>;
   deleteCoachPushSubscription(coachId: string): Promise<boolean>;
+  deleteCoachPushSubscriptionByEndpoint(endpoint: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -1743,11 +1747,16 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  // Push Subscriptions
+  // Push Subscriptions (multi-device support)
   async getPushSubscription(clientId: string): Promise<PushSubscription | undefined> {
     const result = await db.select().from(pushSubscriptions)
       .where(eq(pushSubscriptions.clientId, clientId));
     return result[0];
+  }
+
+  async getAllPushSubscriptions(clientId: string): Promise<PushSubscription[]> {
+    return await db.select().from(pushSubscriptions)
+      .where(eq(pushSubscriptions.clientId, clientId));
   }
 
   async getPushSubscriptionsByClientIds(clientIds: string[]): Promise<PushSubscription[]> {
@@ -1759,21 +1768,26 @@ export class DatabaseStorage implements IStorage {
 
   async createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription> {
     const now = new Date().toISOString();
-    const existing = await this.getPushSubscription(subscription.clientId);
     
-    if (existing) {
+    // Check for existing subscription with same endpoint (same device)
+    const existing = await db.select().from(pushSubscriptions)
+      .where(eq(pushSubscriptions.endpoint, subscription.endpoint));
+    
+    if (existing.length > 0) {
+      // Update existing subscription (same device, possibly different user or renewed)
       const result = await db.update(pushSubscriptions)
         .set({ 
-          endpoint: subscription.endpoint,
+          clientId: subscription.clientId,
           p256dh: subscription.p256dh,
           auth: subscription.auth,
           updatedAt: now,
         })
-        .where(eq(pushSubscriptions.clientId, subscription.clientId))
+        .where(eq(pushSubscriptions.endpoint, subscription.endpoint))
         .returning();
       return result[0];
     }
     
+    // Insert new subscription (new device)
     const result = await db.insert(pushSubscriptions).values({
       ...subscription,
       createdAt: subscription.createdAt || now,
@@ -1798,30 +1812,47 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  // Coach Push Subscriptions
+  async deletePushSubscriptionByEndpoint(endpoint: string): Promise<boolean> {
+    const result = await db.delete(pushSubscriptions)
+      .where(eq(pushSubscriptions.endpoint, endpoint))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Coach Push Subscriptions (multi-device support)
   async getCoachPushSubscription(coachId: string): Promise<CoachPushSubscription | undefined> {
     const result = await db.select().from(coachPushSubscriptions)
       .where(eq(coachPushSubscriptions.coachId, coachId));
     return result[0];
   }
 
+  async getAllCoachPushSubscriptions(coachId: string): Promise<CoachPushSubscription[]> {
+    return await db.select().from(coachPushSubscriptions)
+      .where(eq(coachPushSubscriptions.coachId, coachId));
+  }
+
   async createCoachPushSubscription(subscription: InsertCoachPushSubscription): Promise<CoachPushSubscription> {
     const now = new Date().toISOString();
-    const existing = await this.getCoachPushSubscription(subscription.coachId);
     
-    if (existing) {
+    // Check for existing subscription with same endpoint (same device)
+    const existing = await db.select().from(coachPushSubscriptions)
+      .where(eq(coachPushSubscriptions.endpoint, subscription.endpoint));
+    
+    if (existing.length > 0) {
+      // Update existing subscription (same device, possibly different user or renewed)
       const result = await db.update(coachPushSubscriptions)
         .set({ 
-          endpoint: subscription.endpoint,
+          coachId: subscription.coachId,
           p256dh: subscription.p256dh,
           auth: subscription.auth,
           updatedAt: now,
         })
-        .where(eq(coachPushSubscriptions.coachId, subscription.coachId))
+        .where(eq(coachPushSubscriptions.endpoint, subscription.endpoint))
         .returning();
       return result[0];
     }
     
+    // Insert new subscription (new device)
     const result = await db.insert(coachPushSubscriptions).values({
       ...subscription,
       createdAt: subscription.createdAt || now,
@@ -1833,6 +1864,13 @@ export class DatabaseStorage implements IStorage {
   async deleteCoachPushSubscription(coachId: string): Promise<boolean> {
     const result = await db.delete(coachPushSubscriptions)
       .where(eq(coachPushSubscriptions.coachId, coachId))
+      .returning();
+    return result.length > 0;
+  }
+
+  async deleteCoachPushSubscriptionByEndpoint(endpoint: string): Promise<boolean> {
+    const result = await db.delete(coachPushSubscriptions)
+      .where(eq(coachPushSubscriptions.endpoint, endpoint))
       .returning();
     return result.length > 0;
   }
