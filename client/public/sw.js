@@ -1,4 +1,5 @@
 // Wellio Service Worker for Push Notifications
+// Version: 2 - Fixed notification display
 
 const NOTIFICATION_TYPES = {
   MESSAGE: 'message',
