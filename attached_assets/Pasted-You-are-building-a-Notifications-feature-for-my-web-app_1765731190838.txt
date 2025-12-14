@@ -1,0 +1,102 @@
+You are building a Notifications feature for my web app (Value).
+
+Definition:
+- “Notifications” = Web Push Notifications (system-level pop-ups), NOT in-app toast messages.
+- Goal: Users receive push notifications for key events even if the app tab is in the background.
+- Also: If a user installs the web app to their phone home screen (PWA), they should receive the same push notifications on mobile.
+
+Critical clarification:
+- Notifications must work BOTH directions in chat:
+  - Client -> Coach new message
+  - Coach -> Client new message
+- In other words, regardless of who sends the message, the recipient must get a push notification.
+
+Additional event notifications:
+- When a Coach assigns a plan to a Client, the Client must receive a push notification.
+- This applies to BOTH plan types:
+  - Weekly Plan (This Week)
+  - Main Plan (long-term / base plan)
+
+Core user stories:
+1) As a recipient (Coach or Client), when the other party sends me a chat message, I receive a system push notification immediately.
+2) As a Client, when my Coach assigns me a Weekly Plan or a Main Plan, I receive a system push notification so I know my plan is ready.
+
+Platforms to support:
+1) Desktop browsers (Chrome, Edge, etc.): show even if tab is not focused
+2) Mobile PWA (installed to home screen): arrives like app push
+
+Requirements:
+
+A) Permissions + subscriptions (per user, per device)
+- Add “Enable Notifications” CTA in Settings (and/or a banner).
+- On click:
+  1. Request Notification permission (Notification.requestPermission()).
+  2. Register a Service Worker at `/sw.js` (or `/service-worker.js`).
+  3. Create a Push Subscription with PushManager.subscribe() using a VAPID public key.
+  4. Send the subscription object to the backend and store it for that user.
+- A single user can have multiple subscriptions (laptop + phone). Store them all.
+
+B) Notification event model (what triggers a push)
+Trigger push notifications for these events:
+1) CHAT_MESSAGE_CREATED
+   - Fired whenever any message is created in a thread (regardless of sender role)
+   - Recipient(s): all participants in the thread EXCEPT the sender
+2) PLAN_ASSIGNED
+   - Fired when a coach assigns a Weekly Plan or Main Plan to a client
+   - Recipient(s): the client user only
+
+C) Server-side sending (source of truth)
+- On CHAT_MESSAGE_CREATED:
+  - determine recipient user(s)
+  - fetch all push subscriptions for each recipient
+  - send Web Push payload with title/body/icon/url
+  - remove invalid/expired subscriptions (410/404 responses)
+- On PLAN_ASSIGNED:
+  - determine the client recipient
+  - fetch all subscriptions for that client
+  - send Web Push payload with plan type and deep link
+
+D) Payload structure (keep consistent)
+Include:
+- type: "chat_message" | "plan_assigned"
+- title
+- body (short, max ~80 chars)
+- url (deep link into the app)
+- metadata: threadId, senderName, planId, planType
+
+Examples:
+1) Chat message
+- Title: “New message from {sender_name}”
+- Body: “{message_preview}”
+- URL: “/chat?threadId={threadId}”
+
+2) Plan assigned (client receives)
+- Title: “New plan assigned”
+- Body: “Your {Weekly Plan/Main Plan} is ready.”
+- URL: “/plan?type=weekly” OR “/plan?type=main” (or a planId-based URL)
+
+E) Service worker responsibilities
+- Handle `push` event:
+  - parse payload
+  - call self.registration.showNotification(title, options)
+- Handle `notificationclick`:
+  - focus/open the app
+  - navigate to payload.url
+
+F) UX requirements
+- Clear “Enable Notifications” flow
+- If permission denied, show steps to re-enable in browser settings
+- Add a “Send test notification” button for debugging
+
+G) Debug checklist (common reasons nothing works)
+- Must be HTTPS (localhost OK for dev)
+- Verify service worker is installed/active (DevTools -> Application -> Service Workers)
+- VAPID key pair must be valid and used correctly
+- Subscription must be saved server-side and actually used when sending
+- iOS: push works only for installed PWA on modern iOS; don’t expect Safari-tab-only behavior
+
+Deliverables:
+1) Frontend: Settings UI + permission/subscription flow + API calls to save subscriptions + test push button
+2) Backend: subscription storage + send push on CHAT_MESSAGE_CREATED and PLAN_ASSIGNED
+3) Service worker: push + click handlers + deep linking
+4) Minimal logging to debug push pipeline end-to-end
