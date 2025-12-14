@@ -3948,7 +3948,12 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         client.id,
         'New Plan Assigned!',
         `${plan.planName || 'A new plan'} has been assigned to you`,
-        { tag: 'plan-assigned', url: '/client/plan' }
+        { 
+          tag: 'plan-assigned', 
+          url: '/client/plan',
+          type: 'plan_assigned',
+          metadata: { planId: plan.id, planName: plan.planName, planType: 'main' }
+        }
       ).then(result => {
         if (!result.success) {
           logger.debug('Push notification not sent for plan assignment', { 
@@ -4045,7 +4050,12 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         client.id,
         'New Plan Assigned!',
         `${planName || 'A new plan'} has been assigned to you`,
-        { tag: 'plan-assigned', url: '/client/plan' }
+        { 
+          tag: 'plan-assigned', 
+          url: '/client/plan',
+          type: 'plan_assigned',
+          metadata: { planId: newPlan.id, planName, planType: 'main' }
+        }
       ).then(result => {
         if (!result.success) {
           logger.debug('Push notification not sent for manual plan assignment', { 
