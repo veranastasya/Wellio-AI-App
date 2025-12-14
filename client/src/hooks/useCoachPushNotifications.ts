@@ -93,19 +93,18 @@ export function useCoachPushNotifications() {
 
       const subJson = subscription.toJSON();
       
-      // Persist to server - apiRequest returns parsed JSON and throws on HTTP errors
+      // Persist to server - apiRequest returns Response object
       let persistSuccess = false;
       let lastError: unknown;
       
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const result = await apiRequest('POST', '/api/coach/push/subscribe', {
+          const response = await apiRequest('POST', '/api/coach/push/subscribe', {
             endpoint: subJson.endpoint,
             keys: subJson.keys,
           });
           
-          // apiRequest returns parsed JSON; success means we got a result with success: true
-          if (result && result.success) {
+          if (response.ok) {
             persistSuccess = true;
             break;
           }
