@@ -184,6 +184,8 @@ export function usePushNotifications() {
   }, [toast]);
 
   useEffect(() => {
+    let cleanup: (() => void) | undefined;
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
@@ -192,9 +194,27 @@ export function usePushNotifications() {
         .catch((error) => {
           console.error('[SW] Registration failed:', error);
         });
+
+      const handleServiceWorkerMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'NOTIFICATION_CLICK') {
+          console.log('[Push] Notification click received:', event.data);
+          const { url } = event.data;
+          if (url && typeof url === 'string') {
+            window.location.href = url;
+          }
+        }
+      };
+
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+      
+      cleanup = () => {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+      };
     }
     
     checkSubscription();
+    
+    return cleanup;
   }, [checkSubscription]);
 
   return {

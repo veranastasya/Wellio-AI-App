@@ -1,5 +1,54 @@
 // Wellio Service Worker for Push Notifications
 
+const NOTIFICATION_TYPES = {
+  MESSAGE: 'message',
+  PLAN_ASSIGNED: 'plan_assigned',
+  TEST: 'test',
+  REMINDER: 'reminder',
+  GOAL_UPDATE: 'goal_update'
+};
+
+const DEFAULT_URLS = {
+  coach: '/dashboard',
+  client: '/client'
+};
+
+function getDeepLinkUrl(notificationData) {
+  if (!notificationData) return DEFAULT_URLS.client;
+  
+  const { type, url, clientId, userType } = notificationData;
+  
+  if (url) return url;
+  
+  const baseUrl = userType === 'coach' ? DEFAULT_URLS.coach : DEFAULT_URLS.client;
+  
+  switch (type) {
+    case NOTIFICATION_TYPES.MESSAGE:
+      if (userType === 'coach' && clientId) {
+        return `/communication?client=${clientId}`;
+      }
+      return userType === 'coach' ? '/communication' : '/client/coach-chat';
+      
+    case NOTIFICATION_TYPES.PLAN_ASSIGNED:
+      return userType === 'coach' ? '/dashboard' : '/client/my-plan';
+      
+    case NOTIFICATION_TYPES.GOAL_UPDATE:
+      if (userType === 'coach' && clientId) {
+        return `/clients/${clientId}?tab=goals`;
+      }
+      return '/client';
+      
+    case NOTIFICATION_TYPES.REMINDER:
+      return baseUrl;
+      
+    case NOTIFICATION_TYPES.TEST:
+      return baseUrl;
+      
+    default:
+      return baseUrl;
+  }
+}
+
 self.addEventListener('install', (event) => {
   console.log('[SW] Service worker installed');
   self.skipWaiting();
@@ -15,11 +64,11 @@ self.addEventListener('push', (event) => {
   
   let data = {
     title: 'Wellio',
-    body: 'You have a new message from your coach',
+    body: 'You have a new notification',
     icon: '/icon-192.png',
     badge: '/icon-72.png',
     tag: 'wellio-notification',
-    data: { url: '/client' }
+    data: { url: '/client', type: 'default' }
   };
   
   if (event.data) {
@@ -30,8 +79,12 @@ self.addEventListener('push', (event) => {
         body: payload.body || payload.message || data.body,
         icon: payload.icon || data.icon,
         badge: payload.badge || data.badge,
-        tag: payload.tag || data.tag,
-        data: payload.data || data.data
+        tag: payload.tag || `wellio-${payload.data?.type || 'notification'}-${Date.now()}`,
+        data: {
+          ...data.data,
+          ...payload.data,
+          type: payload.data?.type || payload.type || 'default'
+        }
       };
     } catch (e) {
       console.log('[SW] Failed to parse push data:', e);
@@ -45,8 +98,8 @@ self.addEventListener('push', (event) => {
     badge: data.badge,
     tag: data.tag,
     data: data.data,
-    silent: true,
-    requireInteraction: false,
+    vibrate: [100, 50, 100],
+    requireInteraction: data.data?.type === NOTIFICATION_TYPES.MESSAGE,
     actions: [
       { action: 'open', title: 'Open' },
       { action: 'dismiss', title: 'Dismiss' }
@@ -59,25 +112,57 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked');
+  console.log('[SW] Notification clicked:', event.action);
   event.notification.close();
   
-  const urlToOpen = event.notification.data?.url || '/client';
+  if (event.action === 'dismiss') {
+    console.log('[SW] Notification dismissed via action');
+    return;
+  }
+  
+  const notificationData = event.notification.data || {};
+  const urlToOpen = getDeepLinkUrl(notificationData);
+  
+  console.log('[SW] Deep-linking to:', urlToOpen);
   
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (windowClients) => {
+      const baseOrigin = self.location.origin;
+      const targetUrl = new URL(urlToOpen, baseOrigin).href;
+      
       for (const client of windowClients) {
-        if (client.url.includes(urlToOpen) && 'focus' in client) {
-          return client.focus();
+        const clientUrl = new URL(client.url);
+        if (clientUrl.origin === baseOrigin) {
+          try {
+            await client.focus();
+            client.postMessage({
+              type: 'NOTIFICATION_CLICK',
+              url: urlToOpen,
+              notificationType: notificationData.type,
+              data: notificationData
+            });
+            return;
+          } catch (e) {
+            console.log('[SW] Could not focus client:', e);
+          }
         }
       }
+      
       if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
+        return clients.openWindow(targetUrl);
       }
     })
   );
 });
 
 self.addEventListener('notificationclose', (event) => {
-  console.log('[SW] Notification dismissed');
+  console.log('[SW] Notification closed:', event.notification.tag);
+});
+
+self.addEventListener('message', (event) => {
+  console.log('[SW] Message received:', event.data);
+  
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
