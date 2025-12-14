@@ -1,22 +1,31 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Mail, Phone, Calendar, Pencil, User, Scale, Ruler, Target } from "lucide-react";
+import { Loader2, Mail, Phone, Calendar, Pencil, User, Scale, Ruler, Target, Bell, BellOff, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Client } from "@shared/schema";
 import { getGoalTypeLabel, getActivityLevelLabel } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight } from "@shared/units";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 export default function ClientProfile() {
   const [, setLocation] = useLocation();
   const [clientData, setClientData] = useState<Client | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
   const [unitsPreference, setUnitsPreference] = useState<UnitsPreference>("metric");
+  const {
+    isSupported,
+    isSubscribed,
+    permission,
+    isLoading: isPushLoading,
+    subscribe,
+    unsubscribe,
+  } = usePushNotifications();
 
   useEffect(() => {
     const clientId = localStorage.getItem("clientId");
@@ -294,6 +303,127 @@ export default function ClientProfile() {
             </CardContent>
           </Card>
         )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <span className="text-lg">Push Notifications</span>
+                <CardDescription className="mt-0.5">
+                  Get notified when your coach messages you
+                </CardDescription>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!isSupported ? (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
+                <AlertCircle className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Not Supported</p>
+                  <p className="text-sm text-muted-foreground">
+                    Push notifications are not supported on this browser or device
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Status:</span>
+                    {isSubscribed ? (
+                      <Badge variant="outline" className="gap-1" data-testid="badge-client-notifications-enabled">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        Enabled
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="gap-1" data-testid="badge-client-notifications-disabled">
+                        <BellOff className="w-3 h-3 text-muted-foreground" />
+                        Disabled
+                      </Badge>
+                    )}
+                  </div>
+                  {permission === "denied" && (
+                    <Badge variant="destructive" className="gap-1" data-testid="badge-client-permission-denied">
+                      <XCircle className="w-3 h-3" />
+                      Blocked
+                    </Badge>
+                  )}
+                </div>
+
+                {permission === "denied" ? (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <p className="text-sm font-medium text-destructive mb-1">
+                      Notifications Blocked
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      You have blocked notifications for this site. To enable them, click the lock icon in your browser's address bar and allow notifications.
+                    </p>
+                  </div>
+                ) : isSubscribed ? (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/client/push/test', {
+                            method: 'POST',
+                            credentials: 'include',
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            // Use a simple alert since we don't have toast in this component
+                            alert(data.message);
+                          } else {
+                            alert(data.error || 'Failed to send test notification');
+                          }
+                        } catch {
+                          alert('Failed to send test notification');
+                        }
+                      }}
+                      data-testid="button-client-test-notification"
+                    >
+                      <Bell className="w-4 h-4" />
+                      Send Test Notification
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={unsubscribe}
+                      disabled={isPushLoading}
+                      data-testid="button-client-disable-notifications"
+                    >
+                      {isPushLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <BellOff className="w-4 h-4" />
+                      )}
+                      Disable Notifications
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full gap-2"
+                    onClick={subscribe}
+                    disabled={isPushLoading}
+                    data-testid="button-client-enable-notifications"
+                  >
+                    {isPushLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Bell className="w-4 h-4" />
+                    )}
+                    Enable Notifications
+                  </Button>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

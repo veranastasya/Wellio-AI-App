@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Loader2, Save, LogOut, User, Mail, Phone } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Save, LogOut, User, Mail, Phone, Bell, BellOff, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useCoachPushNotifications } from "@/hooks/useCoachPushNotifications";
 
 interface CoachProfile {
   id: string;
@@ -20,6 +22,14 @@ interface CoachProfile {
 export default function CoachSettings() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const {
+    isSupported,
+    isSubscribed,
+    permission,
+    isLoading: isPushLoading,
+    subscribe,
+    unsubscribe,
+  } = useCoachPushNotifications();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -191,6 +201,137 @@ export default function CoachSettings() {
                 Save Changes
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bell className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <span className="text-lg">Push Notifications</span>
+                <CardDescription className="mt-0.5">
+                  Get notified when clients message you
+                </CardDescription>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!isSupported ? (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
+                <AlertCircle className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Not Supported</p>
+                  <p className="text-sm text-muted-foreground">
+                    Push notifications are not supported on this browser or device
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Status:</span>
+                    {isSubscribed ? (
+                      <Badge variant="outline" className="gap-1" data-testid="badge-notifications-enabled">
+                        <CheckCircle className="w-3 h-3 text-green-500" />
+                        Enabled
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="gap-1" data-testid="badge-notifications-disabled">
+                        <BellOff className="w-3 h-3 text-muted-foreground" />
+                        Disabled
+                      </Badge>
+                    )}
+                  </div>
+                  {permission === "denied" && (
+                    <Badge variant="destructive" className="gap-1" data-testid="badge-permission-denied">
+                      <XCircle className="w-3 h-3" />
+                      Blocked
+                    </Badge>
+                  )}
+                </div>
+
+                {permission === "denied" ? (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <p className="text-sm font-medium text-destructive mb-1">
+                      Notifications Blocked
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      You have blocked notifications for this site. To enable them, click the lock icon in your browser's address bar and allow notifications.
+                    </p>
+                  </div>
+                ) : isSubscribed ? (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/coach/push/test', {
+                            method: 'POST',
+                            credentials: 'include',
+                          });
+                          const data = await response.json();
+                          if (data.success) {
+                            toast({
+                              title: 'Test Sent',
+                              description: data.message,
+                            });
+                          } else {
+                            toast({
+                              title: 'Test Failed',
+                              description: data.error || 'Failed to send test notification',
+                              variant: 'destructive',
+                            });
+                          }
+                        } catch {
+                          toast({
+                            title: 'Error',
+                            description: 'Failed to send test notification',
+                            variant: 'destructive',
+                          });
+                        }
+                      }}
+                      data-testid="button-test-notification"
+                    >
+                      <Bell className="w-4 h-4" />
+                      Send Test Notification
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={unsubscribe}
+                      disabled={isPushLoading}
+                      data-testid="button-disable-notifications"
+                    >
+                      {isPushLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <BellOff className="w-4 h-4" />
+                      )}
+                      Disable Notifications
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full gap-2"
+                    onClick={subscribe}
+                    disabled={isPushLoading}
+                    data-testid="button-enable-notifications"
+                  >
+                    {isPushLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Bell className="w-4 h-4" />
+                    )}
+                    Enable Notifications
+                  </Button>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
 

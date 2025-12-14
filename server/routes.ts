@@ -5073,6 +5073,60 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
 
+  // Test notification endpoint for coaches
+  app.post("/api/coach/push/test", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      
+      const result = await sendPushNotificationToCoach(
+        coachId,
+        'Test Notification',
+        'Push notifications are working! You will receive alerts when clients message you.',
+        { 
+          type: 'test',
+          tag: 'wellio-test',
+          url: '/coach/settings'
+        }
+      );
+      
+      if (result.success) {
+        res.json({ success: true, message: `Notification sent to ${result.sentCount} device(s)` });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (error) {
+      logger.error('Failed to send test notification', {}, error);
+      res.status(500).json({ error: 'Failed to send test notification' });
+    }
+  });
+
+  // Test notification endpoint for clients
+  app.post("/api/client/push/test", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      
+      const result = await sendPushNotificationToClient(
+        clientId,
+        'Test Notification',
+        'Push notifications are working! You will receive alerts when your coach messages you.',
+        { 
+          type: 'test',
+          tag: 'wellio-test',
+          url: '/client/profile'
+        }
+      );
+      
+      if (result.success) {
+        res.json({ success: true, message: `Notification sent to ${result.sentCount} device(s)` });
+      } else {
+        res.status(400).json({ success: false, error: result.error });
+      }
+    } catch (error) {
+      logger.error('Failed to send test notification to client', {}, error);
+      res.status(500).json({ error: 'Failed to send test notification' });
+    }
+  });
+
   // Send notification to client (web push + in-app)
   app.post("/api/engagement/send-notification", requireCoachAuth, async (req, res) => {
     try {
