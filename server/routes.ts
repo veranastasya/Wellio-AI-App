@@ -1381,6 +1381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const clientData = {
             name: invite.name || "New Client",
             email: clientToken.email,
+            coachId: clientToken.coachId, // Link client to the correct coach from the invite token
             status: "active" as const,
             progressScore: 0,
             joinedDate: new Date().toISOString().split("T")[0],
@@ -2145,6 +2146,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get coachId from session or request body
       const effectiveCoachId = coachId || (req.session as any)?.coachId || "default-coach";
       
+      // Check if client with this email already exists (globally)
+      const existingClient = await storage.getClientByEmail(email);
+      if (existingClient) {
+        return res.status(400).json({ error: "A client with this email already exists" });
+      }
+      
       // Check if client already has an active invite from this coach
       const existingInvite = await storage.getClientInviteByEmailAndCoach(email, effectiveCoachId);
       if (existingInvite && existingInvite.status === 'pending') {
@@ -2243,6 +2250,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { email, name } = inviteReq;
         
         try {
+          // Check if client already exists
+          const existingClient = await storage.getClientByEmail(email);
+          if (existingClient) {
+            results.push({ email, success: false, error: "Client already exists" });
+            continue;
+          }
+          
           // Check for existing pending invite
           const existingInvite = await storage.getClientInviteByEmailAndCoach(email, effectiveCoachId);
           if (existingInvite && existingInvite.status === 'pending') {

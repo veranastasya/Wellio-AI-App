@@ -176,7 +176,7 @@ export default function Clients() {
   });
 
   const createInviteMutation = useMutation({
-    mutationFn: async (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string }) => {
+    mutationFn: async (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string; coachId: string }) => {
       const response = await apiRequest("POST", "/api/client-invites", data);
       return response as unknown as { invite: any; inviteLink: string };
     },
@@ -320,6 +320,7 @@ export default function Clients() {
                     onSubmit={(data) => createInviteMutation.mutate(data)}
                     isLoading={createInviteMutation.isPending}
                     coachName={coachProfile?.name || "Your Coach"}
+                    coachId={coachProfile?.id || ""}
                   />
                 ) : (
                   <div className="space-y-4">
@@ -1507,11 +1508,13 @@ function InviteForm({
   onSubmit,
   isLoading,
   coachName,
+  coachId,
 }: {
   questionnaires: Questionnaire[];
-  onSubmit: (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string }) => void;
+  onSubmit: (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string; coachId: string }) => void;
   isLoading: boolean;
   coachName: string;
+  coachId: string;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -1555,6 +1558,7 @@ function InviteForm({
       questionnaireId,
       message: message || undefined,
       coachName: coachName,
+      coachId: coachId,
     });
   };
 
