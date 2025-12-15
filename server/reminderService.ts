@@ -52,17 +52,21 @@ async function getGoalReminders(client: Client, settings: ClientReminderSettings
   const reminders: ReminderCandidate[] = [];
   const today = getTodayDateString();
 
+  // Fetch all sent reminders for today once (O(1) instead of O(goals))
+  const allSentToday = await storage.getSentReminders(client.id, today);
+  const sentTypes = new Set(allSentToday.map(r => r.reminderType));
+
   for (const goal of activeGoals) {
-    const alreadySent = await storage.getSentRemindersByTypeAndDate(
-      client.id,
-      getGoalReminderType(goal.goalType),
-      today
-    );
-    if (alreadySent.length > 0) continue;
+    const reminderType = getGoalReminderType(goal.goalType);
+    
+    // Skip if this type was already sent today
+    if (sentTypes.has(reminderType)) continue;
 
     const reminder = createGoalReminder(client, goal);
     if (reminder) {
       reminders.push(reminder);
+      // Mark as sent to prevent duplicates within same run
+      sentTypes.add(reminderType);
     }
   }
 
