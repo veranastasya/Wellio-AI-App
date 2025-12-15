@@ -157,6 +157,7 @@ export default function ClientChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const isInitialLoadRef = useRef(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -242,7 +243,12 @@ export default function ClientChat() {
   }, [messages, clientData]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > 0) {
+      // On initial load, scroll instantly to bottom. On subsequent updates, scroll smoothly.
+      const behavior = isInitialLoadRef.current ? "instant" : "smooth";
+      messagesEndRef.current?.scrollIntoView({ behavior: behavior as ScrollBehavior });
+      isInitialLoadRef.current = false;
+    }
   }, [messages]);
 
   const handleSendMessage = () => {
