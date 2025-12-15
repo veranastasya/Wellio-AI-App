@@ -1357,6 +1357,13 @@ function WeeklyEditor({
   );
 }
 
+const emptyWeekState: WeeklyProgramState = {
+  trainingDays: [],
+  nutritionDays: [],
+  habits: [],
+  tasks: [],
+};
+
 export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: PlanBuilderTabProps) {
   const [weekIndex, setWeekIndex] = useState(1);
   const [isCopying, setIsCopying] = useState(false);
@@ -1366,12 +1373,67 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
 
   const planBuilder = usePlanBuilder(clientId || undefined);
 
-  const [programState, setProgramState] = useState<WeeklyProgramState>({
-    trainingDays: initialTrainingDays,
-    nutritionDays: initialNutritionDays,
-    habits: initialHabits,
-    tasks: initialTasks,
+  const [weeklyPrograms, setWeeklyPrograms] = useState<Record<number, WeeklyProgramState>>({
+    1: {
+      trainingDays: initialTrainingDays,
+      nutritionDays: initialNutritionDays,
+      habits: initialHabits,
+      tasks: initialTasks,
+    },
   });
+
+  const programState = weeklyPrograms[weekIndex] || null;
+  const hasWeekData = programState !== null;
+
+  const setProgramState = (updater: (prev: WeeklyProgramState) => WeeklyProgramState) => {
+    setWeeklyPrograms(prev => ({
+      ...prev,
+      [weekIndex]: updater(prev[weekIndex] || emptyWeekState),
+    }));
+  };
+
+  const handleCopyFromWeek = (sourceWeek: number) => {
+    const sourceData = weeklyPrograms[sourceWeek];
+    if (!sourceData) return;
+    
+    const deepCopy = (data: WeeklyProgramState): WeeklyProgramState => ({
+      trainingDays: data.trainingDays.map(d => ({
+        ...d,
+        id: generateId(),
+        exercises: d.exercises.map(e => ({ ...e, id: generateId() })),
+      })),
+      nutritionDays: data.nutritionDays.map(d => ({
+        ...d,
+        id: generateId(),
+        meals: d.meals.map(m => ({ ...m, id: generateId() })),
+      })),
+      habits: data.habits.map(h => ({ ...h, id: generateId(), completed: false })),
+      tasks: data.tasks.map(t => ({ ...t, id: generateId(), completed: false })),
+    });
+
+    setWeeklyPrograms(prev => ({
+      ...prev,
+      [weekIndex]: deepCopy(sourceData),
+    }));
+    toast({
+      title: "Week copied!",
+      description: `Content from Week ${sourceWeek} has been copied to Week ${weekIndex}.`,
+    });
+  };
+
+  const handleStartFresh = () => {
+    setWeeklyPrograms(prev => ({
+      ...prev,
+      [weekIndex]: { ...emptyWeekState },
+    }));
+  };
+
+  const getAvailableWeeksToCopy = () => {
+    return Object.keys(weeklyPrograms)
+      .map(Number)
+      .filter(w => w !== weekIndex && weeklyPrograms[w])
+      .sort((a, b) => b - a);
+  };
 
   const handleAddTrainingDay = (day: TrainingDay) => {
     setProgramState(prev => ({
@@ -1547,8 +1609,29 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
   };
 
   const handleCopyToNextWeek = () => {
+    if (!programState) return;
     setIsCopying(true);
+    
+    const deepCopy = (data: WeeklyProgramState): WeeklyProgramState => ({
+      trainingDays: data.trainingDays.map(d => ({
+        ...d,
+        id: generateId(),
+        exercises: d.exercises.map(e => ({ ...e, id: generateId() })),
+      })),
+      nutritionDays: data.nutritionDays.map(d => ({
+        ...d,
+        id: generateId(),
+        meals: d.meals.map(m => ({ ...m, id: generateId() })),
+      })),
+      habits: data.habits.map(h => ({ ...h, id: generateId(), completed: false })),
+      tasks: data.tasks.map(t => ({ ...t, id: generateId(), completed: false })),
+    });
+
     setTimeout(() => {
+      setWeeklyPrograms(prev => ({
+        ...prev,
+        [weekIndex + 1]: deepCopy(programState),
+      }));
       setIsCopying(false);
       setWeekIndex((prev) => prev + 1);
       toast({
@@ -1607,7 +1690,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
                   variant="outline" 
                   size="sm" 
                   onClick={handleCopyToNextWeek}
-                  disabled={isCopying}
+                  disabled={isCopying || !hasWeekData}
                   data-testid="button-copy-week"
                 >
                   {isCopying ? (
@@ -1663,44 +1746,95 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            <div className="lg:col-span-4 flex flex-col min-h-[600px]">
-              <AiProgramBuilderPanel 
-                clientName={clientName}
-                trainingDays={programState.trainingDays}
-                onAddTrainingDay={handleAddTrainingDay}
-                onAddMeal={handleAddMealToDay}
-                onAddHabit={handleAddHabit}
-                onAddTask={handleAddTask}
-                onAddExercise={handleAddExercise}
-              />
+          {programState === null ? (
+            <Card className="p-8 border-2 border-dashed border-[#28A0AE]/30" data-testid="card-empty-week">
+              <CardContent className="py-12 text-center">
+                <div className="w-16 h-16 rounded-full bg-[#28A0AE]/10 flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="w-8 h-8 text-[#28A0AE]" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No Plan for Week {weekIndex}</h3>
+                <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                  This week doesn't have a program yet. Start fresh or copy content from a previous week.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button 
+                    onClick={handleStartFresh}
+                    className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white"
+                    data-testid="button-start-fresh"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Start Fresh
+                  </Button>
+                  {getAvailableWeeksToCopy().length > 0 && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" data-testid="button-copy-from-week">
+                          <Copy className="w-4 h-4 mr-2" />
+                          Copy from Previous Week
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 p-2" align="center">
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground px-2 py-1">Select week to copy:</p>
+                          {getAvailableWeeksToCopy().map(week => (
+                            <Button
+                              key={week}
+                              variant="ghost"
+                              size="sm"
+                              className="w-full justify-start"
+                              onClick={() => handleCopyFromWeek(week)}
+                              data-testid={`button-copy-week-${week}`}
+                            >
+                              Week {week}
+                            </Button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              <div className="lg:col-span-4 flex flex-col min-h-[600px]">
+                <AiProgramBuilderPanel 
+                  clientName={clientName}
+                  trainingDays={programState.trainingDays}
+                  onAddTrainingDay={handleAddTrainingDay}
+                  onAddMeal={handleAddMealToDay}
+                  onAddHabit={handleAddHabit}
+                  onAddTask={handleAddTask}
+                  onAddExercise={handleAddExercise}
+                />
+              </div>
+              <div className="lg:col-span-8 flex flex-col min-h-[600px]">
+                <WeeklyEditor 
+                  programState={programState}
+                  onUpdateTrainingDay={handleUpdateTrainingDay}
+                  onUpdateExercise={handleUpdateExercise}
+                  onDeleteExercise={handleDeleteExercise}
+                  onAddExercise={handleAddExercise}
+                  onDeleteTrainingDay={handleDeleteTrainingDay}
+                  onAddTrainingDay={handleAddTrainingDay}
+                  onUpdateNutritionDay={handleUpdateNutritionDay}
+                  onDeleteNutritionDay={handleDeleteNutritionDay}
+                  onAddNutritionDay={handleAddNutritionDay}
+                  onUpdateMeal={handleUpdateMeal}
+                  onDeleteMeal={handleDeleteMeal}
+                  onAddMeal={handleAddMealToDay}
+                  onUpdateHabit={handleUpdateHabit}
+                  onDeleteHabit={handleDeleteHabit}
+                  onAddHabit={handleAddHabit}
+                  onToggleHabit={handleToggleHabit}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onAddTask={handleAddTask}
+                  onToggleTask={handleToggleTask}
+                />
+              </div>
             </div>
-            <div className="lg:col-span-8 flex flex-col min-h-[600px]">
-              <WeeklyEditor 
-                programState={programState}
-                onUpdateTrainingDay={handleUpdateTrainingDay}
-                onUpdateExercise={handleUpdateExercise}
-                onDeleteExercise={handleDeleteExercise}
-                onAddExercise={handleAddExercise}
-                onDeleteTrainingDay={handleDeleteTrainingDay}
-                onAddTrainingDay={handleAddTrainingDay}
-                onUpdateNutritionDay={handleUpdateNutritionDay}
-                onDeleteNutritionDay={handleDeleteNutritionDay}
-                onAddNutritionDay={handleAddNutritionDay}
-                onUpdateMeal={handleUpdateMeal}
-                onDeleteMeal={handleDeleteMeal}
-                onAddMeal={handleAddMealToDay}
-                onUpdateHabit={handleUpdateHabit}
-                onDeleteHabit={handleDeleteHabit}
-                onAddHabit={handleAddHabit}
-                onToggleHabit={handleToggleHabit}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                onAddTask={handleAddTask}
-                onToggleTask={handleToggleTask}
-              />
-            </div>
-          </div>
+          )}
         </TabsContent>
 
         <TabsContent value="main-plan" className="mt-6">
