@@ -45,6 +45,7 @@ const navigationItems = [
     url: "/analytics",
     icon: TrendingUp,
     locked: false,
+    hidden: true,
   },
   {
     title: "Calendar",
@@ -64,6 +65,7 @@ const navigationItems = [
     url: "/engagement",
     icon: Bell,
     locked: false,
+    hidden: true,
   },
   {
     title: "AI Insights",
@@ -84,6 +86,7 @@ const navigationItems = [
     url: "#",
     icon: LineChart,
     locked: true,
+    hidden: true,
   },
   {
     title: "Settings",
