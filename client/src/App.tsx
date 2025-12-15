@@ -33,6 +33,7 @@ import CoachSettings from "@/pages/coach-settings";
 import PlanBuilder from "@/pages/plan-builder";
 import Engagement from "@/pages/engagement";
 import { EngagementProvider } from "@/context/EngagementContext";
+import { SmartRedirect } from "@/components/smart-redirect";
 import NotFound from "@/pages/not-found";
 
 export default function App() {
@@ -97,7 +98,16 @@ export default function App() {
               <Dashboard />
             </CoachProtectedLayout>
           </Route>
-          <Route path="/">
+          <Route path="/" component={SmartRedirect} />
+          
+          {/* Client base route - redirect to dashboard */}
+          <Route path="/client">
+            <ClientProtectedLayout>
+              <ClientDashboard />
+            </ClientProtectedLayout>
+          </Route>
+          
+          <Route path="/dashboard">
             <CoachProtectedLayout>
               <Dashboard />
             </CoachProtectedLayout>
