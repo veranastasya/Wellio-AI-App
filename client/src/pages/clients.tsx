@@ -800,6 +800,7 @@ function ClientForm({
   );
   const [heightFeet, setHeightFeet] = useState<string>("");
   const [heightInches, setHeightInches] = useState<string>("");
+  const [heightCm, setHeightCm] = useState<string>("");
   
   const form = useForm<InsertClient>({
     resolver: zodResolver(insertClientSchema),
@@ -869,6 +870,7 @@ function ClientForm({
         const { feet, inches } = inchesToFeetAndInches(client.height);
         setHeightFeet(feet.toString());
         setHeightInches(inches.toString());
+        setHeightCm(Math.round(inchesToCm(client.height)).toString());
       }
     }
   }, [client, form]);
@@ -1131,13 +1133,10 @@ function ClientForm({
                       min="0"
                       max="300"
                       placeholder="173"
-                      value={
-                        field.value != null && isFinite(field.value)
-                          ? inchesToCm(field.value)
-                          : ""
-                      }
+                      value={heightCm}
                       onChange={(e) => {
                         const value = e.target.value;
+                        setHeightCm(value);
                         if (!value) {
                           field.onChange(undefined);
                           return;
