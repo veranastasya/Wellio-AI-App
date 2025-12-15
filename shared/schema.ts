@@ -128,6 +128,7 @@ export const clients = pgTable("clients", {
   joinedDate: text("joined_date").notNull(),
   lastSession: text("last_session"),
   lastLoginAt: text("last_login_at"),
+  lastActiveAt: text("last_active_at"), // Tracks any client activity: messages, logs, login
   notes: text("notes"),
   intakeSource: text("intake_source"),
   questionnaireId: varchar("questionnaire_id"),
