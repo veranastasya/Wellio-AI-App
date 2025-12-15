@@ -1640,7 +1640,7 @@ function InviteForm({
           disabled={isLoading}
           data-testid="button-create-invite"
         >
-          {isLoading ? "Creating..." : "Create Invite Link"}
+          {isLoading ? "Creating..." : "Send Invite Link"}
         </Button>
       </div>
     </form>
