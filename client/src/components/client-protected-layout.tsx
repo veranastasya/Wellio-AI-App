@@ -5,6 +5,23 @@ import { ClientSidebar } from "@/components/client-sidebar";
 import { SidebarTriggerWithBadge } from "@/components/sidebar-trigger-with-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
 
+// Hook to set client-specific manifest for PWA
+function useClientManifest() {
+  useEffect(() => {
+    const existingLink = document.querySelector('link[rel="manifest"]');
+    if (existingLink) {
+      existingLink.setAttribute('href', '/client-manifest.json');
+    }
+    
+    return () => {
+      // Reset to default manifest when leaving client pages
+      if (existingLink) {
+        existingLink.setAttribute('href', '/manifest.json');
+      }
+    };
+  }, []);
+}
+
 interface ClientProtectedLayoutProps {
   children: ReactNode;
 }
@@ -24,6 +41,9 @@ function SidebarAutoClose({ children }: { children: ReactNode }) {
 }
 
 export function ClientProtectedLayout({ children }: ClientProtectedLayoutProps) {
+  // Use client-specific manifest for PWA home screen
+  useClientManifest();
+  
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
