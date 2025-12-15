@@ -135,10 +135,11 @@ export default function Clients() {
 
   const createClientMutation = useMutation({
     mutationFn: async (data: InsertClient) => {
-      const client = await apiRequest("POST", "/api/clients", data);
+      const response = await apiRequest("POST", "/api/clients", data);
+      const client = await response.json() as Client;
       // Automatically send account setup invite after creating the client
       try {
-        await apiRequest("POST", `/api/clients/${(client as any).id}/send-setup-invite`, {
+        await apiRequest("POST", `/api/clients/${client.id}/send-setup-invite`, {
           message: "Welcome! Please set up your account to access your coaching portal."
         });
       } catch (inviteError) {
