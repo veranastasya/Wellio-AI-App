@@ -478,6 +478,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/clients", requireCoachAuth, async (req, res) => {
     try {
       const coachId = req.session.coachId!;
+      
+      // Check if client with this email already exists (globally)
+      const email = req.body.email;
+      if (email) {
+        const existingClient = await storage.getClientByEmail(email);
+        if (existingClient) {
+          return res.status(400).json({ error: "A client with this email already exists" });
+        }
+      }
+      
       const validatedData = insertClientSchema.parse({
         ...req.body,
         coachId, // Automatically assign to the logged-in coach

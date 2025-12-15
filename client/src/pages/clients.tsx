@@ -135,14 +135,31 @@ export default function Clients() {
 
   const createClientMutation = useMutation({
     mutationFn: async (data: InsertClient) => {
-      return await apiRequest("POST", "/api/clients", data);
+      const client = await apiRequest("POST", "/api/clients", data);
+      // Automatically send account setup invite after creating the client
+      try {
+        await apiRequest("POST", `/api/clients/${(client as any).id}/send-setup-invite`, {
+          message: "Welcome! Please set up your account to access your coaching portal."
+        });
+      } catch (inviteError) {
+        console.error("Failed to send setup invite:", inviteError);
+        // Don't throw - client was created successfully, invite can be resent manually
+      }
+      return client;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setIsNewClientOpen(false);
       toast({
         title: "Success",
-        description: "Client added successfully",
+        description: "Client added and invite sent successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add client",
+        variant: "destructive",
       });
     },
   });
@@ -1495,7 +1512,7 @@ function ClientForm({
 
         <div className="flex justify-end gap-3 pt-4">
           <Button type="submit" disabled={isLoading} data-testid="button-submit-client">
-            {isLoading ? "Saving..." : client ? "Update Client" : "Add Client"}
+            {isLoading ? "Saving..." : client ? "Update Client" : "Add Client & Send Invite"}
           </Button>
         </div>
       </form>
