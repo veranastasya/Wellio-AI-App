@@ -744,13 +744,21 @@ function ReminderSettingsSection({ clientId }: { clientId: string }) {
 
   const triggerRemindersMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest("POST", `/api/clients/${clientId}/trigger-reminders`);
+      const response = await apiRequest("POST", `/api/clients/${clientId}/trigger-reminders`, { bypassQuietHours: true });
+      return await response.json();
     },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Reminders Processed",
-        description: `${data.sentCount} reminder(s) sent.`,
-      });
+    onSuccess: (data: { success: boolean; sentCount: number; skippedReason?: string }) => {
+      if (data.sentCount > 0) {
+        toast({
+          title: "Reminders Sent",
+          description: `${data.sentCount} reminder(s) sent successfully.`,
+        });
+      } else {
+        toast({
+          title: "No Reminders Sent",
+          description: data.skippedReason || "No reminders were due for this client.",
+        });
+      }
     },
     onError: () => {
       toast({

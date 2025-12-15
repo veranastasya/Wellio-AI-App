@@ -312,7 +312,16 @@ async function sendPushReminder(clientId: string, title: string, body: string, r
   }
 }
 
-export async function processRemindersForClient(client: Client): Promise<number> {
+interface ProcessOptions {
+  bypassQuietHours?: boolean;
+}
+
+interface ProcessResult {
+  sentCount: number;
+  skippedReason?: string;
+}
+
+export async function processRemindersForClient(client: Client, options: ProcessOptions = {}): Promise<ProcessResult> {
   let sentCount = 0;
   const today = getTodayDateString();
 
@@ -321,7 +330,7 @@ export async function processRemindersForClient(client: Client): Promise<number>
     
     if (!settings) {
       const coach = await storage.getDefaultCoach();
-      if (!coach) return 0;
+      if (!coach) return { sentCount: 0, skippedReason: "No coach assigned" };
       
       settings = await storage.createClientReminderSettings({
         clientId: client.id,
@@ -339,18 +348,18 @@ export async function processRemindersForClient(client: Client): Promise<number>
     }
 
     if (!settings.remindersEnabled) {
-      return 0;
+      return { sentCount: 0, skippedReason: "Reminders are disabled for this client" };
     }
 
-    if (isWithinQuietHours(settings)) {
+    if (!options.bypassQuietHours && isWithinQuietHours(settings)) {
       logger.debug("Skipping reminders during quiet hours", { clientId: client.id });
-      return 0;
+      return { sentCount: 0, skippedReason: "Currently within quiet hours" };
     }
 
     const alreadySentToday = await storage.countSentRemindersToday(client.id, today);
     if (alreadySentToday >= settings.maxRemindersPerDay) {
       logger.debug("Max daily reminders reached", { clientId: client.id, count: alreadySentToday });
-      return 0;
+      return { sentCount: 0, skippedReason: "Daily reminder limit reached" };
     }
 
     const remainingSlots = settings.maxRemindersPerDay - alreadySentToday;
@@ -366,6 +375,10 @@ export async function processRemindersForClient(client: Client): Promise<number>
     candidates.push(...planReminders);
 
     const remindersToSend = candidates.slice(0, remainingSlots);
+
+    if (candidates.length === 0) {
+      return { sentCount: 0, skippedReason: "No reminders are due (client has no active goals, plans, or recent activity)" };
+    }
 
     for (const reminder of remindersToSend) {
       const success = await sendPushReminder(client.id, reminder.title, reminder.message, reminder.type);
@@ -393,11 +406,16 @@ export async function processRemindersForClient(client: Client): Promise<number>
       }
     }
 
+    if (sentCount === 0 && remindersToSend.length > 0) {
+      return { sentCount: 0, skippedReason: "Client does not have push notifications enabled" };
+    }
+
   } catch (error: any) {
     logger.error("Error processing reminders for client", { clientId: client.id }, error);
+    return { sentCount: 0, skippedReason: "Error processing reminders" };
   }
 
-  return sentCount;
+  return { sentCount };
 }
 
 export async function processAllReminders(): Promise<{ processedClients: number; sentReminders: number }> {
@@ -414,9 +432,9 @@ export async function processAllReminders(): Promise<{ processedClients: number;
     for (const client of clientsWithSubscriptions) {
       if (client.status !== "active") continue;
 
-      const count = await processRemindersForClient(client);
-      if (count > 0) {
-        sentReminders += count;
+      const result = await processRemindersForClient(client);
+      if (result.sentCount > 0) {
+        sentReminders += result.sentCount;
       }
       processedClients++;
     }

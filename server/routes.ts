@@ -5255,6 +5255,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     try {
       const coachId = req.session.coachId!;
       const { clientId } = req.params;
+      const { bypassQuietHours } = req.body;
       
       const client = await storage.getClient(clientId);
       if (!client || client.coachId !== coachId) {
@@ -5262,10 +5263,10 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       }
       
       const { processRemindersForClient } = await import('./reminderService');
-      const sentCount = await processRemindersForClient(client);
+      const result = await processRemindersForClient(client, { bypassQuietHours: !!bypassQuietHours });
       
-      logger.info('Manual reminder trigger completed', { clientId, sentCount });
-      res.json({ success: true, sentCount });
+      logger.info('Manual reminder trigger completed', { clientId, ...result });
+      res.json({ success: true, ...result });
     } catch (error) {
       logger.error('Failed to trigger reminders', { clientId: req.params.clientId }, error);
       res.status(500).json({ error: 'Failed to trigger reminders' });
