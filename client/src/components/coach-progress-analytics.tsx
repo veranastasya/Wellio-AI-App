@@ -415,6 +415,8 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '6px'
                     }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
                     formatter={(value: number) => [value ? `${value} cal` : 'No data', 'Calories']}
                   />
                   <Bar 
