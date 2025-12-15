@@ -650,9 +650,6 @@ export default function Clients() {
                             <p className="text-xs text-muted-foreground">Activity</p>
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground text-center">
-                          50% Goals + 30% Weekly + 20% Activity
-                        </p>
                       </div>
                       {/* Client Metrics */}
                       <div className="flex flex-wrap gap-2">
