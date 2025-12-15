@@ -485,7 +485,7 @@ export default function Clients() {
                 data-testid={`card-client-${index}`}
                 onClick={() => setLocation(`/coach/clients/${client.id}`)}
               >
-                <div className="p-5 flex flex-col flex-1 space-y-4">
+                <div className="p-5 flex flex-col flex-1 space-y-3">
                   {/* Header: Avatar with status dot, Name, Badge, Expand Toggle */}
                   <div className="flex items-start gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -627,10 +627,8 @@ export default function Clients() {
                     )}
                   </div>
 
-                  {/* AI Insights Banners - Fixed height container for alignment */}
-                  <div className="min-h-[36px]">
-                    <ClientInsightBanners clientId={client.id} />
-                  </div>
+                  {/* AI Insights Banners */}
+                  <ClientInsightBanners clientId={client.id} />
 
                   {/* Expanded Section: Client Metrics */}
                   {isExpanded && (
