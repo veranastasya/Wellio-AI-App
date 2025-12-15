@@ -189,7 +189,7 @@ export default function ClientWeeklyPlan() {
               <Button 
                 variant="outline" 
                 className="mt-6"
-                onClick={() => setLocation("/client/coach-chat")}
+                onClick={() => setLocation("/client/chat")}
                 data-testid="button-contact-coach"
               >
                 Message Your Coach
