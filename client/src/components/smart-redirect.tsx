@@ -9,30 +9,44 @@ export function SmartRedirect() {
   useEffect(() => {
     async function checkAuthAndRedirect() {
       try {
-        // Check client auth first (priority for PWA home screen)
-        const clientRes = await fetch("/api/client-auth/me", {
-          credentials: "include",
-        });
-        
-        if (clientRes.ok) {
-          const clientData = await clientRes.json();
-          if (clientData.client) {
-            setLocation("/client", { replace: true });
-            return;
+        // Check both auth states in parallel to avoid racing
+        const [clientRes, coachRes] = await Promise.all([
+          fetch("/api/client-auth/me", { credentials: "include" }).catch(() => null),
+          fetch("/api/coach/session", { credentials: "include" }).catch(() => null),
+        ]);
+
+        let clientAuth = false;
+        let coachAuth = false;
+
+        // Parse responses
+        if (clientRes?.ok) {
+          try {
+            const clientData = await clientRes.json();
+            clientAuth = !!clientData.client;
+          } catch {
+            clientAuth = false;
           }
         }
 
-        // Check coach auth
-        const coachRes = await fetch("/api/coach/session", {
-          credentials: "include",
-        });
-
-        if (coachRes.ok) {
-          const coachData = await coachRes.json();
-          if (coachData.authenticated) {
-            setLocation("/dashboard", { replace: true });
-            return;
+        if (coachRes?.ok) {
+          try {
+            const coachData = await coachRes.json();
+            coachAuth = !!coachData.authenticated;
+          } catch {
+            coachAuth = false;
           }
+        }
+
+        // Decision logic: Coach takes priority if both are somehow authenticated
+        // This prevents client cookies from hijacking coach navigation
+        if (coachAuth) {
+          setLocation("/dashboard", { replace: true });
+          return;
+        }
+
+        if (clientAuth) {
+          setLocation("/client", { replace: true });
+          return;
         }
 
         // No one logged in - show coach login by default
