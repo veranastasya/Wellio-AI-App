@@ -628,7 +628,7 @@ export default function Clients() {
                   </div>
 
                   {/* AI Insights Banners - Fixed height container for alignment */}
-                  <div className="min-h-[48px]">
+                  <div className="min-h-[36px]">
                     <ClientInsightBanners clientId={client.id} />
                   </div>
 
