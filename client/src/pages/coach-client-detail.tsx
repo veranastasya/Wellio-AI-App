@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Mail, Phone, Calendar, Target, User, Scale, Ruler, Activity as ActivityIcon, FileText, Pin, Download, ChevronDown, Loader2, BarChart3, Send, AlertCircle } from "lucide-react";
@@ -22,6 +23,20 @@ export default function CoachClientDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const clientId = params?.clientId;
+  
+  // Read tab from URL query parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const tabFromUrl = urlParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "overview");
+  
+  // Update active tab when URL changes
+  useEffect(() => {
+    const newParams = new URLSearchParams(window.location.search);
+    const newTab = newParams.get("tab");
+    if (newTab && newTab !== activeTab) {
+      setActiveTab(newTab);
+    }
+  }, [window.location.search]);
 
   const { data: client, isLoading: isLoadingClient } = useQuery<Client>({
     queryKey: ["/api/clients", clientId],
@@ -251,7 +266,7 @@ export default function CoachClientDetail() {
         </Card>
 
         {/* Tabbed Content */}
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="inline-flex h-auto items-center gap-1 rounded-lg bg-muted p-1">
             <TabsTrigger value="overview" className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-overview">
               Overview

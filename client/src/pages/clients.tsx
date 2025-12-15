@@ -664,16 +664,15 @@ export default function Clients() {
                       <Eye className="w-4 h-4 mr-2" />
                       View
                     </Button>
-                    <Link href={`/coach/plan-builder/${client.id}`} className="flex-1">
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        data-testid={`button-plan-${index}`}
-                      >
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Plan
-                      </Button>
-                    </Link>
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setLocation(`/coach/clients/${client.id}?tab=plan`)}
+                      data-testid={`button-plan-${index}`}
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Plan
+                    </Button>
                   </div>
                 </div>
               </div>
