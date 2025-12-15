@@ -11,85 +11,6 @@ import type {
 
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
-export function getMockActivityFeed(clientId: string): ClientActivityEvent[] {
-  const now = new Date();
-  const today = now.toISOString().split('T')[0];
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  
-  console.log(`[Engagement] Loading activity feed for client: ${clientId}`);
-  
-  return [
-    {
-      id: generateId(),
-      clientId,
-      timestamp: `${today}T08:30:00`,
-      type: 'log',
-      category: 'nutrition',
-      title: 'Logged breakfast',
-      description: 'Oatmeal with berries - 450 cal',
-      metadata: { calories: 450, mealType: 'breakfast' },
-    },
-    {
-      id: generateId(),
-      clientId,
-      timestamp: `${today}T10:15:00`,
-      type: 'log',
-      category: 'workout',
-      title: 'Completed training task',
-      description: 'Upper body strength - 45 mins',
-      metadata: { duration: 45, workoutType: 'strength' },
-    },
-    {
-      id: generateId(),
-      clientId,
-      timestamp: `${today}T16:15:00`,
-      type: 'inactivity',
-      category: 'general',
-      title: 'No activity for 6 hours',
-      description: 'Last activity was at 10:15 AM',
-    },
-    {
-      id: generateId(),
-      clientId,
-      timestamp: `${today}T14:00:00`,
-      type: 'missed_task',
-      category: 'nutrition',
-      title: 'Task not completed: Log lunch',
-      description: 'Expected by 2:00 PM',
-    },
-    {
-      id: generateId(),
-      clientId,
-      timestamp: `${today}T07:00:00`,
-      type: 'log',
-      category: 'sleep',
-      title: 'Sleep logged',
-      description: '7.5 hours - Quality: Good',
-      metadata: { hours: 7.5, quality: 'good' },
-    },
-    {
-      id: generateId(),
-      clientId,
-      timestamp: `${yesterday}T19:30:00`,
-      type: 'log',
-      category: 'nutrition',
-      title: 'Logged dinner',
-      description: 'Grilled chicken with vegetables - 680 cal',
-      metadata: { calories: 680, mealType: 'dinner' },
-    },
-    {
-      id: generateId(),
-      clientId,
-      timestamp: `${yesterday}T07:00:00`,
-      type: 'log',
-      category: 'workout',
-      title: 'Morning run',
-      description: '5K run - 28 mins',
-      metadata: { distance: 5, duration: 28 },
-    },
-  ];
-}
-
 export function detectTriggers(activityFeed: ClientActivityEvent[], clientId: string): Trigger[] {
   const triggers: Trigger[] = [];
   const now = new Date();
@@ -227,22 +148,6 @@ export async function simulateNotificationSend(
   console.log(`[Engagement] Message: "${recommendation.message.substring(0, 50)}..."`);
   
   return { success: true, channels };
-}
-
-export function getMockNotificationPreferences(clientId: string): NotificationPreference {
-  console.log(`[Engagement] Loading notification preferences for client: ${clientId}`);
-  
-  return {
-    clientId,
-    sms: false,
-    webPush: true,
-    inApp: true,
-    frequency: 'moderate',
-    dailyLimit: 4,
-    quietHoursEnabled: true,
-    quietHoursStart: '22:00',
-    quietHoursEnd: '08:00',
-  };
 }
 
 export function getQuickActions(): QuickAction[] {

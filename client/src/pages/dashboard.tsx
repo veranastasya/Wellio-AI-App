@@ -137,11 +137,8 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card data-testid="card-stat-clients">
             <CardContent className="p-4 sm:p-6">
-              <div className="flex items-start justify-between">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Users className="w-5 h-5 text-primary" />
-                </div>
-                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">+1</span>
+              <div className="p-2 rounded-lg bg-primary/10 w-fit">
+                <Users className="w-5 h-5 text-primary" />
               </div>
               <div className="mt-3">
                 <p className="text-2xl sm:text-3xl font-bold text-foreground">{totalClients}</p>
@@ -152,11 +149,8 @@ export default function Dashboard() {
 
           <Card data-testid="card-stat-programs">
             <CardContent className="p-4 sm:p-6">
-              <div className="flex items-start justify-between">
-                <div className="p-2 rounded-lg bg-chart-2/10">
-                  <TrendingUp className="w-5 h-5 text-chart-2" />
-                </div>
-                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">+2</span>
+              <div className="p-2 rounded-lg bg-chart-2/10 w-fit">
+                <TrendingUp className="w-5 h-5 text-chart-2" />
               </div>
               <div className="mt-3">
                 <p className="text-2xl sm:text-3xl font-bold text-foreground">{activePrograms}</p>
@@ -167,11 +161,8 @@ export default function Dashboard() {
 
           <Card data-testid="card-stat-sessions">
             <CardContent className="p-4 sm:p-6">
-              <div className="flex items-start justify-between">
-                <div className="p-2 rounded-lg bg-chart-3/10">
-                  <Calendar className="w-5 h-5 text-chart-3" />
-                </div>
-                <span className="text-xs text-rose-600 dark:text-rose-400 font-medium">-2</span>
+              <div className="p-2 rounded-lg bg-chart-3/10 w-fit">
+                <Calendar className="w-5 h-5 text-chart-3" />
               </div>
               <div className="mt-3">
                 <p className="text-2xl sm:text-3xl font-bold text-foreground">{thisWeekSessions}</p>
@@ -182,11 +173,8 @@ export default function Dashboard() {
 
           <Card data-testid="card-stat-messages">
             <CardContent className="p-4 sm:p-6">
-              <div className="flex items-start justify-between">
-                <div className="p-2 rounded-lg bg-chart-4/10">
-                  <MessageSquare className="w-5 h-5 text-chart-4" />
-                </div>
-                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">+4</span>
+              <div className="p-2 rounded-lg bg-chart-4/10 w-fit">
+                <MessageSquare className="w-5 h-5 text-chart-4" />
               </div>
               <div className="mt-3">
                 <p className="text-2xl sm:text-3xl font-bold text-foreground">{unreadMessages}</p>
