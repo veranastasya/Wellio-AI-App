@@ -617,16 +617,18 @@ export default function Clients() {
                     </div>
                   </div>
 
-                  {/* End Date */}
-                  {endDateFormatted && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CalendarDays className="w-4 h-4 flex-shrink-0" />
-                      <span>Ends {endDateFormatted}</span>
-                    </div>
-                  )}
+                  {/* End Date - Fixed height container for alignment */}
+                  <div className="min-h-[24px]">
+                    {endDateFormatted && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <CalendarDays className="w-4 h-4 flex-shrink-0" />
+                        <span>Ends {endDateFormatted}</span>
+                      </div>
+                    )}
+                  </div>
 
                   {/* AI Insights Banners - Fixed height container for alignment */}
-                  <div className="min-h-[56px]">
+                  <div className="min-h-[48px]">
                     <ClientInsightBanners clientId={client.id} />
                   </div>
 
