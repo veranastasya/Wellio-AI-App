@@ -7,7 +7,6 @@ import {
   Calendar,
   MessageSquare,
   ChevronRight,
-  Clock,
   FileText,
   Lightbulb,
   Plus
@@ -55,7 +54,6 @@ export default function Dashboard() {
   const totalSessions = sessions.length;
   const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
 
-  const clientSatisfaction = 4.8;
 
   const todayStr = today.toLocaleDateString('en-CA');
   const tomorrowStr = new Date(today.getTime() + 86400000).toLocaleDateString('en-CA');
@@ -99,6 +97,23 @@ export default function Dashboard() {
     const isTomorrow = date === tomorrowStr;
     const dayLabel = isToday ? "Today" : isTomorrow ? "Tomorrow" : date;
     return `${dayLabel}, ${time}`;
+  };
+
+  const formatLastActive = (lastActiveAt: string | null | undefined) => {
+    if (!lastActiveAt) return "Never";
+    
+    const lastActive = new Date(lastActiveAt);
+    const now = new Date();
+    const diffMs = now.getTime() - lastActive.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+    return lastActive.toLocaleDateString();
   };
 
   if (isLoading) {
@@ -184,8 +199,8 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Progress Cards Row - 3 Colored Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Progress Cards Row - 2 Colored Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-primary rounded-xl p-4 sm:p-6 text-primary-foreground" data-testid="card-avg-progress">
             <p className="text-sm font-medium opacity-90">Avg. Client Progress</p>
             <p className="text-3xl sm:text-4xl font-bold mt-1">{avgClientProgress}%</p>
@@ -196,10 +211,6 @@ export default function Dashboard() {
             <p className="text-3xl sm:text-4xl font-bold mt-1">{completionRate}%</p>
           </div>
 
-          <div className="bg-primary rounded-xl p-4 sm:p-6 text-primary-foreground" data-testid="card-satisfaction">
-            <p className="text-sm font-medium opacity-90">Client Satisfaction</p>
-            <p className="text-3xl sm:text-4xl font-bold mt-1">{clientSatisfaction}/5</p>
-          </div>
         </div>
 
         {/* Two Column Layout: Recent Activity + Upcoming Sessions */}
@@ -223,7 +234,6 @@ export default function Dashboard() {
               ) : (
                 recentClients.map((client, index) => {
                   const status = getStatusBadge(client.progressScore);
-                  const lastActive = "Active " + (index === 0 ? "2 hours ago" : index === 1 ? "1 day ago" : index === 2 ? "30 min ago" : "5 hours ago");
                   
                   return (
                     <div key={client.id} className="flex items-center gap-3" data-testid={`client-activity-${client.id}`}>
@@ -240,7 +250,7 @@ export default function Dashboard() {
                             {status.label}
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground">{lastActive}</p>
+                        <p className="text-xs text-muted-foreground">Active {formatLastActive(client.lastActiveAt)}</p>
                         <div className="mt-2 flex items-center gap-2">
                           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                             <div 
@@ -275,16 +285,12 @@ export default function Dashboard() {
                   No upcoming sessions scheduled.
                 </p>
               ) : (
-                upcomingSessions.map((session, index) => (
+                upcomingSessions.map((session) => (
                   <div key={session.id} className="flex items-start justify-between gap-3" data-testid={`session-${session.id}`}>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{session.clientName}</p>
                       <p className="text-xs text-primary">{formatSessionTime(session.date, session.startTime)}</p>
                       <p className="text-xs text-muted-foreground">{session.sessionType}</p>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
-                      <Clock className="w-3 h-3" />
-                      45 min
                     </div>
                   </div>
                 ))

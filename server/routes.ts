@@ -816,6 +816,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertMessageSchema.parse(messageData);
       const message = await storage.createMessage(validatedData);
       
+      // Update client's last active time
+      await storage.updateClient(clientId, { lastActiveAt: new Date().toISOString() });
+      
       // Send push notification to coach when client sends a message
       const client = await storage.getClient(clientId);
       if (client?.coachId) {
@@ -2561,9 +2564,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid email or password" });
       }
 
-      // Update last login
+      // Update last login and last active
+      const now = new Date().toISOString();
       await storage.updateClient(client.id, {
-        lastLoginAt: new Date().toISOString(),
+        lastLoginAt: now,
+        lastActiveAt: now,
       });
 
       // Set session
@@ -4384,6 +4389,11 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
       const smartLog = await storage.createSmartLog(validatedData);
       
+      // Update client's last active time when client logs activity
+      if (sessionClientId) {
+        await storage.updateClient(sessionClientId, { lastActiveAt: new Date().toISOString() });
+      }
+      
       // Process asynchronously if there's text or images
       const hasContent = smartLog.rawText || (smartLog.mediaUrls && (smartLog.mediaUrls as string[]).length > 0);
       if (hasContent) {
@@ -4535,6 +4545,12 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       }
 
       const event = await storage.createProgressEvent(validatedData);
+      
+      // Update client's last active time when client logs progress
+      if (sessionClientId) {
+        await storage.updateClient(sessionClientId, { lastActiveAt: new Date().toISOString() });
+      }
+      
       res.status(201).json(event);
     } catch (error) {
       console.error("Error creating progress event:", error);
