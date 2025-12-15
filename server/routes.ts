@@ -5167,6 +5167,111 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
 
+  // ===== Client Reminder Settings Routes =====
+  
+  // Get reminder settings for a specific client (coach view)
+  app.get("/api/clients/:clientId/reminder-settings", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      
+      const client = await storage.getClient(clientId);
+      if (!client || client.coachId !== coachId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      let settings = await storage.getClientReminderSettings(clientId);
+      
+      if (!settings) {
+        settings = await storage.createClientReminderSettings({
+          clientId,
+          coachId,
+          remindersEnabled: true,
+          goalRemindersEnabled: true,
+          planRemindersEnabled: true,
+          inactivityRemindersEnabled: true,
+          inactivityThresholdDays: 2,
+          quietHoursStart: "21:00",
+          quietHoursEnd: "08:00",
+          timezone: "America/New_York",
+          maxRemindersPerDay: 3,
+        });
+      }
+      
+      res.json(settings);
+    } catch (error) {
+      logger.error('Failed to get client reminder settings', { clientId: req.params.clientId }, error);
+      res.status(500).json({ error: 'Failed to get reminder settings' });
+    }
+  });
+  
+  // Update reminder settings for a specific client (coach view)
+  app.patch("/api/clients/:clientId/reminder-settings", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      
+      const client = await storage.getClient(clientId);
+      if (!client || client.coachId !== coachId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      const settings = await storage.upsertClientReminderSettings({
+        clientId,
+        coachId,
+        ...req.body,
+      });
+      
+      logger.info('Client reminder settings updated', { clientId, coachId });
+      res.json(settings);
+    } catch (error) {
+      logger.error('Failed to update client reminder settings', { clientId: req.params.clientId }, error);
+      res.status(500).json({ error: 'Failed to update reminder settings' });
+    }
+  });
+  
+  // Get sent reminders for a client
+  app.get("/api/clients/:clientId/sent-reminders", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      const { date } = req.query;
+      
+      const client = await storage.getClient(clientId);
+      if (!client || client.coachId !== coachId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      const reminders = await storage.getSentReminders(clientId, date as string | undefined);
+      res.json(reminders);
+    } catch (error) {
+      logger.error('Failed to get sent reminders', { clientId: req.params.clientId }, error);
+      res.status(500).json({ error: 'Failed to get sent reminders' });
+    }
+  });
+  
+  // Trigger reminders manually for a client (for testing)
+  app.post("/api/clients/:clientId/trigger-reminders", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      
+      const client = await storage.getClient(clientId);
+      if (!client || client.coachId !== coachId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      const { processRemindersForClient } = await import('./reminderService');
+      const sentCount = await processRemindersForClient(client);
+      
+      logger.info('Manual reminder trigger completed', { clientId, sentCount });
+      res.json({ success: true, sentCount });
+    } catch (error) {
+      logger.error('Failed to trigger reminders', { clientId: req.params.clientId }, error);
+      res.status(500).json({ error: 'Failed to trigger reminders' });
+    }
+  });
+
   // Send notification to client (web push + in-app)
   app.post("/api/engagement/send-notification", requireCoachAuth, async (req, res) => {
     try {

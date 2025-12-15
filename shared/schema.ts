@@ -1294,3 +1294,74 @@ export const insertCoachPushSubscriptionSchema = createInsertSchema(coachPushSub
 
 export type InsertCoachPushSubscription = z.infer<typeof insertCoachPushSubscriptionSchema>;
 export type CoachPushSubscription = typeof coachPushSubscriptions.$inferSelect;
+
+// Reminder Types for smart triggers
+export const REMINDER_TYPES = [
+  "goal_weight",
+  "goal_workout", 
+  "goal_nutrition",
+  "goal_general",
+  "plan_daily",
+  "inactivity_meals",
+  "inactivity_workouts",
+  "inactivity_checkin",
+  "inactivity_general",
+] as const;
+export type ReminderType = typeof REMINDER_TYPES[number];
+
+// Client Reminder Settings - Per-client reminder configuration
+export const clientReminderSettings = pgTable("client_reminder_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull().unique(),
+  coachId: varchar("coach_id").notNull(),
+  remindersEnabled: boolean("reminders_enabled").notNull().default(true),
+  goalRemindersEnabled: boolean("goal_reminders_enabled").notNull().default(true),
+  planRemindersEnabled: boolean("plan_reminders_enabled").notNull().default(true),
+  inactivityRemindersEnabled: boolean("inactivity_reminders_enabled").notNull().default(true),
+  inactivityThresholdDays: integer("inactivity_threshold_days").notNull().default(2),
+  quietHoursStart: text("quiet_hours_start").notNull().default("21:00"),
+  quietHoursEnd: text("quiet_hours_end").notNull().default("08:00"),
+  timezone: text("timezone").notNull().default("America/New_York"),
+  maxRemindersPerDay: integer("max_reminders_per_day").notNull().default(3),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const insertClientReminderSettingsSchema = createInsertSchema(clientReminderSettings).omit({
+  id: true,
+}).extend({
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type InsertClientReminderSettings = z.infer<typeof insertClientReminderSettingsSchema>;
+export type ClientReminderSettings = typeof clientReminderSettings.$inferSelect;
+
+// Sent Reminders - Track sent reminders to prevent duplicates
+export const sentReminders = pgTable("sent_reminders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  reminderType: text("reminder_type").notNull(), // ReminderType
+  reminderCategory: text("reminder_category").notNull(), // "goal" | "plan" | "inactivity"
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  sentAt: text("sent_at").notNull(),
+  sentDate: text("sent_date").notNull(), // YYYY-MM-DD for daily dedup
+  deliveryStatus: text("delivery_status").notNull().default("sent"), // "sent" | "delivered" | "failed"
+  relatedGoalId: varchar("related_goal_id"),
+  relatedPlanId: varchar("related_plan_id"),
+}, (table) => ({
+  clientIdIdx: index("sent_reminders_client_id_idx").on(table.clientId),
+  sentDateIdx: index("sent_reminders_sent_date_idx").on(table.sentDate),
+}));
+
+export const insertSentReminderSchema = createInsertSchema(sentReminders).omit({
+  id: true,
+}).extend({
+  reminderType: z.enum(REMINDER_TYPES),
+  reminderCategory: z.enum(["goal", "plan", "inactivity"]),
+  deliveryStatus: z.enum(["sent", "delivered", "failed"]).optional(),
+});
+
+export type InsertSentReminder = z.infer<typeof insertSentReminderSchema>;
+export type SentReminder = typeof sentReminders.$inferSelect;

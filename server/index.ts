@@ -7,6 +7,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { storage } from "./storage";
 import { setupOAuth } from "./replitAuth";
 import { logger, generateRequestId } from "./logger";
+import { startReminderScheduler } from "./reminderService";
 
 const app = express();
 
@@ -144,5 +145,9 @@ app.use((req: any, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
     logger.info('Server started successfully', { port });
+    
+    // Start the reminder scheduler (runs every hour)
+    startReminderScheduler(60 * 60 * 1000);
+    logger.info('Reminder scheduler started');
   });
 })();

@@ -58,6 +58,10 @@ import {
   type InsertPushSubscription,
   type CoachPushSubscription,
   type InsertCoachPushSubscription,
+  type ClientReminderSettings,
+  type InsertClientReminderSettings,
+  type SentReminder,
+  type InsertSentReminder,
   coaches,
   clients,
   sessions,
@@ -87,6 +91,8 @@ import {
   inAppNotifications,
   pushSubscriptions,
   coachPushSubscriptions,
+  clientReminderSettings,
+  sentReminders,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
@@ -1873,6 +1879,104 @@ export class DatabaseStorage implements IStorage {
       .where(eq(coachPushSubscriptions.endpoint, endpoint))
       .returning();
     return result.length > 0;
+  }
+
+  // Client Reminder Settings
+  async getClientReminderSettings(clientId: string): Promise<ClientReminderSettings | undefined> {
+    const result = await db.select().from(clientReminderSettings)
+      .where(eq(clientReminderSettings.clientId, clientId));
+    return result[0];
+  }
+
+  async getAllClientReminderSettings(): Promise<ClientReminderSettings[]> {
+    return await db.select().from(clientReminderSettings);
+  }
+
+  async getEnabledClientReminderSettings(): Promise<ClientReminderSettings[]> {
+    return await db.select().from(clientReminderSettings)
+      .where(eq(clientReminderSettings.remindersEnabled, true));
+  }
+
+  async createClientReminderSettings(settings: InsertClientReminderSettings): Promise<ClientReminderSettings> {
+    const now = new Date().toISOString();
+    const result = await db.insert(clientReminderSettings).values({
+      ...settings,
+      createdAt: settings.createdAt || now,
+      updatedAt: settings.updatedAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updateClientReminderSettings(clientId: string, settings: Partial<InsertClientReminderSettings>): Promise<ClientReminderSettings | undefined> {
+    const now = new Date().toISOString();
+    const result = await db.update(clientReminderSettings)
+      .set({ ...settings, updatedAt: now })
+      .where(eq(clientReminderSettings.clientId, clientId))
+      .returning();
+    return result[0];
+  }
+
+  async upsertClientReminderSettings(settings: InsertClientReminderSettings): Promise<ClientReminderSettings> {
+    const existing = await this.getClientReminderSettings(settings.clientId);
+    if (existing) {
+      return (await this.updateClientReminderSettings(settings.clientId, settings))!;
+    }
+    return this.createClientReminderSettings(settings);
+  }
+
+  async deleteClientReminderSettings(clientId: string): Promise<boolean> {
+    const result = await db.delete(clientReminderSettings)
+      .where(eq(clientReminderSettings.clientId, clientId))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Sent Reminders
+  async getSentReminders(clientId: string, date?: string): Promise<SentReminder[]> {
+    if (date) {
+      return await db.select().from(sentReminders)
+        .where(and(
+          eq(sentReminders.clientId, clientId),
+          eq(sentReminders.sentDate, date)
+        ))
+        .orderBy(desc(sentReminders.sentAt));
+    }
+    return await db.select().from(sentReminders)
+      .where(eq(sentReminders.clientId, clientId))
+      .orderBy(desc(sentReminders.sentAt));
+  }
+
+  async getSentRemindersByTypeAndDate(clientId: string, reminderType: string, date: string): Promise<SentReminder[]> {
+    return await db.select().from(sentReminders)
+      .where(and(
+        eq(sentReminders.clientId, clientId),
+        eq(sentReminders.reminderType, reminderType),
+        eq(sentReminders.sentDate, date)
+      ));
+  }
+
+  async countSentRemindersToday(clientId: string, date: string): Promise<number> {
+    const result = await db.select().from(sentReminders)
+      .where(and(
+        eq(sentReminders.clientId, clientId),
+        eq(sentReminders.sentDate, date)
+      ));
+    return result.length;
+  }
+
+  async createSentReminder(reminder: InsertSentReminder): Promise<SentReminder> {
+    const result = await db.insert(sentReminders).values(reminder).returning();
+    return result[0];
+  }
+
+  async getClientsWithPushSubscriptions(): Promise<Client[]> {
+    const subscriptions = await db.select().from(pushSubscriptions);
+    const clientIds = Array.from(new Set(subscriptions.map(s => s.clientId)));
+    if (clientIds.length === 0) return [];
+    
+    const result = await db.select().from(clients)
+      .where(sql`${clients.id} = ANY(${clientIds})`);
+    return result;
   }
 }
 
