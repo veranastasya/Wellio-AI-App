@@ -197,11 +197,9 @@ export default function ClientPasswordSetup() {
                   className="pr-10"
                   data-testid="input-password"
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted/50 transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                   data-testid="button-toggle-password"
                 >
@@ -210,7 +208,7 @@ export default function ClientPasswordSetup() {
                   ) : (
                     <Eye className="w-4 h-4 text-muted-foreground" />
                   )}
-                </Button>
+                </button>
               </div>
             </div>
 

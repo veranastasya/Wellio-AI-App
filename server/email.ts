@@ -396,7 +396,7 @@ export async function sendAccountSetupEmail({
           ` : ''}
           
           <div style="text-align: center;">
-            <a href="${setupLink}" class="cta-button">Set Up Your Account</a>
+            <a href="${setupLink}" class="cta-button" style="color: #ffffff; text-decoration: none;">Set Up Your Account</a>
           </div>
           
           <p style="margin-top: 32px; font-size: 14px; color: #666666;">
