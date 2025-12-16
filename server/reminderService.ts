@@ -270,10 +270,8 @@ async function sendPushReminder(clientId: string, title: string, body: string, r
       return false;
     }
     
-    // Format title with coach name for personalization
-    const notificationTitle = coachName 
-      ? `Reminder from ${coachName}` 
-      : "Wellio AI";
+    // Use coach name as title - iOS will add "from [App Name]" automatically
+    const notificationTitle = coachName || "Wellio AI";
     
     // Combine the reminder title and message for the body
     const notificationBody = `${title}\n${body}`;
