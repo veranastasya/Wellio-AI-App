@@ -139,7 +139,8 @@ async function getPlanReminders(client: Client, settings: ClientReminderSettings
   if (alreadySent.length > 0) return [];
 
   const plans = await storage.getClientPlansByClientId(client.id);
-  const activePlans = plans.filter(p => p.status === "assigned" && p.shared);
+  // Include both "assigned" and "active" status plans
+  const activePlans = plans.filter(p => (p.status === "assigned" || p.status === "active") && p.shared);
 
   if (activePlans.length === 0) return [];
 

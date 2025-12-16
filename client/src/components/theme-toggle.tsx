@@ -8,7 +8,13 @@ export function ThemeToggle() {
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initialTheme = savedTheme || (prefersDark ? "dark" : "light");
+    
+    // Detect if running as PWA/standalone mode
+    const isPWA = window.matchMedia("(display-mode: standalone)").matches || 
+                  (window.navigator as any).standalone === true;
+    
+    // Default to light theme for PWA, otherwise follow system preference
+    const initialTheme = savedTheme || (isPWA ? "light" : (prefersDark ? "dark" : "light"));
     
     setTheme(initialTheme);
     document.documentElement.classList.toggle("dark", initialTheme === "dark");
