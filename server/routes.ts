@@ -244,6 +244,46 @@ async function sendPushNotificationToCoach(
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Dynamic manifest route for PWA - serves client-specific manifest when appropriate
+  // iOS Safari uses the URL you're on when saving to home screen, not the manifest's start_url
+  // This route serves different manifests based on the referer header
+  app.get("/manifest.json", (req, res) => {
+    const referer = req.headers.referer || '';
+    const isClientPath = referer.includes('/client');
+    
+    // Base manifest configuration
+    const manifest = {
+      name: isClientPath ? "Wellio Client" : "Wellio - AI Fitness Coaching",
+      short_name: "Wellio",
+      description: isClientPath 
+        ? "Track your fitness progress with your coach" 
+        : "AI-powered fitness and wellness coaching platform",
+      start_url: isClientPath ? "/client" : "/",
+      scope: "/",
+      display: "standalone",
+      background_color: "#ffffff",
+      theme_color: "#28A0AE",
+      orientation: "portrait-primary",
+      icons: [
+        { src: "/icon-72.png?v=2", sizes: "72x72", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-96.png?v=2", sizes: "96x96", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-128.png?v=2", sizes: "128x128", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-144.png?v=2", sizes: "144x144", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-152.png?v=2", sizes: "152x152", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-180.png?v=2", sizes: "180x180", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-192.png?v=2", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-384.png?v=2", sizes: "384x384", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-512.png?v=2", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+      ],
+      categories: ["health", "fitness", "lifestyle"],
+      prefer_related_applications: false
+    };
+    
+    res.setHeader('Content-Type', 'application/manifest+json');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.json(manifest);
+  });
+
   // Coach registration endpoint
   app.post("/api/coach/register", async (req, res) => {
     try {
