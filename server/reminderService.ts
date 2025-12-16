@@ -282,8 +282,8 @@ async function sendPushReminder(clientId: string, title: string, body: string, r
       type: "reminder",
       title: notificationTitle,
       body: notificationBody,
-      icon: "/icon-192.png",
-      badge: "/icon-72.png",
+      icon: "/icon-192.png?v=3",
+      badge: "/icon-72.png?v=3",
       tag: `wellio-reminder-${reminderType}`,
       data: { 
         url: "/client/ai-tracker",
