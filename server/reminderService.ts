@@ -247,7 +247,7 @@ async function getInactivityReminders(client: Client, settings: ClientReminderSe
   return reminders;
 }
 
-async function sendPushReminder(clientId: string, title: string, body: string, reminderType: string): Promise<boolean> {
+async function sendPushReminder(clientId: string, title: string, body: string, reminderType: string, coachName?: string): Promise<boolean> {
   try {
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
     const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
@@ -270,10 +270,18 @@ async function sendPushReminder(clientId: string, title: string, body: string, r
       return false;
     }
     
+    // Format title with coach name for personalization
+    const notificationTitle = coachName 
+      ? `Reminder from ${coachName}` 
+      : "Wellio AI";
+    
+    // Combine the reminder title and message for the body
+    const notificationBody = `${title}\n${body}`;
+    
     const pushPayload = JSON.stringify({
       type: "reminder",
-      title,
-      body,
+      title: notificationTitle,
+      body: notificationBody,
       icon: "/icon-192.png",
       badge: "/icon-72.png",
       tag: `wellio-reminder-${reminderType}`,
@@ -381,8 +389,15 @@ export async function processRemindersForClient(client: Client, options: Process
       return { sentCount: 0, skippedReason: "No reminders are due (client has no active goals, plans, or recent activity)" };
     }
 
+    // Get coach name for personalized notifications
+    let coachName: string | undefined;
+    if (client.coachId) {
+      const coach = await storage.getCoach(client.coachId);
+      coachName = coach?.name;
+    }
+
     for (const reminder of remindersToSend) {
-      const success = await sendPushReminder(client.id, reminder.title, reminder.message, reminder.type);
+      const success = await sendPushReminder(client.id, reminder.title, reminder.message, reminder.type, coachName);
       
       if (success) {
         await storage.createSentReminder({
