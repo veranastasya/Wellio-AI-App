@@ -1,6 +1,6 @@
 {
-  "name": "Wellio Client Portal",
-  "short_name": "Wellio",
+  "name": "Wellio AI",
+  "short_name": "Wellio AI",
   "description": "Your personal fitness and wellness coaching portal",
   "start_url": "/client",
   "display": "standalone",

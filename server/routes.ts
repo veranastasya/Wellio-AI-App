@@ -253,8 +253,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Base manifest configuration
     const manifest = {
-      name: isClientPath ? "Wellio Client" : "Wellio - AI Fitness Coaching",
-      short_name: "Wellio",
+      name: isClientPath ? "Wellio AI" : "Wellio AI - Fitness Coaching",
+      short_name: "Wellio AI",
       description: isClientPath 
         ? "Track your fitness progress with your coach" 
         : "AI-powered fitness and wellness coaching platform",
