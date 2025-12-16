@@ -265,15 +265,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       theme_color: "#28A0AE",
       orientation: "portrait-primary",
       icons: [
-        { src: "/icon-72.png?v=2", sizes: "72x72", type: "image/png", purpose: "any maskable" },
-        { src: "/icon-96.png?v=2", sizes: "96x96", type: "image/png", purpose: "any maskable" },
-        { src: "/icon-128.png?v=2", sizes: "128x128", type: "image/png", purpose: "any maskable" },
-        { src: "/icon-144.png?v=2", sizes: "144x144", type: "image/png", purpose: "any maskable" },
-        { src: "/icon-152.png?v=2", sizes: "152x152", type: "image/png", purpose: "any maskable" },
-        { src: "/icon-180.png?v=2", sizes: "180x180", type: "image/png", purpose: "any maskable" },
-        { src: "/icon-192.png?v=2", sizes: "192x192", type: "image/png", purpose: "any maskable" },
-        { src: "/icon-384.png?v=2", sizes: "384x384", type: "image/png", purpose: "any maskable" },
-        { src: "/icon-512.png?v=2", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+        { src: "/icon-72.png?v=3", sizes: "72x72", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-96.png?v=3", sizes: "96x96", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-128.png?v=3", sizes: "128x128", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-144.png?v=3", sizes: "144x144", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-152.png?v=3", sizes: "152x152", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-180.png?v=3", sizes: "180x180", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-192.png?v=3", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-384.png?v=3", sizes: "384x384", type: "image/png", purpose: "any maskable" },
+        { src: "/icon-512.png?v=3", sizes: "512x512", type: "image/png", purpose: "any maskable" }
       ],
       categories: ["health", "fitness", "lifestyle"],
       prefer_related_applications: false

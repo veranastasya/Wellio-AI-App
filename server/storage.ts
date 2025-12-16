@@ -1975,7 +1975,7 @@ export class DatabaseStorage implements IStorage {
     if (clientIds.length === 0) return [];
     
     const result = await db.select().from(clients)
-      .where(sql`${clients.id} = ANY(${clientIds})`);
+      .where(inArray(clients.id, clientIds));
     return result;
   }
 }
