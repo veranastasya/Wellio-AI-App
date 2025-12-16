@@ -18,8 +18,17 @@ import {
   User,
   Sparkles,
   ImageIcon,
-  X
+  X,
+  Pencil
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import type { SmartLog, AIClassification, AIParsedData, ParsedNutrition, ParsedWorkout, ParsedWeight, ParsedSleep, ParsedMood } from "@shared/schema";
 import { format, parseISO } from "date-fns";
 
@@ -270,8 +279,14 @@ export default function ClientAITracker() {
   const [clientId, setClientId] = useState<string | null>(null);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [editingLog, setEditingLog] = useState<SmartLog | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editPendingImages, setEditPendingImages] = useState<PendingImage[]>([]);
+  const [editExistingImages, setEditExistingImages] = useState<string[]>([]);
+  const [isEditUploading, setIsEditUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const editImageInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -315,6 +330,219 @@ export default function ClientAITracker() {
       });
     },
   });
+
+  const updateLogMutation = useMutation({
+    mutationFn: async (data: { id: string; rawText?: string; mediaUrls?: string[] }) => {
+      const response = await apiRequest("PATCH", `/api/smart-logs/${data.id}`, {
+        rawText: data.rawText,
+        mediaUrls: data.mediaUrls,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      setEditingLog(null);
+      setEditText("");
+      setEditPendingImages([]);
+      setEditExistingImages([]);
+      queryClient.invalidateQueries({ queryKey: ["/api/smart-logs", clientId] });
+      toast({
+        title: "Updated!",
+        description: "Your entry is being re-analyzed by AI",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update your log. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const openEditModal = (log: SmartLog) => {
+    setEditingLog(log);
+    setEditText(log.rawText || "");
+    setEditExistingImages((log.mediaUrls as string[]) || []);
+    setEditPendingImages([]);
+  };
+
+  const closeEditModal = () => {
+    editPendingImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+    setEditingLog(null);
+    setEditText("");
+    setEditPendingImages([]);
+    setEditExistingImages([]);
+  };
+
+  const handleEditImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const maxFiles = 3;
+    const maxSize = 10 * 1024 * 1024;
+    const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+
+    const totalImages = editExistingImages.length + editPendingImages.length + files.length;
+    if (totalImages > maxFiles) {
+      toast({
+        title: "Too many images",
+        description: `Maximum ${maxFiles} images allowed`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type)) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not a supported image format`,
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds 10MB limit`,
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      const newImage: PendingImage = {
+        id: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        file,
+        previewUrl,
+      };
+      setEditPendingImages((prev) => [...prev, newImage]);
+    }
+
+    if (editImageInputRef.current) {
+      editImageInputRef.current.value = "";
+    }
+  };
+
+  const removeEditPendingImage = (imageId: string) => {
+    setEditPendingImages((prev) => {
+      const image = prev.find((img) => img.id === imageId);
+      if (image) {
+        URL.revokeObjectURL(image.previewUrl);
+      }
+      return prev.filter((img) => img.id !== imageId);
+    });
+  };
+
+  const removeEditExistingImage = (url: string) => {
+    setEditExistingImages((prev) => prev.filter((u) => u !== url));
+  };
+
+  const uploadEditImages = async (): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+
+    for (const image of editPendingImages) {
+      try {
+        const uploadUrlResponse = await fetch("/api/attachments/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+
+        if (!uploadUrlResponse.ok) {
+          throw new Error("Failed to get upload URL");
+        }
+
+        const { uploadURL } = await uploadUrlResponse.json();
+
+        const uploadResponse = await fetch(uploadURL, {
+          method: "PUT",
+          body: image.file,
+          headers: {
+            "Content-Type": image.file.type,
+          },
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload image");
+        }
+
+        const objectURL = uploadURL.split("?")[0];
+
+        const saveResponse = await fetch("/api/attachments/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            objectURL,
+            fileName: image.file.name,
+            fileType: image.file.type,
+            fileSize: image.file.size,
+            clientId,
+          }),
+        });
+
+        if (!saveResponse.ok) {
+          throw new Error("Failed to save image metadata");
+        }
+
+        uploadedUrls.push(objectURL);
+      } catch (error) {
+        console.error("Image upload error:", error);
+        toast({
+          title: "Upload failed",
+          description: `Failed to upload ${image.file.name}`,
+          variant: "destructive",
+        });
+      }
+    }
+
+    return uploadedUrls;
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingLog) return;
+    
+    const hasText = editText.trim().length > 0;
+    const hasExistingImages = editExistingImages.length > 0;
+    const hasPendingImages = editPendingImages.length > 0;
+    
+    if (!hasText && !hasExistingImages && !hasPendingImages) {
+      toast({
+        title: "Empty entry",
+        description: "Please add text or images",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsEditUploading(true);
+
+    try {
+      let newMediaUrls: string[] = [];
+      
+      if (hasPendingImages) {
+        newMediaUrls = await uploadEditImages();
+      }
+
+      const allMediaUrls = [...editExistingImages, ...newMediaUrls];
+
+      updateLogMutation.mutate({
+        id: editingLog.id,
+        rawText: hasText ? editText.trim() : undefined,
+        mediaUrls: allMediaUrls.length > 0 ? allMediaUrls : undefined,
+      });
+    } catch (error) {
+      console.error("Edit submit error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsEditUploading(false);
+    }
+  };
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -610,8 +838,17 @@ export default function ClientAITracker() {
               
               return (
                 <div key={log.id} className="space-y-3">
-                  <div className="flex flex-col items-end max-w-md ml-auto" data-testid={`log-entry-${index}`}>
-                    <div className="flex gap-3">
+                  <div className="flex flex-col items-end max-w-md ml-auto group" data-testid={`log-entry-${index}`}>
+                    <div className="flex gap-3 items-start">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity self-center"
+                        onClick={() => openEditModal(log)}
+                        data-testid={`button-edit-log-${index}`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
                       <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm p-4 shadow-sm">
                         {log.rawText && (
                           <p className="text-sm">{log.rawText}</p>
@@ -740,6 +977,83 @@ export default function ClientAITracker() {
           </Button>
         </div>
       </div>
+
+      <Dialog open={!!editingLog} onOpenChange={(open) => !open && closeEditModal()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Entry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              placeholder="Describe your progress..."
+              className="min-h-[100px]"
+              data-testid="input-edit-text"
+            />
+            
+            {(editExistingImages.length > 0 || editPendingImages.length > 0) && (
+              <div className="flex flex-wrap gap-2">
+                {editExistingImages.map((url, idx) => (
+                  <div key={`existing-${idx}`} className="relative inline-block">
+                    <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                      <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="secondary"
+                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full shadow-md"
+                      onClick={() => removeEditExistingImage(url)}
+                      data-testid={`button-remove-existing-image-${idx}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+                {editPendingImages.map((image) => (
+                  <ImagePreview
+                    key={image.id}
+                    image={image}
+                    onRemove={() => removeEditPendingImage(image.id)}
+                  />
+                ))}
+              </div>
+            )}
+            
+            <input
+              ref={editImageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              multiple
+              className="hidden"
+              onChange={handleEditImageSelect}
+              data-testid="input-edit-image-upload"
+            />
+          </div>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => editImageInputRef.current?.click()}
+              disabled={isEditUploading || updateLogMutation.isPending}
+              data-testid="button-edit-add-image"
+            >
+              <ImageIcon className="w-4 h-4 mr-2" />
+              Add Image
+            </Button>
+            <Button
+              onClick={handleEditSubmit}
+              disabled={isEditUploading || updateLogMutation.isPending}
+              data-testid="button-edit-save"
+            >
+              {(isEditUploading || updateLogMutation.isPending) ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
+              Save & Re-analyze
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

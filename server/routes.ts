@@ -4503,6 +4503,79 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
 
+  // Update and reprocess a smart log (edit functionality)
+  app.patch("/api/smart-logs/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rawText, mediaUrls } = req.body;
+      
+      const coachId = req.session?.coachId;
+      const sessionClientId = req.session?.clientId;
+      
+      if (!coachId && !sessionClientId) {
+        return res.status(401).json({ error: "Unauthorized - Please log in" });
+      }
+
+      const log = await storage.getSmartLog(id);
+      if (!log) {
+        return res.status(404).json({ error: "Smart log not found" });
+      }
+
+      // Clients can only edit their own logs; coaches can edit any log
+      if (sessionClientId && log.clientId !== sessionClientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      // Validate input types
+      const trimmedText = typeof rawText === 'string' ? rawText.trim() : undefined;
+      const validMediaUrls = Array.isArray(mediaUrls) ? mediaUrls.filter((u: unknown) => typeof u === 'string') : undefined;
+
+      // Validate that at least text or images are provided
+      if (!trimmedText && (!validMediaUrls || validMediaUrls.length === 0)) {
+        return res.status(400).json({ error: "Please provide text or images" });
+      }
+
+      // Update the log with new text/images and reset for reprocessing
+      const updateData: Record<string, unknown> = {
+        processingStatus: "pending",
+        aiClassificationJson: null,
+        aiParsedJson: null,
+      };
+      
+      // Only set rawText if provided, otherwise keep existing or set to null
+      if (trimmedText !== undefined) {
+        updateData.rawText = trimmedText || null;
+      }
+      
+      // Only set mediaUrls if provided
+      if (validMediaUrls !== undefined) {
+        updateData.mediaUrls = validMediaUrls.length > 0 ? validMediaUrls : null;
+      }
+
+      const updatedLog = await storage.updateSmartLog(id, updateData);
+
+      if (!updatedLog) {
+        return res.status(500).json({ error: "Failed to update smart log" });
+      }
+
+      // Delete existing progress events for this log before reprocessing
+      const existingEvents = await storage.getProgressEventsBySmartLogId(id);
+      for (const event of existingEvents) {
+        await storage.deleteProgressEvent(event.id);
+      }
+
+      // Trigger reprocessing
+      processSmartLog(id).catch(err => {
+        console.error("Error reprocessing smart log after edit:", err);
+      });
+
+      res.json(updatedLog);
+    } catch (error) {
+      console.error("Error updating smart log:", error);
+      res.status(500).json({ error: "Failed to update smart log" });
+    }
+  });
+
   // Delete a smart log
   app.delete("/api/smart-logs/:id", async (req, res) => {
     try {
