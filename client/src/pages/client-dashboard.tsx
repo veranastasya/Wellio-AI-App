@@ -8,6 +8,7 @@ import { Loader2, Dumbbell, Flame, TrendingUp, Trophy, Apple, Droplets, MessageS
 import { apiRequest } from "@/lib/queryClient";
 import type { Client, SmartLog, ProgressEvent } from "@shared/schema";
 import { format, subDays, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface TrendAnalysis {
   category: string;
@@ -180,6 +181,42 @@ export default function ClientDashboard() {
     { id: "3", title: "Coach call", time: "Friday, 15:00", checked: false },
   ];
 
+  // Aggregate daily calories from nutrition events
+  const dailyCaloriesData = (() => {
+    if (!nutritionEvents || nutritionEvents.length === 0) return [];
+    
+    // Group nutrition events by date and sum calories
+    const caloriesByDate: Record<string, number> = {};
+    nutritionEvents.forEach(event => {
+      // Guard against missing data
+      if (!event.dateForMetric || !event.dataJson) return;
+      const date = event.dateForMetric;
+      const dataJson = event.dataJson as Record<string, unknown>;
+      const rawCalories = dataJson.calories;
+      // Coerce to number and skip invalid values
+      const calories = typeof rawCalories === 'number' ? rawCalories : 
+                       typeof rawCalories === 'string' ? parseFloat(rawCalories) : 0;
+      if (isNaN(calories)) return;
+      caloriesByDate[date] = (caloriesByDate[date] || 0) + calories;
+    });
+    
+    // Convert to array and sort by date, get last 7 days
+    const today = new Date();
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = subDays(today, i);
+      const dateStr = format(date, "yyyy-MM-dd");
+      const dayLabel = format(date, "EEE");
+      last7Days.push({
+        day: dayLabel,
+        date: dateStr,
+        calories: caloriesByDate[dateStr] || 0,
+      });
+    }
+    
+    return last7Days;
+  })();
+
   const statCards = [
     { 
       value: workoutsThisWeek, 
@@ -236,6 +273,49 @@ export default function ClientDashboard() {
             </Card>
           ))}
         </div>
+
+        {/* Daily Calories Chart */}
+        {dailyCaloriesData.some(d => d.calories > 0) && (
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <h2 className="text-lg font-semibold text-foreground mb-4" data-testid="text-calories-chart-title">
+                Daily Calories (Last 7 Days)
+              </h2>
+              <div className="h-48 sm:h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyCaloriesData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis 
+                      dataKey="day" 
+                      className="text-xs"
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <YAxis 
+                      className="text-xs"
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      width={40}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '0.5rem',
+                      }}
+                      formatter={(value: number) => [`${value} cal`, 'Calories']}
+                      labelFormatter={(label) => label}
+                    />
+                    <Bar 
+                      dataKey="calories" 
+                      fill="#28A0AE" 
+                      radius={[4, 4, 0, 0]}
+                      name="Calories"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* AI Insights Section */}
         <ClientInsightsCard insights={insights} isLoading={insightsLoading} />

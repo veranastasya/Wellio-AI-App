@@ -1306,6 +1306,9 @@ export const REMINDER_TYPES = [
   "inactivity_workouts",
   "inactivity_checkin",
   "inactivity_general",
+  "daily_breakfast",
+  "daily_lunch",
+  "daily_dinner",
 ] as const;
 export type ReminderType = typeof REMINDER_TYPES[number];
 
@@ -1318,7 +1321,7 @@ export const clientReminderSettings = pgTable("client_reminder_settings", {
   goalRemindersEnabled: boolean("goal_reminders_enabled").notNull().default(true),
   planRemindersEnabled: boolean("plan_reminders_enabled").notNull().default(true),
   inactivityRemindersEnabled: boolean("inactivity_reminders_enabled").notNull().default(true),
-  inactivityThresholdDays: integer("inactivity_threshold_days").notNull().default(2),
+  inactivityThresholdDays: integer("inactivity_threshold_days").notNull().default(1),
   quietHoursStart: text("quiet_hours_start").notNull().default("21:00"),
   quietHoursEnd: text("quiet_hours_end").notNull().default("08:00"),
   timezone: text("timezone").notNull().default("America/New_York"),
@@ -1359,7 +1362,7 @@ export const insertSentReminderSchema = createInsertSchema(sentReminders).omit({
   id: true,
 }).extend({
   reminderType: z.enum(REMINDER_TYPES),
-  reminderCategory: z.enum(["goal", "plan", "inactivity"]),
+  reminderCategory: z.enum(["goal", "plan", "inactivity", "daily_checkin"]),
   deliveryStatus: z.enum(["sent", "delivered", "failed"]).optional(),
 });
 

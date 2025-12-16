@@ -73,14 +73,30 @@ export default function Clients() {
     queryKey: ["/api/coach/profile"],
   });
 
-  // Get status label and color based on progress score
-  const getProgressStatus = (progressScore: number | null | undefined) => {
+  // Check if client is within grace period (new client: <5 days old)
+  const isWithinGracePeriod = (client: Client) => {
+    // If no joinedDate, assume NOT in grace period (show actual status)
+    if (!client.joinedDate) return false;
+    const joinedDate = new Date(client.joinedDate);
+    // Guard against invalid dates
+    if (isNaN(joinedDate.getTime())) return false;
+    const now = new Date();
+    const daysSinceJoined = Math.floor((now.getTime() - joinedDate.getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceJoined < 5;
+  };
+
+  // Get status label and color based on progress score with grace period consideration
+  const getProgressStatus = (progressScore: number | null | undefined, client?: Client) => {
     const score = progressScore || 0;
     if (score >= 80) {
       return { label: "Excellent", className: "bg-emerald-500 text-white hover:bg-emerald-500" };
     } else if (score >= 50) {
       return { label: "On Track", className: "bg-primary text-white hover:bg-primary" };
     } else if (score > 0) {
+      // Check for grace period - show "Getting Started" instead of "Needs Attention" for new clients
+      if (client && isWithinGracePeriod(client)) {
+        return { label: "Getting Started", className: "bg-blue-500 text-white hover:bg-blue-500" };
+      }
       return { label: "Needs Attention", className: "bg-amber-500 text-white hover:bg-amber-500" };
     } else {
       return { label: "New", className: "bg-muted text-muted-foreground hover:bg-muted" };
@@ -466,7 +482,7 @@ export default function Clients() {
         {/* Client Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {sortedClients.map((client, index) => {
-            const progressStatus = getProgressStatus(client.progressScore);
+            const progressStatus = getProgressStatus(client.progressScore, client);
             const endDateFormatted = formatEndDate(client.endDate);
             const progressScore = client.progressScore || 0;
             const isExpanded = expandedCard === client.id;

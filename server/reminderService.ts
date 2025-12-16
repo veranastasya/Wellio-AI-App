@@ -7,7 +7,7 @@ interface ReminderCandidate {
   clientId: string;
   clientName: string;
   type: ReminderType;
-  category: "goal" | "plan" | "inactivity";
+  category: "goal" | "plan" | "inactivity" | "daily_checkin";
   title: string;
   message: string;
   relatedGoalId?: string;
@@ -247,6 +247,84 @@ async function getInactivityReminders(client: Client, settings: ClientReminderSe
   return reminders;
 }
 
+// Daily check-in reminders - encouraging messages for breakfast, lunch, dinner
+async function getDailyCheckInReminders(client: Client, settings: ClientReminderSettings): Promise<ReminderCandidate[]> {
+  const reminders: ReminderCandidate[] = [];
+  const today = getTodayDateString();
+  const now = new Date();
+  const currentHour = now.getHours();
+
+  // Encouraging messages for each meal time
+  const checkInMessages = {
+    breakfast: {
+      type: "daily_breakfast" as ReminderType,
+      hour: { start: 7, end: 10 },
+      titles: [
+        "Good morning! How was breakfast?",
+        "Rise and shine! What's fueling you today?",
+        "Morning check-in time!",
+      ],
+      messages: [
+        "Starting the day right! Log your breakfast and set the tone for a great day ahead.",
+        "A good breakfast sets you up for success. What did you have this morning?",
+        "How are you feeling this morning? Take a moment to check in with yourself.",
+      ],
+    },
+    lunch: {
+      type: "daily_lunch" as ReminderType,
+      hour: { start: 11, end: 14 },
+      titles: [
+        "Lunchtime check-in!",
+        "How's your day going?",
+        "Midday motivation!",
+      ],
+      messages: [
+        "Halfway through the day! What's keeping you energized?",
+        "How was lunch? Keep that momentum going strong!",
+        "You're doing great! Take a moment to log your progress.",
+      ],
+    },
+    dinner: {
+      type: "daily_dinner" as ReminderType,
+      hour: { start: 17, end: 20 },
+      titles: [
+        "Evening reflection time!",
+        "How was your day?",
+        "Wind-down check-in!",
+      ],
+      messages: [
+        "What a day! How was dinner? Reflect on your wins today.",
+        "You've made it through another day. How are you feeling?",
+        "Evening check-in: What's one thing you're proud of today?",
+      ],
+    },
+  };
+
+  for (const [meal, config] of Object.entries(checkInMessages)) {
+    // Check if current time is within the meal's window
+    if (currentHour >= config.hour.start && currentHour < config.hour.end) {
+      // Check if already sent today
+      const alreadySent = await storage.getSentRemindersByTypeAndDate(client.id, config.type, today);
+      if (alreadySent.length === 0) {
+        // Pick a random message for variety
+        const titleIndex = Math.floor(Math.random() * config.titles.length);
+        const messageIndex = Math.floor(Math.random() * config.messages.length);
+
+        reminders.push({
+          clientId: client.id,
+          clientName: client.name,
+          type: config.type,
+          category: "daily_checkin",
+          title: config.titles[titleIndex],
+          message: config.messages[messageIndex],
+        });
+      }
+    }
+  }
+
+  return reminders;
+}
+
 async function sendPushReminder(clientId: string, title: string, body: string, reminderType: string, coachName?: string): Promise<boolean> {
   try {
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
@@ -346,11 +424,11 @@ export async function processRemindersForClient(client: Client, options: Process
         goalRemindersEnabled: true,
         planRemindersEnabled: true,
         inactivityRemindersEnabled: true,
-        inactivityThresholdDays: 2,
+        inactivityThresholdDays: 1,
         quietHoursStart: "21:00",
         quietHoursEnd: "08:00",
         timezone: "America/New_York",
-        maxRemindersPerDay: 3,
+        maxRemindersPerDay: 5,
       });
     }
 
@@ -376,7 +454,10 @@ export async function processRemindersForClient(client: Client, options: Process
     const goalReminders = await getGoalReminders(client, settings);
     const planReminders = await getPlanReminders(client, settings);
     const inactivityReminders = await getInactivityReminders(client, settings);
+    const dailyCheckInReminders = await getDailyCheckInReminders(client, settings);
 
+    // Daily check-ins have highest priority - they're encouraging messages
+    candidates.push(...dailyCheckInReminders);
     candidates.push(...inactivityReminders);
     candidates.push(...goalReminders);
     candidates.push(...planReminders);
@@ -384,7 +465,7 @@ export async function processRemindersForClient(client: Client, options: Process
     const remindersToSend = candidates.slice(0, remainingSlots);
 
     if (candidates.length === 0) {
-      return { sentCount: 0, skippedReason: "No reminders are due (client has no active goals, plans, or recent activity)" };
+      return { sentCount: 0, skippedReason: "No reminders are due at this time" };
     }
 
     // Get coach name for personalized notifications

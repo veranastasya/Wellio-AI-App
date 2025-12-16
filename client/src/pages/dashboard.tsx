@@ -79,9 +79,25 @@ export default function Dashboard() {
       .slice(0, 2);
   };
 
-  const getStatusBadge = (progress: number) => {
+  // Check if client is within grace period (new client: <5 days old)
+  const isWithinGracePeriod = (client: Client) => {
+    // If no joinedDate, assume NOT in grace period (show actual status)
+    if (!client.joinedDate) return false;
+    const joinedDate = new Date(client.joinedDate);
+    // Guard against invalid dates
+    if (isNaN(joinedDate.getTime())) return false;
+    const now = new Date();
+    const daysSinceJoined = Math.floor((now.getTime() - joinedDate.getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceJoined < 5;
+  };
+
+  const getStatusBadge = (progress: number, client?: Client) => {
     if (progress >= 80) return { label: "Excellent", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
     if (progress >= 50) return { label: "On Track", color: "bg-primary/20 text-primary dark:bg-primary/30" };
+    // Check for grace period - show "Getting Started" instead of "Needs Attention" for new clients
+    if (progress > 0 && client && isWithinGracePeriod(client)) {
+      return { label: "Getting Started", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" };
+    }
     return { label: "Needs Attention", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
   };
 
@@ -233,7 +249,7 @@ export default function Dashboard() {
                 </p>
               ) : (
                 recentClients.map((client, index) => {
-                  const status = getStatusBadge(client.progressScore);
+                  const status = getStatusBadge(client.progressScore, client);
                   
                   return (
                     <div key={client.id} className="flex items-center gap-3" data-testid={`client-activity-${client.id}`}>
