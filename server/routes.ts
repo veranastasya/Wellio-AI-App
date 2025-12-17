@@ -5841,24 +5841,29 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       const weightTrend: { date: string; weight: number; week: number }[] = [];
       
       if (weightEvents.length > 0) {
-        const firstWeight = weightEvents[0].dataJson as { weight_kg?: number };
-        const lastWeight = weightEvents[weightEvents.length - 1].dataJson as { weight_kg?: number };
+        // Support both value_kg (AI tracker format) and weight_kg (legacy format)
+        const firstWeight = weightEvents[0].dataJson as { value_kg?: number; weight_kg?: number };
+        const lastWeight = weightEvents[weightEvents.length - 1].dataJson as { value_kg?: number; weight_kg?: number };
         
-        if (firstWeight?.weight_kg && lastWeight?.weight_kg) {
-          currentWeight = lastWeight.weight_kg;
-          weightLost = firstWeight.weight_kg - lastWeight.weight_kg;
-          weightLostPercent = (weightLost / firstWeight.weight_kg) * 100;
+        const firstWeightValue = firstWeight?.value_kg ?? firstWeight?.weight_kg;
+        const lastWeightValue = lastWeight?.value_kg ?? lastWeight?.weight_kg;
+        
+        if (firstWeightValue && lastWeightValue) {
+          currentWeight = lastWeightValue;
+          weightLost = firstWeightValue - lastWeightValue;
+          weightLostPercent = (weightLost / firstWeightValue) * 100;
         }
         
         // Build weekly weight trend
         weightEvents.forEach(e => {
-          const data = e.dataJson as { weight_kg?: number };
-          if (data?.weight_kg) {
+          const data = e.dataJson as { value_kg?: number; weight_kg?: number };
+          const weightValue = data?.value_kg ?? data?.weight_kg;
+          if (weightValue) {
             const date = new Date(e.dateForMetric);
             const weekNumber = Math.ceil((now.getTime() - date.getTime()) / (7 * 24 * 60 * 60 * 1000));
             weightTrend.push({
               date: e.dateForMetric,
-              weight: data.weight_kg,
+              weight: weightValue,
               week: Math.max(1, 9 - weekNumber) // Week 1-8
             });
           }

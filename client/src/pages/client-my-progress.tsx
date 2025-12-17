@@ -415,23 +415,19 @@ export default function ClientMyProgress() {
             </Card>
 
             {/* Progress Photos Section */}
-            <Card className="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
+            <Card>
               <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Camera className="w-5 h-5" />
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+                      <Camera className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                    </div>
                     <div>
-                      <CardTitle className="text-lg text-white">Progress Photos</CardTitle>
-                      <p className="text-xs text-white/80">Track your transformation journey with progress photos</p>
+                      <CardTitle className="text-lg">Progress Photos</CardTitle>
+                      <p className="text-xs text-muted-foreground">Track your transformation journey with progress photos</p>
                     </div>
                   </div>
-                  <Badge 
-                    variant="secondary" 
-                    className="bg-white/20 text-white border-white/30 cursor-pointer"
-                    onClick={() => {
-                      // This could toggle all photos' privacy - future enhancement
-                    }}
-                  >
+                  <Badge variant="outline" className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-teal-200 dark:border-teal-800">
                     <Lock className="w-3 h-3 mr-1" />
                     {progressPhotos?.filter(p => p.isSharedWithCoach).length || 0} Shared with Coach
                   </Badge>
@@ -442,8 +438,8 @@ export default function ClientMyProgress() {
                 <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
                   <DialogTrigger asChild>
                     <Button 
-                      className="w-full mb-4 bg-white/20 hover:bg-white/30 border border-white/30"
-                      variant="ghost"
+                      className="w-full mb-4"
+                      variant="outline"
                       data-testid="button-upload-photo"
                     >
                       <Upload className="w-4 h-4 mr-2" />
@@ -507,14 +503,14 @@ export default function ClientMyProgress() {
                 {/* Photo Gallery */}
                 {photosLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-white" />
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : progressPhotos && progressPhotos.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {progressPhotos.map((photo) => (
                       <div 
                         key={photo.id}
-                        className="relative aspect-square rounded-lg overflow-hidden bg-white/10 group"
+                        className="relative aspect-square rounded-lg overflow-hidden bg-muted group border"
                         data-testid={`photo-${photo.id}`}
                       >
                         <img 
@@ -547,12 +543,12 @@ export default function ClientMyProgress() {
                         </div>
                         <div className="absolute bottom-1 left-1">
                           {photo.isSharedWithCoach ? (
-                            <Badge className="bg-white/90 text-teal-700 text-[10px] px-1.5 py-0">
+                            <Badge className="bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300 text-[10px] px-1.5 py-0">
                               <Unlock className="w-2.5 h-2.5 mr-0.5" />
                               Shared
                             </Badge>
                           ) : (
-                            <Badge className="bg-black/70 text-white text-[10px] px-1.5 py-0">
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                               <Lock className="w-2.5 h-2.5 mr-0.5" />
                               Private
                             </Badge>
@@ -567,7 +563,7 @@ export default function ClientMyProgress() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-white/80">
+                  <div className="text-center py-8 text-muted-foreground">
                     <Camera className="w-10 h-10 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No progress photos yet</p>
                     <p className="text-xs mt-1">Upload your first photo to start tracking!</p>
