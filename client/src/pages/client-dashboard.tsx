@@ -238,7 +238,7 @@ export default function ClientDashboard() {
       const activePlan = clientPlans[0]; // Most recent active plan
       const planContent = activePlan.planContent as any;
       
-      // Extract tasks from plan if available
+      // Extract tasks from plan if available (structured format)
       if (planContent?.weeklyTasks && Array.isArray(planContent.weeklyTasks)) {
         planContent.weeklyTasks.slice(0, 3 - items.length).forEach((task: any, idx: number) => {
           if (task.name || task.title) {
@@ -253,7 +253,7 @@ export default function ClientDashboard() {
         });
       }
       
-      // Also check for habits to add as recurring tasks
+      // Also check for habits to add as recurring tasks (structured format)
       if (planContent?.habits && Array.isArray(planContent.habits) && items.length < 3) {
         planContent.habits.slice(0, 3 - items.length).forEach((habit: any, idx: number) => {
           if (habit.name) {
@@ -265,6 +265,47 @@ export default function ClientDashboard() {
               type: "task",
             });
           }
+        });
+      }
+      
+      // Handle markdown-based plan content - extract key daily habits
+      if (planContent?.content && typeof planContent.content === 'string' && items.length < 3) {
+        const content = planContent.content;
+        const dailyHabits: { title: string; time: string }[] = [];
+        
+        // Extract common daily goals from markdown content
+        if (content.includes("steps") && content.match(/[\d,]+\s*-?\s*[\d,]*\s*steps/i)) {
+          const stepMatch = content.match(/([\d,]+)\s*-?\s*([\d,]*)?\s*steps/i);
+          if (stepMatch) {
+            const steps = stepMatch[2] || stepMatch[1];
+            dailyHabits.push({ title: `Walk ${steps.replace(/,/g, '')} steps`, time: "Daily" });
+          }
+        }
+        
+        if (content.includes("water") && content.match(/\d+\s*liters?\s*(of\s*)?water/i)) {
+          const waterMatch = content.match(/(\d+)\s*liters?\s*(of\s*)?water/i);
+          if (waterMatch) {
+            dailyHabits.push({ title: `Drink ${waterMatch[1]}L of water`, time: "Daily" });
+          }
+        }
+        
+        if (content.includes("sleep") && content.match(/\d+\s*-?\s*\d*\s*hours?\s*(of\s*)?(sleep|per\s*night)/i)) {
+          const sleepMatch = content.match(/(\d+)\s*-?\s*(\d*)?\s*hours?\s*(of\s*)?(sleep|per\s*night)/i);
+          if (sleepMatch) {
+            const hours = sleepMatch[2] || sleepMatch[1];
+            dailyHabits.push({ title: `Get ${hours}+ hours of sleep`, time: "Nightly" });
+          }
+        }
+        
+        // Add extracted habits to items
+        dailyHabits.slice(0, 3 - items.length).forEach((habit, idx) => {
+          items.push({
+            id: `daily-${activePlan.id}-${idx}`,
+            title: habit.title,
+            time: habit.time,
+            checked: false,
+            type: "task",
+          });
         });
       }
     }
@@ -449,19 +490,27 @@ export default function ClientDashboard() {
                 <Calendar className="w-5 h-5 text-muted-foreground" />
               </div>
               <div className="space-y-3">
-                {upcomingItems.map((item) => (
-                  <div key={item.id} className="flex items-start gap-3">
-                    <Checkbox 
-                      id={item.id}
-                      className="mt-0.5"
-                      data-testid={`checkbox-upcoming-${item.id}`}
-                    />
-                    <label htmlFor={item.id} className="flex-1 cursor-pointer">
-                      <p className="text-sm font-medium text-foreground">{item.title}</p>
-                      <p className="text-xs text-muted-foreground">{item.time}</p>
-                    </label>
+                {upcomingItems.length > 0 ? (
+                  upcomingItems.map((item) => (
+                    <div key={item.id} className="flex items-start gap-3">
+                      <Checkbox 
+                        id={item.id}
+                        className="mt-0.5"
+                        data-testid={`checkbox-upcoming-${item.id}`}
+                      />
+                      <label htmlFor={item.id} className="flex-1 cursor-pointer">
+                        <p className="text-sm font-medium text-foreground">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">{item.time}</p>
+                      </label>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No upcoming sessions</p>
+                    <p className="text-xs mt-1">Check your plan for daily goals!</p>
                   </div>
-                ))}
+                )}
               </div>
             </CardContent>
           </Card>
