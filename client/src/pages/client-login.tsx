@@ -1,53 +1,22 @@
-import { useState, useEffect } from "react";
-import { Link, useLocation, useSearch } from "wouter";
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Loader2, Eye, EyeOff, LogIn } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/Group 626535_1761099357468.png";
 
 export default function ClientLogin() {
   const [, setLocation] = useLocation();
-  const searchString = useSearch();
   const { toast } = useToast();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Handle OAuth error messages
-  useEffect(() => {
-    const params = new URLSearchParams(searchString);
-    const error = params.get("error");
-    if (error === "oauth_failed") {
-      toast({
-        title: "Login Failed",
-        description: "Unable to sign in with your account. Please try again.",
-        variant: "destructive",
-      });
-    } else if (error === "no_account") {
-      toast({
-        title: "No Account Found",
-        description: "Please sign up using an invite link from your coach first.",
-        variant: "destructive",
-      });
-    } else if (error === "oauth_error") {
-      toast({
-        title: "Login Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [searchString, toast]);
-
-  const handleOAuthLogin = () => {
-    window.location.href = "/api/client-oauth/returning-login";
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,25 +157,6 @@ export default function ClientLogin() {
               ) : (
                 "Sign In"
               )}
-            </Button>
-
-            <div className="relative my-4">
-              <Separator />
-              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                or
-              </span>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={handleOAuthLogin}
-              disabled={isSubmitting}
-              data-testid="button-oauth-login"
-            >
-              <LogIn className="mr-2 h-4 w-4" />
-              Continue with Google, Apple, or GitHub
             </Button>
           </form>
 
