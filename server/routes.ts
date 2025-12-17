@@ -5691,7 +5691,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       }
       
       // Validate coach sharing - can only share if client has a coach assigned
-      const shouldShare = isSharedWithCoach && client.coachId;
+      const shouldShare = !!(isSharedWithCoach && client.coachId);
       
       // Set ACL policy for the uploaded file
       const objectStorageService = new ObjectStorageService();
