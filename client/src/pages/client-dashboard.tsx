@@ -208,11 +208,24 @@ export default function ClientDashboard() {
           timeLabel = `${format(sessionDate, "EEE, MMM d")}, ${session.startTime}`;
         }
         
+        // Map session types to human-friendly labels
+        const sessionTypeLabels: Record<string, string> = {
+          "video": "Video Call with Coach",
+          "in-person": "In-Person Session",
+          "follow_up": "Follow-up Session",
+          "initial": "Initial Consultation",
+          "check_in": "Check-in Session",
+          "assessment": "Assessment Session",
+          "coaching": "Coaching Session",
+        };
+        
+        const sessionTitle = session.sessionType 
+          ? (sessionTypeLabels[session.sessionType] || "Session with Coach")
+          : "Session with Coach";
+        
         items.push({
           id: `session-${session.id}`,
-          title: session.sessionType === "video" ? "Video Call with Coach" : 
-                 session.sessionType === "in-person" ? "In-Person Session" : 
-                 session.sessionType || "Session with Coach",
+          title: sessionTitle,
           time: timeLabel,
           checked: false,
           type: "session",
