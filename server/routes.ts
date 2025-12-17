@@ -5649,6 +5649,259 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
 
+  // ==================== Progress Photos API ====================
+  
+  // Get all progress photos for client (client view - all their photos)
+  app.get("/api/client/progress-photos", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const photos = await storage.getProgressPhotos(clientId);
+      res.json(photos);
+    } catch (error) {
+      logger.error('Failed to get progress photos', { clientId: req.session.clientId }, error);
+      res.status(500).json({ error: 'Failed to get progress photos' });
+    }
+  });
+  
+  // Create progress photo (client upload)
+  app.post("/api/client/progress-photos", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const photo = await storage.createProgressPhoto({
+        clientId,
+        coachId: client.coachId || '',
+        photoUrl: req.body.photoUrl,
+        thumbnailUrl: req.body.thumbnailUrl,
+        caption: req.body.caption,
+        photoDate: req.body.photoDate || new Date().toISOString().split('T')[0],
+        isSharedWithCoach: req.body.isSharedWithCoach ?? true,
+      });
+      
+      logger.info('Progress photo created', { clientId, photoId: photo.id });
+      res.json(photo);
+    } catch (error) {
+      logger.error('Failed to create progress photo', { clientId: req.session.clientId }, error);
+      res.status(500).json({ error: 'Failed to create progress photo' });
+    }
+  });
+  
+  // Update progress photo (toggle privacy, update caption)
+  app.patch("/api/client/progress-photos/:photoId", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const { photoId } = req.params;
+      
+      const photo = await storage.getProgressPhoto(photoId);
+      if (!photo || photo.clientId !== clientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      const updated = await storage.updateProgressPhoto(photoId, req.body);
+      logger.info('Progress photo updated', { clientId, photoId });
+      res.json(updated);
+    } catch (error) {
+      logger.error('Failed to update progress photo', { photoId: req.params.photoId }, error);
+      res.status(500).json({ error: 'Failed to update progress photo' });
+    }
+  });
+  
+  // Delete progress photo
+  app.delete("/api/client/progress-photos/:photoId", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const { photoId } = req.params;
+      
+      const photo = await storage.getProgressPhoto(photoId);
+      if (!photo || photo.clientId !== clientId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      await storage.deleteProgressPhoto(photoId);
+      logger.info('Progress photo deleted', { clientId, photoId });
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('Failed to delete progress photo', { photoId: req.params.photoId }, error);
+      res.status(500).json({ error: 'Failed to delete progress photo' });
+    }
+  });
+  
+  // Get client's shared progress photos (coach view)
+  app.get("/api/clients/:clientId/progress-photos", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      
+      const client = await storage.getClient(clientId);
+      if (!client || client.coachId !== coachId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      // Coach only sees photos shared with them
+      const photos = await storage.getProgressPhotosSharedWithCoach(clientId);
+      res.json(photos);
+    } catch (error) {
+      logger.error('Failed to get client progress photos', { clientId: req.params.clientId }, error);
+      res.status(500).json({ error: 'Failed to get progress photos' });
+    }
+  });
+  
+  // Get progress summary stats for client (for My Progress page)
+  app.get("/api/client/progress-summary", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const now = new Date();
+      const eightWeeksAgo = new Date(now.getTime() - 56 * 24 * 60 * 60 * 1000);
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+      
+      // Get all progress events for last 8 weeks
+      const events = await storage.getProgressEventsByClientId(clientId, {
+        startDate: eightWeeksAgo.toISOString().split('T')[0],
+      });
+      
+      // Weight tracking - get earliest and latest weight entries
+      const weightEvents = events.filter(e => e.eventType === 'weight').sort((a, b) => 
+        new Date(a.dateForMetric).getTime() - new Date(b.dateForMetric).getTime()
+      );
+      
+      let weightLost = 0;
+      let weightLostPercent = 0;
+      let currentWeight = 0;
+      const weightTrend: { date: string; weight: number; week: number }[] = [];
+      
+      if (weightEvents.length > 0) {
+        const firstWeight = weightEvents[0].dataJson as { weight_kg?: number };
+        const lastWeight = weightEvents[weightEvents.length - 1].dataJson as { weight_kg?: number };
+        
+        if (firstWeight?.weight_kg && lastWeight?.weight_kg) {
+          currentWeight = lastWeight.weight_kg;
+          weightLost = firstWeight.weight_kg - lastWeight.weight_kg;
+          weightLostPercent = (weightLost / firstWeight.weight_kg) * 100;
+        }
+        
+        // Build weekly weight trend
+        weightEvents.forEach(e => {
+          const data = e.dataJson as { weight_kg?: number };
+          if (data?.weight_kg) {
+            const date = new Date(e.dateForMetric);
+            const weekNumber = Math.ceil((now.getTime() - date.getTime()) / (7 * 24 * 60 * 60 * 1000));
+            weightTrend.push({
+              date: e.dateForMetric,
+              weight: data.weight_kg,
+              week: Math.max(1, 9 - weekNumber) // Week 1-8
+            });
+          }
+        });
+      }
+      
+      // Workout stats
+      const workoutEvents = events.filter(e => e.eventType === 'workout');
+      const thisWeekWorkouts = workoutEvents.filter(e => 
+        new Date(e.dateForMetric) >= oneWeekAgo
+      );
+      const lastWeekWorkouts = workoutEvents.filter(e => 
+        new Date(e.dateForMetric) >= twoWeeksAgo && 
+        new Date(e.dateForMetric) < oneWeekAgo
+      );
+      
+      const workoutsThisWeek = thisWeekWorkouts.length;
+      const workoutChange = workoutsThisWeek - lastWeekWorkouts.length;
+      
+      // Weekly workout duration by day
+      const weeklyActivity: { day: string; duration: number }[] = [];
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(now);
+        day.setDate(day.getDate() - (6 - i));
+        const dayStr = day.toISOString().split('T')[0];
+        const dayWorkouts = workoutEvents.filter(e => e.dateForMetric === dayStr);
+        const totalDuration = dayWorkouts.reduce((sum, w) => {
+          const data = w.dataJson as { duration_minutes?: number };
+          return sum + (data?.duration_minutes || 0);
+        }, 0);
+        weeklyActivity.push({
+          day: dayNames[day.getDay()],
+          duration: totalDuration
+        });
+      }
+      
+      // Nutrition stats
+      const nutritionEvents = events.filter(e => e.eventType === 'nutrition');
+      const thisWeekNutrition = nutritionEvents.filter(e => 
+        new Date(e.dateForMetric) >= oneWeekAgo
+      );
+      
+      let avgDailyCalories = 0;
+      const nutritionOverview: { day: string; calories: number }[] = [];
+      
+      // Group by day and calculate averages
+      const caloriesByDay: Record<string, number> = {};
+      thisWeekNutrition.forEach(e => {
+        const data = e.dataJson as { calories?: number };
+        if (data?.calories) {
+          caloriesByDay[e.dateForMetric] = (caloriesByDay[e.dateForMetric] || 0) + data.calories;
+        }
+      });
+      
+      const calorieDays = Object.values(caloriesByDay);
+      if (calorieDays.length > 0) {
+        avgDailyCalories = Math.round(calorieDays.reduce((a, b) => a + b, 0) / calorieDays.length);
+      }
+      
+      // Build daily nutrition chart
+      for (let i = 0; i < 7; i++) {
+        const day = new Date(now);
+        day.setDate(day.getDate() - (6 - i));
+        const dayStr = day.toISOString().split('T')[0];
+        nutritionOverview.push({
+          day: dayNames[day.getDay()],
+          calories: caloriesByDay[dayStr] || 0
+        });
+      }
+      
+      // Habit completion (based on goals)
+      const goals = await storage.getGoalsByClientId(clientId);
+      const activeGoals = goals.filter(g => g.status === 'active');
+      let habitCompletion = 0;
+      let habitChange = 0;
+      
+      if (activeGoals.length > 0) {
+        habitCompletion = Math.round(
+          activeGoals.reduce((sum, g) => sum + (g.currentProgress || 0), 0) / activeGoals.length
+        );
+        // Compare to weekly progress from client record
+        habitChange = habitCompletion - (client.weeklyProgress || 0);
+      }
+      
+      res.json({
+        weightLost: Math.round(weightLost * 10) / 10,
+        weightLostPercent: Math.round(weightLostPercent * 10) / 10,
+        currentWeight: Math.round(currentWeight * 10) / 10,
+        weightTrend,
+        workoutsThisWeek,
+        workoutChange,
+        weeklyActivity,
+        avgDailyCalories,
+        nutritionOverview,
+        habitCompletion,
+        habitChange,
+      });
+    } catch (error) {
+      logger.error('Failed to get progress summary', { clientId: req.session.clientId }, error);
+      res.status(500).json({ error: 'Failed to get progress summary' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
