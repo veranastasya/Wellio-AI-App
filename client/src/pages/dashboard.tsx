@@ -115,6 +115,20 @@ export default function Dashboard() {
     return `${dayLabel}, ${time}`;
   };
 
+  const formatSessionType = (sessionType: string | null) => {
+    if (!sessionType) return "Session";
+    const labels: Record<string, string> = {
+      "video": "Video Call",
+      "in-person": "In-Person",
+      "follow_up": "Follow-up",
+      "initial": "Initial Consultation",
+      "check_in": "Check-in",
+      "assessment": "Assessment",
+      "coaching": "Coaching",
+    };
+    return labels[sessionType] || sessionType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  };
+
   const formatLastActive = (lastActiveAt: string | null | undefined) => {
     if (!lastActiveAt) return "Never";
     
@@ -306,7 +320,7 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{session.clientName}</p>
                       <p className="text-xs text-primary">{formatSessionTime(session.date, session.startTime)}</p>
-                      <p className="text-xs text-muted-foreground">{session.sessionType}</p>
+                      <p className="text-xs text-muted-foreground">{formatSessionType(session.sessionType)}</p>
                     </div>
                   </div>
                 ))
