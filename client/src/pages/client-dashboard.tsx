@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Dumbbell, Flame, TrendingUp, Trophy, Apple, Droplets, MessageSquare, Calendar, Brain, Target, ArrowUp, ArrowDown, Minus, Lightbulb, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { Client, SmartLog, ProgressEvent } from "@shared/schema";
+import type { Client, SmartLog, ProgressEvent, Session, ClientPlan } from "@shared/schema";
 import { format, subDays, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -128,6 +128,18 @@ export default function ClientDashboard() {
     enabled: !!clientData?.id,
   });
 
+  // Fetch upcoming sessions
+  const { data: upcomingSessions } = useQuery<Session[]>({
+    queryKey: ["/api/client/sessions"],
+    enabled: !!clientData?.id,
+  });
+
+  // Fetch assigned plans for weekly tasks
+  const { data: clientPlans } = useQuery<ClientPlan[]>({
+    queryKey: ["/api/client-plans/my-plans"],
+    enabled: !!clientData?.id,
+  });
+
   if (isVerifying) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -175,11 +187,77 @@ export default function ClientDashboard() {
     };
   });
 
-  const upcomingItems = [
-    { id: "1", title: "Morning Run", time: "Tomorrow, 07:00", checked: false },
-    { id: "2", title: "Log progress in AI tracker", time: "Today, 20:00", checked: false },
-    { id: "3", title: "Coach call", time: "Friday, 15:00", checked: false },
-  ];
+  // Build upcoming items from real data (sessions + plan tasks)
+  const upcomingItems = (() => {
+    const items: { id: string; title: string; time: string; checked: boolean; type: "session" | "task" }[] = [];
+    const today = new Date();
+    const todayStr = format(today, "yyyy-MM-dd");
+    
+    // Add upcoming sessions
+    if (upcomingSessions && upcomingSessions.length > 0) {
+      upcomingSessions.slice(0, 3).forEach(session => {
+        const sessionDate = parseISO(session.date);
+        let timeLabel: string;
+        if (session.date === todayStr) {
+          timeLabel = `Today, ${session.startTime}`;
+        } else if (isToday(sessionDate)) {
+          timeLabel = `Today, ${session.startTime}`;
+        } else if (differenceInDays(sessionDate, today) === 1) {
+          timeLabel = `Tomorrow, ${session.startTime}`;
+        } else {
+          timeLabel = `${format(sessionDate, "EEE, MMM d")}, ${session.startTime}`;
+        }
+        
+        items.push({
+          id: `session-${session.id}`,
+          title: session.sessionType === "video" ? "Video Call with Coach" : 
+                 session.sessionType === "in-person" ? "In-Person Session" : 
+                 session.sessionType || "Session with Coach",
+          time: timeLabel,
+          checked: false,
+          type: "session",
+        });
+      });
+    }
+    
+    // Add weekly tasks from active plans
+    if (clientPlans && clientPlans.length > 0) {
+      const activePlan = clientPlans[0]; // Most recent active plan
+      const planContent = activePlan.planContent as any;
+      
+      // Extract tasks from plan if available
+      if (planContent?.weeklyTasks && Array.isArray(planContent.weeklyTasks)) {
+        planContent.weeklyTasks.slice(0, 3 - items.length).forEach((task: any, idx: number) => {
+          if (task.name || task.title) {
+            items.push({
+              id: `task-${activePlan.id}-${idx}`,
+              title: task.name || task.title,
+              time: task.dueDay ? `${task.dueDay}` : "This week",
+              checked: false,
+              type: "task",
+            });
+          }
+        });
+      }
+      
+      // Also check for habits to add as recurring tasks
+      if (planContent?.habits && Array.isArray(planContent.habits) && items.length < 3) {
+        planContent.habits.slice(0, 3 - items.length).forEach((habit: any, idx: number) => {
+          if (habit.name) {
+            items.push({
+              id: `habit-${activePlan.id}-${idx}`,
+              title: habit.name,
+              time: "Daily",
+              checked: false,
+              type: "task",
+            });
+          }
+        });
+      }
+    }
+    
+    return items;
+  })();
 
   // Aggregate daily calories from nutrition events
   const dailyCaloriesData = (() => {

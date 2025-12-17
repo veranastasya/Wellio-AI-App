@@ -125,7 +125,7 @@ export default function ClientLogin() {
             <CardTitle className="text-xl sm:text-2xl">Welcome to Wellio</CardTitle>
           </div>
           <CardDescription className="text-sm sm:text-base">
-            Sign in to access your coaching dashboard
+            Sign in to continue your wellness journey
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">

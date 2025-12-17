@@ -2663,6 +2663,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Client upcoming sessions endpoint
+  app.get("/api/client/sessions", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const allSessions = await storage.getSessions();
+      
+      // Filter sessions for this client and only future/upcoming ones
+      const now = new Date();
+      const today = now.toISOString().split("T")[0];
+      
+      const upcomingSessions = allSessions
+        .filter(s => s.clientId === clientId && s.status === "scheduled" && s.date >= today)
+        .sort((a, b) => {
+          const dateCompare = a.date.localeCompare(b.date);
+          if (dateCompare !== 0) return dateCompare;
+          return a.startTime.localeCompare(b.startTime);
+        })
+        .slice(0, 5); // Limit to 5 upcoming
+      
+      res.json(upcomingSessions);
+    } catch (error) {
+      console.error("Error fetching client sessions:", error);
+      res.status(500).json({ error: "Failed to fetch sessions" });
+    }
+  });
+
   // Client Plans routes
   app.post("/api/client-plans", requireCoachAuth, async (req, res) => {
     try {
