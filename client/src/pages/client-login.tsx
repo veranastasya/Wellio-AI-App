@@ -76,8 +76,8 @@ export default function ClientLogin() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 sm:p-6">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 p-4 sm:p-6">
-          <div className="flex items-baseline gap-3 mb-4">
+        <CardHeader className="space-y-1 p-4 sm:p-6 pb-2">
+          <div className="flex items-baseline gap-3 mb-2">
             <Link
               href="/"
               aria-label="Wellio home"
@@ -97,7 +97,7 @@ export default function ClientLogin() {
             Sign in to continue your wellness journey
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-4 sm:p-6 pt-0">
+        <CardContent className="p-4 sm:p-6 pt-2">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
