@@ -62,6 +62,8 @@ import {
   type InsertClientReminderSettings,
   type SentReminder,
   type InsertSentReminder,
+  type ProgressPhoto,
+  type InsertProgressPhoto,
   coaches,
   clients,
   sessions,
@@ -93,6 +95,7 @@ import {
   coachPushSubscriptions,
   clientReminderSettings,
   sentReminders,
+  progressPhotos,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
@@ -318,6 +321,14 @@ export interface IStorage {
   createCoachPushSubscription(subscription: InsertCoachPushSubscription): Promise<CoachPushSubscription>;
   deleteCoachPushSubscription(coachId: string): Promise<boolean>;
   deleteCoachPushSubscriptionByEndpoint(endpoint: string): Promise<boolean>;
+
+  // Progress Photos
+  getProgressPhotos(clientId: string): Promise<ProgressPhoto[]>;
+  getProgressPhotosSharedWithCoach(clientId: string): Promise<ProgressPhoto[]>;
+  getProgressPhoto(id: string): Promise<ProgressPhoto | undefined>;
+  createProgressPhoto(photo: InsertProgressPhoto): Promise<ProgressPhoto>;
+  updateProgressPhoto(id: string, photo: Partial<InsertProgressPhoto>): Promise<ProgressPhoto | undefined>;
+  deleteProgressPhoto(id: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -1977,6 +1988,52 @@ export class DatabaseStorage implements IStorage {
     const result = await db.select().from(clients)
       .where(inArray(clients.id, clientIds));
     return result;
+  }
+
+  // Progress Photos
+  async getProgressPhotos(clientId: string): Promise<ProgressPhoto[]> {
+    return await db.select().from(progressPhotos)
+      .where(eq(progressPhotos.clientId, clientId))
+      .orderBy(desc(progressPhotos.photoDate));
+  }
+
+  async getProgressPhotosSharedWithCoach(clientId: string): Promise<ProgressPhoto[]> {
+    return await db.select().from(progressPhotos)
+      .where(and(
+        eq(progressPhotos.clientId, clientId),
+        eq(progressPhotos.isSharedWithCoach, true)
+      ))
+      .orderBy(desc(progressPhotos.photoDate));
+  }
+
+  async getProgressPhoto(id: string): Promise<ProgressPhoto | undefined> {
+    const result = await db.select().from(progressPhotos)
+      .where(eq(progressPhotos.id, id));
+    return result[0];
+  }
+
+  async createProgressPhoto(photo: InsertProgressPhoto): Promise<ProgressPhoto> {
+    const now = new Date().toISOString();
+    const result = await db.insert(progressPhotos).values({
+      ...photo,
+      uploadedAt: photo.uploadedAt || now,
+    }).returning();
+    return result[0];
+  }
+
+  async updateProgressPhoto(id: string, photo: Partial<InsertProgressPhoto>): Promise<ProgressPhoto | undefined> {
+    const result = await db.update(progressPhotos)
+      .set(photo)
+      .where(eq(progressPhotos.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteProgressPhoto(id: string): Promise<boolean> {
+    const result = await db.delete(progressPhotos)
+      .where(eq(progressPhotos.id, id))
+      .returning();
+    return result.length > 0;
   }
 }
 

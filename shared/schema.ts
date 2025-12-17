@@ -1368,3 +1368,29 @@ export const insertSentReminderSchema = createInsertSchema(sentReminders).omit({
 
 export type InsertSentReminder = z.infer<typeof insertSentReminderSchema>;
 export type SentReminder = typeof sentReminders.$inferSelect;
+
+// Progress Photos - Store client progress photos with privacy controls
+export const progressPhotos = pgTable("progress_photos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  coachId: varchar("coach_id").notNull(),
+  photoUrl: text("photo_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  caption: text("caption"),
+  photoDate: text("photo_date").notNull(), // YYYY-MM-DD for the date the photo represents
+  isSharedWithCoach: boolean("is_shared_with_coach").notNull().default(true),
+  uploadedAt: text("uploaded_at").notNull(),
+}, (table) => ({
+  clientIdIdx: index("progress_photos_client_id_idx").on(table.clientId),
+  coachIdIdx: index("progress_photos_coach_id_idx").on(table.coachId),
+  photoDateIdx: index("progress_photos_photo_date_idx").on(table.photoDate),
+}));
+
+export const insertProgressPhotoSchema = createInsertSchema(progressPhotos).omit({
+  id: true,
+}).extend({
+  uploadedAt: z.string().optional(),
+});
+
+export type InsertProgressPhoto = z.infer<typeof insertProgressPhotoSchema>;
+export type ProgressPhoto = typeof progressPhotos.$inferSelect;
