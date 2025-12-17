@@ -16,8 +16,28 @@ interface ReminderCandidate {
 
 function isWithinQuietHours(settings: ClientReminderSettings): boolean {
   const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinutes = now.getMinutes();
+  
+  // Use client's timezone for quiet hours check
+  const clientTimezone = settings.timezone || "America/New_York";
+  let currentHour: number;
+  let currentMinutes: number;
+  
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: clientTimezone,
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(now);
+    currentHour = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
+    currentMinutes = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
+  } catch {
+    // Fallback to server time if timezone parsing fails
+    currentHour = now.getHours();
+    currentMinutes = now.getMinutes();
+  }
+  
   const currentTime = currentHour * 60 + currentMinutes;
 
   const [startHour, startMin] = settings.quietHoursStart.split(":").map(Number);
@@ -34,6 +54,22 @@ function isWithinQuietHours(settings: ClientReminderSettings): boolean {
 
 function getTodayDateString(): string {
   return new Date().toISOString().split("T")[0];
+}
+
+function getClientLocalHour(timezone: string): number {
+  const now = new Date();
+  try {
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(now);
+    return parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
+  } catch {
+    // Fallback to server time if timezone parsing fails
+    return now.getHours();
+  }
 }
 
 function getDaysSinceLastActivity(client: Client): number {
@@ -251,8 +287,8 @@ async function getInactivityReminders(client: Client, settings: ClientReminderSe
 async function getDailyCheckInReminders(client: Client, settings: ClientReminderSettings): Promise<ReminderCandidate[]> {
   const reminders: ReminderCandidate[] = [];
   const today = getTodayDateString();
-  const now = new Date();
-  const currentHour = now.getHours();
+  const clientTimezone = settings.timezone || "America/New_York";
+  const currentHour = getClientLocalHour(clientTimezone);
 
   // Encouraging messages for each meal time
   const checkInMessages = {
@@ -506,7 +542,12 @@ export async function processRemindersForClient(client: Client, options: Process
     }
 
   } catch (error: any) {
-    logger.error("Error processing reminders for client", { clientId: client.id }, error);
+    logger.error("Error processing reminders for client", { 
+      clientId: client.id,
+      message: error?.message || String(error),
+      stack: error?.stack,
+      name: error?.name
+    });
     return { sentCount: 0, skippedReason: "Error processing reminders" };
   }
 
@@ -536,7 +577,11 @@ export async function processAllReminders(): Promise<{ processedClients: number;
 
     logger.info("Reminder processing cycle complete", { processedClients, sentReminders });
   } catch (error: any) {
-    logger.error("Error in reminder processing cycle", error);
+    logger.error("Error in reminder processing cycle", { 
+      message: error?.message || String(error),
+      stack: error?.stack,
+      name: error?.name
+    });
   }
 
   return { processedClients, sentReminders };
