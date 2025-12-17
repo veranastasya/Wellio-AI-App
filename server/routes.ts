@@ -5651,6 +5651,18 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
   // ==================== Progress Photos API ====================
   
+  // Get upload URL for progress photos
+  app.post("/api/client/progress-photos/upload-url", requireClientAuth, async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      logger.error('Failed to get progress photo upload URL', error);
+      res.status(500).json({ error: 'Failed to get upload URL' });
+    }
+  });
+  
   // Get all progress photos for client (client view - all their photos)
   app.get("/api/client/progress-photos", requireClientAuth, async (req, res) => {
     try {
@@ -5663,7 +5675,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
   
-  // Create progress photo (client upload)
+  // Create progress photo (after upload to signed URL)
   app.post("/api/client/progress-photos", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.session.clientId!;
@@ -5672,14 +5684,63 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         return res.status(404).json({ error: "Client not found" });
       }
       
+      const { objectURL, caption, photoDate, isSharedWithCoach } = req.body;
+      
+      if (!objectURL) {
+        return res.status(400).json({ error: "objectURL is required" });
+      }
+      
+      // Validate coach sharing - can only share if client has a coach assigned
+      const shouldShare = isSharedWithCoach && client.coachId;
+      
+      // Set ACL policy for the uploaded file
+      const objectStorageService = new ObjectStorageService();
+      let photoUrl: string;
+      
+      try {
+        photoUrl = await objectStorageService.trySetObjectEntityAclPolicy(
+          objectURL,
+          {
+            owner: clientId,
+            visibility: "private",
+            aclRules: shouldShare ? [
+              {
+                group: {
+                  type: ObjectAccessGroupType.MESSAGE_PARTICIPANT,
+                  id: clientId,
+                },
+                permission: ObjectPermission.READ,
+              },
+              {
+                group: {
+                  type: ObjectAccessGroupType.MESSAGE_PARTICIPANT,
+                  id: client.coachId!,
+                },
+                permission: ObjectPermission.READ,
+              },
+            ] : [
+              {
+                group: {
+                  type: ObjectAccessGroupType.MESSAGE_PARTICIPANT,
+                  id: clientId,
+                },
+                permission: ObjectPermission.READ,
+              },
+            ],
+          }
+        );
+      } catch {
+        // If ACL setting fails, use the original URL
+        photoUrl = objectURL;
+      }
+      
       const photo = await storage.createProgressPhoto({
         clientId,
         coachId: client.coachId || '',
-        photoUrl: req.body.photoUrl,
-        thumbnailUrl: req.body.thumbnailUrl,
-        caption: req.body.caption,
-        photoDate: req.body.photoDate || new Date().toISOString().split('T')[0],
-        isSharedWithCoach: req.body.isSharedWithCoach ?? true,
+        photoUrl,
+        caption: caption || null,
+        photoDate: photoDate || new Date().toISOString().split('T')[0],
+        isSharedWithCoach: shouldShare ?? false,
       });
       
       logger.info('Progress photo created', { clientId, photoId: photo.id });

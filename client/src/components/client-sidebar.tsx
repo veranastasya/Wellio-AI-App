@@ -1,4 +1,4 @@
-import { Home, MessageSquare, FileText, TrendingUp, User, Bot, LogOut, Calendar } from "lucide-react";
+import { Home, MessageSquare, FileText, TrendingUp, User, Bot, LogOut, Calendar, BarChart3 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -49,6 +49,11 @@ const navigationItems = [
     title: "AI Tracker",
     url: "/client/ai-tracker",
     icon: Bot,
+  },
+  {
+    title: "My Progress",
+    url: "/client/my-progress",
+    icon: BarChart3,
   },
 ];
 
