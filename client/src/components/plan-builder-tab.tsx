@@ -1603,9 +1603,19 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
   };
 
   const getWeekStartDate = (weekNum: number) => {
-    const baseDate = new Date(2025, 0, 6);
-    baseDate.setDate(baseDate.getDate() + (weekNum - 1) * 7);
-    return baseDate.toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" });
+    // Calculate the Monday of the current week as base
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    // Get Monday of current week (if today is Sunday, go back 6 days, otherwise go back (dayOfWeek - 1) days)
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const currentMonday = new Date(today);
+    currentMonday.setDate(today.getDate() - daysToMonday);
+    
+    // Week 1 is the current week, add (weekNum - 1) weeks for future weeks
+    const weekStart = new Date(currentMonday);
+    weekStart.setDate(currentMonday.getDate() + (weekNum - 1) * 7);
+    
+    return weekStart.toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" });
   };
 
   const handleCopyToNextWeek = () => {
