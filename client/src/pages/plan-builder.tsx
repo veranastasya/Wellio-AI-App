@@ -11,7 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Loader2, Send, Download, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, ChevronRight, ChevronLeft, Maximize2, Minimize2, CheckCircle, Share2, Monitor, UserPlus } from "lucide-react";
+import { Loader2, Send, Download, FileText, Target, Apple, Dumbbell, Activity, User, ArrowLeft, ChevronRight, ChevronLeft, Maximize2, Minimize2, CheckCircle, Share2, Monitor, UserPlus, CalendarDays } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, Goal, PlanSession, PlanMessage } from "@shared/schema";
 import { getGoalTypeLabel, PLAN_SESSION_STATUSES } from "@shared/schema";
@@ -196,8 +200,12 @@ export default function PlanBuilder() {
   const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [planStatus, setPlanStatus] = useState<string>("IN_PROGRESS");
+  const [planType, setPlanType] = useState<"long_term" | "weekly">("long_term");
+  const [weekStartDate, setWeekStartDate] = useState<Date | undefined>(startOfWeek(new Date(), { weekStartsOn: 1 }));
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const canvasTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const computedWeekEndDate = weekStartDate ? addDays(weekStartDate, 6) : undefined;
 
   const { data: allClients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -310,16 +318,26 @@ export default function PlanBuilder() {
         assignedAt: new Date().toISOString(),
       });
       
-      // Create the client plan record
-      const planResponse = await apiRequest("POST", "/api/client-plans", {
+      // Prepare plan data based on type
+      const planData: Record<string, any> = {
         clientId,
         coachId: "default-coach",
-        planName: planName || "Wellness Plan",
+        planName: planName || (planType === "weekly" ? "Weekly Plan" : "Wellness Plan"),
         planContent: { content: planContent },
         sessionId: sessionId,
         status: "active",
         shared: true,
-      });
+        planType,
+      };
+
+      // Add week dates for weekly plans
+      if (planType === "weekly" && weekStartDate) {
+        planData.weekStartDate = format(weekStartDate, "yyyy-MM-dd");
+        planData.weekEndDate = format(computedWeekEndDate!, "yyyy-MM-dd");
+      }
+      
+      // Create the client plan record
+      const planResponse = await apiRequest("POST", "/api/client-plans", planData);
       
       return planResponse.json();
     },
@@ -651,7 +669,7 @@ export default function PlanBuilder() {
             </Select>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-wrap">
           {planStatus === "ASSIGNED" ? (
             <Badge variant="default" className="bg-green-600 hover:bg-green-600">
               <CheckCircle className="w-3 h-3 mr-1" />
@@ -662,9 +680,56 @@ export default function PlanBuilder() {
               In Progress
             </Badge>
           )}
+          <Select value={planType} onValueChange={(value: "long_term" | "weekly") => setPlanType(value)}>
+            <SelectTrigger className="w-full sm:w-36 min-h-10" data-testid="select-plan-type">
+              <SelectValue placeholder="Plan Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="long_term">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  Long-Term
+                </div>
+              </SelectItem>
+              <SelectItem value="weekly">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4" />
+                  Weekly
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {planType === "weekly" && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="min-h-10 w-full sm:w-auto" data-testid="button-week-picker">
+                  <CalendarDays className="w-4 h-4 mr-2" />
+                  {weekStartDate ? (
+                    <span className="text-sm">
+                      {format(weekStartDate, "MMM d")} - {format(computedWeekEndDate!, "MMM d")}
+                    </span>
+                  ) : (
+                    "Select Week"
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={weekStartDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setWeekStartDate(startOfWeek(date, { weekStartsOn: 1 }));
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          )}
           <Input
             type="text"
-            placeholder="Plan name (e.g., '12-Week Transformation Plan')"
+            placeholder={planType === "weekly" ? "Weekly plan name" : "Plan name (e.g., '12-Week Transformation Plan')"}
             value={planName}
             onChange={(e) => setPlanName(e.target.value)}
             className="text-sm min-h-10 w-full sm:w-64"

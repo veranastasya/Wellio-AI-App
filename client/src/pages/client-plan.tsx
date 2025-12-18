@@ -5,11 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, FileText, Download, Calendar, Target, CheckCircle2, Sparkles } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Loader2, FileText, Download, Calendar, Target, CheckCircle2, Sparkles, CalendarDays, ClipboardList } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Client, ClientPlan } from "@shared/schema";
+import { format, parseISO, isWithinInterval } from "date-fns";
 
-// Render markdown content with beautiful formatting
 function MarkdownRenderer({ content }: { content: string }) {
   const lines = content.split('\n');
   const elements: JSX.Element[] = [];
@@ -18,14 +20,12 @@ function MarkdownRenderer({ content }: { content: string }) {
   while (i < lines.length) {
     const line = lines[i];
     
-    // Skip empty lines but preserve spacing
     if (!line.trim()) {
       elements.push(<div key={`empty-${i}`} className="h-2" />);
       i++;
       continue;
     }
 
-    // Heading levels
     if (line.startsWith('### ')) {
       elements.push(
         <h3 key={`h3-${i}`} className="text-lg font-bold text-foreground mt-4 mb-2">
@@ -47,35 +47,27 @@ function MarkdownRenderer({ content }: { content: string }) {
         </h1>
       );
       i++;
-    }
-    // Horizontal rule
-    else if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') {
+    } else if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') {
       elements.push(
         <div key={`hr-${i}`} className="border-t border-border my-4" />
       );
       i++;
-    }
-    // Sub-headers: lines starting with "- " and ending with ":" (e.g., "- Movement Sessions:")
-    else if ((line.trim().startsWith('- ') || line.trim().startsWith('* ')) && line.trim().endsWith(':')) {
-      const headerText = line.trim().substring(2); // Remove "- " or "* " prefix
+    } else if ((line.trim().startsWith('- ') || line.trim().startsWith('* ')) && line.trim().endsWith(':')) {
+      const headerText = line.trim().substring(2);
       elements.push(
         <h4 key={`subheader-${i}`} className="text-base font-semibold text-primary mt-4 mb-2">
           {renderInlineFormatting(headerText)}
         </h4>
       );
       i++;
-    }
-    // Bold text (must handle inline)
-    else if (line.includes('**')) {
+    } else if (line.includes('**')) {
       elements.push(
         <p key={`p-${i}`} className="text-sm leading-relaxed text-foreground">
           {renderInlineFormatting(line)}
         </p>
       );
       i++;
-    }
-    // Bullet points
-    else if (line.trim().startsWith('- ') || line.trim().startsWith('* ') || line.trim().startsWith('• ')) {
+    } else if (line.trim().startsWith('- ') || line.trim().startsWith('* ') || line.trim().startsWith('• ')) {
       elements.push(
         <div key={`li-${i}`} className="flex gap-3 text-sm leading-relaxed text-foreground ml-2">
           <span className="text-primary mt-0.5">•</span>
@@ -83,9 +75,7 @@ function MarkdownRenderer({ content }: { content: string }) {
         </div>
       );
       i++;
-    }
-    // Numbered lists
-    else if (/^\d+\. /.test(line.trim())) {
+    } else if (/^\d+\. /.test(line.trim())) {
       const match = line.trim().match(/^(\d+)\. (.*)$/);
       if (match) {
         elements.push(
@@ -96,9 +86,7 @@ function MarkdownRenderer({ content }: { content: string }) {
         );
       }
       i++;
-    }
-    // Regular paragraph
-    else {
+    } else {
       elements.push(
         <p key={`text-${i}`} className="text-sm leading-relaxed text-foreground">
           {renderInlineFormatting(line)}
@@ -111,7 +99,6 @@ function MarkdownRenderer({ content }: { content: string }) {
   return <div className="space-y-2">{elements}</div>;
 }
 
-// Render inline formatting (bold, italic)
 function renderInlineFormatting(text: string): JSX.Element | string {
   const parts: (JSX.Element | string)[] = [];
   let lastIndex = 0;
@@ -119,16 +106,14 @@ function renderInlineFormatting(text: string): JSX.Element | string {
   let match;
 
   while ((match = regex.exec(text)) !== null) {
-    // Add text before match
     if (match.index > lastIndex) {
       parts.push(text.substring(lastIndex, match.index));
     }
 
-    // Add formatted text
-    const boldText = match[1]; // ** **
-    const italicText = match[2]; // * *
-    const boldText2 = match[3]; // __ __
-    const italicText2 = match[4]; // _ _
+    const boldText = match[1];
+    const italicText = match[2];
+    const boldText2 = match[3];
+    const italicText2 = match[4];
 
     if (boldText) {
       parts.push(
@@ -159,12 +144,160 @@ function renderInlineFormatting(text: string): JSX.Element | string {
     lastIndex = regex.lastIndex;
   }
 
-  // Add remaining text
   if (lastIndex < text.length) {
     parts.push(text.substring(lastIndex));
   }
 
   return parts.length === 0 ? text : <>{parts}</>;
+}
+
+function PlanCard({ plan, isCurrentWeek = false }: { plan: ClientPlan; isCurrentWeek?: boolean }) {
+  let contentText = '';
+  const planContentObj = plan.planContent as any;
+  
+  if (planContentObj?.content && typeof planContentObj.content === 'string') {
+    contentText = planContentObj.content;
+  } else if (planContentObj?.messages && Array.isArray(planContentObj.messages)) {
+    const assistantMessages = planContentObj.messages.filter((msg: any) => msg.role === "assistant");
+    contentText = assistantMessages.map((msg: any) => msg.content).join('\n\n');
+  }
+
+  const formatWeekRange = (startDate: string | null, endDate: string | null) => {
+    if (!startDate || !endDate) return null;
+    try {
+      const start = parseISO(startDate);
+      const end = parseISO(endDate);
+      return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
+    } catch {
+      return null;
+    }
+  };
+
+  const weekRange = formatWeekRange(plan.weekStartDate, plan.weekEndDate);
+
+  return (
+    <Card data-testid={`plan-${plan.id}`} className={isCurrentWeek ? "border-primary/50 bg-primary/5" : ""}>
+      <CardHeader className="p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <CardTitle className="text-lg sm:text-xl">{plan.planName}</CardTitle>
+              {isCurrentWeek && (
+                <Badge variant="default" className="text-xs">Current Week</Badge>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
+              {weekRange && (
+                <div className="flex items-center gap-1">
+                  <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4" />
+                  {weekRange}
+                </div>
+              )}
+              {!weekRange && (
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+                  Created {new Date(plan.createdAt).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+          </div>
+          {plan.pdfUrl && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(plan.pdfUrl!, "_blank")}
+              data-testid="button-download-pdf"
+              className="w-full sm:w-auto min-h-10"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 sm:p-6 pt-0">
+        <ScrollArea className="h-[300px] sm:h-[400px] pr-2 sm:pr-4">
+          <div className="space-y-4">
+            {contentText ? (
+              <MarkdownRenderer content={contentText} />
+            ) : (
+              <p className="text-muted-foreground text-sm italic">
+                No plan content available
+              </p>
+            )}
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WeeklyPlanAccordionItem({ plan, isCurrentWeek = false }: { plan: ClientPlan; isCurrentWeek?: boolean }) {
+  let contentText = '';
+  const planContentObj = plan.planContent as any;
+  
+  if (planContentObj?.content && typeof planContentObj.content === 'string') {
+    contentText = planContentObj.content;
+  } else if (planContentObj?.messages && Array.isArray(planContentObj.messages)) {
+    const assistantMessages = planContentObj.messages.filter((msg: any) => msg.role === "assistant");
+    contentText = assistantMessages.map((msg: any) => msg.content).join('\n\n');
+  }
+
+  const formatWeekRange = (startDate: string | null, endDate: string | null) => {
+    if (!startDate || !endDate) return "Week Plan";
+    try {
+      const start = parseISO(startDate);
+      const end = parseISO(endDate);
+      return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
+    } catch {
+      return "Week Plan";
+    }
+  };
+
+  const weekRange = formatWeekRange(plan.weekStartDate, plan.weekEndDate);
+
+  return (
+    <AccordionItem value={plan.id} className={isCurrentWeek ? "border-primary/50 bg-primary/5 rounded-lg" : ""}>
+      <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid={`accordion-trigger-${plan.id}`}>
+        <div className="flex items-center gap-3 text-left">
+          <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">{plan.planName}</span>
+              {isCurrentWeek && (
+                <Badge variant="default" className="text-xs">Current</Badge>
+              )}
+            </div>
+            <span className="text-sm text-muted-foreground">{weekRange}</span>
+          </div>
+          {plan.pdfUrl && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(plan.pdfUrl!, "_blank");
+              }}
+              data-testid={`button-download-pdf-${plan.id}`}
+            >
+              <Download className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="px-4 pb-4">
+        <div className="pt-2">
+          {contentText ? (
+            <MarkdownRenderer content={contentText} />
+          ) : (
+            <p className="text-muted-foreground text-sm italic">
+              No plan content available
+            </p>
+          )}
+        </div>
+      </AccordionContent>
+    </AccordionItem>
+  );
 }
 
 export default function ClientPlan() {
@@ -205,12 +338,24 @@ export default function ClientPlan() {
     }
   };
 
-  const { data: plans, isLoading: isLoadingPlans } = useQuery<ClientPlan[]>({
-    queryKey: ["/api/client-plans/my-plans"],
+  const { data: longTermPlan, isLoading: isLoadingLongTerm } = useQuery<ClientPlan | null>({
+    queryKey: ["/api/client-plans/my-long-term"],
     enabled: !!clientId,
   });
 
-  if (isVerifying || isLoadingPlans) {
+  const { data: weeklyPlans, isLoading: isLoadingWeekly } = useQuery<ClientPlan[]>({
+    queryKey: ["/api/client-plans/my-weekly"],
+    enabled: !!clientId,
+  });
+
+  const { data: currentWeekPlan } = useQuery<ClientPlan | null>({
+    queryKey: ["/api/client-plans/my-current-week"],
+    enabled: !!clientId,
+  });
+
+  const isLoading = isVerifying || isLoadingLongTerm || isLoadingWeekly;
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin text-primary" data-testid="loader-plans" />
@@ -222,8 +367,11 @@ export default function ClientPlan() {
     return null;
   }
 
-  // Plans are already filtered to only shared plans by the API
-  const sharedPlans = plans || [];
+  const hasLongTermPlan = !!longTermPlan;
+  const hasWeeklyPlans = weeklyPlans && weeklyPlans.length > 0;
+  const hasAnyPlans = hasLongTermPlan || hasWeeklyPlans;
+
+  const pastWeeklyPlans = weeklyPlans?.filter(p => p.id !== currentWeekPlan?.id) || [];
 
   return (
     <div className="bg-background min-h-screen">
@@ -236,16 +384,9 @@ export default function ClientPlan() {
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">View your personalized plans from your coach</p>
           </div>
-          {sharedPlans.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Badge variant="default" className="text-xs sm:text-sm">
-                {sharedPlans.length} {sharedPlans.length === 1 ? "Plan" : "Plans"}
-              </Badge>
-            </div>
-          )}
         </div>
 
-        {sharedPlans.length === 0 ? (
+        {!hasAnyPlans ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">
               <FileText className="w-16 h-16 text-muted-foreground opacity-50 mb-4" />
@@ -256,68 +397,75 @@ export default function ClientPlan() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6">
-            {sharedPlans.map((plan) => {
-              // Handle both new format { content: string } and old format { messages: [] }
-              let contentText = '';
-              const planContentObj = plan.planContent as any;
-              
-              if (planContentObj?.content && typeof planContentObj.content === 'string') {
-                // New format: { content: string }
-                contentText = planContentObj.content;
-              } else if (planContentObj?.messages && Array.isArray(planContentObj.messages)) {
-                // Old format: { messages: [] }
-                const assistantMessages = planContentObj.messages.filter((msg: any) => msg.role === "assistant");
-                contentText = assistantMessages.map((msg: any) => msg.content).join('\n\n');
-              }
-              
-              return (
-                <Card key={plan.id} data-testid={`plan-${plan.id}`}>
-                  <CardHeader className="p-4 sm:p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg sm:text-xl mb-2">{plan.planName}</CardTitle>
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                            Created {new Date(plan.createdAt).toLocaleDateString()}
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            {plan.status}
-                          </Badge>
-                        </div>
-                      </div>
-                      {plan.pdfUrl && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(plan.pdfUrl!, "_blank")}
-                          data-testid="button-download-pdf"
-                          className="w-full sm:w-auto min-h-10"
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Download PDF
-                        </Button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 sm:p-6 pt-0">
-                    <ScrollArea className="h-[300px] sm:h-[400px] pr-2 sm:pr-4">
-                      <div className="space-y-4">
-                        {contentText ? (
-                          <MarkdownRenderer content={contentText} />
-                        ) : (
-                          <p className="text-muted-foreground text-sm italic">
-                            No plan content available
-                          </p>
-                        )}
-                      </div>
-                    </ScrollArea>
+          <Tabs defaultValue={currentWeekPlan ? "weekly" : (hasLongTermPlan ? "long-term" : "weekly")} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4" data-testid="tabs-plan-type">
+              <TabsTrigger value="long-term" className="flex items-center gap-2" data-testid="tab-long-term">
+                <Target className="w-4 h-4" />
+                Long-Term Plan
+              </TabsTrigger>
+              <TabsTrigger value="weekly" className="flex items-center gap-2" data-testid="tab-weekly">
+                <CalendarDays className="w-4 h-4" />
+                Weekly Plans
+                {weeklyPlans && weeklyPlans.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">{weeklyPlans.length}</Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="long-term" className="space-y-4">
+              {longTermPlan ? (
+                <PlanCard plan={longTermPlan} />
+              ) : (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <Target className="w-12 h-12 text-muted-foreground opacity-50 mb-3" />
+                    <h3 className="text-lg font-semibold mb-1">No Long-Term Plan Yet</h3>
+                    <p className="text-muted-foreground text-center text-sm max-w-md">
+                      Your coach will share your comprehensive wellness plan here
+                    </p>
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="weekly" className="space-y-4">
+              {currentWeekPlan && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <ClipboardList className="w-5 h-5 text-primary" />
+                    This Week's Plan
+                  </h3>
+                  <PlanCard plan={currentWeekPlan} isCurrentWeek />
+                </div>
+              )}
+
+              {pastWeeklyPlans.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-muted-foreground" />
+                    Past Weeks
+                  </h3>
+                  <Accordion type="single" collapsible className="space-y-2">
+                    {pastWeeklyPlans.map((plan) => (
+                      <WeeklyPlanAccordionItem key={plan.id} plan={plan} />
+                    ))}
+                  </Accordion>
+                </div>
+              )}
+
+              {!hasWeeklyPlans && (
+                <Card>
+                  <CardContent className="flex flex-col items-center justify-center py-12">
+                    <CalendarDays className="w-12 h-12 text-muted-foreground opacity-50 mb-3" />
+                    <h3 className="text-lg font-semibold mb-1">No Weekly Plans Yet</h3>
+                    <p className="text-muted-foreground text-center text-sm max-w-md">
+                      Your coach will share your weekly action plans here
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
 
         <Card>
