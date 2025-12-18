@@ -2692,8 +2692,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Client Plans routes
   app.post("/api/client-plans", requireCoachAuth, async (req, res) => {
     try {
+      console.log("[POST /api/client-plans] Raw request body:", JSON.stringify(req.body, null, 2));
+      console.log("[POST /api/client-plans] planType received:", req.body.planType);
+      console.log("[POST /api/client-plans] weekStartDate received:", req.body.weekStartDate);
+      console.log("[POST /api/client-plans] weekEndDate received:", req.body.weekEndDate);
+      
       const validatedData = insertClientPlanSchema.parse(req.body);
+      console.log("[POST /api/client-plans] Validated data:", JSON.stringify(validatedData, null, 2));
+      console.log("[POST /api/client-plans] planType after validation:", validatedData.planType);
+      
       const plan = await storage.createClientPlan(validatedData);
+      console.log("[POST /api/client-plans] Created plan:", JSON.stringify({ id: plan.id, planType: plan.planType, weekStartDate: plan.weekStartDate }, null, 2));
       res.status(201).json(plan);
     } catch (error) {
       console.error("Error creating client plan:", error);
