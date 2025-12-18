@@ -161,6 +161,8 @@ export const clients = pgTable("clients", {
     dislikes?: string;
     scheduleConstraints?: string;
   }>(),
+  // Onboarding status for new clients
+  onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   // End date for coach-client collaboration
   endDate: text("end_date"),
 }, (table) => ({

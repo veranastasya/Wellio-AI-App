@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Client, SmartLog, ProgressEvent, Session, ClientPlan } from "@shared/schema";
 import { format, subDays, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { ClientOnboarding } from "@/components/client-onboarding";
 
 interface TrendAnalysis {
   category: string;
@@ -70,6 +71,7 @@ export default function ClientDashboard() {
   const [, setLocation] = useLocation();
   const [clientData, setClientData] = useState<Client | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     const clientId = localStorage.getItem("clientId");
@@ -92,6 +94,11 @@ export default function ClientDashboard() {
         return;
       }
       setClientData(data.client);
+      
+      // Show onboarding if client hasn't completed it
+      if (!data.client.onboardingCompleted) {
+        setShowOnboarding(true);
+      }
     } catch (error) {
       localStorage.removeItem("clientId");
       localStorage.removeItem("clientEmail");
@@ -381,7 +388,15 @@ export default function ClientDashboard() {
   ];
 
   return (
-    <div className="bg-background min-h-screen">
+    <>
+      {showOnboarding && clientData && (
+        <ClientOnboarding 
+          clientId={clientData.id}
+          clientName={clientData.name}
+          onComplete={() => setShowOnboarding(false)}
+        />
+      )}
+      <div className="bg-background min-h-screen">
       <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-dashboard-title">
@@ -517,6 +532,7 @@ export default function ClientDashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
