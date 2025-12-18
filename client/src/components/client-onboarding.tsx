@@ -13,21 +13,21 @@ interface OnboardingProps {
 
 const SLIDES = [
   {
-    title: "Welcome to Your Wellness Journey",
+    title: "Welcome to Your Wellness Journey! 🌟",
     description: "Track your progress, chat with your coach, and achieve your health goals with AI-powered insights.",
-    image: "https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1760217280712-a12c4ddaa2b2?w=800&q=80",
     icon: Sparkles,
   },
   {
-    title: "AI-Powered Progress Tracking",
+    title: "AI-Powered Progress Tracking 🤖",
     description: "Simply chat with our AI to log meals, workouts, and how you feel. No complicated forms or manual entry.",
-    image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1605108222700-0d605d9ebafe?w=800&q=80",
     icon: Bot,
   },
   {
-    title: "Stay Connected with Your Coach",
+    title: "Stay Connected with Your Coach 💬",
     description: "Get personalized guidance, ask questions, and receive support whenever you need it.",
-    image: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80",
+    image: "https://images.unsplash.com/photo-1540206063137-4a88ca974d1a?w=800&q=80",
     icon: MessageSquare,
   },
 ];
@@ -186,96 +186,92 @@ export function ClientOnboarding({ clientId, clientName, onComplete }: Onboardin
     }
   }, [phase, setLocation]);
 
+  // Phase 1: Welcome Slides - Card Modal Design
   if (phase === "slides") {
+    const Icon = SLIDES[currentSlide].icon;
+    
     return (
-      <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide}
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
-            className="flex-1 flex flex-col min-h-0 overflow-y-auto"
+            className="relative w-full max-w-lg bg-card rounded-2xl shadow-2xl overflow-hidden"
+            data-testid="onboarding-modal"
           >
-            <div className="relative h-[40vh] min-h-[200px] max-h-[350px] flex-shrink-0 overflow-hidden">
+            {/* Hero Image with Teal Gradient Overlay */}
+            <div className="relative h-48 sm:h-56 overflow-hidden">
               <img
                 src={SLIDES[currentSlide].image}
                 alt=""
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-primary/20 backdrop-blur-sm flex items-center justify-center shadow-lg border border-primary/30">
-                  {(() => {
-                    const Icon = SLIDES[currentSlide].icon;
-                    return <Icon className="w-7 h-7 md:w-8 md:h-8 text-primary" />;
-                  })()}
+              {/* Teal gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-b from-primary/30 via-primary/20 to-primary/40" />
+              
+              {/* White icon badge at bottom of image */}
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10">
+                <div className="w-14 h-14 rounded-xl bg-white shadow-lg flex items-center justify-center">
+                  <Icon className="w-7 h-7 text-primary" />
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-between px-5 md:px-8 pt-10 pb-6 min-h-0">
-              <div className="text-center space-y-3 flex-shrink-0">
-                <h1 className="text-lg md:text-2xl font-bold text-foreground leading-tight">
-                  {SLIDES[currentSlide].title}
-                </h1>
-                <p className="text-muted-foreground text-sm md:text-base max-w-md mx-auto leading-relaxed">
-                  {SLIDES[currentSlide].description}
-                </p>
+            {/* Content Section */}
+            <div className="px-6 pt-10 pb-6 text-center">
+              <h2 className="text-xl font-semibold text-foreground mb-2">
+                {SLIDES[currentSlide].title}
+              </h2>
+              <p className="text-muted-foreground text-sm leading-relaxed max-w-sm mx-auto">
+                {SLIDES[currentSlide].description}
+              </p>
+
+              {/* Progress Indicator */}
+              <div className="flex justify-center items-center gap-1.5 mt-6 mb-6">
+                {SLIDES.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      index === currentSlide
+                        ? "w-6 bg-primary"
+                        : "w-2 bg-muted"
+                    }`}
+                  />
+                ))}
               </div>
 
-              <div className="space-y-4 flex-shrink-0 pt-4">
-                <div className="flex justify-center gap-2">
-                  {SLIDES.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        index === currentSlide
-                          ? "w-6 bg-primary"
-                          : "w-2 bg-muted"
-                      }`}
-                    />
-                  ))}
-                </div>
+              {/* Navigation Controls */}
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  onClick={handleSkip}
+                  className="text-muted-foreground hover:text-foreground"
+                  data-testid="button-onboarding-skip"
+                >
+                  Skip
+                </Button>
 
-                <div className="flex items-center justify-between gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={handleSkip}
-                    className="text-muted-foreground"
-                    data-testid="button-onboarding-skip"
-                  >
-                    Skip
-                  </Button>
-
-                  <div className="flex items-center gap-2">
-                    {currentSlide > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handlePrevSlide}
-                        data-testid="button-onboarding-prev"
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </Button>
-                    )}
+                <div className="flex items-center gap-2">
+                  {currentSlide > 0 && (
                     <Button
-                      onClick={handleNextSlide}
-                      className="gap-2 bg-primary hover:bg-primary/90"
-                      data-testid="button-onboarding-next"
+                      variant="ghost"
+                      size="icon"
+                      onClick={handlePrevSlide}
+                      data-testid="button-onboarding-prev"
                     >
-                      {currentSlide === SLIDES.length - 1 ? (
-                        <>
-                          Get Started <Sparkles className="w-4 h-4" />
-                        </>
-                      ) : (
-                        <>
-                          Next <ChevronRight className="w-4 h-4" />
-                        </>
-                      )}
+                      <ChevronLeft className="w-5 h-5" />
                     </Button>
-                  </div>
+                  )}
+                  <Button
+                    onClick={handleNextSlide}
+                    className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-6"
+                    data-testid="button-onboarding-next"
+                  >
+                    Next <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
               </div>
             </div>
@@ -285,6 +281,7 @@ export function ClientOnboarding({ clientId, clientName, onComplete }: Onboardin
     );
   }
 
+  // Phase 2: Interactive Tour
   if (phase === "tour") {
     const currentStep = TOUR_STEPS[currentTourStep];
     const Icon = currentStep.icon;
@@ -388,6 +385,7 @@ export function ClientOnboarding({ clientId, clientName, onComplete }: Onboardin
     );
   }
 
+  // Phase 3: Celebration
   if (phase === "celebration") {
     return (
       <>
