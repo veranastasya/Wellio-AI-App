@@ -3789,7 +3789,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
   // Assign plan to client (generates PDF, archives old plan, sends notification)
   app.post("/api/client-plans/:id/assign", requireCoachAuth, async (req, res) => {
     try {
-      const { message } = req.body;
+      const { message, planType, weekStartDate, weekEndDate } = req.body;
       const plan = await storage.getClientPlan(req.params.id);
       
       if (!plan) {
@@ -4048,14 +4048,26 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         }],
       });
 
-      // Update plan: mark as shared, active, and add PDF URL
-      console.log("[Plan Assignment] BEFORE update - Plan:", { id: plan.id, clientId: plan.clientId, shared: plan.shared, status: plan.status });
-      const updatedPlan = await storage.updateClientPlan(plan.id, {
+      // Update plan: mark as shared, active, add PDF URL, and set plan type/week dates
+      console.log("[Plan Assignment] BEFORE update - Plan:", { id: plan.id, clientId: plan.clientId, shared: plan.shared, status: plan.status, planType, weekStartDate, weekEndDate });
+      const updateData: any = {
         pdfUrl: objectPath,
         shared: true,
         status: 'active',
-      });
-      console.log("[Plan Assignment] AFTER update - Plan:", { id: updatedPlan?.id, clientId: updatedPlan?.clientId, shared: updatedPlan?.shared, status: updatedPlan?.status, pdfUrl: updatedPlan?.pdfUrl });
+      };
+      // Add planType if provided
+      if (planType) {
+        updateData.planType = planType;
+      }
+      // Add week dates for weekly plans
+      if (weekStartDate) {
+        updateData.weekStartDate = weekStartDate;
+      }
+      if (weekEndDate) {
+        updateData.weekEndDate = weekEndDate;
+      }
+      const updatedPlan = await storage.updateClientPlan(plan.id, updateData);
+      console.log("[Plan Assignment] AFTER update - Plan:", { id: updatedPlan?.id, clientId: updatedPlan?.clientId, shared: updatedPlan?.shared, status: updatedPlan?.status, pdfUrl: updatedPlan?.pdfUrl, planType: updatedPlan?.planType, weekStartDate: updatedPlan?.weekStartDate, weekEndDate: updatedPlan?.weekEndDate });
 
       // Send email notification to client
       try {
@@ -4083,7 +4095,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
           tag: 'plan-assigned', 
           url: '/client/plan',
           type: 'plan_assigned',
-          metadata: { planId: plan.id, planName: plan.planName, planType: 'main' }
+          metadata: { planId: plan.id, planName: plan.planName, planType: planType || 'long_term' }
         }
       ).then(result => {
         if (!result.success) {
