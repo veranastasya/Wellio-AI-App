@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,24 @@ import {
 import { Link } from "wouter";
 import type { Client, Session, Message } from "@shared/schema";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { HybridOnboarding } from "@/components/onboarding";
+
+const COACH_ONBOARDING_KEY = "wellio_coach_onboarding_completed";
 
 export default function Dashboard() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  
+  useEffect(() => {
+    const completed = localStorage.getItem(COACH_ONBOARDING_KEY);
+    if (!completed) {
+      setShowOnboarding(true);
+    }
+  }, []);
+  
+  const handleOnboardingComplete = () => {
+    localStorage.setItem(COACH_ONBOARDING_KEY, "true");
+    setShowOnboarding(false);
+  };
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
@@ -166,7 +183,16 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="bg-background min-h-screen">
+    <>
+      {showOnboarding && (
+        <HybridOnboarding 
+          isCoach={true}
+          userId="coach"
+          userName="Coach"
+          onComplete={handleOnboardingComplete}
+        />
+      )}
+      <div className="bg-background min-h-screen">
       <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
         {/* Welcome Header */}
         <div data-testid="dashboard-welcome">
@@ -391,5 +417,6 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }
