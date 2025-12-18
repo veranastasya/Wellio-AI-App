@@ -2718,6 +2718,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get client's long-term plan
+  app.get("/api/client-plans/my-long-term", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const plan = await storage.getClientLongTermPlan(clientId);
+      res.json(plan || null);
+    } catch (error) {
+      console.error("Error fetching long-term plan:", error);
+      res.status(500).json({ error: "Failed to fetch long-term plan" });
+    }
+  });
+
+  // Get all client's weekly plans (sorted by week, most recent first)
+  app.get("/api/client-plans/my-weekly", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const plans = await storage.getClientWeeklyPlans(clientId);
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching weekly plans:", error);
+      res.status(500).json({ error: "Failed to fetch weekly plans" });
+    }
+  });
+
+  // Get current week's plan
+  app.get("/api/client-plans/my-current-week", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const plan = await storage.getCurrentWeeklyPlan(clientId);
+      res.json(plan || null);
+    } catch (error) {
+      console.error("Error fetching current week plan:", error);
+      res.status(500).json({ error: "Failed to fetch current week plan" });
+    }
+  });
+
   // Coach-facing endpoint to get all plans for a client
   app.get("/api/client-plans/client/:clientId", requireCoachAuth, async (req, res) => {
     try {

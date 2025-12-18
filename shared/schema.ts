@@ -348,6 +348,10 @@ export const clientInvites = pgTable("client_invites", {
   message: text("message"),
 });
 
+// Plan types for distinguishing long-term coaching plans from weekly action plans
+export const PLAN_TYPES = ["long_term", "weekly"] as const;
+export type PlanType = typeof PLAN_TYPES[number];
+
 export const clientPlans = pgTable("client_plans", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").notNull(),
@@ -358,9 +362,15 @@ export const clientPlans = pgTable("client_plans", {
   status: text("status").notNull().default("draft"),
   shared: boolean("shared").notNull().default(false),
   sessionId: varchar("session_id"), // Links to plan session for chat history
+  planType: text("plan_type").notNull().default("long_term"), // "long_term" or "weekly"
+  weekStartDate: text("week_start_date"), // For weekly plans: YYYY-MM-DD of week start (Monday)
+  weekEndDate: text("week_end_date"), // For weekly plans: YYYY-MM-DD of week end (Sunday)
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (table) => ({
+  clientIdIdx: index("client_plans_client_id_idx").on(table.clientId),
+  planTypeIdx: index("client_plans_plan_type_idx").on(table.planType),
+}));
 
 // Plan Sessions - tracks each AI plan building session
 // Plan lifecycle: NOT_STARTED -> IN_PROGRESS -> ASSIGNED

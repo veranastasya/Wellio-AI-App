@@ -216,6 +216,10 @@ export interface IStorage {
   updateClientPlan(id: string, clientPlan: Partial<InsertClientPlan>): Promise<ClientPlan | undefined>;
   deleteClientPlan(id: string): Promise<boolean>;
   archiveActivePlan(clientId: string): Promise<ClientPlan | undefined>;
+  // Plan type-specific methods
+  getClientLongTermPlan(clientId: string): Promise<ClientPlan | undefined>;
+  getClientWeeklyPlans(clientId: string): Promise<ClientPlan[]>;
+  getCurrentWeeklyPlan(clientId: string): Promise<ClientPlan | undefined>;
 
   // Plan Sessions (AI Plan Builder chat history)
   getPlanSessions(): Promise<PlanSession[]>;
@@ -1208,6 +1212,47 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return archivedPlan || undefined;
+  }
+
+  async getClientLongTermPlan(clientId: string): Promise<ClientPlan | undefined> {
+    const [plan] = await db.select()
+      .from(clientPlans)
+      .where(and(
+        eq(clientPlans.clientId, clientId),
+        eq(clientPlans.planType, 'long_term'),
+        eq(clientPlans.shared, true)
+      ))
+      .orderBy(desc(clientPlans.createdAt))
+      .limit(1);
+    return plan || undefined;
+  }
+
+  async getClientWeeklyPlans(clientId: string): Promise<ClientPlan[]> {
+    return await db.select()
+      .from(clientPlans)
+      .where(and(
+        eq(clientPlans.clientId, clientId),
+        eq(clientPlans.planType, 'weekly'),
+        eq(clientPlans.shared, true)
+      ))
+      .orderBy(desc(clientPlans.weekStartDate));
+  }
+
+  async getCurrentWeeklyPlan(clientId: string): Promise<ClientPlan | undefined> {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    
+    const [plan] = await db.select()
+      .from(clientPlans)
+      .where(and(
+        eq(clientPlans.clientId, clientId),
+        eq(clientPlans.planType, 'weekly'),
+        eq(clientPlans.shared, true),
+        lte(clientPlans.weekStartDate, today),
+        gte(clientPlans.weekEndDate, today)
+      ))
+      .limit(1);
+    return plan || undefined;
   }
 
   // Plan Sessions (AI Plan Builder chat history)
