@@ -70,12 +70,6 @@ const COACH_STEPS: TourStep[] = [
     position: "right" 
   },
   { 
-    target: '[data-tour="analytics"]', 
-    title: "Progress Analytics 📊", 
-    description: "Track trends, analyze client data, and get AI-powered insights to improve coaching outcomes.", 
-    position: "right" 
-  },
-  { 
     target: '[data-tour="communication"]', 
     title: "Client Communication 💬", 
     description: "Message clients directly, send updates, and stay connected with your coaching community.", 
