@@ -10,6 +10,7 @@ import type { Client, SmartLog, ProgressEvent, Session, ClientPlan } from "@shar
 import { format, subDays, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ClientOnboarding } from "@/components/client-onboarding";
+import { useTour } from "@/contexts/tour-context";
 
 interface TrendAnalysis {
   category: string;
@@ -72,6 +73,7 @@ export default function ClientDashboard() {
   const [clientData, setClientData] = useState<Client | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const { setActiveTourStep } = useTour();
 
   useEffect(() => {
     const clientId = localStorage.getItem("clientId");
@@ -393,7 +395,11 @@ export default function ClientDashboard() {
         <ClientOnboarding 
           clientId={clientData.id}
           clientName={clientData.name}
-          onComplete={() => setShowOnboarding(false)}
+          onComplete={() => {
+            setShowOnboarding(false);
+            setActiveTourStep(null);
+          }}
+          onTourStepChange={setActiveTourStep}
         />
       )}
       <div className="bg-background min-h-screen">
