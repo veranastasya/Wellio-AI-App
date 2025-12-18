@@ -1,0 +1,76 @@
+BUILD: Hybrid Onboarding System for Wellness Coach CRM
+Overview
+Create a 3-phase hybrid onboarding experience for both Client and Coach views with welcome screens, interactive product tour, and celebration completion.
+
+Phase 1: Welcome Modal Carousel
+File: /components/WelcomeOnboarding.tsx
+
+Create a modal with:
+
+3 slides with images, title, description, and icon
+Progress dots (clickable)
+"Next" / "Back" / "Skip" buttons
+Different content for isCoach prop (true/false)
+Gradient header with icon overlay
+Final slide button says "Get Started" instead of "Next"
+Props:
+
+interface WelcomeOnboardingProps {
+  isCoach: boolean;
+  onComplete: () => void;
+  onSkip: () => void;
+}
+Client Slides:
+
+Title: "Welcome to Your Wellness Journey! 🌟" / Description: "Track your progress, chat with your coach, and achieve your health goals with AI-powered insights." / Icon: Sparkles
+Title: "AI-Powered Progress Tracking 🤖" / Description: "Simply chat with our AI to log meals, workouts, and how you feel. No complicated forms or manual entry." / Icon: Brain
+Title: "Stay Connected with Your Coach 💬" / Description: "Get personalized guidance, ask questions, and receive support whenever you need it." / Icon: MessageCircle
+Coach Slides:
+
+Title: "Welcome to Your Coaching Platform! 🎯" / Description: "Manage clients, create personalized programs, and track progress all in one place." / Icon: Sparkles
+Title: "AI-Powered Program Builder 🚀" / Description: "Create personalized weekly programs with AI. Just describe what your client needs, and let AI build structured workout plans, meal plans, and habits." / Icon: Brain
+Title: "Track Client Progress in Real-Time 📊" / Description: "See client metrics, progress photos, and AI-logged data. Everything synced automatically." / Icon: TrendingUp
+Styling:
+
+Fixed overlay: bg-black/60 backdrop-blur-sm z-50
+Modal: bg-white rounded-2xl max-w-2xl
+Header gradient: from-[#28A0AE] to-[#E2F9AD]
+CTA button: bg-gradient-to-r from-[#28A0AE] to-[#229099]
+Phase 2: Interactive Product Tour
+File: /components/InteractiveTour.tsx
+
+Create an interactive tour that:
+
+Highlights specific UI elements with a glowing ring around them
+Shows a floating tooltip next to the highlighted element
+Has step navigation (Back/Next/Skip/Finish)
+Progress bar at bottom of tooltip
+Positions tooltip based on position property (top/bottom/left/right)
+Finds elements using data-tour attribute (e.g., document.querySelector('[data-tour="dashboard"]'))
+Updates positions on window resize and step change
+Props:
+
+interface InteractiveTourProps {
+  isCoach: boolean;
+  onComplete: () => void;
+  onSkip: () => void;
+}
+
+interface TourStep {
+  target: string; // CSS selector like '[data-tour="dashboard"]'
+  title: string;
+  description: string;
+  position: 'top' | 'bottom' | 'left' | 'right';
+  highlightPadding?: number;
+}
+Client Steps:
+
+[
+  { target: '[data-tour="dashboard"]', title: 'Your Dashboard 🏠', description: 'Quick overview of your weekly stats and achievements. Check here daily for motivation!', position: 'right' },
+  { target: '[data-tour="progress"]', title: 'Track Your Progress 📈', description: 'See all your metrics, weight trends, and progress photos in one place. This is what your coach sees too!', position: 'right' },
+  { target: '[data-tour="ai-chat"]', title: 'AI Tracker 🤖', description: 'Just chat naturally! Log meals, workouts, and how you feel. AI automatically tracks everything for you.', position: 'right' },
+  { target: '[data-tour="coach-chat"]', title: 'Message Your Coach 💬', description: 'Get personalized support, ask questions, and stay accountable with direct coach messaging.', position: 'right' },
+  { target: '[data-tour="plan"]', title: 'Your Personalized Plan 📋', description: 'View weekly programs your coach created just for you - workouts, meals, habits, and tasks.', position: 'right' },
+]
+Coach Steps:
+
