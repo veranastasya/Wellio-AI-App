@@ -4,7 +4,6 @@ import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { ClientSidebar } from "@/components/client-sidebar";
 import { SidebarTriggerWithBadge } from "@/components/sidebar-trigger-with-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { TourProvider, useTour } from "@/contexts/tour-context";
 
 interface ClientProtectedLayoutProps {
   children: ReactNode;
@@ -14,7 +13,6 @@ function SidebarAutoClose({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isMobile, setOpenMobile } = useSidebar();
 
-  // Auto-close sidebar on mobile when navigation occurs
   useEffect(() => {
     if (isMobile) {
       setOpenMobile(false);
@@ -25,11 +23,9 @@ function SidebarAutoClose({ children }: { children: ReactNode }) {
 }
 
 function LayoutContent({ children }: { children: ReactNode }) {
-  const { activeTourStep } = useTour();
-
   return (
     <div className="flex h-screen-safe w-full">
-      <ClientSidebar activeTourStep={activeTourStep} />
+      <ClientSidebar />
       <div className="flex flex-col flex-1 min-w-0 min-h-0">
         <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background flex-shrink-0">
           <SidebarTriggerWithBadge role="client" />
@@ -50,12 +46,10 @@ export function ClientProtectedLayout({ children }: ClientProtectedLayoutProps) 
   };
 
   return (
-    <TourProvider>
-      <SidebarProvider style={style as React.CSSProperties}>
-        <SidebarAutoClose>
-          <LayoutContent>{children}</LayoutContent>
-        </SidebarAutoClose>
-      </SidebarProvider>
-    </TourProvider>
+    <SidebarProvider style={style as React.CSSProperties}>
+      <SidebarAutoClose>
+        <LayoutContent>{children}</LayoutContent>
+      </SidebarAutoClose>
+    </SidebarProvider>
   );
 }

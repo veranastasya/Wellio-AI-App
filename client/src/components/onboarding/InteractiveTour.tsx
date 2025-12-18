@@ -1,0 +1,298 @@
+import { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { ChevronRight, ChevronLeft, X } from "lucide-react";
+
+interface InteractiveTourProps {
+  isCoach: boolean;
+  onComplete: () => void;
+  onSkip: () => void;
+}
+
+interface TourStep {
+  target: string;
+  title: string;
+  description: string;
+  position: "top" | "bottom" | "left" | "right";
+  highlightPadding?: number;
+}
+
+const CLIENT_STEPS: TourStep[] = [
+  { 
+    target: '[data-tour="dashboard"]', 
+    title: "Your Dashboard 🏠", 
+    description: "Quick overview of your weekly stats and achievements. Check here daily for motivation!", 
+    position: "right" 
+  },
+  { 
+    target: '[data-tour="progress"]', 
+    title: "Track Your Progress 📈", 
+    description: "See all your metrics, weight trends, and progress photos in one place. This is what your coach sees too!", 
+    position: "right" 
+  },
+  { 
+    target: '[data-tour="ai-chat"]', 
+    title: "AI Tracker 🤖", 
+    description: "Just chat naturally! Log meals, workouts, and how you feel. AI automatically tracks everything for you.", 
+    position: "right" 
+  },
+  { 
+    target: '[data-tour="coach-chat"]', 
+    title: "Message Your Coach 💬", 
+    description: "Get personalized support, ask questions, and stay accountable with direct coach messaging.", 
+    position: "right" 
+  },
+  { 
+    target: '[data-tour="plan"]', 
+    title: "Your Personalized Plan 📋", 
+    description: "View weekly programs your coach created just for you - workouts, meals, habits, and tasks.", 
+    position: "right" 
+  },
+];
+
+const COACH_STEPS: TourStep[] = [
+  { 
+    target: '[data-tour="dashboard"]', 
+    title: "Your Dashboard 🏠", 
+    description: "Get a quick overview of your coaching practice - active clients, upcoming sessions, and key metrics.", 
+    position: "right" 
+  },
+  { 
+    target: '[data-tour="clients"]', 
+    title: "Manage Clients 👥", 
+    description: "View all your clients, their progress, and access detailed profiles with one click.", 
+    position: "right" 
+  },
+  { 
+    target: '[data-tour="questionnaires"]', 
+    title: "Questionnaire Builder 📝", 
+    description: "Create custom intake forms and questionnaires to gather client information efficiently.", 
+    position: "right" 
+  },
+  { 
+    target: '[data-tour="analytics"]', 
+    title: "Progress Analytics 📊", 
+    description: "Track trends, analyze client data, and get AI-powered insights to improve coaching outcomes.", 
+    position: "right" 
+  },
+  { 
+    target: '[data-tour="communication"]', 
+    title: "Client Communication 💬", 
+    description: "Message clients directly, send updates, and stay connected with your coaching community.", 
+    position: "right" 
+  },
+];
+
+interface TooltipPosition {
+  top: number;
+  left: number;
+}
+
+interface HighlightRect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTourProps) {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition>({ top: 100, left: 280 });
+  const [highlightRect, setHighlightRect] = useState<HighlightRect | null>(null);
+  const positioningRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const steps = isCoach ? COACH_STEPS : CLIENT_STEPS;
+  const step = steps[currentStep];
+
+  const calculatePositions = useCallback(() => {
+    const element = document.querySelector(step.target);
+    if (!element) return;
+
+    const rect = element.getBoundingClientRect();
+    const padding = step.highlightPadding ?? 4;
+    const tooltipWidth = 320;
+    const tooltipHeight = 200;
+    const gap = 12;
+
+    setHighlightRect({
+      top: rect.top - padding,
+      left: rect.left - padding,
+      width: rect.width + padding * 2,
+      height: rect.height + padding * 2,
+    });
+
+    let top = rect.top;
+    let left = rect.right + gap;
+
+    switch (step.position) {
+      case "right":
+        top = rect.top + rect.height / 2 - tooltipHeight / 2;
+        left = rect.right + gap;
+        break;
+      case "left":
+        top = rect.top + rect.height / 2 - tooltipHeight / 2;
+        left = rect.left - tooltipWidth - gap;
+        break;
+      case "top":
+        top = rect.top - tooltipHeight - gap;
+        left = rect.left + rect.width / 2 - tooltipWidth / 2;
+        break;
+      case "bottom":
+        top = rect.bottom + gap;
+        left = rect.left + rect.width / 2 - tooltipWidth / 2;
+        break;
+    }
+
+    const windowHeight = window.innerHeight;
+    const windowWidth = window.innerWidth;
+    
+    if (top < 20) top = 20;
+    if (top + tooltipHeight > windowHeight - 20) top = windowHeight - tooltipHeight - 20;
+    if (left < 20) left = 20;
+    if (left + tooltipWidth > windowWidth - 20) left = windowWidth - tooltipWidth - 20;
+
+    setTooltipPosition({ top, left });
+  }, [step]);
+
+  useEffect(() => {
+    if (positioningRef.current) {
+      clearTimeout(positioningRef.current);
+    }
+
+    positioningRef.current = setTimeout(() => {
+      calculatePositions();
+    }, 100);
+
+    const handleResize = () => calculatePositions();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      if (positioningRef.current) {
+        clearTimeout(positioningRef.current);
+      }
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [currentStep, calculatePositions]);
+
+  const handleNext = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      onComplete();
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const isLastStep = currentStep === steps.length - 1;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/50 pointer-events-none" />
+      
+      {highlightRect && (
+        <div
+          className="fixed z-50 pointer-events-none rounded-lg ring-2 ring-[#28A0AE] shadow-[0_0_20px_rgba(40,160,174,0.5)]"
+          style={{
+            top: highlightRect.top,
+            left: highlightRect.left,
+            width: highlightRect.width,
+            height: highlightRect.height,
+          }}
+          data-testid="tour-highlight"
+        />
+      )}
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentStep}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          transition={{ duration: 0.2 }}
+          className="fixed z-[70] w-80 bg-white dark:bg-card rounded-xl shadow-2xl overflow-hidden"
+          style={{
+            top: tooltipPosition.top,
+            left: tooltipPosition.left,
+          }}
+          data-testid="tour-tooltip"
+        >
+          <div className="bg-[#28A0AE] px-4 py-2.5 flex items-center justify-between">
+            <span className="text-sm font-medium text-white">
+              Step {currentStep + 1} of {steps.length}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onSkip}
+              className="h-7 w-7 text-white hover:bg-white/20"
+              data-testid="button-tour-close"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="p-4 space-y-4">
+            <div className="space-y-1.5">
+              <h3 className="font-semibold text-foreground text-base">
+                {step.title}
+              </h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {step.description}
+              </p>
+            </div>
+
+            <div className="flex gap-1">
+              {steps.map((_, index) => (
+                <div
+                  key={index}
+                  className={`h-1.5 flex-1 rounded-full transition-all ${
+                    index <= currentStep ? "bg-[#28A0AE]" : "bg-muted"
+                  }`}
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onSkip}
+                className="text-muted-foreground text-sm h-9 px-3"
+                data-testid="button-tour-skip"
+              >
+                Skip tour
+              </Button>
+
+              <div className="flex items-center gap-1.5">
+                {currentStep > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handlePrev}
+                    className="h-9 w-9"
+                    data-testid="button-tour-prev"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </Button>
+                )}
+                <Button
+                  onClick={handleNext}
+                  className="gap-1.5 bg-[#28A0AE] hover:bg-[#229099] h-9 px-4"
+                  data-testid="button-tour-next"
+                >
+                  {isLastStep ? "Finish" : "Next"}
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    </>
+  );
+}

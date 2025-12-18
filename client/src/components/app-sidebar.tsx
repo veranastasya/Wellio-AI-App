@@ -27,18 +27,21 @@ const navigationItems = [
     url: "/",
     icon: Home,
     locked: false,
+    tourId: "dashboard",
   },
   {
     title: "Client Management",
     url: "/clients",
     icon: Users,
     locked: false,
+    tourId: "clients",
   },
   {
     title: "Questionnaires",
     url: "/questionnaires",
     icon: ClipboardList,
     locked: false,
+    tourId: "questionnaires",
   },
   {
     title: "Progress Analytics",
@@ -46,6 +49,7 @@ const navigationItems = [
     icon: TrendingUp,
     locked: false,
     hidden: true,
+    tourId: "analytics",
   },
   {
     title: "Calendar",
@@ -59,6 +63,7 @@ const navigationItems = [
     icon: MessageSquare,
     locked: false,
     showUnreadBadge: true,
+    tourId: "communication",
   },
   {
     title: "Engagement",
@@ -131,7 +136,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.filter(item => !item.hidden).map((item) => (
-                <SidebarMenuItem key={item.title}>
+                <SidebarMenuItem key={item.title} data-tour={item.tourId}>
                   {item.locked ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
