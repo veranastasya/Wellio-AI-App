@@ -103,14 +103,14 @@ export function WelcomeOnboarding({ isCoach, onComplete, onSkip }: WelcomeOnboar
             />
             <div className="absolute inset-0 bg-gradient-to-b from-[#28A0AE]/40 via-[#28A0AE]/20 to-[#E2F9AD]/30" />
             
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-10">
-              <div className="w-14 h-14 rounded-xl bg-white shadow-lg flex items-center justify-center">
-                <Icon className="w-7 h-7 text-[#28A0AE]" />
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+              <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur-md border border-white/30 shadow-lg flex items-center justify-center">
+                <Icon className="w-7 h-7 text-white drop-shadow-lg" />
               </div>
             </div>
           </div>
 
-          <div className="px-6 pt-10 pb-6 space-y-6">
+          <div className="px-6 pt-6 pb-6 space-y-6">
             <div className="text-center space-y-2">
               <h2 className="text-xl sm:text-2xl font-bold text-foreground">
                 {slides[currentSlide].title}

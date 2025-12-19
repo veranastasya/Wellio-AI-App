@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft, X } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
-import { useTour } from "@/contexts/TourContext";
+import { useTour } from "@/contexts/tour-context";
 
 interface InteractiveTourProps {
   isCoach: boolean;

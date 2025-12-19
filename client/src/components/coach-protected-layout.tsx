@@ -5,7 +5,7 @@ import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarTriggerWithBadge } from "@/components/sidebar-trigger-with-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { TourProvider, useTour } from "@/contexts/TourContext";
+import { TourProvider, useTour } from "@/contexts/tour-context";
 import { Loader2 } from "lucide-react";
 
 interface CoachProtectedLayoutProps {

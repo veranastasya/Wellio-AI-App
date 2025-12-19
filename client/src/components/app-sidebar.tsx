@@ -18,7 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { useTour } from "@/contexts/TourContext";
+import { useTour } from "@/contexts/tour-context";
 import logoImage from "@assets/Group 626535_1761099357468.png";
 import type { Message } from "@shared/schema";
 

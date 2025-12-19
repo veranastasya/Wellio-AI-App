@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useTour } from "@/contexts/TourContext";
+import { useTour } from "@/contexts/tour-context";
 import logoImage from "@assets/Group 626535_1761099357468.png";
 import type { Message } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";

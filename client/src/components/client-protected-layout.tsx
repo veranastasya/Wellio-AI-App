@@ -4,7 +4,7 @@ import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { ClientSidebar } from "@/components/client-sidebar";
 import { SidebarTriggerWithBadge } from "@/components/sidebar-trigger-with-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { TourProvider, useTour } from "@/contexts/TourContext";
+import { TourProvider, useTour } from "@/contexts/tour-context";
 
 interface ClientProtectedLayoutProps {
   children: ReactNode;
