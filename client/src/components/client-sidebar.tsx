@@ -36,6 +36,7 @@ export const navigationItems = [
     url: "/client/plan",
     icon: TrendingUp,
     tourId: "plan",
+    showPlanBadge: true,
   },
   {
     title: "Coach Chat",
@@ -54,6 +55,7 @@ export const navigationItems = [
     title: "Weekly Program",
     url: "/client/weekly-plan",
     icon: Calendar,
+    showPlanBadge: true,
   },
   {
     title: "Profile",
@@ -70,9 +72,16 @@ export function ClientSidebar() {
     refetchInterval: 5000,
   });
 
+  const { data: unreadPlans } = useQuery<{ count: number }>({
+    queryKey: ["/api/client-plans/unread-count"],
+    refetchInterval: 30000,
+  });
+
   const unreadCount = messages.filter(
     (m) => m.sender === "coach" && !m.read
   ).length;
+
+  const unreadPlanCount = unreadPlans?.count || 0;
 
   const handleLogout = async () => {
     try {
@@ -123,6 +132,15 @@ export function ClientSidebar() {
                           data-testid="badge-chat-unread"
                         >
                           {unreadCount > 99 ? "99+" : unreadCount}
+                        </Badge>
+                      )}
+                      {item.showPlanBadge && unreadPlanCount > 0 && (
+                        <Badge 
+                          variant="default" 
+                          className="ml-auto bg-[#E2F9AD] text-[#28A0AE]"
+                          data-testid="badge-plan-new"
+                        >
+                          New
                         </Badge>
                       )}
                     </Link>

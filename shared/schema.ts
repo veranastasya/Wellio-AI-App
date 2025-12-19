@@ -365,6 +365,7 @@ export const clientPlans = pgTable("client_plans", {
   planType: text("plan_type").notNull().default("long_term"), // "long_term" or "weekly"
   weekStartDate: text("week_start_date"), // For weekly plans: YYYY-MM-DD of week start (Monday)
   weekEndDate: text("week_end_date"), // For weekly plans: YYYY-MM-DD of week end (Sunday)
+  viewedAt: text("viewed_at"), // Timestamp when client viewed this plan (null = unviewed)
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 }, (table) => ({

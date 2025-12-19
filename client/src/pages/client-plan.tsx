@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, FileText, Download, Calendar, Target, CheckCircle2, Sparkles, CalendarDays, ClipboardList } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { Loader2, FileText, Download, Calendar, Target, CheckCircle2, Sparkles, CalendarDays, ClipboardList, Dumbbell, UtensilsCrossed, ListChecks, Clock } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, ClientPlan } from "@shared/schema";
 import { format, parseISO, isWithinInterval } from "date-fns";
 
@@ -151,15 +151,195 @@ function renderInlineFormatting(text: string): JSX.Element | string {
   return parts.length === 0 ? text : <>{parts}</>;
 }
 
+interface Exercise {
+  id: string;
+  name: string;
+  sets: number;
+  reps: number;
+  note?: string;
+}
+
+interface TrainingDay {
+  id: string;
+  day: string;
+  date?: string;
+  title: string;
+  exercises: Exercise[];
+}
+
+interface Meal {
+  id: string;
+  type: string;
+  name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+interface NutritionDay {
+  id: string;
+  day: string;
+  date?: string;
+  title: string;
+  meals: Meal[];
+}
+
+interface Habit {
+  id: string;
+  name: string;
+  frequency: string;
+  completed: boolean;
+}
+
+interface Task {
+  id: string;
+  name: string;
+  dueDay: string;
+  completed: boolean;
+}
+
+interface WeeklyProgramContent {
+  type: string;
+  week: number;
+  weekStartDate?: string;
+  weekEndDate?: string;
+  training: TrainingDay[];
+  nutrition: NutritionDay[];
+  habits: Habit[];
+  tasks: Task[];
+}
+
+function WeeklyProgramRenderer({ content }: { content: WeeklyProgramContent }) {
+  const { training, nutrition, habits, tasks } = content;
+  
+  return (
+    <div className="space-y-6">
+      {training && training.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-primary font-semibold">
+            <Dumbbell className="w-5 h-5" />
+            <h3>Training Schedule</h3>
+          </div>
+          <div className="space-y-4">
+            {training.map((day) => (
+              <div key={day.id} className="border rounded-lg p-4 bg-card">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <span className="font-semibold text-foreground">{day.title}</span>
+                    <span className="text-muted-foreground text-sm ml-2">({day.day})</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {day.exercises.map((exercise) => (
+                    <div key={exercise.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                      <span className="text-sm text-foreground">{exercise.name}</span>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span>{String(exercise.sets)} sets</span>
+                        <span>{String(exercise.reps)} reps</span>
+                        {exercise.note && (
+                          <span className="text-xs italic text-primary/70">{exercise.note}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {nutrition && nutrition.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-primary font-semibold">
+            <UtensilsCrossed className="w-5 h-5" />
+            <h3>Nutrition Plan</h3>
+          </div>
+          <div className="space-y-4">
+            {nutrition.map((day) => (
+              <div key={day.id} className="border rounded-lg p-4 bg-card">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <span className="font-semibold text-foreground">{day.title}</span>
+                    <span className="text-muted-foreground text-sm ml-2">({day.day})</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {day.meals.map((meal) => (
+                    <div key={meal.id} className="py-2 border-b border-border last:border-0">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs text-muted-foreground uppercase">{meal.type}</span>
+                          <p className="text-sm font-medium text-foreground">{meal.name}</p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{String(meal.calories)} cal</span>
+                          <span className="text-blue-500">P:{String(meal.protein)}g</span>
+                          <span className="text-amber-500">C:{String(meal.carbs)}g</span>
+                          <span className="text-rose-500">F:{String(meal.fat)}g</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {habits && habits.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-primary font-semibold">
+            <ListChecks className="w-5 h-5" />
+            <h3>Daily Habits</h3>
+          </div>
+          <div className="border rounded-lg p-4 bg-card space-y-2">
+            {habits.map((habit) => (
+              <div key={habit.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <span className="text-sm text-foreground">{habit.name}</span>
+                <Badge variant="secondary" className="text-xs">{habit.frequency}</Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tasks && tasks.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-primary font-semibold">
+            <Clock className="w-5 h-5" />
+            <h3>Weekly Tasks</h3>
+          </div>
+          <div className="border rounded-lg p-4 bg-card space-y-2">
+            {tasks.map((task) => (
+              <div key={task.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <span className="text-sm text-foreground">{task.name}</span>
+                <Badge variant="outline" className="text-xs">{task.dueDay}</Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PlanCard({ plan, isCurrentWeek = false }: { plan: ClientPlan; isCurrentWeek?: boolean }) {
-  let contentText = '';
   const planContentObj = plan.planContent as any;
   
-  if (planContentObj?.content && typeof planContentObj.content === 'string') {
-    contentText = planContentObj.content;
-  } else if (planContentObj?.messages && Array.isArray(planContentObj.messages)) {
-    const assistantMessages = planContentObj.messages.filter((msg: any) => msg.role === "assistant");
-    contentText = assistantMessages.map((msg: any) => msg.content).join('\n\n');
+  const isWeeklyProgram = planContentObj?.type === "weekly_program" && 
+    (planContentObj?.training || planContentObj?.nutrition || planContentObj?.habits || planContentObj?.tasks);
+  
+  let contentText = '';
+  if (!isWeeklyProgram) {
+    if (planContentObj?.content && typeof planContentObj.content === 'string') {
+      contentText = planContentObj.content;
+    } else if (planContentObj?.messages && Array.isArray(planContentObj.messages)) {
+      const assistantMessages = planContentObj.messages.filter((msg: any) => msg.role === "assistant");
+      contentText = assistantMessages.map((msg: any) => msg.content).join('\n\n');
+    }
   }
 
   const formatWeekRange = (startDate: string | null, endDate: string | null) => {
@@ -218,7 +398,9 @@ function PlanCard({ plan, isCurrentWeek = false }: { plan: ClientPlan; isCurrent
       <CardContent className="p-4 sm:p-6 pt-0">
         <ScrollArea className="h-[300px] sm:h-[400px] pr-2 sm:pr-4">
           <div className="space-y-4">
-            {contentText ? (
+            {isWeeklyProgram ? (
+              <WeeklyProgramRenderer content={planContentObj as WeeklyProgramContent} />
+            ) : contentText ? (
               <MarkdownRenderer content={contentText} />
             ) : (
               <p className="text-muted-foreground text-sm italic">
@@ -233,14 +415,19 @@ function PlanCard({ plan, isCurrentWeek = false }: { plan: ClientPlan; isCurrent
 }
 
 function WeeklyPlanAccordionItem({ plan, isCurrentWeek = false }: { plan: ClientPlan; isCurrentWeek?: boolean }) {
-  let contentText = '';
   const planContentObj = plan.planContent as any;
   
-  if (planContentObj?.content && typeof planContentObj.content === 'string') {
-    contentText = planContentObj.content;
-  } else if (planContentObj?.messages && Array.isArray(planContentObj.messages)) {
-    const assistantMessages = planContentObj.messages.filter((msg: any) => msg.role === "assistant");
-    contentText = assistantMessages.map((msg: any) => msg.content).join('\n\n');
+  const isWeeklyProgram = planContentObj?.type === "weekly_program" && 
+    (planContentObj?.training || planContentObj?.nutrition || planContentObj?.habits || planContentObj?.tasks);
+  
+  let contentText = '';
+  if (!isWeeklyProgram) {
+    if (planContentObj?.content && typeof planContentObj.content === 'string') {
+      contentText = planContentObj.content;
+    } else if (planContentObj?.messages && Array.isArray(planContentObj.messages)) {
+      const assistantMessages = planContentObj.messages.filter((msg: any) => msg.role === "assistant");
+      contentText = assistantMessages.map((msg: any) => msg.content).join('\n\n');
+    }
   }
 
   const formatWeekRange = (startDate: string | null, endDate: string | null) => {
@@ -287,7 +474,9 @@ function WeeklyPlanAccordionItem({ plan, isCurrentWeek = false }: { plan: Client
       </AccordionTrigger>
       <AccordionContent className="px-4 pb-4">
         <div className="pt-2">
-          {contentText ? (
+          {isWeeklyProgram ? (
+            <WeeklyProgramRenderer content={planContentObj as WeeklyProgramContent} />
+          ) : contentText ? (
             <MarkdownRenderer content={contentText} />
           ) : (
             <p className="text-muted-foreground text-sm italic">
@@ -305,6 +494,7 @@ export default function ClientPlan() {
   const [clientData, setClientData] = useState<Client | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
+  const hasMarkedViewed = useRef(false);
 
   useEffect(() => {
     const storedClientId = localStorage.getItem("clientId");
@@ -352,6 +542,23 @@ export default function ClientPlan() {
     queryKey: ["/api/client-plans/my-current-week"],
     enabled: !!clientId,
   });
+
+  // Mark plans as viewed once when the page loads and data is ready
+  useEffect(() => {
+    const hasPlans = longTermPlan || (weeklyPlans && weeklyPlans.length > 0);
+    
+    if (clientId && !isLoadingWeekly && !isLoadingLongTerm && hasPlans && !hasMarkedViewed.current) {
+      hasMarkedViewed.current = true;
+      apiRequest("POST", "/api/client-plans/mark-viewed")
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/client-plans/unread-count"] });
+        })
+        .catch((error) => {
+          console.error("Error marking plans as viewed:", error);
+          hasMarkedViewed.current = false; // Reset on error to allow retry
+        });
+    }
+  }, [clientId, isLoadingWeekly, isLoadingLongTerm, longTermPlan, weeklyPlans]);
 
   const isLoading = isVerifying || isLoadingLongTerm || isLoadingWeekly;
 

@@ -2763,6 +2763,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get count of unviewed plans for notification indicator
+  app.get("/api/client-plans/unread-count", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const plans = await storage.getClientPlansByClientId(clientId);
+      // Count shared, active plans that haven't been viewed
+      const unreadCount = plans.filter(
+        plan => plan.shared && plan.status === 'active' && !plan.viewedAt
+      ).length;
+      res.json({ count: unreadCount });
+    } catch (error) {
+      console.error("Error fetching unread plan count:", error);
+      res.status(500).json({ error: "Failed to fetch unread count" });
+    }
+  });
+
+  // Mark all plans as viewed
+  app.post("/api/client-plans/mark-viewed", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const plans = await storage.getClientPlansByClientId(clientId);
+      const now = new Date().toISOString();
+      
+      // Update all unviewed shared plans to mark them as viewed
+      const updates = plans
+        .filter(plan => plan.shared && plan.status === 'active' && !plan.viewedAt)
+        .map(plan => storage.updateClientPlan(plan.id, { viewedAt: now }));
+      
+      await Promise.all(updates);
+      res.json({ success: true, markedCount: updates.length });
+    } catch (error) {
+      console.error("Error marking plans as viewed:", error);
+      res.status(500).json({ error: "Failed to mark plans as viewed" });
+    }
+  });
+
   // Coach-facing endpoint to get all plans for a client
   app.get("/api/client-plans/client/:clientId", requireCoachAuth, async (req, res) => {
     try {
