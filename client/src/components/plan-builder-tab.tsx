@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Copy, Eye, Calendar, Dumbbell, UtensilsCrossed, CheckCircle2, ClipboardList, Send, Trash2, Plus, GripVertical, Sparkles, Check, Loader2, Edit2 } from "lucide-react";
@@ -1366,16 +1366,47 @@ const emptyWeekState: WeeklyProgramState = {
   tasks: [],
 };
 
+interface ClientPlan {
+  id: string;
+  clientId: string;
+  coachId: string;
+  planName: string;
+  planContent: {
+    type: string;
+    week?: number;
+    weekStartDate?: string;
+    weekEndDate?: string;
+    training?: TrainingDay[];
+    nutrition?: NutritionDay[];
+    habits?: Habit[];
+    tasks?: Task[];
+  };
+  planType: string;
+  weekStartDate?: string;
+  weekEndDate?: string;
+}
+
 export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: PlanBuilderTabProps) {
   const [weekIndex, setWeekIndex] = useState(1);
   const [isCopying, setIsCopying] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isAssigned, setIsAssigned] = useState(false);
   const { toast } = useToast();
+  const hasHydratedRef = useRef(false);
 
   // Get coach profile for coachId
   const { data: coachProfile, isLoading: isCoachLoading } = useQuery<{ id: string; name: string; email: string }>({
     queryKey: ["/api/coach/profile"],
+  });
+
+  // Fetch existing weekly plans for this client
+  const { data: existingPlans = [] } = useQuery<ClientPlan[]>({
+    queryKey: ["/api/client-plans", clientId, "weekly"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/client-plans?clientId=${clientId}&planType=weekly`);
+      return response.json();
+    },
+    enabled: !!clientId,
   });
 
   const planBuilder = usePlanBuilder(clientId || undefined);
@@ -1388,6 +1419,59 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
       tasks: initialTasks,
     },
   });
+
+  // Track which weeks have been assigned (from database)
+  const assignedWeeksRef = useRef<Set<number>>(new Set());
+
+  // Hydrate weeklyPrograms from existing plans on mount
+  useEffect(() => {
+    if (existingPlans.length > 0 && !hasHydratedRef.current) {
+      hasHydratedRef.current = true;
+      
+      const hydratedPrograms: Record<number, WeeklyProgramState> = {};
+      const assignedWeeks = new Set<number>();
+      
+      existingPlans.forEach((plan) => {
+        const content = plan.planContent;
+        if (content && content.type === "weekly_program" && content.week) {
+          assignedWeeks.add(content.week);
+          hydratedPrograms[content.week] = {
+            trainingDays: (content.training || []).map((d: TrainingDay) => ({
+              ...d,
+              id: d.id || generateId(),
+              exercises: (d.exercises || []).map((e: Exercise) => ({ ...e, id: e.id || generateId() })),
+            })),
+            nutritionDays: (content.nutrition || []).map((d: NutritionDay) => ({
+              ...d,
+              id: d.id || generateId(),
+              meals: (d.meals || []).map((m: Meal) => ({ ...m, id: m.id || generateId() })),
+            })),
+            habits: (content.habits || []).map((h: Habit) => ({ ...h, id: h.id || generateId() })),
+            tasks: (content.tasks || []).map((t: Task) => ({ ...t, id: t.id || generateId() })),
+          };
+        }
+      });
+      
+      assignedWeeksRef.current = assignedWeeks;
+      
+      if (Object.keys(hydratedPrograms).length > 0) {
+        setWeeklyPrograms(hydratedPrograms);
+        // Set isAssigned if current week already has an assigned plan
+        if (assignedWeeks.has(weekIndex)) {
+          setIsAssigned(true);
+        }
+      }
+    }
+  }, [existingPlans, weekIndex]);
+
+  // Update isAssigned when weekIndex changes based on existing plans
+  useEffect(() => {
+    if (assignedWeeksRef.current.has(weekIndex)) {
+      setIsAssigned(true);
+    } else {
+      setIsAssigned(false);
+    }
+  }, [weekIndex]);
 
   const programState = weeklyPrograms[weekIndex] || null;
   const hasWeekData = programState !== null;
@@ -1751,11 +1835,21 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
     },
     onSuccess: () => {
       setIsAssigned(true);
+      // Mark this week as assigned in our ref
+      assignedWeeksRef.current.add(weekIndex);
       queryClient.invalidateQueries({ queryKey: ["/api/client-plans"] });
+      
+      const assignedWeek = weekIndex;
       toast({
         title: "Plan assigned!",
-        description: `Week ${weekIndex} program has been sent to ${clientName}. They can now view it in their portal.`,
+        description: `Week ${assignedWeek} program has been sent to ${clientName}. Moving to next week...`,
       });
+      
+      // Auto-advance to next week after a short delay
+      setTimeout(() => {
+        setWeekIndex((prev) => prev + 1);
+        // isAssigned will be updated by the useEffect watching weekIndex
+      }, 1000);
     },
     onError: (error: Error) => {
       toast({
@@ -1852,7 +1946,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => { setWeekIndex((prev) => Math.max(1, prev - 1)); setIsAssigned(false); }}
+                onClick={() => setWeekIndex((prev) => Math.max(1, prev - 1))}
                 disabled={weekIndex === 1}
                 data-testid="button-prev-week"
               >
@@ -1862,7 +1956,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => { setWeekIndex((prev) => prev + 1); setIsAssigned(false); }}
+                onClick={() => setWeekIndex((prev) => prev + 1)}
                 data-testid="button-next-week"
               >
                 Next <ChevronRight className="w-4 h-4 ml-1" />
