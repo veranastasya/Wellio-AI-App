@@ -22,6 +22,8 @@ export default function Communication() {
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isInitialLoadRef = useRef(true);
+  const lastSelectedClientRef = useRef<string | null>(null);
   const { toast } = useToast();
 
   // Track window size for mobile/desktop view switching
@@ -131,10 +133,28 @@ export default function Communication() {
     }
   }, [selectedClientId, messages]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages change or client selection changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [clientMessages.length]);
+    if (!selectedClientId) return;
+    
+    // Check if this is a new client selection
+    const isNewClientSelection = lastSelectedClientRef.current !== selectedClientId;
+    if (isNewClientSelection) {
+      lastSelectedClientRef.current = selectedClientId;
+      isInitialLoadRef.current = true;
+    }
+    
+    // Use instant scroll on initial load / new client selection, smooth for updates
+    const behavior = isInitialLoadRef.current ? "instant" : "smooth";
+    
+    // Small delay to ensure DOM is rendered before scrolling
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: behavior as ScrollBehavior });
+      isInitialLoadRef.current = false;
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, [clientMessages.length, selectedClientId]);
 
   const handleSendMessage = () => {
     setValidationError("");

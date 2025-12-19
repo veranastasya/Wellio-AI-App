@@ -246,8 +246,14 @@ export default function ClientChat() {
     if (messages.length > 0) {
       // On initial load, scroll instantly to bottom. On subsequent updates, scroll smoothly.
       const behavior = isInitialLoadRef.current ? "instant" : "smooth";
-      messagesEndRef.current?.scrollIntoView({ behavior: behavior as ScrollBehavior });
-      isInitialLoadRef.current = false;
+      
+      // Small delay to ensure DOM is rendered before scrolling
+      const timer = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: behavior as ScrollBehavior });
+        isInitialLoadRef.current = false;
+      }, 50);
+      
+      return () => clearTimeout(timer);
     }
   }, [messages]);
 
