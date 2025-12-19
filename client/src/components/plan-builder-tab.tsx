@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Copy, Eye, Calendar, Dumbbell, UtensilsCrossed, CheckCircle2, ClipboardList, Send, Trash2, Plus, GripVertical, Sparkles, Check, Loader2, Edit2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1651,16 +1653,97 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
     }, 800);
   };
 
-  const handleAssignToClient = () => {
-    setIsAssigning(true);
-    setTimeout(() => {
-      setIsAssigning(false);
+  // Helper to get week dates as Date objects
+  const getWeekDates = (weekNum: number): { start: Date; end: Date } => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const currentMonday = new Date(today);
+    currentMonday.setDate(today.getDate() - daysToMonday);
+    currentMonday.setHours(0, 0, 0, 0);
+    
+    const weekStart = new Date(currentMonday);
+    weekStart.setDate(currentMonday.getDate() + (weekNum - 1) * 7);
+    
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    return { start: weekStart, end: weekEnd };
+  };
+
+  // Mutation for assigning weekly plan to client
+  const assignWeeklyPlanMutation = useMutation({
+    mutationFn: async () => {
+      if (!programState) throw new Error("No program data to assign");
+      
+      const { start: weekStart, end: weekEnd } = getWeekDates(weekIndex);
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
+      
+      // Prepare plan content from the weekly program state
+      const planContent = {
+        type: "weekly_program",
+        week: weekIndex,
+        weekStartDate: weekStartStr,
+        weekEndDate: weekEndStr,
+        training: programState.trainingDays,
+        nutrition: programState.nutritionDays,
+        habits: programState.habits,
+        tasks: programState.tasks,
+      };
+      
+      // Create a client_plan record with planType='weekly'
+      const planData = {
+        clientId,
+        coachId: "default-coach",
+        planName: `Week ${weekIndex} Program - ${clientName}`,
+        planContent,
+        status: "active",
+        shared: true,
+        planType: "weekly",
+        weekStartDate: weekStartStr,
+        weekEndDate: weekEndStr,
+      };
+      
+      console.log("[Weekly Plan Assignment] Creating client_plan:", planData);
+      const planResponse = await apiRequest("POST", "/api/client-plans", planData);
+      const createdPlan = await planResponse.json();
+      console.log("[Weekly Plan Assignment] Created plan:", createdPlan);
+      
+      // Call the assign endpoint to trigger notifications and PDF generation
+      console.log("[Weekly Plan Assignment] Calling assign endpoint...");
+      const assignResponse = await apiRequest("POST", `/api/client-plans/${createdPlan.id}/assign`, {
+        planType: "weekly",
+        weekStartDate: weekStartStr,
+        weekEndDate: weekEndStr,
+      });
+      
+      return assignResponse.json();
+    },
+    onSuccess: () => {
       setIsAssigned(true);
+      queryClient.invalidateQueries({ queryKey: ["/api/client-plans"] });
       toast({
         title: "Plan assigned!",
         description: `Week ${weekIndex} program has been sent to ${clientName}. They can now view it in their portal.`,
       });
-    }, 1000);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Assignment failed",
+        description: error.message || "Failed to assign plan to client",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAssignToClient = () => {
+    setIsAssigning(true);
+    assignWeeklyPlanMutation.mutate(undefined, {
+      onSettled: () => {
+        setIsAssigning(false);
+      },
+    });
   };
 
   return (
