@@ -218,11 +218,9 @@ async function getPlanReminders(client: Client, settings: ClientReminderSettings
 async function getInactivityReminders(client: Client, settings: ClientReminderSettings): Promise<ReminderCandidate[]> {
   if (!settings.inactivityRemindersEnabled) return [];
 
-  const reminders: ReminderCandidate[] = [];
   const today = getTodayDateString();
   const thresholdDays = settings.inactivityThresholdDays;
 
-  const smartLogs = await storage.getSmartLogsByClientId(client.id);
   const progressEvents = await storage.getProgressEventsByClientId(client.id);
 
   const mealLogs = progressEvents.filter(e => e.eventType === "nutrition");
@@ -238,49 +236,68 @@ async function getInactivityReminders(client: Client, settings: ClientReminderSe
   const daysSinceWorkout = lastWorkoutDate ? Math.floor((now.getTime() - lastWorkoutDate.getTime()) / (1000 * 60 * 60 * 24)) : 999;
   const daysSinceCheckIn = lastCheckInDate ? Math.floor((now.getTime() - lastCheckInDate.getTime()) / (1000 * 60 * 60 * 24)) : 999;
 
-  if (daysSinceMeal >= thresholdDays) {
+  // Build list of eligible inactivity reminders with their priority (days since)
+  interface InactivityCandidate {
+    type: ReminderType;
+    title: string;
+    message: string;
+    daysSince: number;
+  }
+
+  const eligibleReminders: InactivityCandidate[] = [];
+
+  // Only add reminders that meet threshold AND haven't been sent today
+  if (daysSinceMeal >= thresholdDays && daysSinceMeal < 999) {
     const alreadySent = await storage.getSentRemindersByTypeAndDate(client.id, "inactivity_meals", today);
     if (alreadySent.length === 0) {
-      reminders.push({
-        clientId: client.id,
-        clientName: client.name,
+      eligibleReminders.push({
         type: "inactivity_meals",
-        category: "inactivity",
         title: "We miss your meal logs!",
         message: `It's been ${daysSinceMeal} days since your last meal log. Quick check-in: what did you eat today?`,
+        daysSince: daysSinceMeal,
       });
     }
   }
 
-  if (daysSinceWorkout >= thresholdDays) {
+  if (daysSinceWorkout >= thresholdDays && daysSinceWorkout < 999) {
     const alreadySent = await storage.getSentRemindersByTypeAndDate(client.id, "inactivity_workouts", today);
     if (alreadySent.length === 0) {
-      reminders.push({
-        clientId: client.id,
-        clientName: client.name,
+      eligibleReminders.push({
         type: "inactivity_workouts",
-        category: "inactivity",
         title: "Time to get moving!",
         message: `It's been ${daysSinceWorkout} days since your last workout. Even a short session counts!`,
+        daysSince: daysSinceWorkout,
       });
     }
   }
 
-  if (daysSinceCheckIn >= thresholdDays + 1) {
+  if (daysSinceCheckIn >= thresholdDays + 1 && daysSinceCheckIn < 999) {
     const alreadySent = await storage.getSentRemindersByTypeAndDate(client.id, "inactivity_checkin", today);
     if (alreadySent.length === 0) {
-      reminders.push({
-        clientId: client.id,
-        clientName: client.name,
+      eligibleReminders.push({
         type: "inactivity_checkin",
-        category: "inactivity",
         title: "How are you feeling?",
         message: `We haven't heard from you in a while. A quick check-in helps your coach support you better!`,
+        daysSince: daysSinceCheckIn,
       });
     }
   }
 
-  return reminders;
+  // Return ONLY the most concerning inactivity (highest days since)
+  // This prevents sending 3 separate inactivity notifications at once
+  if (eligibleReminders.length === 0) return [];
+
+  eligibleReminders.sort((a, b) => b.daysSince - a.daysSince);
+  const mostConcerning = eligibleReminders[0];
+
+  return [{
+    clientId: client.id,
+    clientName: client.name,
+    type: mostConcerning.type,
+    category: "inactivity",
+    title: mostConcerning.title,
+    message: mostConcerning.message,
+  }];
 }
 
 // Daily check-in reminders - encouraging messages for breakfast, lunch, dinner
@@ -485,22 +502,32 @@ export async function processRemindersForClient(client: Client, options: Process
 
     const remainingSlots = settings.maxRemindersPerDay - alreadySentToday;
 
-    const candidates: ReminderCandidate[] = [];
-
+    // Collect reminders by priority category (highest to lowest)
+    // Priority: inactivity (most urgent) > goals > plan > daily check-in (least urgent)
+    // We only send 1 reminder per cycle to avoid notification overload
+    
     const goalReminders = await getGoalReminders(client, settings);
     const planReminders = await getPlanReminders(client, settings);
     const inactivityReminders = await getInactivityReminders(client, settings);
     const dailyCheckInReminders = await getDailyCheckInReminders(client, settings);
 
-    // Daily check-ins have highest priority - they're encouraging messages
-    candidates.push(...dailyCheckInReminders);
-    candidates.push(...inactivityReminders);
-    candidates.push(...goalReminders);
-    candidates.push(...planReminders);
+    // Pick ONLY ONE reminder, in priority order
+    // This prevents sending multiple notifications at once which overwhelms users
+    let selectedReminder: ReminderCandidate | null = null;
 
-    const remindersToSend = candidates.slice(0, remainingSlots);
+    if (inactivityReminders.length > 0) {
+      selectedReminder = inactivityReminders[0];
+    } else if (goalReminders.length > 0) {
+      selectedReminder = goalReminders[0];
+    } else if (planReminders.length > 0) {
+      selectedReminder = planReminders[0];
+    } else if (dailyCheckInReminders.length > 0) {
+      selectedReminder = dailyCheckInReminders[0];
+    }
 
-    if (candidates.length === 0) {
+    const remindersToSend = selectedReminder ? [selectedReminder] : [];
+
+    if (remindersToSend.length === 0) {
       return { sentCount: 0, skippedReason: "No reminders are due at this time" };
     }
 
