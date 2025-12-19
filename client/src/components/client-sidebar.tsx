@@ -1,4 +1,4 @@
-import { Home, MessageSquare, TrendingUp, User, Bot, LogOut, Calendar, BarChart3 } from "lucide-react";
+import { Home, MessageSquare, TrendingUp, User, Bot, LogOut, BarChart3 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -50,12 +50,6 @@ export const navigationItems = [
     url: "/client/ai-tracker",
     icon: Bot,
     tourId: "ai-chat",
-  },
-  {
-    title: "Weekly Program",
-    url: "/client/weekly-plan",
-    icon: Calendar,
-    showPlanBadge: true,
   },
   {
     title: "Profile",
