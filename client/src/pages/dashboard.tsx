@@ -13,24 +13,26 @@ import {
   Plus
 } from "lucide-react";
 import { Link } from "wouter";
-import type { Client, Session, Message } from "@shared/schema";
+import type { Client, Session, Message, Coach } from "@shared/schema";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { HybridOnboarding } from "@/components/onboarding";
-
-const COACH_ONBOARDING_KEY = "wellio_coach_onboarding_completed";
+import { queryClient } from "@/lib/queryClient";
 
 export default function Dashboard() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   
+  const { data: coachProfile } = useQuery<Omit<Coach, "passwordHash">>({
+    queryKey: ["/api/coach/profile"],
+  });
+  
   useEffect(() => {
-    const completed = localStorage.getItem(COACH_ONBOARDING_KEY);
-    if (!completed) {
+    if (coachProfile && !coachProfile.onboardingCompleted) {
       setShowOnboarding(true);
     }
-  }, []);
+  }, [coachProfile]);
   
   const handleOnboardingComplete = () => {
-    localStorage.setItem(COACH_ONBOARDING_KEY, "true");
+    queryClient.invalidateQueries({ queryKey: ["/api/coach/profile"] });
     setShowOnboarding(false);
   };
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({

@@ -99,6 +99,7 @@ export const coaches = pgTable("coaches", {
   oauthProvider: text("oauth_provider"),
   oauthId: text("oauth_id"),
   profileImageUrl: text("profile_image_url"),
+  onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
 });
 
 export const insertCoachSchema = createInsertSchema(coaches).omit({ id: true });

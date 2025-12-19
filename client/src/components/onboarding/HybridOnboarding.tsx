@@ -36,10 +36,10 @@ export function HybridOnboarding({ isCoach, userId, userName, onComplete }: Hybr
   const saveOnboardingComplete = async () => {
     try {
       if (isCoach) {
-        await apiRequest("PATCH", `/api/user`, {
+        await apiRequest("PATCH", `/api/coach/profile`, {
           onboardingCompleted: true,
         });
-        queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/coach/profile"] });
       } else {
         await apiRequest("PATCH", `/api/clients/${userId}`, {
           onboardingCompleted: true,

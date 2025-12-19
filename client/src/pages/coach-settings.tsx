@@ -7,21 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, LogOut, User, Mail, Phone, Bell, BellOff, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, Save, LogOut, User, Mail, Phone, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useCoachPushNotifications } from "@/hooks/useCoachPushNotifications";
+import { HybridOnboarding } from "@/components/onboarding";
 
 interface CoachProfile {
   id: string;
   name: string;
   email: string;
   phone: string | null;
+  onboardingCompleted?: boolean;
 }
 
 export default function CoachSettings() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [showTour, setShowTour] = useState(false);
   const {
     isSupported,
     isSubscribed,
@@ -95,6 +98,27 @@ export default function CoachSettings() {
 
   const handleLogout = () => {
     logoutMutation.mutate();
+  };
+
+  const handleRetakeTour = async () => {
+    try {
+      await apiRequest("PATCH", "/api/coach/profile", {
+        onboardingCompleted: false,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/coach/profile"] });
+      setShowTour(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to start app tour. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTourComplete = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/coach/profile"] });
+    setShowTour(false);
   };
 
   if (isLoading) {
@@ -300,6 +324,33 @@ export default function CoachSettings() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#28A0AE]/10 flex items-center justify-center">
+                <HelpCircle className="w-5 h-5 text-[#28A0AE]" />
+              </div>
+              <div>
+                <span className="text-lg">Help & Settings</span>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              variant="outline" 
+              className="w-full gap-2"
+              onClick={handleRetakeTour}
+              data-testid="button-retake-tour"
+            >
+              <HelpCircle className="w-4 h-4" />
+              Retake App Tour
+            </Button>
+            <p className="text-sm text-muted-foreground mt-2">
+              Learn about features and navigation again
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-lg">Account</CardTitle>
             <CardDescription>
               Sign out of your coach account
@@ -323,6 +374,15 @@ export default function CoachSettings() {
           </CardContent>
         </Card>
       </div>
+
+      {showTour && (
+        <HybridOnboarding 
+          isCoach={true}
+          userId={profile?.id || "coach"}
+          userName={profile?.name || "Coach"}
+          onComplete={handleTourComplete}
+        />
+      )}
     </div>
   );
 }

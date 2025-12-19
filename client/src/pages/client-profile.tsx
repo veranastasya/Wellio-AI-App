@@ -6,18 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Mail, Phone, Calendar, Pencil, User, Scale, Ruler, Target, Bell, BellOff, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Loader2, Mail, Phone, Calendar, Pencil, User, Scale, Ruler, Target, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Client } from "@shared/schema";
 import { getGoalTypeLabel, getActivityLevelLabel } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight } from "@shared/units";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { HybridOnboarding } from "@/components/onboarding";
 
 export default function ClientProfile() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [clientData, setClientData] = useState<Client | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
   const [unitsPreference, setUnitsPreference] = useState<UnitsPreference>("metric");
+  const [showTour, setShowTour] = useState(false);
   const {
     isSupported,
     isSubscribed,
@@ -60,6 +64,41 @@ export default function ClientProfile() {
     } finally {
       setIsVerifying(false);
     }
+  };
+
+  const handleRetakeTour = async () => {
+    if (!clientData?.id) {
+      toast({
+        title: "Error",
+        description: "Unable to start tour. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      const response = await apiRequest("PATCH", `/api/clients/${clientData.id}`, {
+        onboardingCompleted: false,
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to reset onboarding");
+      }
+      
+      setShowTour(true);
+    } catch (error) {
+      console.error("Failed to start app tour:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start app tour. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTourComplete = async () => {
+    await loadClient();
+    setShowTour(false);
   };
 
   if (isVerifying) {
@@ -397,7 +436,43 @@ export default function ClientProfile() {
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#28A0AE]/10 flex items-center justify-center">
+                <HelpCircle className="w-5 h-5 text-[#28A0AE]" />
+              </div>
+              <div>
+                <span className="text-lg">Help & Settings</span>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              variant="outline" 
+              className="w-full gap-2"
+              onClick={handleRetakeTour}
+              data-testid="button-client-retake-tour"
+            >
+              <HelpCircle className="w-4 h-4" />
+              Retake App Tour
+            </Button>
+            <p className="text-sm text-muted-foreground mt-2">
+              Learn about features and navigation again
+            </p>
+          </CardContent>
+        </Card>
       </div>
+
+      {showTour && clientData && (
+        <HybridOnboarding 
+          isCoach={false}
+          userId={clientData.id}
+          userName={clientData.name}
+          onComplete={handleTourComplete}
+        />
+      )}
     </div>
   );
 }
