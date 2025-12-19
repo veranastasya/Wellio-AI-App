@@ -5,6 +5,7 @@ import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarTriggerWithBadge } from "@/components/sidebar-trigger-with-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TourProvider, useTour } from "@/contexts/TourContext";
 import { Loader2 } from "lucide-react";
 
 interface CoachProtectedLayoutProps {
@@ -14,13 +15,13 @@ interface CoachProtectedLayoutProps {
 function SidebarAutoClose({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isMobile, setOpenMobile } = useSidebar();
+  const { isActive: isTourActive } = useTour();
 
-  // Auto-close sidebar on mobile when navigation occurs
   useEffect(() => {
-    if (isMobile) {
+    if (isMobile && !isTourActive) {
       setOpenMobile(false);
     }
-  }, [location, isMobile, setOpenMobile]);
+  }, [location, isMobile, setOpenMobile, isTourActive]);
 
   return <>{children}</>;
 }
@@ -55,21 +56,23 @@ export function CoachProtectedLayout({ children }: CoachProtectedLayoutProps) {
   };
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <SidebarAutoClose>
-        <div className="flex h-screen-safe w-full">
-          <AppSidebar />
-          <div className="flex flex-col flex-1 min-w-0 min-h-0">
-            <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background flex-shrink-0">
-              <SidebarTriggerWithBadge role="coach" />
-              <ThemeToggle />
-            </header>
-            <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 safe-area-bottom">
-              {children}
-            </main>
+    <TourProvider>
+      <SidebarProvider style={style as React.CSSProperties}>
+        <SidebarAutoClose>
+          <div className="flex h-screen-safe w-full">
+            <AppSidebar />
+            <div className="flex flex-col flex-1 min-w-0 min-h-0">
+              <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background flex-shrink-0">
+                <SidebarTriggerWithBadge role="coach" />
+                <ThemeToggle />
+              </header>
+              <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 safe-area-bottom">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
-      </SidebarAutoClose>
-    </SidebarProvider>
+        </SidebarAutoClose>
+      </SidebarProvider>
+    </TourProvider>
   );
 }

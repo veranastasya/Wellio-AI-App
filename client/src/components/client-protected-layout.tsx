@@ -4,6 +4,7 @@ import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { ClientSidebar } from "@/components/client-sidebar";
 import { SidebarTriggerWithBadge } from "@/components/sidebar-trigger-with-badge";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TourProvider, useTour } from "@/contexts/TourContext";
 
 interface ClientProtectedLayoutProps {
   children: ReactNode;
@@ -12,12 +13,13 @@ interface ClientProtectedLayoutProps {
 function SidebarAutoClose({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isMobile, setOpenMobile } = useSidebar();
+  const { isActive: isTourActive } = useTour();
 
   useEffect(() => {
-    if (isMobile) {
+    if (isMobile && !isTourActive) {
       setOpenMobile(false);
     }
-  }, [location, isMobile, setOpenMobile]);
+  }, [location, isMobile, setOpenMobile, isTourActive]);
 
   return <>{children}</>;
 }
@@ -46,10 +48,12 @@ export function ClientProtectedLayout({ children }: ClientProtectedLayoutProps) 
   };
 
   return (
-    <SidebarProvider style={style as React.CSSProperties}>
-      <SidebarAutoClose>
-        <LayoutContent>{children}</LayoutContent>
-      </SidebarAutoClose>
-    </SidebarProvider>
+    <TourProvider>
+      <SidebarProvider style={style as React.CSSProperties}>
+        <SidebarAutoClose>
+          <LayoutContent>{children}</LayoutContent>
+        </SidebarAutoClose>
+      </SidebarProvider>
+    </TourProvider>
   );
 }

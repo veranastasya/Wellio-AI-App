@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useTour } from "@/contexts/TourContext";
 import logoImage from "@assets/Group 626535_1761099357468.png";
 import type { Message } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -60,6 +61,7 @@ export const navigationItems = [
 
 export function ClientSidebar() {
   const [location, setLocation] = useLocation();
+  const { isActive: isTourActive, currentTourTarget } = useTour();
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
@@ -106,10 +108,13 @@ export function ClientSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
+              {navigationItems.map((item) => {
+                const isTourHighlighted = isTourActive && item.tourId === currentTourTarget;
+                return (
                 <SidebarMenuItem 
                   key={item.title}
                   data-tour={item.tourId}
+                  className={isTourHighlighted ? "ring-2 ring-[#28A0AE] ring-offset-2 ring-offset-sidebar rounded-md animate-pulse" : ""}
                 >
                   <SidebarMenuButton
                     asChild
@@ -140,7 +145,8 @@ export function ClientSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
+              );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

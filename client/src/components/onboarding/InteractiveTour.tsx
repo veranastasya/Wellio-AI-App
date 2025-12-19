@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ChevronRight, ChevronLeft, X } from "lucide-react";
+import { useSidebar } from "@/components/ui/sidebar";
+import { useTour } from "@/contexts/TourContext";
 
 interface InteractiveTourProps {
   isCoach: boolean;
@@ -109,8 +111,32 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
   const positioningRef = useRef<NodeJS.Timeout | null>(null);
   const isMobile = useIsMobile();
   
+  const { setOpenMobile, isMobile: isSidebarMobile } = useSidebar();
+  const { setTourActive, setCurrentTourTarget } = useTour();
+  
   const steps = isCoach ? COACH_STEPS : CLIENT_STEPS;
   const step = steps[currentStep];
+
+  const extractTourId = (target: string): string | null => {
+    const match = target.match(/data-tour="([^"]+)"/);
+    return match ? match[1] : null;
+  };
+
+  useEffect(() => {
+    setTourActive(true);
+    if (isSidebarMobile) {
+      setOpenMobile(true);
+    }
+    return () => {
+      setTourActive(false);
+      setCurrentTourTarget(null);
+    };
+  }, [setTourActive, setOpenMobile, isSidebarMobile, setCurrentTourTarget]);
+
+  useEffect(() => {
+    const tourId = extractTourId(step.target);
+    setCurrentTourTarget(tourId);
+  }, [step.target, setCurrentTourTarget]);
 
   const calculatePositions = useCallback(() => {
     const element = document.querySelector(step.target);
@@ -182,10 +208,19 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
     };
   }, [currentStep, calculatePositions]);
 
+  const cleanupTour = useCallback(() => {
+    setTourActive(false);
+    setCurrentTourTarget(null);
+    if (isSidebarMobile) {
+      setOpenMobile(false);
+    }
+  }, [setTourActive, setCurrentTourTarget, setOpenMobile, isSidebarMobile]);
+
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
+      cleanupTour();
       onComplete();
     }
   };
@@ -194,6 +229,11 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
+  };
+
+  const handleSkipWithCleanup = () => {
+    cleanupTour();
+    onSkip();
   };
 
   const isLastStep = currentStep === steps.length - 1;
@@ -233,7 +273,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onSkip}
+                onClick={handleSkipWithCleanup}
                 className="h-8 w-8 text-white hover:bg-white/20"
                 data-testid="button-tour-close"
               >
@@ -266,7 +306,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
                 <Button
                   variant="ghost"
                   size="default"
-                  onClick={onSkip}
+                  onClick={handleSkipWithCleanup}
                   className="text-muted-foreground text-base h-12 px-4"
                   data-testid="button-tour-skip"
                 >
@@ -318,7 +358,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onSkip}
+                onClick={handleSkipWithCleanup}
                 className="h-7 w-7 text-white hover:bg-white/20"
                 data-testid="button-tour-close"
               >
@@ -351,7 +391,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={onSkip}
+                  onClick={handleSkipWithCleanup}
                   className="text-muted-foreground text-sm h-9 px-3"
                   data-testid="button-tour-skip"
                 >

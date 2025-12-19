@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { useTour } from "@/contexts/TourContext";
 import logoImage from "@assets/Group 626535_1761099357468.png";
 import type { Message } from "@shared/schema";
 
@@ -103,14 +104,13 @@ const navigationItems = [
 
 export function AppSidebar() {
   const [location] = useLocation();
+  const { isActive: isTourActive, currentTourTarget } = useTour();
 
-  // Fetch coach messages to count unread with polling for real-time updates
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/coach/messages"],
-    refetchInterval: 5000, // Poll every 5 seconds for new messages
+    refetchInterval: 5000,
   });
 
-  // Count unread messages from clients
   const unreadCount = messages.filter(
     (m) => m.sender === "client" && !m.read
   ).length;
@@ -135,8 +135,14 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.filter(item => !item.hidden).map((item) => (
-                <SidebarMenuItem key={item.title} data-tour={item.tourId}>
+              {navigationItems.filter(item => !item.hidden).map((item) => {
+                const isTourHighlighted = isTourActive && item.tourId === currentTourTarget;
+                return (
+                <SidebarMenuItem 
+                  key={item.title} 
+                  data-tour={item.tourId}
+                  className={isTourHighlighted ? "ring-2 ring-[#28A0AE] ring-offset-2 ring-offset-sidebar rounded-md animate-pulse" : ""}
+                >
                   {item.locked ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -175,7 +181,8 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   )}
                 </SidebarMenuItem>
-              ))}
+              );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
