@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Copy, Eye, Calendar, Dumbbell, UtensilsCrossed, CheckCircle2, ClipboardList, Send, Trash2, Plus, GripVertical, Sparkles, Check, Loader2, Edit2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1373,6 +1373,11 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
   const [isAssigned, setIsAssigned] = useState(false);
   const { toast } = useToast();
 
+  // Get coach profile for coachId
+  const { data: coachProfile, isLoading: isCoachLoading } = useQuery<{ id: string; name: string; email: string }>({
+    queryKey: ["/api/coach/profile"],
+  });
+
   const planBuilder = usePlanBuilder(clientId || undefined);
 
   const [weeklyPrograms, setWeeklyPrograms] = useState<Record<number, WeeklyProgramState>>({
@@ -1386,6 +1391,9 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
 
   const programState = weeklyPrograms[weekIndex] || null;
   const hasWeekData = programState !== null;
+  
+  // Gate assignment until coach profile is ready and week has data
+  const canAssign = hasWeekData && !isAssigning && !isAssigned && !!coachProfile?.id;
 
   const setProgramState = (updater: (prev: WeeklyProgramState) => WeeklyProgramState) => {
     setWeeklyPrograms(prev => ({
@@ -1671,14 +1679,31 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
     return { start: weekStart, end: weekEnd };
   };
 
+  // Helper to deep-clone and sanitize program data (removes Date objects, converts to strings)
+  const sanitizeProgramData = (data: WeeklyProgramState) => {
+    // Use JSON parse/stringify for deep clone, then handle dates
+    const cloned = JSON.parse(JSON.stringify(data, (key, value) => {
+      // Convert Date objects to ISO strings
+      if (value instanceof Date) {
+        return value.toISOString().split('T')[0];
+      }
+      return value;
+    }));
+    return cloned;
+  };
+
   // Mutation for assigning weekly plan to client
   const assignWeeklyPlanMutation = useMutation({
     mutationFn: async () => {
       if (!programState) throw new Error("No program data to assign");
+      if (!coachProfile?.id) throw new Error("Coach profile not loaded");
       
       const { start: weekStart, end: weekEnd } = getWeekDates(weekIndex);
       const weekStartStr = weekStart.toISOString().split('T')[0];
       const weekEndStr = weekEnd.toISOString().split('T')[0];
+      
+      // Sanitize program data to remove Date objects
+      const sanitizedData = sanitizeProgramData(programState);
       
       // Prepare plan content from the weekly program state
       const planContent = {
@@ -1686,16 +1711,16 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
         week: weekIndex,
         weekStartDate: weekStartStr,
         weekEndDate: weekEndStr,
-        training: programState.trainingDays,
-        nutrition: programState.nutritionDays,
-        habits: programState.habits,
-        tasks: programState.tasks,
+        training: sanitizedData.trainingDays,
+        nutrition: sanitizedData.nutritionDays,
+        habits: sanitizedData.habits,
+        tasks: sanitizedData.tasks,
       };
       
       // Create a client_plan record with planType='weekly'
       const planData = {
         clientId,
-        coachId: "default-coach",
+        coachId: coachProfile.id,
         planName: `Week ${weekIndex} Program - ${clientName}`,
         planContent,
         status: "active",
@@ -1709,6 +1734,10 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
       const planResponse = await apiRequest("POST", "/api/client-plans", planData);
       const createdPlan = await planResponse.json();
       console.log("[Weekly Plan Assignment] Created plan:", createdPlan);
+      
+      if (!createdPlan?.id) {
+        throw new Error("Failed to create plan - no ID returned");
+      }
       
       // Call the assign endpoint to trigger notifications and PDF generation
       console.log("[Weekly Plan Assignment] Calling assign endpoint...");
@@ -1796,7 +1825,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
                 <Button 
                   size="sm" 
                   onClick={handleAssignToClient}
-                  disabled={isAssigning || isAssigned}
+                  disabled={!canAssign}
                   className={cn(
                     "transition-all",
                     isAssigned 
@@ -1809,10 +1838,12 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : isAssigned ? (
                     <Check className="w-4 h-4 mr-2" />
+                  ) : isCoachLoading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
                     <Send className="w-4 h-4 mr-2" />
                   )}
-                  {isAssigned ? "Assigned" : "Assign to Client"}
+                  {isAssigned ? "Assigned" : isCoachLoading ? "Loading..." : "Assign to Client"}
                 </Button>
               </div>
             </div>
