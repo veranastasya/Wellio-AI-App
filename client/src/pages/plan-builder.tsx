@@ -338,8 +338,16 @@ export default function PlanBuilder() {
       
       // Create the client plan record
       const planResponse = await apiRequest("POST", "/api/client-plans", planData);
+      const createdPlan = await planResponse.json();
       
-      return planResponse.json();
+      // Now call the assign endpoint to trigger notifications and PDF generation
+      const assignResponse = await apiRequest("POST", `/api/client-plans/${createdPlan.id}/assign`, {
+        planType,
+        weekStartDate: planType === "weekly" && weekStartDate ? format(weekStartDate, "yyyy-MM-dd") : undefined,
+        weekEndDate: planType === "weekly" && computedWeekEndDate ? format(computedWeekEndDate, "yyyy-MM-dd") : undefined,
+      });
+      
+      return assignResponse.json();
     },
     onSuccess: () => {
       setPlanStatus("ASSIGNED");
