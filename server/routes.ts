@@ -3799,12 +3799,16 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
   app.post("/api/client-plans/:id/assign", requireCoachAuth, async (req, res) => {
     try {
       const { message, planType, weekStartDate, weekEndDate } = req.body;
+      console.log("[Plan Assignment] Starting assignment for plan:", req.params.id);
+      console.log("[Plan Assignment] Request body:", { planType, weekStartDate, weekEndDate });
+      
       const plan = await storage.getClientPlan(req.params.id);
       
       if (!plan) {
         console.error("Plan Assignment: Plan not found", req.params.id);
         return res.status(404).json({ error: "Plan not found" });
       }
+      console.log("[Plan Assignment] Found plan:", { id: plan.id, name: plan.planName, status: plan.status, shared: plan.shared });
 
       const client = await storage.getClient(plan.clientId);
       if (!client) {
@@ -3818,9 +3822,28 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         return res.status(400).json({ error: "Plan has no content" });
       }
 
-      // Archive any existing active plan for this client
-      await storage.archiveActivePlan(plan.clientId);
-      console.log("Plan Assignment: Archived old active plan for client", plan.clientId);
+      // FIRST: Mark this plan as shared and active BEFORE any other operations
+      // This ensures the client can see the plan even if PDF generation fails
+      console.log("[Plan Assignment] Setting plan as shared and active...");
+      const initialUpdateData: any = {
+        shared: true,
+        status: 'active',
+      };
+      if (planType) {
+        initialUpdateData.planType = planType;
+      }
+      if (weekStartDate) {
+        initialUpdateData.weekStartDate = weekStartDate;
+      }
+      if (weekEndDate) {
+        initialUpdateData.weekEndDate = weekEndDate;
+      }
+      await storage.updateClientPlan(plan.id, initialUpdateData);
+      console.log("[Plan Assignment] Plan marked as shared/active");
+
+      // Archive any OTHER active plans for this client (excluding the current one)
+      await storage.archiveActivePlanExcept(plan.clientId, plan.id);
+      console.log("Plan Assignment: Archived other active plans for client", plan.clientId);
 
       // Generate PDF (reuse logic from generate-pdf endpoint)
       const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
@@ -4057,26 +4080,10 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         }],
       });
 
-      // Update plan: mark as shared, active, add PDF URL, and set plan type/week dates
-      console.log("[Plan Assignment] BEFORE update - Plan:", { id: plan.id, clientId: plan.clientId, shared: plan.shared, status: plan.status, planType, weekStartDate, weekEndDate });
-      const updateData: any = {
-        pdfUrl: objectPath,
-        shared: true,
-        status: 'active',
-      };
-      // Add planType if provided
-      if (planType) {
-        updateData.planType = planType;
-      }
-      // Add week dates for weekly plans
-      if (weekStartDate) {
-        updateData.weekStartDate = weekStartDate;
-      }
-      if (weekEndDate) {
-        updateData.weekEndDate = weekEndDate;
-      }
-      const updatedPlan = await storage.updateClientPlan(plan.id, updateData);
-      console.log("[Plan Assignment] AFTER update - Plan:", { id: updatedPlan?.id, clientId: updatedPlan?.clientId, shared: updatedPlan?.shared, status: updatedPlan?.status, pdfUrl: updatedPlan?.pdfUrl, planType: updatedPlan?.planType, weekStartDate: updatedPlan?.weekStartDate, weekEndDate: updatedPlan?.weekEndDate });
+      // Update plan with the PDF URL (shared/active/planType already set earlier)
+      console.log("[Plan Assignment] Adding PDF URL to plan:", plan.id);
+      await storage.updateClientPlan(plan.id, { pdfUrl: objectPath });
+      console.log("[Plan Assignment] PDF URL added successfully");
 
       // Send email notification to client
       try {

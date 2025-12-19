@@ -98,7 +98,7 @@ import {
   progressPhotos,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, sql, and, gte, lte, inArray } from "drizzle-orm";
+import { eq, desc, sql, and, gte, lte, inArray, ne } from "drizzle-orm";
 
 export interface IStorage {
   // Coaches
@@ -216,6 +216,7 @@ export interface IStorage {
   updateClientPlan(id: string, clientPlan: Partial<InsertClientPlan>): Promise<ClientPlan | undefined>;
   deleteClientPlan(id: string): Promise<boolean>;
   archiveActivePlan(clientId: string): Promise<ClientPlan | undefined>;
+  archiveActivePlanExcept(clientId: string, excludePlanId: string): Promise<number>;
   // Plan type-specific methods
   getClientLongTermPlan(clientId: string): Promise<ClientPlan | undefined>;
   getClientWeeklyPlans(clientId: string): Promise<ClientPlan[]>;
@@ -1212,6 +1213,22 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return archivedPlan || undefined;
+  }
+
+  async archiveActivePlanExcept(clientId: string, excludePlanId: string): Promise<number> {
+    // Archive all active plans for this client EXCEPT the one being assigned
+    const result = await db.update(clientPlans)
+      .set({
+        status: 'archived',
+        updatedAt: new Date().toISOString(),
+      })
+      .where(and(
+        eq(clientPlans.clientId, clientId),
+        eq(clientPlans.status, 'active'),
+        ne(clientPlans.id, excludePlanId)
+      ));
+    
+    return result.rowCount || 0;
   }
 
   async getClientLongTermPlan(clientId: string): Promise<ClientPlan | undefined> {
