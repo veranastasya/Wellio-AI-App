@@ -9,6 +9,19 @@ interface InteractiveTourProps {
   onSkip: () => void;
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  return isMobile;
+}
+
 interface TourStep {
   target: string;
   title: string;
@@ -94,6 +107,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
   const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition>({ top: 100, left: 280 });
   const [highlightRect, setHighlightRect] = useState<HighlightRect | null>(null);
   const positioningRef = useRef<NodeJS.Timeout | null>(null);
+  const isMobile = useIsMobile();
   
   const steps = isCoach ? COACH_STEPS : CLIENT_STEPS;
   const step = steps[currentStep];
@@ -202,90 +216,173 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
       )}
 
       <AnimatePresence mode="wait">
-        <motion.div
-          key={currentStep}
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 20 }}
-          transition={{ duration: 0.2 }}
-          className="fixed z-[70] w-80 bg-white dark:bg-card rounded-xl shadow-2xl overflow-hidden"
-          style={{
-            top: tooltipPosition.top,
-            left: tooltipPosition.left,
-          }}
-          data-testid="tour-tooltip"
-        >
-          <div className="bg-[#28A0AE] px-4 py-2.5 flex items-center justify-between">
-            <span className="text-sm font-medium text-white">
-              Step {currentStep + 1} of {steps.length}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onSkip}
-              className="h-7 w-7 text-white hover:bg-white/20"
-              data-testid="button-tour-close"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="p-4 space-y-4">
-            <div className="space-y-1.5">
-              <h3 className="font-semibold text-foreground text-base">
-                {step.title}
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {step.description}
-              </p>
-            </div>
-
-            <div className="flex gap-1">
-              {steps.map((_, index) => (
-                <div
-                  key={index}
-                  className={`h-1.5 flex-1 rounded-full transition-all ${
-                    index <= currentStep ? "bg-[#28A0AE]" : "bg-muted"
-                  }`}
-                />
-              ))}
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
+        {isMobile ? (
+          <motion.div
+            key={`mobile-${currentStep}`}
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="fixed z-[70] bottom-0 left-0 right-0 bg-white dark:bg-card rounded-t-2xl shadow-2xl overflow-hidden safe-area-bottom"
+            data-testid="tour-tooltip-mobile"
+          >
+            <div className="bg-[#28A0AE] px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-white">
+                Step {currentStep + 1} of {steps.length}
+              </span>
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={onSkip}
-                className="text-muted-foreground text-sm h-9 px-3"
-                data-testid="button-tour-skip"
+                className="h-8 w-8 text-white hover:bg-white/20"
+                data-testid="button-tour-close"
               >
-                Skip tour
+                <X className="w-5 h-5" />
               </Button>
+            </div>
 
-              <div className="flex items-center gap-1.5">
-                {currentStep > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handlePrev}
-                    className="h-9 w-9"
-                    data-testid="button-tour-prev"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </Button>
-                )}
+            <div className="p-5 space-y-4">
+              <div className="space-y-2">
+                <h3 className="font-semibold text-foreground text-lg">
+                  {step.title}
+                </h3>
+                <p className="text-base text-muted-foreground leading-relaxed">
+                  {step.description}
+                </p>
+              </div>
+
+              <div className="flex gap-1.5">
+                {steps.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`h-2 flex-1 rounded-full transition-all ${
+                      index <= currentStep ? "bg-[#28A0AE]" : "bg-muted"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-2 pb-2">
                 <Button
-                  onClick={handleNext}
-                  className="gap-1.5 bg-[#28A0AE] hover:bg-[#229099] h-9 px-4"
-                  data-testid="button-tour-next"
+                  variant="ghost"
+                  size="default"
+                  onClick={onSkip}
+                  className="text-muted-foreground text-base h-12 px-4"
+                  data-testid="button-tour-skip"
                 >
-                  {isLastStep ? "Finish" : "Next"}
-                  <ChevronRight className="w-4 h-4" />
+                  Skip tour
                 </Button>
+
+                <div className="flex items-center gap-2">
+                  {currentStep > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handlePrev}
+                      className="h-12 w-12"
+                      data-testid="button-tour-prev"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleNext}
+                    className="gap-2 bg-[#28A0AE] hover:bg-[#229099] h-12 px-6 text-base"
+                    data-testid="button-tour-next"
+                  >
+                    {isLastStep ? "Finish" : "Next"}
+                    <ChevronRight className="w-5 h-5" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key={currentStep}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+            className="fixed z-[70] w-80 bg-white dark:bg-card rounded-xl shadow-2xl overflow-hidden"
+            style={{
+              top: tooltipPosition.top,
+              left: tooltipPosition.left,
+            }}
+            data-testid="tour-tooltip"
+          >
+            <div className="bg-[#28A0AE] px-4 py-2.5 flex items-center justify-between">
+              <span className="text-sm font-medium text-white">
+                Step {currentStep + 1} of {steps.length}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onSkip}
+                className="h-7 w-7 text-white hover:bg-white/20"
+                data-testid="button-tour-close"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div className="space-y-1.5">
+                <h3 className="font-semibold text-foreground text-base">
+                  {step.title}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {step.description}
+                </p>
+              </div>
+
+              <div className="flex gap-1">
+                {steps.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`h-1.5 flex-1 rounded-full transition-all ${
+                      index <= currentStep ? "bg-[#28A0AE]" : "bg-muted"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onSkip}
+                  className="text-muted-foreground text-sm h-9 px-3"
+                  data-testid="button-tour-skip"
+                >
+                  Skip tour
+                </Button>
+
+                <div className="flex items-center gap-1.5">
+                  {currentStep > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handlePrev}
+                      className="h-9 w-9"
+                      data-testid="button-tour-prev"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleNext}
+                    className="gap-1.5 bg-[#28A0AE] hover:bg-[#229099] h-9 px-4"
+                    data-testid="button-tour-next"
+                  >
+                    {isLastStep ? "Finish" : "Next"}
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </>
   );
