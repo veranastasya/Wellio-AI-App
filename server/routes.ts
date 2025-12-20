@@ -2656,11 +2656,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
           phone: client.phone,
           notes: client.notes,
           lastSession: client.lastSession,
+          onboardingCompleted: client.onboardingCompleted,
         }
       });
     } catch (error) {
       console.error("Error getting client session:", error);
       res.status(500).json({ error: "Failed to get session" });
+    }
+  });
+
+  // Update current client profile (for client to update their own data)
+  app.patch("/api/client-auth/me", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+
+      // Only allow updating specific fields
+      const { onboardingCompleted, phone, name } = req.body;
+      const updateData: Record<string, any> = {};
+      
+      if (onboardingCompleted !== undefined) updateData.onboardingCompleted = onboardingCompleted;
+      if (phone !== undefined) updateData.phone = phone;
+      if (name !== undefined) updateData.name = name;
+
+      const updatedClient = await storage.updateClient(clientId, updateData);
+      
+      res.json({ 
+        client: {
+          id: updatedClient!.id,
+          name: updatedClient!.name,
+          email: updatedClient!.email,
+          status: updatedClient!.status,
+          onboardingCompleted: updatedClient!.onboardingCompleted,
+        }
+      });
+    } catch (error) {
+      console.error("Error updating client profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
     }
   });
 

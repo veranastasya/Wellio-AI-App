@@ -122,6 +122,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
     return match ? match[1] : null;
   };
 
+  // Keep sidebar open during entire tour on mobile
   useEffect(() => {
     setTourActive(true);
     if (isSidebarMobile) {
@@ -132,6 +133,13 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
       setCurrentTourTarget(null);
     };
   }, [setTourActive, setOpenMobile, isSidebarMobile, setCurrentTourTarget]);
+
+  // Ensure sidebar stays open when step changes on mobile
+  useEffect(() => {
+    if (isSidebarMobile) {
+      setOpenMobile(true);
+    }
+  }, [currentStep, isSidebarMobile, setOpenMobile]);
 
   useEffect(() => {
     const tourId = extractTourId(step.target);
@@ -193,9 +201,12 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
       clearTimeout(positioningRef.current);
     }
 
+    // Wait longer for sidebar to fully open on mobile before calculating positions
+    const delay = isSidebarMobile ? 350 : 100;
+    
     positioningRef.current = setTimeout(() => {
       calculatePositions();
-    }, 100);
+    }, delay);
 
     const handleResize = () => calculatePositions();
     window.addEventListener("resize", handleResize);
@@ -206,7 +217,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
       }
       window.removeEventListener("resize", handleResize);
     };
-  }, [currentStep, calculatePositions]);
+  }, [currentStep, calculatePositions, isSidebarMobile]);
 
   const cleanupTour = useCallback(() => {
     setTourActive(false);

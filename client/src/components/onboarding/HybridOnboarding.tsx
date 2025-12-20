@@ -41,7 +41,7 @@ export function HybridOnboarding({ isCoach, userId, userName, onComplete }: Hybr
         });
         queryClient.invalidateQueries({ queryKey: ["/api/coach/profile"] });
       } else {
-        await apiRequest("PATCH", `/api/clients/${userId}`, {
+        await apiRequest("PATCH", `/api/client-auth/me`, {
           onboardingCompleted: true,
         });
         queryClient.invalidateQueries({ queryKey: ["/api/client-auth/me"] });
