@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Home, MessageSquare, TrendingUp, User, Bot, LogOut, BarChart3 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -16,52 +17,81 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTour } from "@/contexts/tour-context";
 import logoImage from "@assets/Group 626535_1761099357468.png";
-import type { Message } from "@shared/schema";
+import type { Message, SupportedLanguage } from "@shared/schema";
+import { CLIENT_NAV_TRANSLATIONS } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
-export const navigationItems = [
+type NavItemKey = "dashboard" | "myProgress" | "myPlan" | "coachChat" | "aiTracker" | "profile";
+
+const navigationItemsBase = [
   {
-    title: "Dashboard",
+    titleKey: "dashboard" as NavItemKey,
     url: "/client/dashboard",
     icon: Home,
     tourId: "dashboard",
   },
   {
-    title: "My Progress",
+    titleKey: "myProgress" as NavItemKey,
     url: "/client/my-progress",
     icon: BarChart3,
     tourId: "progress",
   },
   {
-    title: "My Plan",
+    titleKey: "myPlan" as NavItemKey,
     url: "/client/plan",
     icon: TrendingUp,
     tourId: "plan",
     showPlanBadge: true,
   },
   {
-    title: "Coach Chat",
+    titleKey: "coachChat" as NavItemKey,
     url: "/client/chat",
     icon: MessageSquare,
     showUnreadBadge: true,
     tourId: "coach-chat",
   },
   {
-    title: "AI Tracker",
+    titleKey: "aiTracker" as NavItemKey,
     url: "/client/ai-tracker",
     icon: Bot,
     tourId: "ai-chat",
   },
   {
-    title: "Profile",
+    titleKey: "profile" as NavItemKey,
     url: "/client/profile",
     icon: User,
   },
 ];
 
+function getNavigationItems(lang: SupportedLanguage) {
+  return navigationItemsBase.map(item => ({
+    ...item,
+    title: CLIENT_NAV_TRANSLATIONS[item.titleKey][lang],
+  }));
+}
+
+export const navigationItems = getNavigationItems("en");
+
 export function ClientSidebar() {
   const [location, setLocation] = useLocation();
   const { isActive: isTourActive, currentTourTarget } = useTour();
+  const [preferredLanguage, setPreferredLanguage] = useState<SupportedLanguage>("en");
+
+  // Fetch client's preferred language
+  useEffect(() => {
+    const fetchClientLanguage = async () => {
+      try {
+        const response = await apiRequest("GET", "/api/client-auth/me");
+        const data = await response.json();
+        if (data.client?.preferredLanguage) {
+          setPreferredLanguage(data.client.preferredLanguage as SupportedLanguage);
+        }
+      } catch (error) {
+        console.error("Failed to fetch client language preference:", error);
+      }
+    };
+    fetchClientLanguage();
+  }, []);
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/messages"],
@@ -78,6 +108,8 @@ export function ClientSidebar() {
   ).length;
 
   const unreadPlanCount = unreadPlans?.count || 0;
+  
+  const navItems = getNavigationItems(preferredLanguage);
 
   const handleLogout = async () => {
     try {
@@ -108,18 +140,18 @@ export function ClientSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => {
+              {navItems.map((item) => {
                 const isTourHighlighted = isTourActive && item.tourId === currentTourTarget;
                 return (
                 <SidebarMenuItem 
-                  key={item.title}
+                  key={item.titleKey}
                   data-tour={item.tourId}
                   className={isTourHighlighted ? "ring-2 ring-[#28A0AE] ring-offset-2 ring-offset-sidebar rounded-md animate-pulse" : ""}
                 >
                   <SidebarMenuButton
                     asChild
                     isActive={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                    data-testid={`nav-${item.titleKey.toLowerCase().replace(/\s+/g, "-")}`}
                   >
                     <Link href={item.url}>
                       <item.icon className="w-5 h-5" />
@@ -139,7 +171,7 @@ export function ClientSidebar() {
                           className="ml-auto bg-[#E2F9AD] text-[#28A0AE]"
                           data-testid="badge-plan-new"
                         >
-                          New
+                          {CLIENT_NAV_TRANSLATIONS.newPlanBadge[preferredLanguage]}
                         </Badge>
                       )}
                     </Link>
@@ -159,7 +191,7 @@ export function ClientSidebar() {
           data-testid="button-logout"
         >
           <LogOut className="w-5 h-5" />
-          <span>Log Out</span>
+          <span>{CLIENT_NAV_TRANSLATIONS.logOut[preferredLanguage]}</span>
         </Button>
       </SidebarFooter>
     </Sidebar>

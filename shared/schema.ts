@@ -91,6 +91,18 @@ export const LANGUAGE_NATIVE_LABELS: Record<SupportedLanguage, string> = {
   es: "Español",
 };
 
+// Client portal navigation translations
+export const CLIENT_NAV_TRANSLATIONS = {
+  dashboard: { en: "Dashboard", ru: "Главная", es: "Panel" },
+  myProgress: { en: "My Progress", ru: "Мой прогресс", es: "Mi Progreso" },
+  myPlan: { en: "My Plan", ru: "Мой план", es: "Mi Plan" },
+  coachChat: { en: "Coach Chat", ru: "Чат с тренером", es: "Chat con Entrenador" },
+  aiTracker: { en: "AI Tracker", ru: "AI Трекер", es: "Seguimiento IA" },
+  profile: { en: "Profile", ru: "Профиль", es: "Perfil" },
+  logOut: { en: "Log Out", ru: "Выйти", es: "Cerrar sesión" },
+  newPlanBadge: { en: "New", ru: "Новый", es: "Nuevo" },
+} as const;
+
 // AI Tracker UI translations - these are shown to users in the AI Tracker interface
 export const AI_TRACKER_TRANSLATIONS = {
   // Page level
