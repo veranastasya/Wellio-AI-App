@@ -1139,7 +1139,17 @@ You must respond with a JSON object in this exact format:
 
 If you don't understand the request or it's unrelated to fitness programming, use type "none" and provide a helpful response explaining what you can do.
 
-IMPORTANT: Write the "response" field in the client's preferred language. ${LANGUAGE_INSTRUCTIONS[preferredLanguage]}`
+IMPORTANT LANGUAGE INSTRUCTION: Write ALL text content in the client's preferred language. ${LANGUAGE_INSTRUCTIONS[preferredLanguage]}
+This includes:
+- The "response" field
+- Workout titles
+- Exercise names (but keep commonly known terms like "Push-ups", "Squats" recognizable)
+- Meal names
+- Habit descriptions
+- Task descriptions
+- Any notes or comments
+
+For example, if the language is Russian, "Upper Body Day" should be "День верхней части тела", etc.`
         },
         {
           role: "user",
