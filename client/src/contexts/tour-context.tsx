@@ -50,8 +50,16 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
 export function useTour() {
   const context = useContext(TourContext);
+  // Return default values when used outside TourProvider (e.g., in sidebar.tsx)
   if (!context) {
-    throw new Error("useTour must be used within a TourProvider");
+    return {
+      isActive: false,
+      currentTourTarget: null,
+      activeTourStep: null,
+      setTourActive: () => {},
+      setCurrentTourTarget: () => {},
+      setActiveTourStep: () => {},
+    };
   }
   return context;
 }

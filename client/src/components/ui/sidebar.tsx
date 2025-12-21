@@ -6,6 +6,7 @@ import { cva, VariantProps } from "class-variance-authority"
 import { PanelLeftIcon } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useTour } from "@/contexts/tour-context"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -164,6 +165,7 @@ function Sidebar({
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { isActive: isTourActive } = useTour()
 
   if (collapsible === "none") {
     return (
@@ -181,8 +183,16 @@ function Sidebar({
   }
 
   if (isMobile) {
+    // Prevent sidebar from closing during onboarding tour
+    const handleOpenChange = (open: boolean) => {
+      if (!open && isTourActive) {
+        return; // Don't close during tour
+      }
+      setOpenMobile(open);
+    };
+
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+      <Sheet open={openMobile} onOpenChange={handleOpenChange} {...props}>
         <SheetContent
           data-sidebar="sidebar"
           data-slot="sidebar"

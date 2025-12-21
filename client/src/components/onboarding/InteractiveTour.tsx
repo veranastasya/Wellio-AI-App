@@ -142,7 +142,8 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
     return true;
   }, []);
 
-  // Keep sidebar open during entire tour on mobile
+  // Open sidebar at tour start (mobile) and keep it open throughout
+  // The Sidebar component now prevents closing during active tour
   useEffect(() => {
     setTourActive(true);
     if (isSidebarMobile) {
@@ -153,13 +154,6 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
       setCurrentTourTarget(null);
     };
   }, [setTourActive, setOpenMobile, isSidebarMobile, setCurrentTourTarget]);
-
-  // Ensure sidebar stays open when step changes on mobile
-  useEffect(() => {
-    if (isSidebarMobile) {
-      setOpenMobile(true);
-    }
-  }, [currentStep, isSidebarMobile, setOpenMobile]);
 
   useEffect(() => {
     const tourId = extractTourId(step.target);
