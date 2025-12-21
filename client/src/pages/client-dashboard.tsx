@@ -44,17 +44,18 @@ interface EnhancedClientInsight {
   };
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, lang: SupportedLanguage = "en"): string {
   const date = parseISO(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const t = CLIENT_UI_TRANSLATIONS.recentActivity;
   
-  if (diffHours < 1) return "Just now";
-  if (diffHours < 24) return `${diffHours} hours ago`;
-  if (diffDays === 1) return "Yesterday";
-  return `${diffDays} days ago`;
+  if (diffHours < 1) return t.justNow[lang];
+  if (diffHours < 24) return `${diffHours} ${t.hoursAgo[lang]}`;
+  if (diffDays === 1) return t.yesterday[lang];
+  return `${diffDays} ${t.daysAgo[lang]}`;
 }
 
 function getActivityIcon(eventType: string) {
@@ -194,7 +195,7 @@ export default function ClientDashboard() {
     return {
       id: log.id,
       title,
-      time: formatRelativeTime(log.createdAt),
+      time: formatRelativeTime(log.createdAt, lang),
       icon,
       color,
     };

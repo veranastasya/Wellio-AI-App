@@ -7,6 +7,7 @@ import { Loader2, Send, MessageSquare, X, FileText, Image as ImageIcon, Video, F
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client, Message, InsertMessage, MessageAttachment } from "@shared/schema";
+import { CLIENT_UI_TRANSLATIONS, type SupportedLanguage } from "@shared/schema";
 
 function AttachmentDisplay({ 
   attachment, 
@@ -159,6 +160,10 @@ export default function ClientChat() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const isInitialLoadRef = useRef(true);
   const { toast } = useToast();
+  
+  // Translation helper
+  const lang = (clientData?.preferredLanguage || "en") as SupportedLanguage;
+  const t = CLIENT_UI_TRANSLATIONS;
 
   useEffect(() => {
     const clientId = localStorage.getItem("clientId");
@@ -428,7 +433,7 @@ export default function ClientChat() {
     .filter((m) => m.clientId === clientData.id)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  const coachName = coachInfo?.name || "Your Coach";
+  const coachName = coachInfo?.name || t.coachChat.yourCoach[lang];
   const coachInitials = coachName
     .split(" ")
     .map((n) => n[0])
@@ -449,7 +454,7 @@ export default function ClientChat() {
             <h1 className="text-lg font-semibold text-foreground" data-testid="text-chat-title">
               {coachName}
             </h1>
-            <p className="text-sm text-muted-foreground">Your personal coach</p>
+            <p className="text-sm text-muted-foreground">{t.coachChat.yourCoach[lang]}</p>
           </div>
         </div>
       </div>
@@ -459,10 +464,7 @@ export default function ClientChat() {
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
             <MessageSquare className="w-16 h-16 text-muted-foreground/50" />
             <div>
-              <p className="text-lg font-medium text-foreground">No messages yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Start a conversation with your coach
-              </p>
+              <p className="text-lg font-medium text-foreground">{t.coachChat.noMessages[lang]}</p>
             </div>
           </div>
         ) : (
@@ -594,7 +596,7 @@ export default function ClientChat() {
           <div className="flex-1 relative">
             <input
               type="text"
-              placeholder="Write a message..."
+              placeholder={t.coachChat.messagePlaceholder[lang]}
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               onKeyDown={handleKeyPress}

@@ -377,6 +377,12 @@ export const CLIENT_UI_TRANSLATIONS = {
     currentPlan: { en: "Current Plan", ru: "Текущий план", es: "Plan Actual" },
     weeklyPlan: { en: "Weekly Plan", ru: "Недельный план", es: "Plan Semanal" },
     noPlan: { en: "No plan assigned yet", ru: "План ещё не назначен", es: "Aún no hay plan asignado" },
+    noPlanDescription: { en: "Your coach will share your wellness plan here", ru: "Ваш тренер разместит здесь план", es: "Tu entrenador compartirá tu plan aquí" },
+    thisWeeksPlan: { en: "This Week's Plan", ru: "План на эту неделю", es: "Plan de Esta Semana" },
+    pastWeeks: { en: "Past Weeks", ru: "Прошлые недели", es: "Semanas Anteriores" },
+    yourProgress: { en: "Your Progress", ru: "Ваш прогресс", es: "Tu Progreso" },
+    overallProgress: { en: "Overall Progress", ru: "Общий прогресс", es: "Progreso General" },
+    status: { en: "Status", ru: "Статус", es: "Estado" },
     workouts: { en: "Workouts", ru: "Тренировки", es: "Entrenamientos" },
     nutrition: { en: "Nutrition", ru: "Питание", es: "Nutrición" },
     exercises: { en: "exercises", ru: "упражнений", es: "ejercicios" },
@@ -384,6 +390,7 @@ export const CLIENT_UI_TRANSLATIONS = {
     reps: { en: "reps", ru: "повторений", es: "repeticiones" },
     downloadPdf: { en: "Download PDF", ru: "Скачать PDF", es: "Descargar PDF" },
     week: { en: "Week", ru: "Неделя", es: "Semana" },
+    keepUpGreatWork: { en: "Keep up the great work!", ru: "Так держать!", es: "¡Sigue así!" },
   },
   // Common UI elements
   common: {
