@@ -74,7 +74,8 @@ import {
   mapRookBodyToCheckIn,
   generateRookConnectionUrl
 } from "./rook";
-import { sendInviteEmail, sendPlanAssignmentEmail, sendSessionBookingEmail, sendAccountSetupEmail } from "./email";
+import { sendInviteEmail, sendPlanAssignmentEmail, sendSessionBookingEmail, sendAccountSetupEmail, sendPasswordResetEmail } from "./email";
+import crypto from "crypto";
 import { logger } from "./logger";
 
 async function sendPushNotificationToClient(
@@ -382,6 +383,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Coach logout error:", error);
       res.status(500).json({ error: "Logout failed" });
+    }
+  });
+
+  // Password Reset - Request reset email (for both clients and coaches)
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email, userType } = req.body;
+      
+      if (!email || !userType) {
+        return res.status(400).json({ error: "Email and user type are required" });
+      }
+      
+      if (userType !== 'client' && userType !== 'coach') {
+        return res.status(400).json({ error: "Invalid user type" });
+      }
+      
+      let user: { id: string; name: string; email: string } | undefined;
+      
+      if (userType === 'client') {
+        const clients = await storage.getClients();
+        const client = clients.find(c => c.email.toLowerCase() === email.toLowerCase() && c.passwordHash);
+        if (client) {
+          user = { id: client.id, name: client.name, email: client.email };
+        }
+      } else {
+        const coach = await storage.getCoachByEmail(email.toLowerCase());
+        if (coach && coach.passwordHash) {
+          user = { id: coach.id, name: coach.name, email: coach.email };
+        }
+      }
+      
+      // Always return success to prevent email enumeration
+      if (!user) {
+        console.log(`[Password Reset] No ${userType} found with email: ${email}`);
+        return res.json({ success: true, message: "If an account exists, a password reset email will be sent." });
+      }
+      
+      // Clean up expired tokens first
+      await storage.deleteExpiredPasswordResetTokens();
+      
+      // Generate secure token
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours
+      
+      // Save token to database
+      await storage.createPasswordResetToken({
+        email: user.email.toLowerCase(),
+        token,
+        userType,
+        expiresAt,
+      });
+      
+      // Build reset link
+      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : 'http://localhost:5000';
+      const resetLink = `${baseUrl}/reset-password?token=${token}&type=${userType}`;
+      
+      // Send email
+      await sendPasswordResetEmail({
+        to: user.email,
+        userName: user.name,
+        resetLink,
+        userType,
+      });
+      
+      console.log(`[Password Reset] Email sent to ${user.email} (${userType})`);
+      res.json({ success: true, message: "If an account exists, a password reset email will be sent." });
+    } catch (error) {
+      console.error("[Password Reset] Error:", error);
+      res.status(500).json({ error: "Failed to process password reset request" });
+    }
+  });
+
+  // Password Reset - Set new password
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { token, password, userType } = req.body;
+      
+      if (!token || !password || !userType) {
+        return res.status(400).json({ error: "Token, password, and user type are required" });
+      }
+      
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+      
+      // Find token
+      const resetToken = await storage.getPasswordResetTokenByToken(token);
+      
+      if (!resetToken) {
+        return res.status(400).json({ error: "Invalid or expired reset link" });
+      }
+      
+      // Check if token is expired
+      if (new Date(resetToken.expiresAt) < new Date()) {
+        return res.status(400).json({ error: "Reset link has expired. Please request a new one." });
+      }
+      
+      // Check if token was already used
+      if (resetToken.usedAt) {
+        return res.status(400).json({ error: "This reset link has already been used" });
+      }
+      
+      // Check user type matches
+      if (resetToken.userType !== userType) {
+        return res.status(400).json({ error: "Invalid reset link" });
+      }
+      
+      // Hash new password
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
+      
+      // Update user password
+      if (userType === 'client') {
+        const clients = await storage.getClients();
+        const client = clients.find(c => c.email.toLowerCase() === resetToken.email.toLowerCase());
+        if (!client) {
+          return res.status(400).json({ error: "Account not found" });
+        }
+        await storage.updateClient(client.id, { passwordHash });
+      } else {
+        const coach = await storage.getCoachByEmail(resetToken.email.toLowerCase());
+        if (!coach) {
+          return res.status(400).json({ error: "Account not found" });
+        }
+        await storage.updateCoach(coach.id, { passwordHash });
+      }
+      
+      // Mark token as used
+      await storage.markPasswordResetTokenUsed(resetToken.id);
+      
+      console.log(`[Password Reset] Password updated for ${resetToken.email} (${userType})`);
+      res.json({ success: true, message: "Password has been reset successfully" });
+    } catch (error) {
+      console.error("[Password Reset] Error:", error);
+      res.status(500).json({ error: "Failed to reset password" });
     }
   });
 

@@ -930,3 +930,178 @@ Questions? Contact ${coachName} directly.
     throw error;
   }
 }
+
+interface SendPasswordResetEmailParams {
+  to: string;
+  userName: string;
+  resetLink: string;
+  userType: 'client' | 'coach';
+}
+
+export async function sendPasswordResetEmail({
+  to,
+  userName,
+  resetLink,
+  userType
+}: SendPasswordResetEmailParams) {
+  const { client, fromEmail } = await getUncachableResendClient();
+  
+  const portalType = userType === 'coach' ? 'Coach' : 'Client';
+  
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Reset Your Password</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+          line-height: 1.6;
+          color: #333333;
+          margin: 0;
+          padding: 0;
+          background-color: #f5f5f5;
+        }
+        .container {
+          max-width: 600px;
+          margin: 40px auto;
+          background-color: #ffffff;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+          background: linear-gradient(135deg, #28A0AE 0%, #E2F9AD 100%);
+          padding: 40px 30px;
+          text-align: center;
+        }
+        .header h1 {
+          margin: 0;
+          color: #ffffff;
+          font-size: 32px;
+          font-weight: 700;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .content {
+          padding: 40px 30px;
+        }
+        .content h2 {
+          color: #28A0AE;
+          font-size: 24px;
+          margin-top: 0;
+          margin-bottom: 20px;
+        }
+        .content p {
+          margin: 16px 0;
+          color: #555555;
+        }
+        .cta-button {
+          display: inline-block;
+          background-color: #28A0AE;
+          color: #ffffff;
+          text-decoration: none;
+          padding: 14px 32px;
+          border-radius: 6px;
+          font-weight: 600;
+          font-size: 16px;
+          margin: 24px 0;
+        }
+        .warning-box {
+          background-color: #fff3cd;
+          border-left: 4px solid #ffc107;
+          padding: 16px 20px;
+          margin: 24px 0;
+          border-radius: 4px;
+        }
+        .warning-box p {
+          margin: 0;
+          color: #856404;
+          font-size: 14px;
+        }
+        .footer {
+          background-color: #f8f9fa;
+          padding: 24px 30px;
+          text-align: center;
+          border-top: 1px solid #e9ecef;
+        }
+        .footer p {
+          margin: 8px 0;
+          font-size: 14px;
+          color: #666666;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Wellio</h1>
+        </div>
+        
+        <div class="content">
+          <h2>Reset Your Password</h2>
+          
+          <p>Hi ${userName},</p>
+          
+          <p>We received a request to reset your password for your Wellio ${portalType} account. Click the button below to set a new password:</p>
+          
+          <div style="text-align: center;">
+            <a href="${resetLink}" class="cta-button">Reset Password</a>
+          </div>
+          
+          <div class="warning-box">
+            <p>This link will expire in 24 hours. If you didn't request a password reset, you can safely ignore this email.</p>
+          </div>
+          
+          <p style="font-size: 14px; color: #888888;">If the button above doesn't work, copy and paste this link into your browser:</p>
+          <p style="font-size: 12px; word-break: break-all; color: #28A0AE;">${resetLink}</p>
+        </div>
+        
+        <div class="footer">
+          <p><strong>Wellio</strong> - AI-Powered Fitness & Wellness Coaching</p>
+          <p>This is an automated message. Please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const emailText = `
+Reset Your Password
+
+Hi ${userName},
+
+We received a request to reset your password for your Wellio ${portalType} account.
+
+Reset your password by visiting:
+${resetLink}
+
+This link will expire in 24 hours. If you didn't request a password reset, you can safely ignore this email.
+
+---
+Wellio - AI-Powered Fitness & Wellness Coaching
+This is an automated message. Please do not reply to this email.
+  `;
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: fromEmail,
+      to: [to],
+      subject: 'Reset Your Wellio Password',
+      html: emailHtml,
+      text: emailText,
+    });
+
+    if (error) {
+      console.error('[Email] Failed to send password reset email:', error);
+      throw error;
+    }
+
+    console.log('[Email] Password reset email sent successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('[Email] Error sending password reset email:', error);
+    throw error;
+  }
+}
