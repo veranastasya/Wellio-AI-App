@@ -416,6 +416,36 @@ export const CLIENT_UI_TRANSLATIONS = {
     fileTooLarge: { en: "File too large", ru: "Файл слишком большой", es: "Archivo muy grande" },
     maxSize: { en: "Max 10MB allowed", ru: "Максимум 10МБ", es: "Máximo 10MB permitido" },
   },
+  // My Progress page
+  myProgress: {
+    title: { en: "My Progress", ru: "Мой прогресс", es: "Mi Progreso" },
+    subtitle: { en: "Track your transformation journey", ru: "Отслеживайте свой путь преобразования", es: "Sigue tu viaje de transformación" },
+    weightLost: { en: "Weight Lost", ru: "Потеря веса", es: "Peso Perdido" },
+    workoutsThisWeek: { en: "Workouts This Week", ru: "Тренировок на этой неделе", es: "Entrenamientos Esta Semana" },
+    avgDailyCalories: { en: "Avg. Daily Calories", ru: "Сред. калорий в день", es: "Calorías Diarias Prom." },
+    habitCompletion: { en: "Habit Completion", ru: "Выполнение привычек", es: "Cumplimiento de Hábitos" },
+    fromLastWeek: { en: "from last week", ru: "с прошлой недели", es: "desde la semana pasada" },
+    onTrack: { en: "On track", ru: "В норме", es: "En camino" },
+    steadyProgress: { en: "Steady progress", ru: "Стабильный прогресс", es: "Progreso constante" },
+    weightProgress: { en: "Weight Progress", ru: "Прогресс веса", es: "Progreso de Peso" },
+    trackedViaAI: { en: "Tracked via AI chat logs", ru: "Отслеживается через AI-чат", es: "Seguimiento vía chat de IA" },
+    weeklyActivity: { en: "Weekly Activity", ru: "Недельная активность", es: "Actividad Semanal" },
+    workoutDurationByDay: { en: "Workout duration by day", ru: "Продолжительность тренировок по дням", es: "Duración del entrenamiento por día" },
+    nutritionOverview: { en: "Nutrition Overview", ru: "Обзор питания", es: "Resumen de Nutrición" },
+    dailyCalorieIntake: { en: "Daily calorie intake", ru: "Дневное потребление калорий", es: "Ingesta diaria de calorías" },
+    kgTotal: { en: "kg total", ru: "кг всего", es: "kg en total" },
+    toGo: { en: "to go", ru: "осталось", es: "por alcanzar" },
+    duration: { en: "Duration", ru: "Длительность", es: "Duración" },
+    calories: { en: "Calories", ru: "Калории", es: "Calorías" },
+    min: { en: "min", ru: "мин", es: "min" },
+    cal: { en: "cal", ru: "ккал", es: "cal" },
+    week: { en: "Week", ru: "Неделя", es: "Semana" },
+  },
+  // Dashboard page
+  dashboard: {
+    welcomeBack: { en: "Welcome back", ru: "С возвращением", es: "Bienvenido de vuelta" },
+    progressFor7Days: { en: "Here's your progress for the last 7 days", ru: "Ваш прогресс за последние 7 дней", es: "Tu progreso de los últimos 7 días" },
+  },
   // Common UI elements
   common: {
     loading: { en: "Loading...", ru: "Загрузка...", es: "Cargando..." },

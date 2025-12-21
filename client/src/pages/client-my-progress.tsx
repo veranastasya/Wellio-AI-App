@@ -261,10 +261,10 @@ export default function ClientMyProgress() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground" data-testid="heading-my-progress">
-              My Progress
+              {t.myProgress.title[lang]}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Track your transformation journey
+              {t.myProgress.subtitle[lang]}
             </p>
           </div>
         </div>
@@ -287,9 +287,9 @@ export default function ClientMyProgress() {
                     <TrendingDown className="w-4 h-4 text-teal-500" />
                   </div>
                   <div className="mt-3">
-                    <p className="text-xs text-muted-foreground">Weight Lost</p>
+                    <p className="text-xs text-muted-foreground">{t.myProgress.weightLost[lang]}</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="stat-weight-lost">
-                      {progressSummary?.weightLost || 0} kg
+                      {progressSummary?.weightLost || 0} {t.profile.kg[lang]}
                     </p>
                     <p className={`text-xs ${getTrendColor(progressSummary?.weightLost || 0, true)}`}>
                       {progressSummary?.weightLostPercent 
@@ -310,15 +310,15 @@ export default function ClientMyProgress() {
                     <TrendingUp className="w-4 h-4 text-blue-500" />
                   </div>
                   <div className="mt-3">
-                    <p className="text-xs text-muted-foreground">Workouts This Week</p>
+                    <p className="text-xs text-muted-foreground">{t.myProgress.workoutsThisWeek[lang]}</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="stat-workouts">
                       {progressSummary?.workoutsThisWeek || 0}
                     </p>
                     <p className={`text-xs flex items-center gap-1 ${getTrendColor(progressSummary?.workoutChange || 0)}`}>
                       {getTrendIcon(progressSummary?.workoutChange || 0)}
                       {progressSummary?.workoutChange !== 0 
-                        ? `${progressSummary?.workoutChange! > 0 ? '+' : ''}${progressSummary?.workoutChange} from last week`
-                        : 'Same as last week'}
+                        ? `${progressSummary?.workoutChange! > 0 ? '+' : ''}${progressSummary?.workoutChange} ${t.myProgress.fromLastWeek[lang]}`
+                        : t.myProgress.steadyProgress[lang]}
                     </p>
                   </div>
                 </CardContent>
@@ -333,11 +333,11 @@ export default function ClientMyProgress() {
                     </div>
                   </div>
                   <div className="mt-3">
-                    <p className="text-xs text-muted-foreground">Avg. Daily Calories</p>
+                    <p className="text-xs text-muted-foreground">{t.myProgress.avgDailyCalories[lang]}</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="stat-calories">
                       {progressSummary?.avgDailyCalories?.toLocaleString() || '--'}
                     </p>
-                    <p className="text-xs text-emerald-500">On track</p>
+                    <p className="text-xs text-emerald-500">{t.myProgress.onTrack[lang]}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -352,14 +352,14 @@ export default function ClientMyProgress() {
                     <TrendingUp className="w-4 h-4 text-purple-500" />
                   </div>
                   <div className="mt-3">
-                    <p className="text-xs text-muted-foreground">Habit Completion</p>
+                    <p className="text-xs text-muted-foreground">{t.myProgress.habitCompletion[lang]}</p>
                     <p className="text-2xl font-bold text-foreground" data-testid="stat-habits">
                       {progressSummary?.habitCompletion || 0}%
                     </p>
                     <p className={`text-xs flex items-center gap-1 ${getTrendColor(progressSummary?.habitChange || 0)}`}>
                       {progressSummary?.habitChange !== 0 
-                        ? `${progressSummary?.habitChange! > 0 ? '+' : ''}${progressSummary?.habitChange}% this week`
-                        : 'Steady progress'}
+                        ? `${progressSummary?.habitChange! > 0 ? '+' : ''}${progressSummary?.habitChange}%`
+                        : t.myProgress.steadyProgress[lang]}
                     </p>
                   </div>
                 </CardContent>
@@ -371,12 +371,12 @@ export default function ClientMyProgress() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg">Weight Progress</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-1">Tracked via AI chat logs</p>
+                    <CardTitle className="text-lg">{t.myProgress.weightProgress[lang]}</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">{t.myProgress.trackedViaAI[lang]}</p>
                   </div>
                   <Badge variant="outline" className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-teal-200 dark:border-teal-800">
                     <TrendingDown className="w-3 h-3 mr-1" />
-                    {progressSummary?.weightLost ? `-${progressSummary.weightLost} kg total` : 'No data yet'}
+                    {progressSummary?.weightLost ? `-${progressSummary.weightLost} ${t.myProgress.kgTotal[lang]}` : t.common.noData[lang]}
                   </Badge>
                 </div>
               </CardHeader>
@@ -594,8 +594,8 @@ export default function ClientMyProgress() {
               {/* Weekly Activity */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Weekly Activity</CardTitle>
-                  <p className="text-xs text-muted-foreground">Workout duration by day</p>
+                  <CardTitle className="text-lg">{t.myProgress.weeklyActivity[lang]}</CardTitle>
+                  <p className="text-xs text-muted-foreground">{t.myProgress.workoutDurationByDay[lang]}</p>
                 </CardHeader>
                 <CardContent>
                   <div className="h-48">
@@ -610,7 +610,7 @@ export default function ClientMyProgress() {
                             border: '1px solid hsl(var(--border))',
                             borderRadius: '8px'
                           }}
-                          formatter={(value: number) => [`${value} min`, 'Duration']}
+                          formatter={(value: number) => [`${value} ${t.myProgress.min[lang]}`, t.myProgress.duration[lang]]}
                         />
                         <Bar dataKey="duration" fill="#28A0AE" radius={[4, 4, 0, 0]} />
                       </BarChart>
@@ -622,8 +622,8 @@ export default function ClientMyProgress() {
               {/* Nutrition Overview */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Nutrition Overview</CardTitle>
-                  <p className="text-xs text-muted-foreground">Daily calorie intake</p>
+                  <CardTitle className="text-lg">{t.myProgress.nutritionOverview[lang]}</CardTitle>
+                  <p className="text-xs text-muted-foreground">{t.myProgress.dailyCalorieIntake[lang]}</p>
                 </CardHeader>
                 <CardContent>
                   <div className="h-48">
@@ -638,7 +638,7 @@ export default function ClientMyProgress() {
                             border: '1px solid hsl(var(--border))',
                             borderRadius: '8px'
                           }}
-                          formatter={(value: number) => [`${value} cal`, 'Calories']}
+                          formatter={(value: number) => [`${value} ${t.myProgress.cal[lang]}`, t.myProgress.calories[lang]]}
                         />
                         <Line 
                           type="monotone" 

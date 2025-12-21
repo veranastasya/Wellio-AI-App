@@ -366,28 +366,28 @@ export default function ClientDashboard() {
   const statCards = [
     { 
       value: workoutsThisWeek, 
-      label: "Workouts/week", 
+      label: t.stats.workoutsWeek[lang], 
       icon: Dumbbell, 
       bgColor: "bg-blue-50 dark:bg-blue-950/30",
       iconColor: "text-blue-500"
     },
     { 
       value: avgCalories || "-", 
-      label: "Calories/day", 
+      label: t.stats.caloriesDay[lang], 
       icon: Flame, 
       bgColor: "bg-orange-50 dark:bg-orange-950/30",
       iconColor: "text-orange-500"
     },
     { 
       value: streak, 
-      label: "Day streak", 
+      label: t.stats.dayStreak[lang], 
       icon: TrendingUp, 
       bgColor: "bg-green-50 dark:bg-green-950/30",
       iconColor: "text-green-500"
     },
     { 
       value: achievements, 
-      label: "Achievements", 
+      label: t.stats.achievements[lang], 
       icon: Trophy, 
       bgColor: "bg-amber-50 dark:bg-amber-950/30",
       iconColor: "text-amber-500"
@@ -408,10 +408,10 @@ export default function ClientDashboard() {
       <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-dashboard-title">
-            Welcome back, {clientData.name.split(" ")[0]}!
+            {t.dashboard.welcomeBack[lang]}, {clientData.name.split(" ")[0]}!
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Here's your progress for the last 7 days
+            {t.dashboard.progressFor7Days[lang]}
           </p>
         </div>
 
