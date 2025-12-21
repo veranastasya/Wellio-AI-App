@@ -2797,6 +2797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastSession: client.lastSession,
           onboardingCompleted: client.onboardingCompleted,
           preferredLanguage: client.preferredLanguage,
+          sex: client.sex,
         }
       });
     } catch (error) {

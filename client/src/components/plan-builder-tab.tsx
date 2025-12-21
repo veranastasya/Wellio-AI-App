@@ -21,6 +21,8 @@ interface PlanBuilderTabProps {
   clientId: string;
   clientName: string;
   onSwitchToClientView?: () => void;
+  programStartDate?: string | null;
+  joinedDate?: string | null;
 }
 
 interface ChatMessage {
@@ -1388,8 +1390,45 @@ interface ClientPlan {
   weekEndDate?: string;
 }
 
-export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: PlanBuilderTabProps) {
-  const [weekIndex, setWeekIndex] = useState(1);
+export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, programStartDate, joinedDate }: PlanBuilderTabProps) {
+  // Calculate the base date for week calculations (program start or joined date)
+  const getBaseDate = (): Date => {
+    // Use programStartDate if set, otherwise use joinedDate, fallback to today
+    const dateStr = programStartDate || joinedDate;
+    if (dateStr) {
+      const date = new Date(dateStr);
+      // Get the Monday of that week
+      const dayOfWeek = date.getDay();
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      date.setDate(date.getDate() - daysToMonday);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+    // Fallback: use current week's Monday
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    today.setDate(today.getDate() - daysToMonday);
+    today.setHours(0, 0, 0, 0);
+    return today;
+  };
+
+  // Calculate which week number corresponds to current date
+  const getCurrentWeekNumber = (): number => {
+    const baseMonday = getBaseDate();
+    const today = new Date();
+    const todayMonday = new Date(today);
+    const dayOfWeek = today.getDay();
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    todayMonday.setDate(today.getDate() - daysToMonday);
+    todayMonday.setHours(0, 0, 0, 0);
+    
+    const diffMs = todayMonday.getTime() - baseMonday.getTime();
+    const diffWeeks = Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(1, diffWeeks + 1); // Week 1 minimum
+  };
+
+  const [weekIndex, setWeekIndex] = useState(() => getCurrentWeekNumber());
   const [isCopying, setIsCopying] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isAssigned, setIsAssigned] = useState(false);
@@ -1699,17 +1738,12 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
   };
 
   const getWeekStartDate = (weekNum: number) => {
-    // Calculate the Monday of the current week as base
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    // Get Monday of current week (if today is Sunday, go back 6 days, otherwise go back (dayOfWeek - 1) days)
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const currentMonday = new Date(today);
-    currentMonday.setDate(today.getDate() - daysToMonday);
+    // Use the program/joined date Monday as base for week calculations
+    const baseMonday = getBaseDate();
     
-    // Week 1 is the current week, add (weekNum - 1) weeks for future weeks
-    const weekStart = new Date(currentMonday);
-    weekStart.setDate(currentMonday.getDate() + (weekNum - 1) * 7);
+    // Week 1 is the program start week, add (weekNum - 1) weeks
+    const weekStart = new Date(baseMonday);
+    weekStart.setDate(baseMonday.getDate() + (weekNum - 1) * 7);
     
     return weekStart.toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" });
   };
@@ -1749,15 +1783,11 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
 
   // Helper to get week dates as Date objects
   const getWeekDates = (weekNum: number): { start: Date; end: Date } => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const currentMonday = new Date(today);
-    currentMonday.setDate(today.getDate() - daysToMonday);
-    currentMonday.setHours(0, 0, 0, 0);
+    // Use the program/joined date Monday as base for week calculations
+    const baseMonday = getBaseDate();
     
-    const weekStart = new Date(currentMonday);
-    weekStart.setDate(currentMonday.getDate() + (weekNum - 1) * 7);
+    const weekStart = new Date(baseMonday);
+    weekStart.setDate(baseMonday.getDate() + (weekNum - 1) * 7);
     
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);

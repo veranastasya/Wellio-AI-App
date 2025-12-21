@@ -347,8 +347,8 @@ export function getQuickActionPrompt(
 ): string {
   const prompts = AI_TRACKER_TRANSLATIONS.quickActionPrompts[action];
   
-  // For Russian, use feminine form if client is female
-  if (lang === "ru" && sex === "female") {
+  // For Russian, use feminine form if client is female (case-insensitive check)
+  if (lang === "ru" && sex?.toLowerCase() === "female") {
     const femininePrompts = AI_TRACKER_TRANSLATIONS.quickActionPromptsFeminine;
     return femininePrompts[action];
   }
@@ -442,6 +442,8 @@ export const clients = pgTable("clients", {
   endDate: text("end_date"),
   // Preferred language for AI responses (en, ru, es)
   preferredLanguage: text("preferred_language").notNull().default("en"),
+  // Program start date (for week calculations) - defaults to joinedDate if not set
+  programStartDate: text("program_start_date"),
 }, (table) => ({
   coachIdIdx: index("clients_coach_id_idx").on(table.coachId),
   emailIdx: index("clients_email_idx").on(table.email),
