@@ -6,7 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Dumbbell, Flame, TrendingUp, Trophy, Apple, Droplets, MessageSquare, Calendar, Brain, Target, ArrowUp, ArrowDown, Minus, Lightbulb, Sparkles } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { Client, SmartLog, ProgressEvent, Session, ClientPlan } from "@shared/schema";
+import type { Client, SmartLog, ProgressEvent, Session, ClientPlan, SupportedLanguage } from "@shared/schema";
+import { CLIENT_UI_TRANSLATIONS } from "@shared/schema";
 import { format, subDays, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { HybridOnboarding } from "@/components/onboarding";
@@ -72,6 +73,10 @@ export default function ClientDashboard() {
   const [clientData, setClientData] = useState<Client | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  
+  // Get language for translations
+  const lang = (clientData?.preferredLanguage || "en") as SupportedLanguage;
+  const t = CLIENT_UI_TRANSLATIONS;
 
   useEffect(() => {
     const clientId = localStorage.getItem("clientId");
@@ -467,13 +472,13 @@ export default function ClientDashboard() {
         )}
 
         {/* AI Insights Section */}
-        <ClientInsightsCard insights={insights} isLoading={insightsLoading} />
+        <ClientInsightsCard insights={insights} isLoading={insightsLoading} lang={(clientData?.preferredLanguage || "en") as SupportedLanguage} />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardContent className="p-4 sm:p-6">
               <h2 className="text-lg font-semibold text-foreground mb-4" data-testid="text-recent-activity-title">
-                Recent Activity
+                {t.recentActivity.title[lang]}
               </h2>
               {recentActivities.length > 0 ? (
                 <div className="space-y-4">
@@ -491,8 +496,7 @@ export default function ClientDashboard() {
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <p className="text-sm">No recent activity</p>
-                  <p className="text-xs mt-1">Start logging in the AI Tracker!</p>
+                  <p className="text-sm">{t.recentActivity.noActivity[lang]}</p>
                 </div>
               )}
             </CardContent>
@@ -502,7 +506,7 @@ export default function ClientDashboard() {
             <CardContent className="p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-foreground" data-testid="text-upcoming-title">
-                  Upcoming
+                  {t.upcoming.title[lang]}
                 </h2>
                 <Calendar className="w-5 h-5 text-muted-foreground" />
               </div>
@@ -524,8 +528,7 @@ export default function ClientDashboard() {
                 ) : (
                   <div className="text-center py-6 text-muted-foreground">
                     <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No upcoming sessions</p>
-                    <p className="text-xs mt-1">Check your plan for daily goals!</p>
+                    <p className="text-sm">{t.upcoming.noUpcoming[lang]}</p>
                   </div>
                 )}
               </div>
@@ -538,7 +541,29 @@ export default function ClientDashboard() {
   );
 }
 
-function ClientInsightsCard({ insights, isLoading }: { insights?: EnhancedClientInsight; isLoading: boolean }) {
+function ClientInsightsCard({ insights, isLoading, lang = "en" }: { insights?: EnhancedClientInsight; isLoading: boolean; lang?: SupportedLanguage }) {
+  const t = CLIENT_UI_TRANSLATIONS;
+  
+  // Helper to get trend label translation
+  const getTrendLabel = (trend: string) => {
+    switch (trend) {
+      case "improving": return t.aiInsights.improving[lang];
+      case "declining": return t.aiInsights.declining[lang];
+      case "stable": return t.aiInsights.stable[lang];
+      case "plateau": return t.aiInsights.plateau[lang];
+      default: return trend;
+    }
+  };
+  
+  // Helper to get category label translation
+  const getCategoryLabel = (category: string) => {
+    const cat = category.toLowerCase() as keyof typeof t.categories;
+    if (t.categories[cat]) {
+      return t.categories[cat][lang];
+    }
+    return category;
+  };
+  
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case "improving":
@@ -591,8 +616,8 @@ function ClientInsightsCard({ insights, isLoading }: { insights?: EnhancedClient
               <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Your AI Insights</h2>
-              <p className="text-xs text-muted-foreground">Based on your tracking data</p>
+              <h2 className="text-lg font-semibold text-foreground">{t.aiInsights.title[lang]}</h2>
+              <p className="text-xs text-muted-foreground">{t.aiInsights.subtitle[lang]}</p>
             </div>
           </div>
           {isLoading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
@@ -602,10 +627,7 @@ function ClientInsightsCard({ insights, isLoading }: { insights?: EnhancedClient
           <div className="text-center py-6">
             <Brain className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">
-              Start logging your activities in the AI Tracker to see personalized insights and goal predictions.
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              Log workouts, meals, sleep, and more to unlock trends analysis.
+              {t.aiInsights.noData[lang]}
             </p>
           </div>
         ) : (
@@ -614,17 +636,17 @@ function ClientInsightsCard({ insights, isLoading }: { insights?: EnhancedClient
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-background rounded-lg p-3 text-center">
                 <p className="text-xl font-bold text-foreground">{insights.quickStats.totalDataPoints}</p>
-                <p className="text-xs text-muted-foreground">Data Points</p>
+                <p className="text-xs text-muted-foreground">{t.aiInsights.dataPoints[lang]}</p>
               </div>
               <div className="bg-background rounded-lg p-3 text-center">
                 <p className="text-xl font-bold text-foreground">{insights.quickStats.trackingConsistency}%</p>
-                <p className="text-xs text-muted-foreground">Consistency</p>
+                <p className="text-xs text-muted-foreground">{t.aiInsights.consistency[lang]}</p>
               </div>
               <div className="bg-background rounded-lg p-3 text-center">
                 <p className={`text-xl font-bold capitalize ${getOverallTrendColor(insights.quickStats.overallTrend)}`}>
                   {getTrendIcon(insights.quickStats.overallTrend)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">Trend</p>
+                <p className="text-xs text-muted-foreground mt-1">{t.aiInsights.trend[lang]}</p>
               </div>
             </div>
 
@@ -666,16 +688,16 @@ function ClientInsightsCard({ insights, isLoading }: { insights?: EnhancedClient
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp className="w-4 h-4 text-primary" />
-                  <p className="text-sm font-medium text-foreground">Detected Trends</p>
+                  <p className="text-sm font-medium text-foreground">{t.aiInsights.detectedTrends[lang]}</p>
                 </div>
                 <div className="space-y-2">
-                  {insights.trends.filter(t => t.confidence > 0.5).slice(0, 3).map((trend, idx) => (
+                  {insights.trends.filter(tr => tr.confidence > 0.5).slice(0, 3).map((trend, idx) => (
                     <div key={idx} className="bg-background rounded-lg p-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-foreground capitalize">{trend.category}</span>
+                        <span className="text-sm font-medium text-foreground">{getCategoryLabel(trend.category)}</span>
                         <Badge variant="secondary" className={`text-xs ${getTrendColor(trend.trend)}`}>
                           {getTrendIcon(trend.trend)}
-                          <span className="ml-1 capitalize">{trend.trend}</span>
+                          <span className="ml-1">{getTrendLabel(trend.trend)}</span>
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">{trend.description}</p>
@@ -705,18 +727,18 @@ function ClientInsightsCard({ insights, isLoading }: { insights?: EnhancedClient
                   <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3">
                     <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                       <Trophy className="w-3 h-3" />
-                      Your Strength
+                      {t.aiInsights.yourStrength[lang]}
                     </p>
-                    <p className="text-sm text-foreground mt-1">{insights.quickStats.topStrength}</p>
+                    <p className="text-sm text-foreground mt-1">{getCategoryLabel(insights.quickStats.topStrength)}</p>
                   </div>
                 )}
                 {insights.quickStats.topOpportunity && (
                   <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-3">
                     <p className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
                       <Lightbulb className="w-3 h-3" />
-                      Opportunity
+                      {t.aiInsights.opportunity[lang]}
                     </p>
-                    <p className="text-sm text-foreground mt-1">{insights.quickStats.topOpportunity}</p>
+                    <p className="text-sm text-foreground mt-1">{getCategoryLabel(insights.quickStats.topOpportunity)}</p>
                   </div>
                 )}
               </div>

@@ -292,6 +292,139 @@ export function getAITrackerTranslation(
   return String(translation);
 }
 
+// Comprehensive UI translations for all client-facing pages
+export const CLIENT_UI_TRANSLATIONS = {
+  // Dashboard - AI Insights section
+  aiInsights: {
+    title: { en: "Your AI Insights", ru: "Ваши AI-инсайты", es: "Tus Insights de IA" },
+    subtitle: { en: "Based on your tracking data", ru: "На основе ваших данных", es: "Basado en tus datos" },
+    dataPoints: { en: "Data Points", ru: "Записей", es: "Datos" },
+    consistency: { en: "Consistency", ru: "Регулярность", es: "Consistencia" },
+    trend: { en: "Trend", ru: "Тренд", es: "Tendencia" },
+    detectedTrends: { en: "Detected Trends", ru: "Обнаруженные тренды", es: "Tendencias Detectadas" },
+    yourStrength: { en: "Your Strength", ru: "Ваша сила", es: "Tu Fortaleza" },
+    opportunity: { en: "Opportunity", ru: "Зона роста", es: "Oportunidad" },
+    improving: { en: "Improving", ru: "Рост", es: "Mejorando" },
+    declining: { en: "Declining", ru: "Спад", es: "Bajando" },
+    stable: { en: "Stable", ru: "Стабильно", es: "Estable" },
+    plateau: { en: "Plateau", ru: "Плато", es: "Meseta" },
+    noData: { en: "Start logging to get personalized AI insights", ru: "Начните вести записи для получения персонализированных AI-инсайтов", es: "Comienza a registrar para obtener insights personalizados de IA" },
+  },
+  // Dashboard - Stats
+  stats: {
+    workoutsWeek: { en: "Workouts/week", ru: "Тренировок/нед", es: "Entrenos/sem" },
+    caloriesDay: { en: "Calories/day", ru: "Калорий/день", es: "Calorías/día" },
+    dayStreak: { en: "Day streak", ru: "Дней подряд", es: "Días seguidos" },
+    achievements: { en: "Achievements", ru: "Достижения", es: "Logros" },
+  },
+  // Dashboard - Recent Activity
+  recentActivity: {
+    title: { en: "Recent Activity", ru: "Недавняя активность", es: "Actividad Reciente" },
+    noActivity: { en: "No recent activity", ru: "Нет недавней активности", es: "Sin actividad reciente" },
+    justNow: { en: "Just now", ru: "Только что", es: "Ahora mismo" },
+    hoursAgo: { en: "hours ago", ru: "часов назад", es: "horas atrás" },
+    yesterday: { en: "Yesterday", ru: "Вчера", es: "Ayer" },
+    daysAgo: { en: "days ago", ru: "дней назад", es: "días atrás" },
+  },
+  // Dashboard - Upcoming
+  upcoming: {
+    title: { en: "Upcoming", ru: "Предстоящее", es: "Próximo" },
+    noUpcoming: { en: "No upcoming items", ru: "Нет предстоящих задач", es: "No hay elementos próximos" },
+    today: { en: "Today", ru: "Сегодня", es: "Hoy" },
+    tomorrow: { en: "Tomorrow", ru: "Завтра", es: "Mañana" },
+  },
+  // Dashboard - Goals
+  goals: {
+    title: { en: "Your Goals", ru: "Ваши цели", es: "Tus Metas" },
+    activeGoals: { en: "Active Goals", ru: "Активные цели", es: "Metas Activas" },
+    noGoals: { en: "No goals set yet", ru: "Пока нет целей", es: "Aún no hay metas" },
+    progress: { en: "Progress", ru: "Прогресс", es: "Progreso" },
+  },
+  // Profile page
+  profile: {
+    title: { en: "Profile", ru: "Профиль", es: "Perfil" },
+    contactInfo: { en: "Contact Information", ru: "Контактная информация", es: "Información de Contacto" },
+    email: { en: "Email", ru: "Email", es: "Correo" },
+    phone: { en: "Phone", ru: "Телефон", es: "Teléfono" },
+    physicalStats: { en: "Physical Stats", ru: "Физические показатели", es: "Estadísticas Físicas" },
+    age: { en: "Age", ru: "Возраст", es: "Edad" },
+    height: { en: "Height", ru: "Рост", es: "Altura" },
+    currentWeight: { en: "Current weight", ru: "Текущий вес", es: "Peso actual" },
+    targetWeight: { en: "Target weight", ru: "Целевой вес", es: "Peso objetivo" },
+    goalsPreferences: { en: "Goals & Preferences", ru: "Цели и предпочтения", es: "Metas y Preferencias" },
+    memberSince: { en: "Member since", ru: "Участник с", es: "Miembro desde" },
+    language: { en: "Language", ru: "Язык", es: "Idioma" },
+    notifications: { en: "Notifications", ru: "Уведомления", es: "Notificaciones" },
+    enableNotifications: { en: "Enable Notifications", ru: "Включить уведомления", es: "Activar Notificaciones" },
+    notificationsEnabled: { en: "Notifications enabled", ru: "Уведомления включены", es: "Notificaciones activadas" },
+    years: { en: "years", ru: "лет", es: "años" },
+    cm: { en: "cm", ru: "см", es: "cm" },
+    kg: { en: "kg", ru: "кг", es: "kg" },
+  },
+  // Coach Chat page
+  coachChat: {
+    title: { en: "Coach Chat", ru: "Чат с тренером", es: "Chat con Entrenador" },
+    yourCoach: { en: "Your Coach", ru: "Ваш тренер", es: "Tu Entrenador" },
+    messagePlaceholder: { en: "Type a message...", ru: "Напишите сообщение...", es: "Escribe un mensaje..." },
+    send: { en: "Send", ru: "Отправить", es: "Enviar" },
+    noMessages: { en: "No messages yet. Start a conversation with your coach!", ru: "Пока нет сообщений. Начните разговор с тренером!", es: "Aún no hay mensajes. ¡Inicia una conversación con tu entrenador!" },
+    attachFile: { en: "Attach file", ru: "Прикрепить файл", es: "Adjuntar archivo" },
+  },
+  // My Plan page
+  myPlan: {
+    title: { en: "My Plan", ru: "Мой план", es: "Mi Plan" },
+    currentPlan: { en: "Current Plan", ru: "Текущий план", es: "Plan Actual" },
+    weeklyPlan: { en: "Weekly Plan", ru: "Недельный план", es: "Plan Semanal" },
+    noPlan: { en: "No plan assigned yet", ru: "План ещё не назначен", es: "Aún no hay plan asignado" },
+    workouts: { en: "Workouts", ru: "Тренировки", es: "Entrenamientos" },
+    nutrition: { en: "Nutrition", ru: "Питание", es: "Nutrición" },
+    exercises: { en: "exercises", ru: "упражнений", es: "ejercicios" },
+    sets: { en: "sets", ru: "подходов", es: "series" },
+    reps: { en: "reps", ru: "повторений", es: "repeticiones" },
+    downloadPdf: { en: "Download PDF", ru: "Скачать PDF", es: "Descargar PDF" },
+    week: { en: "Week", ru: "Неделя", es: "Semana" },
+  },
+  // Common UI elements
+  common: {
+    loading: { en: "Loading...", ru: "Загрузка...", es: "Cargando..." },
+    error: { en: "Error", ru: "Ошибка", es: "Error" },
+    save: { en: "Save", ru: "Сохранить", es: "Guardar" },
+    cancel: { en: "Cancel", ru: "Отмена", es: "Cancelar" },
+    edit: { en: "Edit", ru: "Редактировать", es: "Editar" },
+    delete: { en: "Delete", ru: "Удалить", es: "Eliminar" },
+    back: { en: "Back", ru: "Назад", es: "Atrás" },
+    next: { en: "Next", ru: "Далее", es: "Siguiente" },
+    previous: { en: "Previous", ru: "Назад", es: "Anterior" },
+    viewAll: { en: "View all", ru: "Смотреть все", es: "Ver todo" },
+    seeMore: { en: "See more", ru: "Показать ещё", es: "Ver más" },
+    noData: { en: "No data available", ru: "Нет данных", es: "Sin datos" },
+  },
+  // Categories/Event types
+  categories: {
+    weight: { en: "Weight", ru: "Вес", es: "Peso" },
+    nutrition: { en: "Nutrition", ru: "Питание", es: "Nutrición" },
+    workout: { en: "Workout", ru: "Тренировка", es: "Ejercicio" },
+    activity: { en: "Activity", ru: "Активность", es: "Actividad" },
+    sleep: { en: "Sleep", ru: "Сон", es: "Sueño" },
+    mood: { en: "Mood", ru: "Настроение", es: "Estado de ánimo" },
+    water: { en: "Water", ru: "Вода", es: "Agua" },
+    steps: { en: "Steps", ru: "Шаги", es: "Pasos" },
+  },
+} as const;
+
+// Helper function to get UI translation
+export function getUITranslation(
+  section: keyof typeof CLIENT_UI_TRANSLATIONS,
+  key: string,
+  lang: SupportedLanguage = "en"
+): string {
+  const sectionData = CLIENT_UI_TRANSLATIONS[section] as Record<string, Record<SupportedLanguage, string>>;
+  if (sectionData && sectionData[key]) {
+    return sectionData[key][lang] || sectionData[key].en;
+  }
+  return key;
+}
+
 export function getLanguageLabel(language: string | null | undefined): string {
   if (!language) return "English";
   if (language in LANGUAGE_LABELS) {
