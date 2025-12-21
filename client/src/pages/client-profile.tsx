@@ -10,7 +10,7 @@ import { Loader2, Mail, Phone, Calendar, Pencil, User, Scale, Ruler, Target, Bel
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client } from "@shared/schema";
-import { getGoalTypeLabel, getActivityLevelLabel, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS, type SupportedLanguage } from "@shared/schema";
+import { getGoalTypeLabel, getActivityLevelLabel, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS, CLIENT_UI_TRANSLATIONS, type SupportedLanguage } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight } from "@shared/units";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { HybridOnboarding } from "@/components/onboarding";
@@ -32,6 +32,10 @@ export default function ClientProfile() {
     subscribe,
     unsubscribe,
   } = usePushNotifications();
+  
+  // Translation helper
+  const lang = preferredLanguage;
+  const t = CLIENT_UI_TRANSLATIONS;
 
   useEffect(() => {
     const clientId = localStorage.getItem("clientId");
@@ -186,15 +190,12 @@ export default function ClientProfile() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-profile-title">
-              My Profile
+              {t.profile.title[lang]}
             </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Manage your personal information
-            </p>
           </div>
           <Button className="gap-2" data-testid="button-edit-profile">
             <Pencil className="w-4 h-4" />
-            Edit
+            {t.common.edit[lang]}
           </Button>
         </div>
 
@@ -212,7 +213,7 @@ export default function ClientProfile() {
                 </h2>
                 <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
                   <Calendar className="w-4 h-4" />
-                  Member since {memberSinceDate}
+                  {t.profile.memberSince[lang]} {memberSinceDate}
                 </p>
               </div>
             </div>
@@ -221,12 +222,12 @@ export default function ClientProfile() {
 
         <Card>
           <CardContent className="p-6">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Contact Information</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">{t.profile.contactInfo[lang]}</h3>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <Mail className="w-5 h-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="text-sm text-muted-foreground">{t.profile.email[lang]}</p>
                   <p className="text-base text-foreground" data-testid="text-client-email">
                     {clientData.email}
                   </p>
@@ -236,7 +237,7 @@ export default function ClientProfile() {
                 <div className="flex items-start gap-3">
                   <Phone className="w-5 h-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Phone</p>
+                    <p className="text-sm text-muted-foreground">{t.profile.phone[lang]}</p>
                     <p className="text-base text-foreground" data-testid="text-client-phone">
                       {clientData.phone}
                     </p>
@@ -251,7 +252,7 @@ export default function ClientProfile() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-foreground">Physical Stats</h3>
+                <h3 className="text-lg font-semibold text-foreground">{t.profile.physicalStats[lang]}</h3>
                 <Select value={unitsPreference} onValueChange={(v) => setUnitsPreference(v as UnitsPreference)}>
                   <SelectTrigger className="w-[120px]" data-testid="select-units-preference">
                     <SelectValue />
@@ -268,9 +269,9 @@ export default function ClientProfile() {
                   <div className="bg-violet-50 dark:bg-violet-950/30 rounded-xl p-4" data-testid="stat-age">
                     <div className="flex items-center gap-1.5 mb-2">
                       <User className="w-4 h-4 text-violet-500" />
-                      <span className="text-sm font-medium text-violet-600 dark:text-violet-400">Age</span>
+                      <span className="text-sm font-medium text-violet-600 dark:text-violet-400">{t.profile.age[lang]}</span>
                     </div>
-                    <p className="text-lg font-semibold text-foreground">{clientData.age} years</p>
+                    <p className="text-lg font-semibold text-foreground">{clientData.age} {t.profile.years[lang]}</p>
                   </div>
                 )}
                 
@@ -278,7 +279,7 @@ export default function ClientProfile() {
                   <div className="bg-teal-50 dark:bg-teal-950/30 rounded-xl p-4" data-testid="stat-height">
                     <div className="flex items-center gap-1.5 mb-2">
                       <Ruler className="w-4 h-4 text-teal-500" />
-                      <span className="text-sm font-medium text-teal-600 dark:text-teal-400">Height</span>
+                      <span className="text-sm font-medium text-teal-600 dark:text-teal-400">{t.profile.height[lang]}</span>
                     </div>
                     <p className="text-lg font-semibold text-foreground">
                       {formatHeight(clientData.height, unitsPreference)}
@@ -290,7 +291,7 @@ export default function ClientProfile() {
                   <div className="bg-amber-50 dark:bg-amber-950/30 rounded-xl p-4" data-testid="stat-current">
                     <div className="flex items-center gap-1.5 mb-2">
                       <Scale className="w-4 h-4 text-amber-500" />
-                      <span className="text-sm font-medium text-amber-600 dark:text-amber-400">Current</span>
+                      <span className="text-sm font-medium text-amber-600 dark:text-amber-400">{t.profile.currentWeight[lang]}</span>
                     </div>
                     <p className="text-lg font-semibold text-foreground">
                       {formatWeight(clientData.weight, unitsPreference)}
@@ -302,7 +303,7 @@ export default function ClientProfile() {
                   <div className="bg-rose-50 dark:bg-rose-950/30 rounded-xl p-4" data-testid="stat-target">
                     <div className="flex items-center gap-1.5 mb-2">
                       <Target className="w-4 h-4 text-rose-500" />
-                      <span className="text-sm font-medium text-rose-600 dark:text-rose-400">Target</span>
+                      <span className="text-sm font-medium text-rose-600 dark:text-rose-400">{t.profile.targetWeight[lang]}</span>
                     </div>
                     <p className="text-lg font-semibold text-foreground">
                       {formatWeight(clientData.targetWeight || clientData.goalWeight || 0, unitsPreference)}
@@ -329,11 +330,11 @@ export default function ClientProfile() {
         {(clientData.goalType || clientData.activityLevel || clientData.preferences) && (
           <Card>
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Goals & Preferences</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4">{t.profile.goalsPreferences[lang]}</h3>
               
               {goals.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-sm text-muted-foreground mb-2">My Goals</p>
+                  <p className="text-sm text-muted-foreground mb-2">{t.goals.myGoals[lang]}</p>
                   <div className="flex flex-wrap gap-2">
                     {goals.map((goal, index) => (
                       <Badge 

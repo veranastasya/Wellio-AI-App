@@ -336,6 +336,7 @@ export const CLIENT_UI_TRANSLATIONS = {
   // Dashboard - Goals
   goals: {
     title: { en: "Your Goals", ru: "Ваши цели", es: "Tus Metas" },
+    myGoals: { en: "My Goals", ru: "Мои цели", es: "Mis Metas" },
     activeGoals: { en: "Active Goals", ru: "Активные цели", es: "Metas Activas" },
     noGoals: { en: "No goals set yet", ru: "Пока нет целей", es: "Aún no hay metas" },
     progress: { en: "Progress", ru: "Прогресс", es: "Progreso" },
