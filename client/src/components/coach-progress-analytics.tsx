@@ -14,7 +14,9 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  BarChart3
+  BarChart3,
+  Camera,
+  ImageOff
 } from "lucide-react";
 import { 
   LineChart,
@@ -27,7 +29,7 @@ import {
   BarChart,
   Bar
 } from "recharts";
-import type { SmartLog, ProgressEvent, AIClassification, PlanTargetsRecord, AIParsedData } from "@shared/schema";
+import type { SmartLog, ProgressEvent, AIClassification, PlanTargetsRecord, AIParsedData, ProgressPhoto } from "@shared/schema";
 import { format, parseISO, subDays, eachDayOfInterval } from "date-fns";
 import { formatWeight, type UnitsPreference } from "@shared/units";
 
@@ -203,6 +205,14 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
     queryKey: ["/api/plan-targets", clientId, "active"],
     queryFn: async () => {
       const response = await apiRequest("GET", `/api/plan-targets/${clientId}/active`);
+      return response.json();
+    },
+  });
+
+  const { data: progressPhotos, isLoading: photosLoading } = useQuery<ProgressPhoto[]>({
+    queryKey: ["/api/clients", clientId, "progress-photos"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/clients/${clientId}/progress-photos`);
       return response.json();
     },
   });
@@ -489,6 +499,68 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
               <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p>No smart logs yet</p>
               <p className="text-sm">Client hasn't logged any progress entries</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Progress Photos Section */}
+      <Card data-testid="card-progress-photos">
+        <CardHeader className="pb-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+              <Camera className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Progress Photos</CardTitle>
+              <p className="text-xs text-muted-foreground">Photos shared by client</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {photosLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="aspect-square rounded-lg" />
+              ))}
+            </div>
+          ) : progressPhotos && progressPhotos.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" data-testid="grid-progress-photos">
+              {progressPhotos.map((photo) => (
+                <div 
+                  key={photo.id}
+                  className="relative aspect-square rounded-lg overflow-hidden bg-muted group border"
+                  data-testid={`photo-${photo.id}`}
+                >
+                  <img 
+                    src={photo.photoUrl} 
+                    alt={photo.caption || "Progress photo"}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('.error-placeholder')) {
+                        const placeholder = document.createElement('div');
+                        placeholder.className = 'error-placeholder absolute inset-0 flex items-center justify-center bg-muted';
+                        placeholder.innerHTML = '<svg class="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+                        parent.appendChild(placeholder);
+                      }
+                    }}
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                    <p className="text-xs text-white truncate">
+                      {photo.caption || format(parseISO(photo.photoDate), "MMM d, yyyy")}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground" data-testid="empty-photos-message">
+              <ImageOff className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>No shared photos yet</p>
+              <p className="text-sm">Client hasn't shared any progress photos</p>
             </div>
           )}
         </CardContent>

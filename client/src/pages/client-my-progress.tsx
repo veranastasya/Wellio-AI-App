@@ -39,7 +39,8 @@ import {
   Area,
   AreaChart
 } from "recharts";
-import type { Client, ProgressPhoto } from "@shared/schema";
+import type { Client, ProgressPhoto, SupportedLanguage } from "@shared/schema";
+import { CLIENT_UI_TRANSLATIONS } from "@shared/schema";
 import { format, parseISO } from "date-fns";
 
 interface ProgressSummary {
@@ -65,6 +66,10 @@ export default function ClientMyProgress() {
   const [photoCaption, setPhotoCaption] = useState("");
   const [isSharedWithCoach, setIsSharedWithCoach] = useState(true);
   const { toast } = useToast();
+  
+  // Get language for translations
+  const lang = (clientData?.preferredLanguage || "en") as SupportedLanguage;
+  const t = CLIENT_UI_TRANSLATIONS;
 
   useEffect(() => {
     const clientId = localStorage.getItem("clientId");
@@ -108,38 +113,44 @@ export default function ClientMyProgress() {
 
   const uploadPhotoMutation = useMutation({
     mutationFn: async ({ file, caption, isShared, photoDate }: { file: File; caption: string; isShared: boolean; photoDate: string }) => {
-      // Step 1: Get signed upload URL
-      const uploadUrlResponse = await apiRequest("POST", "/api/client/progress-photos/upload-url");
-      const { uploadURL } = await uploadUrlResponse.json();
+      // Server-side upload with HEIC conversion support
+      const formData = new FormData();
+      formData.append('photo', file);
+      formData.append('caption', caption);
+      formData.append('photoDate', photoDate);
+      formData.append('isSharedWithCoach', String(isShared));
       
-      // Step 2: Upload file to signed URL
-      const uploadResponse = await fetch(uploadURL, {
-        method: "PUT",
-        body: file,
-        headers: {
-          "Content-Type": file.type,
-        },
+      const response = await fetch('/api/client/progress-photos/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
       });
       
-      if (!uploadResponse.ok) throw new Error("Upload to storage failed");
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+        throw new Error(error.error || 'Upload failed');
+      }
       
-      // Step 3: Save photo metadata
-      return apiRequest("POST", "/api/client/progress-photos", {
-        objectURL: uploadURL.split('?')[0], // Remove query params to get the object URL
-        caption,
-        photoDate,
-        isSharedWithCoach: isShared,
-      });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/client/progress-photos"] });
       setUploadDialogOpen(false);
       setSelectedFile(null);
       setPhotoCaption("");
-      toast({ title: "Photo uploaded!", description: "Your progress photo has been saved." });
+      const currentLang = (clientData?.preferredLanguage || "en") as SupportedLanguage;
+      toast({ 
+        title: CLIENT_UI_TRANSLATIONS.progressPhotos.photoUploaded[currentLang], 
+        description: CLIENT_UI_TRANSLATIONS.progressPhotos.photoUploadedDescription[currentLang]
+      });
     },
     onError: () => {
-      toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });
+      const currentLang = (clientData?.preferredLanguage || "en") as SupportedLanguage;
+      toast({ 
+        title: CLIENT_UI_TRANSLATIONS.progressPhotos.uploadFailed[currentLang], 
+        description: CLIENT_UI_TRANSLATIONS.progressPhotos.tryAgain[currentLang], 
+        variant: "destructive" 
+      });
     },
   });
 
@@ -160,7 +171,8 @@ export default function ClientMyProgress() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/client/progress-photos"] });
-      toast({ title: "Photo deleted" });
+      const currentLang = (clientData?.preferredLanguage || "en") as SupportedLanguage;
+      toast({ title: CLIENT_UI_TRANSLATIONS.progressPhotos.photoDeleted[currentLang] });
     },
   });
 
@@ -168,7 +180,12 @@ export default function ClientMyProgress() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast({ title: "File too large", description: "Max 10MB allowed", variant: "destructive" });
+        const currentLang = (clientData?.preferredLanguage || "en") as SupportedLanguage;
+        toast({ 
+          title: CLIENT_UI_TRANSLATIONS.progressPhotos.fileTooLarge[currentLang], 
+          description: CLIENT_UI_TRANSLATIONS.progressPhotos.maxSize[currentLang], 
+          variant: "destructive" 
+        });
         return;
       }
       setSelectedFile(file);
@@ -423,13 +440,13 @@ export default function ClientMyProgress() {
                       <Camera className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">Progress Photos</CardTitle>
-                      <p className="text-xs text-muted-foreground">Track your transformation journey with progress photos</p>
+                      <CardTitle className="text-lg">{t.progressPhotos.title[lang]}</CardTitle>
+                      <p className="text-xs text-muted-foreground">{t.progressPhotos.subtitle[lang]}</p>
                     </div>
                   </div>
                   <Badge variant="outline" className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 border-teal-200 dark:border-teal-800">
                     <Lock className="w-3 h-3 mr-1" />
-                    {progressPhotos?.filter(p => p.isSharedWithCoach).length || 0} Shared with Coach
+                    {progressPhotos?.filter(p => p.isSharedWithCoach).length || 0} {t.progressPhotos.sharedWithCoach[lang]}
                   </Badge>
                 </div>
               </CardHeader>
@@ -443,19 +460,19 @@ export default function ClientMyProgress() {
                       data-testid="button-upload-photo"
                     >
                       <Upload className="w-4 h-4 mr-2" />
-                      Upload New Photo
+                      {t.progressPhotos.uploadNewPhoto[lang]}
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Upload Progress Photo</DialogTitle>
+                      <DialogTitle>{t.progressPhotos.uploadProgressPhoto[lang]}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label>Photo</Label>
+                        <Label>{t.progressPhotos.photo[lang]}</Label>
                         <Input 
                           type="file" 
-                          accept="image/*" 
+                          accept="image/*,.heic,.heif" 
                           onChange={handleFileSelect}
                           data-testid="input-photo-file"
                         />
@@ -464,18 +481,18 @@ export default function ClientMyProgress() {
                         )}
                       </div>
                       <div>
-                        <Label>Caption (optional)</Label>
+                        <Label>{t.progressPhotos.caption[lang]}</Label>
                         <Input 
                           value={photoCaption}
                           onChange={(e) => setPhotoCaption(e.target.value)}
-                          placeholder="e.g., Week 4 progress"
+                          placeholder={t.progressPhotos.captionPlaceholder[lang]}
                           data-testid="input-photo-caption"
                         />
                       </div>
                       <div className="flex items-center justify-between">
                         <Label className="flex items-center gap-2">
                           {isSharedWithCoach ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                          Share with Coach
+                          {t.progressPhotos.shareWithCoach[lang]}
                         </Label>
                         <Switch 
                           checked={isSharedWithCoach}
@@ -494,7 +511,7 @@ export default function ClientMyProgress() {
                         ) : (
                           <Upload className="w-4 h-4 mr-2" />
                         )}
-                        Upload Photo
+                        {uploadPhotoMutation.isPending ? t.progressPhotos.uploading[lang] : t.progressPhotos.uploadPhoto[lang]}
                       </Button>
                     </div>
                   </DialogContent>
@@ -545,12 +562,12 @@ export default function ClientMyProgress() {
                           {photo.isSharedWithCoach ? (
                             <Badge className="bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300 text-[10px] px-1.5 py-0">
                               <Unlock className="w-2.5 h-2.5 mr-0.5" />
-                              Shared
+                              {t.progressPhotos.sharedWithCoach[lang]}
                             </Badge>
                           ) : (
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                               <Lock className="w-2.5 h-2.5 mr-0.5" />
-                              Private
+                              {t.progressPhotos.private[lang]}
                             </Badge>
                           )}
                         </div>
@@ -565,8 +582,8 @@ export default function ClientMyProgress() {
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <Camera className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No progress photos yet</p>
-                    <p className="text-xs mt-1">Upload your first photo to start tracking!</p>
+                    <p className="text-sm">{t.progressPhotos.noPhotos[lang]}</p>
+                    <p className="text-xs mt-1">{t.progressPhotos.noPhotosDescription[lang]}</p>
                   </div>
                 )}
               </CardContent>

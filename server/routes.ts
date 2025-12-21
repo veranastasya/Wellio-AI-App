@@ -3,9 +3,27 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+import multer from "multer";
+import sharp from "sharp";
 import { ObjectStorageService, ObjectNotFoundError, objectStorageClient, parseObjectPath } from "./objectStorage";
 import { ObjectPermission, ObjectAccessGroupType } from "./objectAcl";
 import type { MessageAttachment } from "@shared/schema";
+
+// Configure multer for memory storage (for HEIC conversion)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    // Accept all image types including HEIC
+    if (file.mimetype.startsWith('image/') || 
+        file.originalname.toLowerCase().endsWith('.heic') ||
+        file.originalname.toLowerCase().endsWith('.heif')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 // Extend Express session type
 declare module 'express-session' {
@@ -5962,7 +5980,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
   // ==================== Progress Photos API ====================
   
-  // Get upload URL for progress photos
+  // Get upload URL for progress photos (legacy - direct upload to storage)
   app.post("/api/client/progress-photos/upload-url", requireClientAuth, async (req, res) => {
     try {
       const objectStorageService = new ObjectStorageService();
@@ -5974,12 +5992,123 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
   
+  // Server-side upload with HEIC conversion for browser compatibility
+  app.post("/api/client/progress-photos/upload", requireClientAuth, upload.single('photo'), async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+      
+      const { caption, photoDate, isSharedWithCoach } = req.body;
+      const shouldShare = isSharedWithCoach === 'true' && !!client.coachId;
+      
+      let imageBuffer: Buffer;
+      let contentType = 'image/jpeg';
+      const fileName = req.file.originalname.toLowerCase();
+      
+      // Check if HEIC/HEIF and convert to JPEG
+      if (fileName.endsWith('.heic') || fileName.endsWith('.heif') ||
+          req.file.mimetype === 'image/heic' || req.file.mimetype === 'image/heif') {
+        logger.info('Converting HEIC image to JPEG', { clientId, originalName: fileName });
+        imageBuffer = await sharp(req.file.buffer)
+          .jpeg({ quality: 85 })
+          .toBuffer();
+      } else {
+        // For other formats, optimize with sharp (resize if too large, ensure web-compatible)
+        imageBuffer = await sharp(req.file.buffer)
+          .rotate() // Auto-rotate based on EXIF
+          .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true }) // Max 2000x2000
+          .jpeg({ quality: 85 })
+          .toBuffer();
+      }
+      
+      // Upload processed image to object storage
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      
+      const uploadResponse = await fetch(uploadURL, {
+        method: 'PUT',
+        body: imageBuffer,
+        headers: {
+          'Content-Type': contentType,
+        },
+      });
+      
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload to object storage');
+      }
+      
+      const objectURL = uploadURL.split('?')[0];
+      
+      // Set ACL policy for the uploaded file
+      let photoUrl: string;
+      try {
+        photoUrl = await objectStorageService.trySetObjectEntityAclPolicy(
+          objectURL,
+          {
+            owner: clientId,
+            visibility: "private",
+            aclRules: shouldShare ? [
+              {
+                accessGroup: { type: "user" as ObjectAccessGroupType, identifier: client.coachId! },
+                permission: "read" as ObjectPermission
+              }
+            ] : []
+          }
+        );
+      } catch (aclError) {
+        logger.error('Failed to set ACL policy for progress photo', { clientId }, aclError);
+        photoUrl = objectURL;
+      }
+      
+      // Create progress photo record
+      const photo = await storage.createProgressPhoto({
+        clientId,
+        coachId: client.coachId,
+        photoUrl,
+        caption: caption || null,
+        photoDate: photoDate || new Date().toISOString().split('T')[0],
+        isSharedWithCoach: shouldShare,
+      });
+      
+      logger.info('Progress photo uploaded with server-side processing', { clientId, photoId: photo.id });
+      res.json(photo);
+    } catch (error) {
+      logger.error('Failed to upload progress photo', { clientId: req.session.clientId }, error);
+      res.status(500).json({ error: 'Failed to upload progress photo' });
+    }
+  });
+  
   // Get all progress photos for client (client view - all their photos)
   app.get("/api/client/progress-photos", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.session.clientId!;
       const photos = await storage.getProgressPhotos(clientId);
-      res.json(photos);
+      
+      // Generate signed URLs for viewing photos
+      const objectStorageService = new ObjectStorageService();
+      const photosWithSignedUrls = await Promise.all(
+        photos.map(async (photo) => {
+          try {
+            if (photo.photoUrl.startsWith("/objects/")) {
+              const signedUrl = await objectStorageService.getSignedDownloadURL(photo.photoUrl, 3600);
+              return { ...photo, photoUrl: signedUrl };
+            }
+            return photo;
+          } catch (err) {
+            logger.error('Failed to generate signed URL for photo', { photoId: photo.id }, err);
+            return photo;
+          }
+        })
+      );
+      
+      res.json(photosWithSignedUrls);
     } catch (error) {
       logger.error('Failed to get progress photos', { clientId: req.session.clientId }, error);
       res.status(500).json({ error: 'Failed to get progress photos' });
@@ -6115,7 +6244,25 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       
       // Coach only sees photos shared with them
       const photos = await storage.getProgressPhotosSharedWithCoach(clientId);
-      res.json(photos);
+      
+      // Generate signed URLs for viewing photos
+      const objectStorageService = new ObjectStorageService();
+      const photosWithSignedUrls = await Promise.all(
+        photos.map(async (photo) => {
+          try {
+            if (photo.photoUrl.startsWith("/objects/")) {
+              const signedUrl = await objectStorageService.getSignedDownloadURL(photo.photoUrl, 3600);
+              return { ...photo, photoUrl: signedUrl };
+            }
+            return photo;
+          } catch (err) {
+            logger.error('Failed to generate signed URL for photo', { photoId: photo.id }, err);
+            return photo;
+          }
+        })
+      );
+      
+      res.json(photosWithSignedUrls);
     } catch (error) {
       logger.error('Failed to get client progress photos', { clientId: req.params.clientId }, error);
       res.status(500).json({ error: 'Failed to get progress photos' });
