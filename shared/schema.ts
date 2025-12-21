@@ -349,6 +349,23 @@ export const clientInvites = pgTable("client_invites", {
   message: text("message"),
 });
 
+// Password reset tokens for both clients and coaches
+export const USER_TYPES = ["client", "coach"] as const;
+export type UserType = typeof USER_TYPES[number];
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  userType: text("user_type").notNull(), // "client" or "coach"
+  createdAt: text("created_at").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  usedAt: text("used_at"), // Set when token is used
+});
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
 // Plan types for distinguishing long-term coaching plans from weekly action plans
 export const PLAN_TYPES = ["long_term", "weekly"] as const;
 export type PlanType = typeof PLAN_TYPES[number];
