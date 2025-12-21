@@ -1433,6 +1433,27 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
   const [isAssigning, setIsAssigning] = useState(false);
   const [isAssigned, setIsAssigned] = useState(false);
   const { toast } = useToast();
+  
+  // Mutation for updating program start date
+  const updateProgramStartDateMutation = useMutation({
+    mutationFn: async (newDate: string | null) => {
+      return await apiRequest("PATCH", `/api/clients/${clientId}`, { programStartDate: newDate });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId] });
+      toast({
+        title: "Updated",
+        description: "Program start date has been updated. Week numbers will reflect the new start.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update program start date",
+        variant: "destructive",
+      });
+    },
+  });
   const hasHydratedRef = useRef(false);
 
   // Get coach profile for coachId
@@ -1974,25 +1995,54 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setWeekIndex((prev) => Math.max(1, prev - 1))}
-                disabled={weekIndex === 1}
-                data-testid="button-prev-week"
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" /> Previous
-              </Button>
-              <Badge className="px-3 bg-[#E2F9AD] text-[#1a1a1a] hover:bg-[#E2F9AD]">Week {weekIndex}</Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setWeekIndex((prev) => prev + 1)}
-                data-testid="button-next-week"
-              >
-                Next <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
+            <div className="flex items-center gap-4">
+              {/* Program Start Date Editor */}
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground whitespace-nowrap">Week 1 starts:</span>
+                <Input
+                  type="date"
+                  value={programStartDate || joinedDate?.split('T')[0] || ''}
+                  onChange={(e) => {
+                    const newDate = e.target.value || null;
+                    updateProgramStartDateMutation.mutate(newDate);
+                  }}
+                  className="w-auto h-8 text-sm"
+                  data-testid="input-program-start-date"
+                />
+                {programStartDate && programStartDate !== joinedDate?.split('T')[0] && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs text-muted-foreground"
+                    onClick={() => updateProgramStartDateMutation.mutate(null)}
+                    data-testid="button-reset-program-start"
+                  >
+                    Reset
+                  </Button>
+                )}
+              </div>
+              
+              {/* Week Navigation */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWeekIndex((prev) => Math.max(1, prev - 1))}
+                  disabled={weekIndex === 1}
+                  data-testid="button-prev-week"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                </Button>
+                <Badge className="px-3 bg-[#E2F9AD] text-[#1a1a1a] hover:bg-[#E2F9AD]">Week {weekIndex}</Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWeekIndex((prev) => prev + 1)}
+                  data-testid="button-next-week"
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
             </div>
           </div>
 

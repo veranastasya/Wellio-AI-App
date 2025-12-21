@@ -142,26 +142,6 @@ export default function CoachClientDetail() {
     },
   });
 
-  const updateProgramStartDateMutation = useMutation({
-    mutationFn: async (programStartDate: string | null) => {
-      return await apiRequest("PATCH", `/api/clients/${clientId}`, { programStartDate });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId] });
-      toast({
-        title: "Updated",
-        description: "Program start date has been updated",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to update program start date",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Check if client needs account setup (no password set)
   const needsAccountSetup = client && !client.passwordHash;
 
@@ -352,35 +332,6 @@ export default function CoachClientDetail() {
                           month: 'long',
                           day: 'numeric'
                         })}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-muted-foreground" />
-                    <div className="flex-1">
-                      <div className="text-sm text-muted-foreground">Program Start (Week 1)</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Input
-                          type="date"
-                          value={client.programStartDate || client.joinedDate.split('T')[0]}
-                          onChange={(e) => {
-                            const newDate = e.target.value || null;
-                            updateProgramStartDateMutation.mutate(newDate);
-                          }}
-                          className="w-auto h-8 text-sm"
-                          data-testid="input-program-start-date"
-                        />
-                        {client.programStartDate && client.programStartDate !== client.joinedDate.split('T')[0] && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2 text-xs text-muted-foreground"
-                            onClick={() => updateProgramStartDateMutation.mutate(null)}
-                            data-testid="button-reset-program-start"
-                          >
-                            Reset
-                          </Button>
-                        )}
                       </div>
                     </div>
                   </div>
