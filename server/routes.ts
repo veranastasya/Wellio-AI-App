@@ -3457,6 +3457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestSchema = z.object({
         message: z.string(),
         clientName: z.string(),
+        clientId: z.string().optional(),
         existingTrainingDays: z.array(z.object({
           day: z.string(),
           title: z.string(),
@@ -3473,8 +3474,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid request", details: parsed.error });
       }
 
-      const { message, clientName, existingTrainingDays } = parsed.data;
-      const result = await processProgramBuilderRequest(message, clientName, existingTrainingDays);
+      const { message, clientName, clientId, existingTrainingDays } = parsed.data;
+      
+      // Get client's preferred language
+      let preferredLanguage: "en" | "ru" | "es" = "en";
+      if (clientId) {
+        const client = await storage.getClient(clientId);
+        if (client?.preferredLanguage) {
+          preferredLanguage = client.preferredLanguage as "en" | "ru" | "es";
+        }
+      }
+      
+      const result = await processProgramBuilderRequest(message, clientName, existingTrainingDays, preferredLanguage);
       
       res.json(result);
     } catch (error) {
@@ -3490,6 +3501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: z.enum(["system", "user", "assistant"]),
           content: z.string(),
         })),
+        clientId: z.string().optional(),
         clientContext: z.object({
           client: z.object({
             name: z.string(),
@@ -3520,7 +3532,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const validatedData = chatRequestSchema.parse(req.body);
-      const { messages, clientContext } = validatedData;
+      const { messages, clientId, clientContext } = validatedData;
+      
+      // Get client's preferred language for plan generation
+      let preferredLanguage: "en" | "ru" | "es" = "en";
+      if (clientId) {
+        const clientData = await storage.getClient(clientId);
+        if (clientData?.preferredLanguage) {
+          preferredLanguage = clientData.preferredLanguage as "en" | "ru" | "es";
+        }
+      }
+      
+      const languageInstructions: Record<string, string> = {
+        en: "Write the entire plan in English.",
+        ru: "Write the entire plan in Russian (Русский).",
+        es: "Write the entire plan in Spanish (Español).",
+      };
 
       // Format client data according to the wellness coach prompt structure
       const client = clientContext.client;
@@ -3671,6 +3698,8 @@ STYLE AND CONSTRAINTS
 - Never invent extreme or unsustainable advice such as starvation diets or very long daily workouts.
 
 Now read the ClientProfile input and generate the personalized wellness plan following the structure above.
+
+IMPORTANT LANGUAGE INSTRUCTION: ${languageInstructions[preferredLanguage]}
 
 =====================
 CLIENT PROFILE

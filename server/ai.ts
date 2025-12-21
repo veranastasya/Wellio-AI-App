@@ -1088,7 +1088,8 @@ export interface ProgramBuilderAction {
 export async function processProgramBuilderRequest(
   userMessage: string,
   clientName: string,
-  existingTrainingDays?: Array<{ day: string; title: string; exercises: Array<{ name: string; sets: number; reps: number }> }>
+  existingTrainingDays?: Array<{ day: string; title: string; exercises: Array<{ name: string; sets: number; reps: number }> }>,
+  preferredLanguage: "en" | "ru" | "es" = "en"
 ): Promise<ProgramBuilderAction> {
   try {
     const existingContext = existingTrainingDays && existingTrainingDays.length > 0
@@ -1136,7 +1137,9 @@ You must respond with a JSON object in this exact format:
   }
 }
 
-If you don't understand the request or it's unrelated to fitness programming, use type "none" and provide a helpful response explaining what you can do.`
+If you don't understand the request or it's unrelated to fitness programming, use type "none" and provide a helpful response explaining what you can do.
+
+IMPORTANT: Write the "response" field in the client's preferred language. ${LANGUAGE_INSTRUCTIONS[preferredLanguage]}`
         },
         {
           role: "user",

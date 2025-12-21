@@ -154,6 +154,7 @@ interface WeeklyProgramState {
 }
 
 interface AiProgramBuilderPanelProps {
+  clientId: string;
   clientName: string;
   trainingDays: TrainingDay[];
   onAddTrainingDay: (day: TrainingDay) => void;
@@ -163,7 +164,7 @@ interface AiProgramBuilderPanelProps {
   onAddExercise: (dayId: string, exercise: Exercise) => void;
 }
 
-function AiProgramBuilderPanel({ clientName, trainingDays, onAddTrainingDay, onAddMeal, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
+function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTrainingDay, onAddMeal, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "initial",
@@ -196,6 +197,7 @@ function AiProgramBuilderPanel({ clientName, trainingDays, onAddTrainingDay, onA
         body: JSON.stringify({
           message: messageText,
           clientName,
+          clientId,
           existingTrainingDays: trainingDays.map(d => ({
             day: d.day,
             title: d.title,
@@ -2017,6 +2019,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView }: P
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
               <div className="lg:col-span-4 flex flex-col min-h-[600px]">
                 <AiProgramBuilderPanel 
+                  clientId={clientId}
                   clientName={clientName}
                   trainingDays={programState.trainingDays}
                   onAddTrainingDay={handleAddTrainingDay}

@@ -225,6 +225,7 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
       const newMessages = [...messages, userMsg];
       const response = await apiRequest("POST", "/api/plans/chat", {
         messages: newMessages,
+        clientId: currentClientId,
         clientContext,
       });
       const data = await response.json();
