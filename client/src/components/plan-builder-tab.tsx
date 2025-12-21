@@ -1441,10 +1441,6 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId] });
-      toast({
-        title: "Updated",
-        description: "Program start date has been updated. Week numbers will reflect the new start.",
-      });
     },
     onError: () => {
       toast({
