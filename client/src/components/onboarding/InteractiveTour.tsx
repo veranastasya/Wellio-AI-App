@@ -336,10 +336,11 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed z-[70] bottom-0 left-0 right-0 bg-white dark:bg-card rounded-t-2xl shadow-2xl overflow-hidden safe-area-bottom"
+            className="fixed z-[9999] bottom-0 left-0 right-0 bg-white dark:bg-card rounded-t-2xl shadow-2xl pointer-events-auto safe-area-bottom"
+            style={{ touchAction: "auto" }}
             data-testid="tour-tooltip-mobile"
           >
-            <div className="bg-[#28A0AE] px-4 py-3 flex items-center justify-between">
+            <div className="bg-[#28A0AE] px-4 py-3 flex items-center justify-between pointer-events-auto">
               <span className="text-sm font-medium text-white">
                 Step {currentStep + 1} of {steps.length}
               </span>
@@ -347,7 +348,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
                 variant="ghost"
                 size="icon"
                 onClick={handleSkipWithCleanup}
-                className="h-8 w-8 text-white hover:bg-white/20"
+                className="h-8 w-8 text-white hover:bg-white/20 pointer-events-auto"
                 data-testid="button-tour-close"
               >
                 <X className="w-5 h-5" />
@@ -375,24 +376,24 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
                 ))}
               </div>
 
-              <div className="flex items-center justify-between pt-2 pb-2">
+              <div className="flex items-center justify-between pt-2 pb-2 pointer-events-auto" style={{ touchAction: "manipulation" }}>
                 <Button
                   variant="ghost"
                   size="default"
                   onClick={handleSkipWithCleanup}
-                  className="text-muted-foreground text-base h-12 px-4"
+                  className="text-muted-foreground text-base h-12 px-4 pointer-events-auto"
                   data-testid="button-tour-skip"
                 >
                   Skip tour
                 </Button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 pointer-events-auto">
                   {currentStep > 0 && (
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={handlePrev}
-                      className="h-12 w-12"
+                      className="h-12 w-12 pointer-events-auto"
                       data-testid="button-tour-prev"
                     >
                       <ChevronLeft className="w-6 h-6" />
@@ -400,7 +401,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
                   )}
                   <Button
                     onClick={handleNext}
-                    className="gap-2 bg-[#28A0AE] hover:bg-[#229099] h-12 px-6 text-base"
+                    className="gap-2 bg-[#28A0AE] hover:bg-[#229099] h-12 px-6 text-base pointer-events-auto"
                     data-testid="button-tour-next"
                   >
                     {isLastStep ? "Finish" : "Next"}
