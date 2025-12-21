@@ -93,6 +93,40 @@ export const LANGUAGE_NATIVE_LABELS: Record<SupportedLanguage, string> = {
 
 // AI Tracker UI translations - these are shown to users in the AI Tracker interface
 export const AI_TRACKER_TRANSLATIONS = {
+  // Page level
+  pageTitle: {
+    en: "AI Progress Tracker",
+    ru: "AI Трекер прогресса",
+    es: "Seguimiento de Progreso IA",
+  },
+  pageSubtitle: {
+    en: "Track your achievements",
+    ru: "Отслеживайте свои достижения",
+    es: "Registra tus logros",
+  },
+  quickActions: {
+    en: "Quick actions:",
+    ru: "Быстрые действия:",
+    es: "Acciones rápidas:",
+  },
+  // Quick action buttons
+  quickActionLabels: {
+    workout: { en: "Workout", ru: "Тренировка", es: "Ejercicio" },
+    meal: { en: "Meal", ru: "Еда", es: "Comida" },
+    weight: { en: "Weight", ru: "Вес", es: "Peso" },
+    sleep: { en: "Sleep", ru: "Сон", es: "Sueño" },
+    water: { en: "Water", ru: "Вода", es: "Agua" },
+    mood: { en: "Mood", ru: "Настроение", es: "Ánimo" },
+  },
+  // Quick action prompts
+  quickActionPrompts: {
+    workout: { en: "I did a workout: ", ru: "Я провёл тренировку: ", es: "Hice un ejercicio: " },
+    meal: { en: "I had a meal: ", ru: "Я поел: ", es: "Comí: " },
+    weight: { en: "My weight today is ", ru: "Мой вес сегодня ", es: "Mi peso hoy es " },
+    sleep: { en: "I slept ", ru: "Я спал ", es: "Dormí " },
+    water: { en: "I drank ", ru: "Я выпил ", es: "Bebí " },
+    mood: { en: "Feeling ", ru: "Чувствую себя ", es: "Me siento " },
+  },
   greeting: {
     en: "Hi! I'm your AI assistant for tracking progress. I'll help you log workouts, nutrition, weight, sleep, and other metrics.",
     ru: "Привет! Я твой AI-помощник для отслеживания прогресса. Я помогу тебе записывать тренировки, питание, вес, сон и другие показатели.",

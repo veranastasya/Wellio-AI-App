@@ -33,14 +33,26 @@ import type { SmartLog, AIClassification, AIParsedData, ParsedNutrition, ParsedW
 import { AI_TRACKER_TRANSLATIONS } from "@shared/schema";
 import { format, parseISO } from "date-fns";
 
-const quickActions = [
-  { id: "workout", label: "Workout", icon: Dumbbell, prompt: "I did a workout: " },
-  { id: "meal", label: "Meal", icon: Apple, prompt: "I had a meal: " },
-  { id: "weight", label: "Weight", icon: Scale, prompt: "My weight today is " },
-  { id: "sleep", label: "Sleep", icon: Moon, prompt: "I slept " },
-  { id: "water", label: "Water", icon: Droplets, prompt: "I drank " },
-  { id: "mood", label: "Mood", icon: Smile, prompt: "Feeling " },
-];
+const quickActionIcons = {
+  workout: Dumbbell,
+  meal: Apple,
+  weight: Scale,
+  sleep: Moon,
+  water: Droplets,
+  mood: Smile,
+} as const;
+
+type QuickActionId = keyof typeof quickActionIcons;
+
+function getQuickActions(lang: SupportedLanguage) {
+  const actionIds: QuickActionId[] = ["workout", "meal", "weight", "sleep", "water", "mood"];
+  return actionIds.map(id => ({
+    id,
+    label: AI_TRACKER_TRANSLATIONS.quickActionLabels[id][lang],
+    icon: quickActionIcons[id],
+    prompt: AI_TRACKER_TRANSLATIONS.quickActionPrompts[id][lang],
+  }));
+}
 
 function getEventIcon(eventType: string) {
   switch (eventType) {
@@ -773,16 +785,16 @@ export default function ClientAITracker() {
           </div>
           <div>
             <h1 className="text-xl font-semibold text-foreground" data-testid="text-ai-tracker-title">
-              AI Progress Tracker
+              {AI_TRACKER_TRANSLATIONS.pageTitle[preferredLanguage]}
             </h1>
-            <p className="text-sm text-muted-foreground">Track your achievements</p>
+            <p className="text-sm text-muted-foreground">{AI_TRACKER_TRANSLATIONS.pageSubtitle[preferredLanguage]}</p>
           </div>
         </div>
 
         <div className="mt-4">
-          <p className="text-xs text-muted-foreground mb-2">Quick actions:</p>
+          <p className="text-xs text-muted-foreground mb-2">{AI_TRACKER_TRANSLATIONS.quickActions[preferredLanguage]}</p>
           <div className="flex flex-wrap gap-2">
-            {quickActions.map((action) => (
+            {getQuickActions(preferredLanguage).map((action) => (
               <Button
                 key={action.id}
                 variant="outline"
