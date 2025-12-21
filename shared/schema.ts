@@ -75,6 +75,30 @@ export const ACTIVITY_LEVEL_MULTIPLIERS: Record<ActivityLevel, number> = {
   extra_active: 1.9,
 };
 
+// Supported languages for AI responses
+export const SUPPORTED_LANGUAGES = ["en", "ru", "es"] as const;
+export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
+
+export const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
+  en: "English",
+  ru: "Русский (Russian)",
+  es: "Español (Spanish)",
+};
+
+export const LANGUAGE_NATIVE_LABELS: Record<SupportedLanguage, string> = {
+  en: "English",
+  ru: "Русский",
+  es: "Español",
+};
+
+export function getLanguageLabel(language: string | null | undefined): string {
+  if (!language) return "English";
+  if (language in LANGUAGE_LABELS) {
+    return LANGUAGE_LABELS[language as SupportedLanguage];
+  }
+  return "English";
+}
+
 export function getActivityLevelLabel(activityLevel: string | null | undefined): string {
   if (!activityLevel) return "Not set";
   if (activityLevel in ACTIVITY_LEVEL_LABELS) {
@@ -166,6 +190,8 @@ export const clients = pgTable("clients", {
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   // End date for coach-client collaboration
   endDate: text("end_date"),
+  // Preferred language for AI responses (en, ru, es)
+  preferredLanguage: text("preferred_language").notNull().default("en"),
 }, (table) => ({
   coachIdIdx: index("clients_coach_id_idx").on(table.coachId),
   emailIdx: index("clients_email_idx").on(table.email),
