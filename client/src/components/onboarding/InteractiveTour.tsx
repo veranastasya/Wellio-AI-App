@@ -167,7 +167,25 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
   }, [step.target, setCurrentTourTarget]);
 
   const calculatePositions = useCallback((): boolean => {
-    const element = document.querySelector(step.target);
+    // On mobile, first check if the sidebar is actually open
+    // If not, we need to wait for it to open before finding elements
+    if (isSidebarMobile && !openMobile) {
+      return false; // Sidebar not open yet, retry later
+    }
+
+    // On mobile, use a more specific selector to only find elements inside the open sidebar sheet
+    // The mobile sidebar has data-mobile="true" attribute when rendered
+    let element: Element | null = null;
+    if (isSidebarMobile) {
+      // First try to find the element inside the mobile sidebar sheet
+      element = document.querySelector(`[data-mobile="true"] ${step.target}`);
+    }
+    
+    // Fallback to general selector (for desktop or if mobile selector fails)
+    if (!element) {
+      element = document.querySelector(step.target);
+    }
+    
     if (!element) return false;
 
     // Check if element is actually visible on screen
@@ -220,7 +238,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
 
     setTooltipPosition({ top, left });
     return true; // Success
-  }, [step, isElementVisible]);
+  }, [step, isElementVisible, isSidebarMobile, openMobile]);
 
   // Schedule position calculation with retry logic
   const schedulePositionCalculation = useCallback(() => {
@@ -251,6 +269,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
     positioningRef.current = setTimeout(attemptCalculation, initialDelay);
   }, [calculatePositions, isSidebarMobile]);
 
+  // Recalculate positions when step changes or sidebar opens
   useEffect(() => {
     schedulePositionCalculation();
 
@@ -266,7 +285,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
       }
       window.removeEventListener("resize", handleResize);
     };
-  }, [currentStep, schedulePositionCalculation]);
+  }, [currentStep, schedulePositionCalculation, openMobile]);
 
   const cleanupTour = useCallback(() => {
     setTourActive(false);
