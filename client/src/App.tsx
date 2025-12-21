@@ -29,6 +29,8 @@ import ClientProgress from "@/pages/client-progress";
 import ClientMyProgress from "@/pages/client-my-progress";
 import ClientAITracker from "@/pages/client-ai-tracker";
 import CoachLogin from "@/pages/coach-login";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import CoachClientDetail from "@/pages/coach-client-detail";
 import CoachSettings from "@/pages/coach-settings";
 import PlanBuilder from "@/pages/plan-builder";
@@ -50,6 +52,10 @@ export default function App() {
             <Route path="/client/onboard" component={ClientOnboard} />
             <Route path="/client/setup-password" component={ClientPasswordSetup} />
             <Route path="/client/login" component={ClientLogin} />
+            
+            {/* Password Reset - No layout */}
+            <Route path="/forgot-password" component={ForgotPassword} />
+            <Route path="/reset-password" component={ResetPassword} />
           
             {/* Client Portal Routes - Protected Layout */}
             <Route path="/client/dashboard">
