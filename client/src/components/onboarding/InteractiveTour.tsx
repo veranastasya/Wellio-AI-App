@@ -109,9 +109,11 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
   const [tooltipPosition, setTooltipPosition] = useState<TooltipPosition>({ top: 100, left: 280 });
   const [highlightRect, setHighlightRect] = useState<HighlightRect | null>(null);
   const positioningRef = useRef<NodeJS.Timeout | null>(null);
+  const retryCountRef = useRef(0);
+  const maxRetries = 10;
   const isMobile = useIsMobile();
   
-  const { setOpenMobile, isMobile: isSidebarMobile } = useSidebar();
+  const { setOpenMobile, isMobile: isSidebarMobile, open: sidebarOpen, openMobile } = useSidebar();
   const { setTourActive, setCurrentTourTarget } = useTour();
   
   const steps = isCoach ? COACH_STEPS : CLIENT_STEPS;
@@ -121,6 +123,24 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
     const match = target.match(/data-tour="([^"]+)"/);
     return match ? match[1] : null;
   };
+
+  // Check if element is actually visible on screen (not just in DOM)
+  const isElementVisible = useCallback((element: Element): boolean => {
+    const rect = element.getBoundingClientRect();
+    const windowWidth = window.innerWidth;
+    
+    // Element must have positive dimensions
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    
+    // Element must be within the viewport horizontally
+    // On mobile, sidebar elements should be visible (left >= 0 and left < windowWidth)
+    if (rect.left < 0 || rect.left >= windowWidth) return false;
+    
+    // Element must be within reasonable vertical bounds
+    if (rect.top < 0 || rect.bottom > window.innerHeight) return false;
+    
+    return true;
+  }, []);
 
   // Keep sidebar open during entire tour on mobile
   useEffect(() => {
@@ -146,9 +166,14 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
     setCurrentTourTarget(tourId);
   }, [step.target, setCurrentTourTarget]);
 
-  const calculatePositions = useCallback(() => {
+  const calculatePositions = useCallback((): boolean => {
     const element = document.querySelector(step.target);
-    if (!element) return;
+    if (!element) return false;
+
+    // Check if element is actually visible on screen
+    if (!isElementVisible(element)) {
+      return false; // Signal that we need to retry
+    }
 
     const rect = element.getBoundingClientRect();
     const padding = step.highlightPadding ?? 4;
@@ -194,21 +219,45 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
     if (left + tooltipWidth > windowWidth - 20) left = windowWidth - tooltipWidth - 20;
 
     setTooltipPosition({ top, left });
-  }, [step]);
+    return true; // Success
+  }, [step, isElementVisible]);
 
-  useEffect(() => {
+  // Schedule position calculation with retry logic
+  const schedulePositionCalculation = useCallback(() => {
     if (positioningRef.current) {
       clearTimeout(positioningRef.current);
     }
 
-    // Wait longer for sidebar to fully open on mobile before calculating positions
-    const delay = isSidebarMobile ? 350 : 100;
-    
-    positioningRef.current = setTimeout(() => {
-      calculatePositions();
-    }, delay);
+    // Clear highlight immediately when starting new calculation
+    // This prevents showing highlight at wrong position during transition
+    setHighlightRect(null);
 
-    const handleResize = () => calculatePositions();
+    const attemptCalculation = () => {
+      const success = calculatePositions();
+      
+      if (!success && retryCountRef.current < maxRetries) {
+        retryCountRef.current += 1;
+        // Retry after 100ms if element isn't visible yet
+        positioningRef.current = setTimeout(attemptCalculation, 100);
+      }
+    };
+
+    // Reset retry count for new step
+    retryCountRef.current = 0;
+    
+    // Initial delay - wait for sidebar animation to start
+    const initialDelay = isSidebarMobile ? 400 : 100;
+    
+    positioningRef.current = setTimeout(attemptCalculation, initialDelay);
+  }, [calculatePositions, isSidebarMobile]);
+
+  useEffect(() => {
+    schedulePositionCalculation();
+
+    const handleResize = () => {
+      retryCountRef.current = 0;
+      schedulePositionCalculation();
+    };
     window.addEventListener("resize", handleResize);
 
     return () => {
@@ -217,7 +266,7 @@ export function InteractiveTour({ isCoach, onComplete, onSkip }: InteractiveTour
       }
       window.removeEventListener("resize", handleResize);
     };
-  }, [currentStep, calculatePositions, isSidebarMobile]);
+  }, [currentStep, schedulePositionCalculation]);
 
   const cleanupTour = useCallback(() => {
     setTourActive(false);
