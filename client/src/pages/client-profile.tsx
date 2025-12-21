@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Mail, Phone, Calendar, Pencil, User, Scale, Ruler, Target, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { Loader2, Mail, Phone, Calendar, Pencil, User, Scale, Ruler, Target, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle, Globe } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client } from "@shared/schema";
-import { getGoalTypeLabel, getActivityLevelLabel } from "@shared/schema";
+import { getGoalTypeLabel, getActivityLevelLabel, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS, type SupportedLanguage } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight } from "@shared/units";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { HybridOnboarding } from "@/components/onboarding";
@@ -22,6 +22,8 @@ export default function ClientProfile() {
   const [isVerifying, setIsVerifying] = useState(true);
   const [unitsPreference, setUnitsPreference] = useState<UnitsPreference>("metric");
   const [showTour, setShowTour] = useState(false);
+  const [preferredLanguage, setPreferredLanguage] = useState<SupportedLanguage>("en");
+  const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const {
     isSupported,
     isSubscribed,
@@ -56,6 +58,9 @@ export default function ClientProfile() {
       setClientData(data.client);
       if (data.client.unitsPreference) {
         setUnitsPreference(data.client.unitsPreference as UnitsPreference);
+      }
+      if (data.client.preferredLanguage) {
+        setPreferredLanguage(data.client.preferredLanguage as SupportedLanguage);
       }
     } catch (error) {
       localStorage.removeItem("clientId");
@@ -99,6 +104,39 @@ export default function ClientProfile() {
   const handleTourComplete = async () => {
     await loadClient();
     setShowTour(false);
+  };
+
+  const handleLanguageChange = async (newLanguage: SupportedLanguage) => {
+    if (!clientData?.id) return;
+    
+    setIsSavingLanguage(true);
+    try {
+      const response = await apiRequest("PATCH", `/api/client-auth/me`, {
+        preferredLanguage: newLanguage,
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to update language preference");
+      }
+      
+      setPreferredLanguage(newLanguage);
+      setClientData({ ...clientData, preferredLanguage: newLanguage });
+      queryClient.invalidateQueries({ queryKey: ["/api/client-auth/me"] });
+      
+      toast({
+        title: "Language updated",
+        description: `AI responses will now be in ${LANGUAGE_NATIVE_LABELS[newLanguage]}`,
+      });
+    } catch (error) {
+      console.error("Failed to update language:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update language preference. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingLanguage(false);
+    }
   };
 
   if (isVerifying) {
@@ -433,6 +471,54 @@ export default function ClientProfile() {
                   </Button>
                 )}
               </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-violet-500/10 flex items-center justify-center">
+                <Globe className="w-5 h-5 text-violet-500" />
+              </div>
+              <div>
+                <span className="text-lg">Language Preferences</span>
+                <CardDescription className="mt-0.5">
+                  Choose your language for AI responses
+                </CardDescription>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">AI Response Language</p>
+                <p className="text-sm text-muted-foreground">
+                  AI Tracker and Insights will respond in this language
+                </p>
+              </div>
+            </div>
+            <Select 
+              value={preferredLanguage} 
+              onValueChange={(v) => handleLanguageChange(v as SupportedLanguage)}
+              disabled={isSavingLanguage}
+            >
+              <SelectTrigger className="w-full" data-testid="select-preferred-language">
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang} data-testid={`option-language-${lang}`}>
+                    {LANGUAGE_NATIVE_LABELS[lang]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isSavingLanguage && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </div>
             )}
           </CardContent>
         </Card>
