@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { SmartLog, AIClassification, AIParsedData, ParsedNutrition, ParsedWorkout, ParsedWeight, ParsedSleep, ParsedMood, SupportedLanguage } from "@shared/schema";
-import { AI_TRACKER_TRANSLATIONS } from "@shared/schema";
+import { AI_TRACKER_TRANSLATIONS, getQuickActionPrompt } from "@shared/schema";
 import { format, parseISO } from "date-fns";
 
 const quickActionIcons = {
@@ -44,13 +44,13 @@ const quickActionIcons = {
 
 type QuickActionId = keyof typeof quickActionIcons;
 
-function getQuickActions(lang: SupportedLanguage) {
+function getQuickActions(lang: SupportedLanguage, sex?: string | null) {
   const actionIds: QuickActionId[] = ["workout", "meal", "weight", "sleep", "water", "mood"];
   return actionIds.map(id => ({
     id,
     label: AI_TRACKER_TRANSLATIONS.quickActionLabels[id][lang],
     icon: quickActionIcons[id],
-    prompt: AI_TRACKER_TRANSLATIONS.quickActionPrompts[id][lang],
+    prompt: getQuickActionPrompt(id, lang, sex),
   }));
 }
 
@@ -293,6 +293,7 @@ export default function ClientAITracker() {
   const [inputText, setInputText] = useState("");
   const [clientId, setClientId] = useState<string | null>(null);
   const [preferredLanguage, setPreferredLanguage] = useState<SupportedLanguage>("en");
+  const [clientSex, setClientSex] = useState<string | null>(null);
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [editingLog, setEditingLog] = useState<SmartLog | null>(null);
@@ -312,18 +313,21 @@ export default function ClientAITracker() {
       setClientId(storedClientId);
     }
     
-    const fetchClientLanguage = async () => {
+    const fetchClientData = async () => {
       try {
         const response = await apiRequest("GET", "/api/client-auth/me");
         const data = await response.json();
         if (data.client?.preferredLanguage) {
           setPreferredLanguage(data.client.preferredLanguage as SupportedLanguage);
         }
+        if (data.client?.sex) {
+          setClientSex(data.client.sex);
+        }
       } catch (error) {
-        console.error("Failed to fetch client language preference:", error);
+        console.error("Failed to fetch client data:", error);
       }
     };
-    fetchClientLanguage();
+    fetchClientData();
   }, []);
 
   const { data: logs, isLoading } = useQuery<SmartLog[]>({
@@ -794,7 +798,7 @@ export default function ClientAITracker() {
         <div className="mt-4">
           <p className="text-xs text-muted-foreground mb-2">{AI_TRACKER_TRANSLATIONS.quickActions[preferredLanguage]}</p>
           <div className="flex flex-wrap gap-2">
-            {getQuickActions(preferredLanguage).map((action) => (
+            {getQuickActions(preferredLanguage, clientSex).map((action) => (
               <Button
                 key={action.id}
                 variant="outline"

@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, LogOut, User, Mail, Phone, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle } from "lucide-react";
+import { Loader2, Save, LogOut, User, Mail, Phone, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle, Globe } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, type SupportedLanguage } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useCoachPushNotifications } from "@/hooks/useCoachPushNotifications";
@@ -19,6 +21,7 @@ interface CoachProfile {
   email: string;
   phone: string | null;
   onboardingCompleted?: boolean;
+  preferredLanguage?: string;
 }
 
 export default function CoachSettings() {
@@ -37,6 +40,7 @@ export default function CoachSettings() {
     name: "",
     email: "",
     phone: "",
+    preferredLanguage: "en" as SupportedLanguage,
   });
 
   const { data: profile, isLoading } = useQuery<CoachProfile>({
@@ -49,12 +53,13 @@ export default function CoachSettings() {
         name: profile.name || "",
         email: profile.email || "",
         phone: profile.phone || "",
+        preferredLanguage: (profile.preferredLanguage as SupportedLanguage) || "en",
       });
     }
   }, [profile]);
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { name: string; email: string; phone: string }) => {
+    mutationFn: async (data: { name: string; email: string; phone: string; preferredLanguage: string }) => {
       const response = await apiRequest("PATCH", "/api/coach/profile", data);
       return response.json();
     },
@@ -209,6 +214,28 @@ export default function CoachSettings() {
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   data-testid="input-coach-phone"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="language" className="flex items-center gap-2">
+                  <Globe className="w-4 h-4" />
+                  Preferred Language
+                </Label>
+                <Select
+                  value={formData.preferredLanguage}
+                  onValueChange={(value) => setFormData({ ...formData, preferredLanguage: value as SupportedLanguage })}
+                >
+                  <SelectTrigger data-testid="select-coach-language">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <SelectItem key={lang} value={lang} data-testid={`option-language-${lang}`}>
+                        {LANGUAGE_LABELS[lang]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Button 
