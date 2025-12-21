@@ -66,7 +66,8 @@ export async function analyzeClientData(
   nutritionLogs: NutritionLog[],
   workoutLogs: WorkoutLog[],
   checkIns: CheckIn[],
-  goals?: Goal[]
+  goals?: Goal[],
+  preferredLanguage: "en" | "ru" | "es" = "en"
 ): Promise<ClientInsight> {
   const trends: TrendAnalysis[] = [];
 
@@ -89,7 +90,7 @@ export async function analyzeClientData(
   }
 
   // Generate AI summary using OpenAI (including goals)
-  const summary = await generateAISummary(clientName, trends, nutritionLogs, workoutLogs, checkIns, goals);
+  const summary = await generateAISummary(clientName, trends, nutritionLogs, workoutLogs, checkIns, goals, preferredLanguage);
 
   return {
     id: `insight_${clientId}_${Date.now()}`,
@@ -246,13 +247,20 @@ function analyzeProgressTrend(checkIns: CheckIn[]): TrendAnalysis | null {
   };
 }
 
+const LANGUAGE_INSTRUCTIONS = {
+  en: "Respond in English.",
+  ru: "Respond in Russian (Русский).",
+  es: "Respond in Spanish (Español).",
+};
+
 async function generateAISummary(
   clientName: string,
   trends: TrendAnalysis[],
   nutritionLogs: NutritionLog[],
   workoutLogs: WorkoutLog[],
   checkIns: CheckIn[],
-  goals?: Goal[]
+  goals?: Goal[],
+  preferredLanguage: "en" | "ru" | "es" = "en"
 ): Promise<string> {
   try {
     // Count synced vs manual entries (both apple_health and rook)
@@ -297,7 +305,7 @@ ${trends.filter(t => t.recommendation).map(t => `- ${t.recommendation}`).join('\
       messages: [
         {
           role: "system",
-          content: "You are a professional fitness coach AI assistant. Provide concise, actionable insights based on client data. Keep summaries under 100 words and focus on the most important trends and next steps. When wearable data is present, acknowledge the benefit of automated tracking for data accuracy. When goals are present, reference them in your summary and recommendations.",
+          content: `You are a professional fitness coach AI assistant. Provide concise, actionable insights based on client data. Keep summaries under 100 words and focus on the most important trends and next steps. When wearable data is present, acknowledge the benefit of automated tracking for data accuracy. When goals are present, reference them in your summary and recommendations. ${LANGUAGE_INSTRUCTIONS[preferredLanguage]}`,
         },
         {
           role: "user",
@@ -345,7 +353,8 @@ export async function analyzeProgressEventsWithGoals(
   clientId: string,
   clientName: string,
   progressEvents: ProgressEvent[],
-  goals: Goal[]
+  goals: Goal[],
+  preferredLanguage: "en" | "ru" | "es" = "en"
 ): Promise<EnhancedClientInsight> {
   const trends: TrendAnalysis[] = [];
   
@@ -391,7 +400,7 @@ export async function analyzeProgressEventsWithGoals(
 
   const goalPredictions = generateGoalPredictions(goals, progressEvents, trends);
 
-  const summary = await generateEnhancedSummary(clientName, trends, goalPredictions, progressEvents);
+  const summary = await generateEnhancedSummary(clientName, trends, goalPredictions, progressEvents, preferredLanguage);
 
   const improving = trends.filter(t => t.trend === "improving").length;
   const declining = trends.filter(t => t.trend === "declining").length;
@@ -955,7 +964,8 @@ async function generateEnhancedSummary(
   clientName: string,
   trends: TrendAnalysis[],
   goalPredictions: GoalPrediction[],
-  progressEvents: ProgressEvent[]
+  progressEvents: ProgressEvent[],
+  preferredLanguage: "en" | "ru" | "es" = "en"
 ): Promise<string> {
   try {
     const trendsContext = trends.map(t => 
@@ -985,7 +995,7 @@ ${trends.filter(t => t.recommendation).slice(0, 3).map(t => `- ${t.recommendatio
       messages: [
         {
           role: "system",
-          content: "You are a supportive fitness coach AI. Provide a brief, encouraging summary (under 80 words) that highlights progress and gives one actionable next step. Be specific about data when available. Focus on positives while gently addressing areas for improvement.",
+          content: `You are a supportive fitness coach AI. Provide a brief, encouraging summary (under 80 words) that highlights progress and gives one actionable next step. Be specific about data when available. Focus on positives while gently addressing areas for improvement. ${LANGUAGE_INSTRUCTIONS[preferredLanguage]}`,
         },
         {
           role: "user",

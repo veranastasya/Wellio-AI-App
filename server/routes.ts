@@ -2320,7 +2320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         nutritionLogs,
         workoutLogs,
         checkIns,
-        clientGoals
+        clientGoals,
+        (client.preferredLanguage as "en" | "ru" | "es") || "en"
       );
 
       res.json(insights);
@@ -3325,7 +3326,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clientId,
         client.name,
         progressEvents,
-        goals
+        goals,
+        (client.preferredLanguage as "en" | "ru" | "es") || "en"
       );
 
       res.json(insights);
@@ -3361,7 +3363,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clientId,
         client.name,
         progressEvents,
-        goals
+        goals,
+        (client.preferredLanguage as "en" | "ru" | "es") || "en"
       );
 
       res.json(insights);
