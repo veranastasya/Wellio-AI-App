@@ -60,12 +60,15 @@ const SheetContent = React.forwardRef<
 >(({ side = "right", className, children, ...props }, ref) => {
   const { isActive: isTourActive } = useTour();
   
+  // When tour is active, lower the z-index of the sheet to allow tour tooltip (z-70) to be on top
+  const tourActiveStyles = isTourActive ? "z-40" : "";
+  
   return (
     <SheetPortal>
-      <SheetOverlay className={isTourActive ? "pointer-events-none" : ""} />
+      <SheetOverlay className={isTourActive ? "pointer-events-none z-40" : ""} />
       <SheetPrimitive.Content
         ref={ref}
-        className={cn(sheetVariants({ side }), className)}
+        className={cn(sheetVariants({ side }), tourActiveStyles, className)}
         {...props}
       >
         {children}
