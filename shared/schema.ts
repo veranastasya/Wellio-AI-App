@@ -91,6 +91,100 @@ export const LANGUAGE_NATIVE_LABELS: Record<SupportedLanguage, string> = {
   es: "Español",
 };
 
+// AI Tracker UI translations - these are shown to users in the AI Tracker interface
+export const AI_TRACKER_TRANSLATIONS = {
+  greeting: {
+    en: "Hi! I'm your AI assistant for tracking progress. I'll help you log workouts, nutrition, weight, sleep, and other metrics.",
+    ru: "Привет! Я твой AI-помощник для отслеживания прогресса. Я помогу тебе записывать тренировки, питание, вес, сон и другие показатели.",
+    es: "¡Hola! Soy tu asistente de IA para seguir tu progreso. Te ayudaré a registrar entrenamientos, nutrición, peso, sueño y otras métricas.",
+  },
+  greetingSecondary: {
+    en: "You can type a description or attach photos of your meals, workouts, or progress!",
+    ru: "Ты можешь написать описание или прикрепить фотографии своих блюд, тренировок или прогресса!",
+    es: "¡Puedes escribir una descripción o adjuntar fotos de tus comidas, entrenamientos o progreso!",
+  },
+  gotIt: {
+    en: "Got it! I detected:",
+    ru: "Понял! Я обнаружил:",
+    es: "¡Entendido! Detecté:",
+  },
+  analyzing: {
+    en: "Analyzing...",
+    ru: "Анализирую...",
+    es: "Analizando...",
+  },
+  placeholder: {
+    en: "Describe your progress...",
+    ru: "Опиши свой прогресс...",
+    es: "Describe tu progreso...",
+  },
+  logged: {
+    en: "Logged!",
+    ru: "Записано!",
+    es: "¡Registrado!",
+  },
+  loggedDescription: {
+    en: "Your entry is being processed by AI",
+    ru: "Твоя запись обрабатывается AI",
+    es: "Tu entrada está siendo procesada por IA",
+  },
+  // Event type labels
+  eventLabels: {
+    weight: { en: "Weight", ru: "Вес", es: "Peso" },
+    nutrition: { en: "Nutrition", ru: "Питание", es: "Nutrición" },
+    workout: { en: "Workout", ru: "Тренировка", es: "Ejercicio" },
+    sleep: { en: "Sleep", ru: "Сон", es: "Sueño" },
+    checkin_mood: { en: "Mood", ru: "Настроение", es: "Estado de ánimo" },
+    default: { en: "Log", ru: "Запись", es: "Registro" },
+  },
+  // Nutrition display labels
+  nutritionLabels: {
+    calories: { en: "Calories", ru: "Калории", es: "Calorías" },
+    protein: { en: "Protein", ru: "Белки", es: "Proteína" },
+    carbs: { en: "Carbs", ru: "Углеводы", es: "Carbohidratos" },
+    fat: { en: "Fat", ru: "Жиры", es: "Grasas" },
+    estimated: { en: "Estimated based on description", ru: "Оценка на основе описания", es: "Estimado según la descripción" },
+  },
+  // Workout display labels
+  workoutLabels: {
+    duration: { en: "Duration", ru: "Длительность", es: "Duración" },
+    intensity: { en: "Intensity", ru: "Интенсивность", es: "Intensidad" },
+    type: { en: "Type", ru: "Тип", es: "Tipo" },
+  },
+  // Sleep display labels
+  sleepLabels: {
+    hours: { en: "hours", ru: "часов", es: "horas" },
+    quality: { en: "Quality", ru: "Качество", es: "Calidad" },
+  },
+  // Mood display labels
+  moodLabels: {
+    rating: { en: "Rating", ru: "Оценка", es: "Calificación" },
+  },
+  // Weight display labels
+  weightLabels: {
+    weight: { en: "Weight", ru: "Вес", es: "Peso" },
+  },
+  // Common labels
+  min: { en: "min", ru: "мин", es: "min" },
+  confidence: {
+    high: { en: "high confidence", ru: "высокая точность", es: "alta confianza" },
+    medium: { en: "medium confidence", ru: "средняя точность", es: "confianza media" },
+    low: { en: "low confidence", ru: "низкая точность", es: "baja confianza" },
+  },
+} as const;
+
+// Helper function to get translated string
+export function getAITrackerTranslation(
+  key: keyof typeof AI_TRACKER_TRANSLATIONS, 
+  lang: SupportedLanguage = "en"
+): string {
+  const translation = AI_TRACKER_TRANSLATIONS[key];
+  if (typeof translation === "object" && "en" in translation) {
+    return (translation as Record<SupportedLanguage, string>)[lang] || (translation as Record<SupportedLanguage, string>).en;
+  }
+  return String(translation);
+}
+
 export function getLanguageLabel(language: string | null | undefined): string {
   if (!language) return "English";
   if (language in LANGUAGE_LABELS) {

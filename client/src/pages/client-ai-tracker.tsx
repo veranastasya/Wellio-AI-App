@@ -29,7 +29,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import type { SmartLog, AIClassification, AIParsedData, ParsedNutrition, ParsedWorkout, ParsedWeight, ParsedSleep, ParsedMood } from "@shared/schema";
+import type { SmartLog, AIClassification, AIParsedData, ParsedNutrition, ParsedWorkout, ParsedWeight, ParsedSleep, ParsedMood, SupportedLanguage } from "@shared/schema";
+import { AI_TRACKER_TRANSLATIONS } from "@shared/schema";
 import { format, parseISO } from "date-fns";
 
 const quickActions = [
@@ -63,21 +64,23 @@ function getEventColor(eventType: string): string {
   }
 }
 
-function getEventLabel(eventType: string): string {
+function getEventLabel(eventType: string, lang: SupportedLanguage = "en"): string {
+  const labels = AI_TRACKER_TRANSLATIONS.eventLabels;
   switch (eventType) {
-    case "weight": return "Weight";
-    case "nutrition": return "Nutrition";
-    case "workout": return "Workout";
-    case "sleep": return "Sleep";
-    case "checkin_mood": return "Mood";
-    default: return "Log";
+    case "weight": return labels.weight[lang];
+    case "nutrition": return labels.nutrition[lang];
+    case "workout": return labels.workout[lang];
+    case "sleep": return labels.sleep[lang];
+    case "checkin_mood": return labels.checkin_mood[lang];
+    default: return labels.default[lang];
   }
 }
 
-function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) {
+function ParsedDataDisplay({ parsedData, lang = "en" }: { parsedData: AIParsedData | null; lang?: SupportedLanguage }) {
   if (!parsedData) return null;
 
   const { nutrition, workout, weight, sleep, mood } = parsedData;
+  const nutLabels = AI_TRACKER_TRANSLATIONS.nutritionLabels;
 
   return (
     <div className="mt-3 space-y-2">
@@ -91,7 +94,7 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
           <div className="grid grid-cols-2 gap-2 text-xs">
             {(nutrition.calories ?? nutrition.calories_est) && (
               <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">Calories:</span>
+                <span className="text-muted-foreground">{nutLabels.calories[lang]}:</span>
                 <span className="font-medium text-foreground">
                   ~{Math.round(nutrition.calories ?? nutrition.calories_est ?? 0)} kcal
                 </span>
@@ -99,7 +102,7 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
             )}
             {(nutrition.protein_g ?? nutrition.protein_est_g) && (
               <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">Protein:</span>
+                <span className="text-muted-foreground">{nutLabels.protein[lang]}:</span>
                 <span className="font-medium text-foreground">
                   ~{Math.round(nutrition.protein_g ?? nutrition.protein_est_g ?? 0)}g
                 </span>
@@ -107,7 +110,7 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
             )}
             {(nutrition.carbs_g ?? nutrition.carbs_est_g) && (
               <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">Carbs:</span>
+                <span className="text-muted-foreground">{nutLabels.carbs[lang]}:</span>
                 <span className="font-medium text-foreground">
                   ~{Math.round(nutrition.carbs_g ?? nutrition.carbs_est_g ?? 0)}g
                 </span>
@@ -115,7 +118,7 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
             )}
             {(nutrition.fat_g ?? nutrition.fat_est_g) && (
               <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">Fat:</span>
+                <span className="text-muted-foreground">{nutLabels.fat[lang]}:</span>
                 <span className="font-medium text-foreground">
                   ~{Math.round(nutrition.fat_g ?? nutrition.fat_est_g ?? 0)}g
                 </span>
@@ -124,7 +127,7 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
           </div>
           {nutrition.estimated && (
             <p className="text-xs text-muted-foreground mt-2 italic">
-              AI-estimated from image ({Math.round((nutrition.confidence || 0) * 100)}% confidence)
+              {nutLabels.estimated[lang]}
             </p>
           )}
         </div>
@@ -134,22 +137,22 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
         <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 text-sm">
           <div className="flex flex-wrap gap-2 text-xs">
             <span className="font-medium text-orange-800 dark:text-orange-300 capitalize">
-              {workout.type} workout
+              {workout.type}
             </span>
             {workout.duration_min && (
               <span className="text-muted-foreground">
-                {workout.duration_min} min
+                {workout.duration_min} {AI_TRACKER_TRANSLATIONS.min[lang]}
               </span>
             )}
             {workout.intensity !== "unknown" && (
               <span className="text-muted-foreground capitalize">
-                {workout.intensity} intensity
+                {AI_TRACKER_TRANSLATIONS.workoutLabels.intensity[lang]}: {workout.intensity}
               </span>
             )}
           </div>
           {workout.body_focus && workout.body_focus.length > 0 && workout.body_focus[0] !== "unspecified" && (
             <p className="text-xs text-muted-foreground mt-1">
-              Focus: {workout.body_focus.join(", ")}
+              {workout.body_focus.join(", ")}
             </p>
           )}
           {workout.notes && (
@@ -161,7 +164,7 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
       {weight && (
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm">
           <p className="font-medium text-blue-800 dark:text-blue-300">
-            Weight: {weight.value} {weight.unit}
+            {AI_TRACKER_TRANSLATIONS.weightLabels.weight[lang]}: {weight.value} {weight.unit}
           </p>
         </div>
       )}
@@ -169,8 +172,8 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
       {sleep && (
         <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-3 text-sm">
           <p className="font-medium text-indigo-800 dark:text-indigo-300">
-            Sleep: {sleep.hours} hours
-            {sleep.quality && ` (${sleep.quality} quality)`}
+            {AI_TRACKER_TRANSLATIONS.sleepLabels.quality[lang]}: {sleep.hours} {AI_TRACKER_TRANSLATIONS.sleepLabels.hours[lang]}
+            {sleep.quality && ` (${sleep.quality})`}
           </p>
         </div>
       )}
@@ -178,7 +181,7 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
       {mood && (
         <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-3 text-sm">
           <p className="font-medium text-pink-800 dark:text-pink-300">
-            Mood: {mood.rating}/10
+            {AI_TRACKER_TRANSLATIONS.moodLabels.rating[lang]}: {mood.rating}/10
             {mood.notes && ` - ${mood.notes}`}
           </p>
         </div>
@@ -277,6 +280,7 @@ function LogImage({ url }: { url: string }) {
 export default function ClientAITracker() {
   const [inputText, setInputText] = useState("");
   const [clientId, setClientId] = useState<string | null>(null);
+  const [preferredLanguage, setPreferredLanguage] = useState<SupportedLanguage>("en");
   const [pendingImages, setPendingImages] = useState<PendingImage[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [editingLog, setEditingLog] = useState<SmartLog | null>(null);
@@ -295,6 +299,19 @@ export default function ClientAITracker() {
     if (storedClientId) {
       setClientId(storedClientId);
     }
+    
+    const fetchClientLanguage = async () => {
+      try {
+        const response = await apiRequest("GET", "/api/client-auth/me");
+        const data = await response.json();
+        if (data.client?.preferredLanguage) {
+          setPreferredLanguage(data.client.preferredLanguage as SupportedLanguage);
+        }
+      } catch (error) {
+        console.error("Failed to fetch client language preference:", error);
+      }
+    };
+    fetchClientLanguage();
   }, []);
 
   const { data: logs, isLoading } = useQuery<SmartLog[]>({
@@ -318,8 +335,8 @@ export default function ClientAITracker() {
       setPendingImages([]);
       queryClient.invalidateQueries({ queryKey: ["/api/smart-logs", clientId] });
       toast({
-        title: "Logged!",
-        description: "Your entry is being processed by AI",
+        title: AI_TRACKER_TRANSLATIONS.logged[preferredLanguage],
+        description: AI_TRACKER_TRANSLATIONS.loggedDescription[preferredLanguage],
       });
     },
     onError: () => {
@@ -801,10 +818,10 @@ export default function ClientAITracker() {
               </div>
               <div className="bg-card border rounded-2xl rounded-tl-sm p-4 shadow-sm">
                 <p className="text-sm text-foreground">
-                  Hi! I'm your AI assistant for tracking progress. I'll help you log workouts, nutrition, weight, sleep, and other metrics.
+                  {AI_TRACKER_TRANSLATIONS.greeting[preferredLanguage]}
                 </p>
                 <p className="text-sm text-foreground mt-2">
-                  You can type a description or attach photos of your meals, workouts, or progress!
+                  {AI_TRACKER_TRANSLATIONS.greetingSecondary[preferredLanguage]}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
                   {format(new Date(), "HH:mm")}
@@ -821,10 +838,10 @@ export default function ClientAITracker() {
                 </div>
                 <div className="bg-card border rounded-2xl rounded-tl-sm p-4 shadow-sm">
                   <p className="text-sm text-foreground">
-                    Hi! I'm your AI assistant for tracking progress. I'll help you log workouts, nutrition, weight, sleep, and other metrics.
+                    {AI_TRACKER_TRANSLATIONS.greeting[preferredLanguage]}
                   </p>
                   <p className="text-sm text-foreground mt-2">
-                    You can type a description or attach photos of your meals, workouts, or progress!
+                    {AI_TRACKER_TRANSLATIONS.greetingSecondary[preferredLanguage]}
                   </p>
                 </div>
               </div>
@@ -880,12 +897,12 @@ export default function ClientAITracker() {
                           {(log.processingStatus === "pending" || log.processingStatus === "processing") ? (
                             <div className="flex items-center gap-2">
                               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                              <p className="text-sm text-muted-foreground">Analyzing...</p>
+                              <p className="text-sm text-muted-foreground">{AI_TRACKER_TRANSLATIONS.analyzing[preferredLanguage]}</p>
                             </div>
                           ) : detectedEvents.length > 0 ? (
                             <>
                               <p className="text-sm text-foreground mb-2">
-                                Got it! I detected:
+                                {AI_TRACKER_TRANSLATIONS.gotIt[preferredLanguage]}
                               </p>
                               <div className="flex flex-wrap gap-1.5">
                                 {detectedEvents.map((eventType) => {
@@ -897,12 +914,12 @@ export default function ClientAITracker() {
                                       className={`text-xs py-0.5 px-2 ${getEventColor(eventType)}`}
                                     >
                                       <Icon className="w-3 h-3 mr-1" />
-                                      {getEventLabel(eventType)}
+                                      {getEventLabel(eventType, preferredLanguage)}
                                     </Badge>
                                   );
                                 })}
                               </div>
-                              <ParsedDataDisplay parsedData={parsedData} />
+                              <ParsedDataDisplay parsedData={parsedData} lang={preferredLanguage} />
                             </>
                           ) : null}
                         </div>
@@ -957,7 +974,7 @@ export default function ClientAITracker() {
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe your progress..."
+            placeholder={AI_TRACKER_TRANSLATIONS.placeholder[preferredLanguage]}
             className="flex-1 px-4 py-3 rounded-full border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-150"
             disabled={isSubmitting}
             data-testid="input-smart-log"
@@ -987,7 +1004,7 @@ export default function ClientAITracker() {
             <Textarea
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              placeholder="Describe your progress..."
+              placeholder={AI_TRACKER_TRANSLATIONS.placeholder[preferredLanguage]}
               className="min-h-[100px]"
               data-testid="input-edit-text"
             />

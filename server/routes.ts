@@ -2795,6 +2795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: client.notes,
           lastSession: client.lastSession,
           onboardingCompleted: client.onboardingCompleted,
+          preferredLanguage: client.preferredLanguage,
         }
       });
     } catch (error) {
@@ -2814,12 +2815,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Only allow updating specific fields
-      const { onboardingCompleted, phone, name } = req.body;
+      const { onboardingCompleted, phone, name, preferredLanguage } = req.body;
       const updateData: Record<string, any> = {};
       
       if (onboardingCompleted !== undefined) updateData.onboardingCompleted = onboardingCompleted;
       if (phone !== undefined) updateData.phone = phone;
       if (name !== undefined) updateData.name = name;
+      if (preferredLanguage !== undefined) updateData.preferredLanguage = preferredLanguage;
 
       const updatedClient = await storage.updateClient(clientId, updateData);
       
@@ -2830,6 +2832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: updatedClient!.email,
           status: updatedClient!.status,
           onboardingCompleted: updatedClient!.onboardingCompleted,
+          preferredLanguage: updatedClient!.preferredLanguage,
         }
       });
     } catch (error) {
