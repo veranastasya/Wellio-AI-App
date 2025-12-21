@@ -1158,7 +1158,11 @@ export class DatabaseStorage implements IStorage {
 
   // Password Reset Tokens
   async createPasswordResetToken(insertToken: InsertPasswordResetToken): Promise<PasswordResetToken> {
-    const [token] = await db.insert(passwordResetTokens).values(insertToken).returning();
+    const dataWithDefaults = {
+      ...insertToken,
+      createdAt: new Date().toISOString(),
+    };
+    const [token] = await db.insert(passwordResetTokens).values(dataWithDefaults).returning();
     return token;
   }
 
