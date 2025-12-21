@@ -3,6 +3,10 @@ import { pgTable, text, varchar, integer, real, timestamp, boolean, json, index 
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Supported languages for AI responses and UI translations - defined early so it can be used by other constants
+export const SUPPORTED_LANGUAGES = ["en", "ru", "es"] as const;
+export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
+
 export const GOAL_TYPES = [
   "lose_weight",
   "gain_muscle_strength",
@@ -33,6 +37,39 @@ export const GOAL_TYPE_LABELS: Record<GoalType, string> = {
   improve_sleep_recovery: "Improve sleep & recovery",
   prepare_event: "Prepare for an event",
   other: "Other",
+};
+
+// Translated goal type labels
+export const GOAL_TYPE_LABELS_TRANSLATED: Record<SupportedLanguage, Record<GoalType, string>> = {
+  en: GOAL_TYPE_LABELS,
+  ru: {
+    lose_weight: "Сбросить вес",
+    gain_muscle_strength: "Набрать мышечную массу / силу",
+    improve_body_composition: "Улучшить состав тела",
+    maintain_weight: "Поддерживать текущий вес",
+    improve_health: "Улучшить общее здоровье",
+    eat_healthier: "Питаться здоровее",
+    increase_energy: "Повысить энергию",
+    improve_fitness_endurance: "Улучшить форму / выносливость",
+    reduce_stress_improve_balance: "Снизить стресс и улучшить баланс",
+    improve_sleep_recovery: "Улучшить сон и восстановление",
+    prepare_event: "Подготовиться к мероприятию",
+    other: "Другое",
+  },
+  es: {
+    lose_weight: "Perder peso",
+    gain_muscle_strength: "Ganar músculo / fuerza",
+    improve_body_composition: "Mejorar composición corporal",
+    maintain_weight: "Mantener peso actual",
+    improve_health: "Mejorar salud general",
+    eat_healthier: "Comer más saludable",
+    increase_energy: "Aumentar energía",
+    improve_fitness_endurance: "Mejorar condición / resistencia",
+    reduce_stress_improve_balance: "Reducir estrés y mejorar equilibrio",
+    improve_sleep_recovery: "Mejorar sueño y recuperación",
+    prepare_event: "Prepararse para un evento",
+    other: "Otro",
+  },
 };
 
 export function getGoalTypeLabel(goalType: string | null | undefined, goalDescription?: string | null): string {
@@ -67,6 +104,25 @@ export const ACTIVITY_LEVEL_LABELS: Record<ActivityLevel, string> = {
   extra_active: "Extremely Active (hard exercise & work in a physical job)",
 };
 
+// Translated activity level labels
+export const ACTIVITY_LEVEL_LABELS_TRANSLATED: Record<SupportedLanguage, Record<ActivityLevel, string>> = {
+  en: ACTIVITY_LEVEL_LABELS,
+  ru: {
+    sedentary: "Сидячий образ жизни (мало или нет упражнений)",
+    lightly_active: "Низкая активность (лёгкие упражнения 1-3 дня/неделю)",
+    moderately_active: "Умеренная активность (упражнения 3-5 дней/неделю)",
+    very_active: "Высокая активность (интенсивные упражнения 6-7 дней/неделю)",
+    extra_active: "Очень высокая активность (тяжёлые тренировки + физическая работа)",
+  },
+  es: {
+    sedentary: "Sedentario (poco o sin ejercicio)",
+    lightly_active: "Ligeramente activo (ejercicio ligero 1-3 días/semana)",
+    moderately_active: "Moderadamente activo (ejercicio moderado 3-5 días/semana)",
+    very_active: "Muy activo (ejercicio intenso 6-7 días/semana)",
+    extra_active: "Extremadamente activo (ejercicio intenso + trabajo físico)",
+  },
+};
+
 export const ACTIVITY_LEVEL_MULTIPLIERS: Record<ActivityLevel, number> = {
   sedentary: 1.2,
   lightly_active: 1.375,
@@ -74,10 +130,6 @@ export const ACTIVITY_LEVEL_MULTIPLIERS: Record<ActivityLevel, number> = {
   very_active: 1.725,
   extra_active: 1.9,
 };
-
-// Supported languages for AI responses
-export const SUPPORTED_LANGUAGES = ["en", "ru", "es"] as const;
-export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 
 export const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
   en: "English",
@@ -130,7 +182,7 @@ export const AI_TRACKER_TRANSLATIONS = {
     water: { en: "Water", ru: "Вода", es: "Agua" },
     mood: { en: "Mood", ru: "Настроение", es: "Ánimo" },
   },
-  // Quick action prompts
+  // Quick action prompts - default (English/Spanish don't have gendered forms, Russian defaults to masculine)
   quickActionPrompts: {
     workout: { en: "I did a workout: ", ru: "Я провёл тренировку: ", es: "Hice un ejercicio: " },
     meal: { en: "I had a meal: ", ru: "Я поел: ", es: "Comí: " },
@@ -138,6 +190,15 @@ export const AI_TRACKER_TRANSLATIONS = {
     sleep: { en: "I slept ", ru: "Я спал ", es: "Dormí " },
     water: { en: "I drank ", ru: "Я выпил ", es: "Bebí " },
     mood: { en: "Feeling ", ru: "Чувствую себя ", es: "Me siento " },
+  },
+  // Gender-aware Russian prompts (feminine forms)
+  quickActionPromptsFeminine: {
+    workout: "Я провела тренировку: ",
+    meal: "Я поела: ",
+    weight: "Мой вес сегодня ", // No gender change needed
+    sleep: "Я спала ",
+    water: "Я выпила ",
+    mood: "Чувствую себя ", // No gender change needed
   },
   greeting: {
     en: "Hi! I'm your AI assistant for tracking progress. I'll help you log workouts, nutrition, weight, sleep, and other metrics.",
@@ -247,6 +308,54 @@ export function getActivityLevelLabel(activityLevel: string | null | undefined):
   return activityLevel;
 }
 
+// Get translated activity level label
+export function getActivityLevelLabelTranslated(
+  activityLevel: string | null | undefined, 
+  lang: SupportedLanguage = "en"
+): string {
+  if (!activityLevel) return lang === "ru" ? "Не указано" : lang === "es" ? "No establecido" : "Not set";
+  if (activityLevel in ACTIVITY_LEVEL_LABELS) {
+    return ACTIVITY_LEVEL_LABELS_TRANSLATED[lang][activityLevel as ActivityLevel];
+  }
+  return activityLevel;
+}
+
+// Get translated goal type label
+export function getGoalTypeLabelTranslated(
+  goalType: string | null | undefined, 
+  lang: SupportedLanguage = "en",
+  goalDescription?: string | null
+): string {
+  if (!goalType) return lang === "ru" ? "Не указано" : lang === "es" ? "No establecido" : "Not set";
+  
+  if (goalType === "other" && goalDescription) {
+    return goalDescription;
+  }
+  
+  if (goalType in GOAL_TYPE_LABELS) {
+    return GOAL_TYPE_LABELS_TRANSLATED[lang][goalType as GoalType];
+  }
+  
+  return goalDescription || goalType;
+}
+
+// Get gender-aware quick action prompt for Russian
+export function getQuickActionPrompt(
+  action: keyof typeof AI_TRACKER_TRANSLATIONS.quickActionPrompts,
+  lang: SupportedLanguage = "en",
+  sex?: string | null
+): string {
+  const prompts = AI_TRACKER_TRANSLATIONS.quickActionPrompts[action];
+  
+  // For Russian, use feminine form if client is female
+  if (lang === "ru" && sex === "female") {
+    const femininePrompts = AI_TRACKER_TRANSLATIONS.quickActionPromptsFeminine;
+    return femininePrompts[action];
+  }
+  
+  return prompts[lang] || prompts.en;
+}
+
 export function getActivityLevelMultiplier(activityLevel: string | null | undefined): number {
   if (!activityLevel || !(activityLevel in ACTIVITY_LEVEL_MULTIPLIERS)) {
     return 1.2;
@@ -264,6 +373,7 @@ export const coaches = pgTable("coaches", {
   oauthId: text("oauth_id"),
   profileImageUrl: text("profile_image_url"),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
+  preferredLanguage: text("preferred_language").notNull().default("en"),
 });
 
 export const insertCoachSchema = createInsertSchema(coaches).omit({ id: true });
