@@ -390,13 +390,13 @@ export default function Communication() {
           <div className={`lg:col-span-2 flex flex-col bg-card rounded-lg border overflow-hidden ${isMobile ? 'h-full' : ''}`} data-testid="card-messages">
             {selectedClient ? (
               <>
-                <div className="p-3 sm:p-4 border-b flex items-center justify-between gap-3 flex-shrink-0">
+                <div className="p-3 sm:p-4 border-b flex items-center justify-between gap-3 flex-shrink-0 sticky top-0 bg-card z-10">
                   <div className="flex items-center gap-3 min-w-0">
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => setSelectedClientId(null)}
-                      className="flex-shrink-0 lg:hidden"
+                      className="flex-shrink-0 lg:hidden border-primary text-primary"
                       data-testid="button-back-to-list"
                     >
                       <ArrowLeft className="w-5 h-5" />
