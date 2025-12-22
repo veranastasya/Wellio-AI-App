@@ -115,7 +115,7 @@ export interface IStorage {
   // Clients
   getClients(coachId?: string): Promise<Client[]>;
   getClient(id: string): Promise<Client | undefined>;
-  getClientByEmail(email: string): Promise<Client | undefined>;
+  getClientByEmail(email: string, coachId?: string): Promise<Client | undefined>;
   getClientByOAuthId(oauthId: string): Promise<Client | undefined>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, client: Partial<InsertClient>): Promise<Client | undefined>;
@@ -853,7 +853,13 @@ Introduction to consistent training and meal logging habits.
     return client || undefined;
   }
 
-  async getClientByEmail(email: string): Promise<Client | undefined> {
+  async getClientByEmail(email: string, coachId?: string): Promise<Client | undefined> {
+    if (coachId) {
+      const [client] = await db.select().from(clients).where(
+        and(eq(clients.email, email), eq(clients.coachId, coachId))
+      );
+      return client || undefined;
+    }
     const [client] = await db.select().from(clients).where(eq(clients.email, email));
     return client || undefined;
   }

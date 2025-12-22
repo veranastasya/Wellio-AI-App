@@ -437,7 +437,7 @@ export default function ClientDashboard() {
               </h2>
               <div className="h-48 sm:h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyCaloriesData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                  <BarChart data={dailyCaloriesData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis 
                       dataKey="day" 

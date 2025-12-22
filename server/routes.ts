@@ -685,12 +685,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const coachId = req.session.coachId!;
       
-      // Check if client with this email already exists (globally)
+      // Check if client with this email already exists for this coach
       const email = req.body.email;
       if (email) {
-        const existingClient = await storage.getClientByEmail(email);
+        const existingClient = await storage.getClientByEmail(email, coachId);
         if (existingClient) {
-          return res.status(400).json({ error: "A client with this email already exists" });
+          return res.status(400).json({ error: "A client with this email already exists in your roster" });
         }
       }
       
