@@ -28,21 +28,33 @@ async function analyzeClientActivity(client: Client): Promise<ActivityAnalysis> 
   
   const now = new Date();
   
+  const clientCreatedDate = client.createdAt ? new Date(client.createdAt) : now;
+  const daysSinceClientCreated = Math.max(0, Math.floor((now.getTime() - clientCreatedDate.getTime()) / (1000 * 60 * 60 * 24)));
+  
   const getLastDate = (logs: typeof progressEvents): Date | null => {
     if (logs.length === 0) return null;
-    const sortedLogs = [...logs].sort((a, b) => 
-      new Date(b.dateForMetric).getTime() - new Date(a.dateForMetric).getTime()
-    );
-    return new Date(sortedLogs[0].dateForMetric);
+    const sortedLogs = [...logs].sort((a, b) => {
+      const dateA = a.dateForMetric || a.createdAt || "";
+      const dateB = b.dateForMetric || b.createdAt || "";
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
+    const lastLog = sortedLogs[0];
+    const dateStr = lastLog.dateForMetric || lastLog.createdAt;
+    if (!dateStr) return null;
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? null : date;
   };
   
   const lastMealDate = getLastDate(mealLogs);
   const lastWorkoutDate = getLastDate(workoutLogs);
   const lastCheckInDate = getLastDate(checkInLogs);
   
-  const daysSince = (date: Date | null): number => {
-    if (!date) return 999;
-    return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  const daysSince = (date: Date | null, fallbackToClientCreated: boolean = true): number => {
+    if (!date) {
+      return fallbackToClientCreated ? daysSinceClientCreated : 999;
+    }
+    const days = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(0, days);
   };
   
   const daysSinceMeal = daysSince(lastMealDate);
@@ -80,14 +92,14 @@ interface DetectedTrigger {
 function detectTriggersFromAnalysis(analysis: ActivityAnalysis, clientName: string): DetectedTrigger[] {
   const triggers: DetectedTrigger[] = [];
   
-  if (analysis.daysSinceAnyActivity >= 5 && analysis.daysSinceAnyActivity < 999) {
+  if (analysis.daysSinceAnyActivity >= 5) {
     triggers.push({
       type: "inactivity",
       severity: "high",
       reason: `${clientName} hasn't logged any activity in ${analysis.daysSinceAnyActivity} days. This may indicate disengagement or personal challenges.`,
       recommendedAction: "Send a supportive check-in message to understand what's going on and offer assistance.",
     });
-  } else if (analysis.daysSinceAnyActivity >= 3 && analysis.daysSinceAnyActivity < 999) {
+  } else if (analysis.daysSinceAnyActivity >= 3) {
     triggers.push({
       type: "inactivity",
       severity: "medium",
@@ -96,7 +108,7 @@ function detectTriggersFromAnalysis(analysis: ActivityAnalysis, clientName: stri
     });
   }
   
-  if (analysis.daysSinceMeal >= 3 && analysis.daysSinceMeal < 999 && analysis.hasNutritionGoals) {
+  if (analysis.daysSinceMeal >= 3 && analysis.hasNutritionGoals) {
     const alreadyHasInactivity = triggers.some(t => t.type === "inactivity");
     if (!alreadyHasInactivity) {
       triggers.push({
@@ -108,7 +120,7 @@ function detectTriggersFromAnalysis(analysis: ActivityAnalysis, clientName: stri
     }
   }
   
-  if (analysis.daysSinceWorkout >= 4 && analysis.daysSinceWorkout < 999 && analysis.hasWorkoutGoals) {
+  if (analysis.daysSinceWorkout >= 4 && analysis.hasWorkoutGoals) {
     const alreadyHasInactivity = triggers.some(t => t.type === "inactivity");
     if (!alreadyHasInactivity) {
       triggers.push({
@@ -123,67 +135,66 @@ function detectTriggersFromAnalysis(analysis: ActivityAnalysis, clientName: stri
   return triggers;
 }
 
-async function hasExistingUnresolvedTrigger(clientId: string, coachId: string, type: TriggerType): Promise<boolean> {
-  const triggers = await storage.getEngagementTriggers(clientId, coachId);
-  return triggers.some(t => t.type === type && !t.isResolved);
-}
+const SEVERITY_ORDER: Record<TriggerSeverity, number> = { low: 1, medium: 2, high: 3 };
 
-async function autoResolveStaleTriggersForClient(client: Client, analysis: ActivityAnalysis): Promise<number> {
-  if (!client.coachId) return 0;
-  
-  const triggers = await storage.getEngagementTriggers(client.id, client.coachId);
-  const unresolvedTriggers = triggers.filter(t => !t.isResolved);
-  
-  let resolvedCount = 0;
-  
-  for (const trigger of unresolvedTriggers) {
-    let shouldResolve = false;
-    
-    if (trigger.type === "inactivity" && analysis.daysSinceAnyActivity < 2) {
-      shouldResolve = true;
-    }
-    
-    if (trigger.type === "nutrition_concern" && analysis.daysSinceMeal < 2) {
-      shouldResolve = true;
-    }
-    
-    if (trigger.type === "missed_workout" && analysis.daysSinceWorkout < 3) {
-      shouldResolve = true;
-    }
-    
-    if (shouldResolve) {
-      await storage.resolveEngagementTrigger(trigger.id);
-      resolvedCount++;
-      logger.debug("Auto-resolved trigger due to recent activity", {
-        clientId: client.id,
-        triggerId: trigger.id,
-        type: trigger.type,
-      });
-    }
-  }
-  
-  return resolvedCount;
-}
-
-export async function detectInsightsForClient(client: Client): Promise<{ created: number; resolved: number }> {
+export async function detectInsightsForClient(client: Client): Promise<{ created: number; resolved: number; escalated: number }> {
   if (!client.coachId) {
-    return { created: 0, resolved: 0 };
+    return { created: 0, resolved: 0, escalated: 0 };
   }
   
   try {
     const analysis = await analyzeClientActivity(client);
     
-    const resolved = await autoResolveStaleTriggersForClient(client, analysis);
+    const existingTriggers = await storage.getEngagementTriggers(client.id, client.coachId);
+    const unresolvedTriggers = existingTriggers.filter(t => !t.isResolved);
+    
+    let resolved = 0;
+    for (const trigger of unresolvedTriggers) {
+      let shouldResolve = false;
+      
+      if (trigger.type === "inactivity" && analysis.daysSinceAnyActivity < 2) {
+        shouldResolve = true;
+      }
+      if (trigger.type === "nutrition_concern" && analysis.daysSinceMeal < 2) {
+        shouldResolve = true;
+      }
+      if (trigger.type === "missed_workout" && analysis.daysSinceWorkout < 3) {
+        shouldResolve = true;
+      }
+      
+      if (shouldResolve) {
+        await storage.resolveEngagementTrigger(trigger.id);
+        resolved++;
+        logger.debug("Auto-resolved trigger due to recent activity", {
+          clientId: client.id,
+          triggerId: trigger.id,
+          type: trigger.type,
+        });
+      }
+    }
+    
+    const stillUnresolved = unresolvedTriggers.filter(t => {
+      if (t.type === "inactivity" && analysis.daysSinceAnyActivity < 2) return false;
+      if (t.type === "nutrition_concern" && analysis.daysSinceMeal < 2) return false;
+      if (t.type === "missed_workout" && analysis.daysSinceWorkout < 3) return false;
+      return true;
+    });
+    
+    const unresolvedByType = new Map<TriggerType, typeof stillUnresolved[0]>();
+    for (const t of stillUnresolved) {
+      unresolvedByType.set(t.type, t);
+    }
     
     const detectedTriggers = detectTriggersFromAnalysis(analysis, client.name);
     
     let created = 0;
+    let escalated = 0;
     const now = new Date().toISOString();
     
     for (const detected of detectedTriggers) {
-      const hasExisting = await hasExistingUnresolvedTrigger(client.id, client.coachId, detected.type);
+      const existing = unresolvedByType.get(detected.type);
       
-      if (!hasExisting) {
+      if (!existing) {
         const triggerData: InsertEngagementTrigger = {
           clientId: client.id,
           coachId: client.coachId,
@@ -205,16 +216,31 @@ export async function detectInsightsForClient(client: Client): Promise<{ created
           type: detected.type,
           severity: detected.severity,
         });
+      } else if (SEVERITY_ORDER[detected.severity] > SEVERITY_ORDER[existing.severity as TriggerSeverity]) {
+        await storage.updateEngagementTrigger(existing.id, {
+          severity: detected.severity,
+          reason: detected.reason,
+          recommendedAction: detected.recommendedAction,
+        });
+        escalated++;
+        
+        logger.info("AI insight escalated", {
+          clientId: client.id,
+          clientName: client.name,
+          type: detected.type,
+          fromSeverity: existing.severity,
+          toSeverity: detected.severity,
+        });
       }
     }
     
-    return { created, resolved };
+    return { created, resolved, escalated };
   } catch (error: any) {
     logger.error("Error detecting insights for client", {
       clientId: client.id,
       message: error?.message || String(error),
     });
-    return { created: 0, resolved: 0 };
+    return { created: 0, resolved: 0, escalated: 0 };
   }
 }
 
@@ -222,12 +248,14 @@ export async function processAllClientInsights(): Promise<{
   processedClients: number; 
   createdTriggers: number; 
   resolvedTriggers: number;
+  escalatedTriggers: number;
 }> {
   logger.info("Starting AI insight detection cycle");
   
   let processedClients = 0;
   let createdTriggers = 0;
   let resolvedTriggers = 0;
+  let escalatedTriggers = 0;
   
   try {
     const clients = await storage.getClients();
@@ -239,6 +267,7 @@ export async function processAllClientInsights(): Promise<{
       const result = await detectInsightsForClient(client);
       createdTriggers += result.created;
       resolvedTriggers += result.resolved;
+      escalatedTriggers += result.escalated;
       processedClients++;
     }
     
@@ -246,6 +275,7 @@ export async function processAllClientInsights(): Promise<{
       processedClients,
       createdTriggers,
       resolvedTriggers,
+      escalatedTriggers,
     });
   } catch (error: any) {
     logger.error("Error in AI insight detection cycle", {
@@ -254,7 +284,7 @@ export async function processAllClientInsights(): Promise<{
     });
   }
   
-  return { processedClients, createdTriggers, resolvedTriggers };
+  return { processedClients, createdTriggers, resolvedTriggers, escalatedTriggers };
 }
 
 let insightInterval: ReturnType<typeof setInterval> | null = null;
