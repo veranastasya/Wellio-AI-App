@@ -8,6 +8,7 @@ import { storage } from "./storage";
 import { setupOAuth } from "./replitAuth";
 import { logger, generateRequestId } from "./logger";
 import { startReminderScheduler } from "./reminderService";
+import { startAIInsightScheduler } from "./aiInsightService";
 
 const app = express();
 
@@ -149,5 +150,9 @@ app.use((req: any, res, next) => {
     // Start the reminder scheduler (runs every hour)
     startReminderScheduler(60 * 60 * 1000);
     logger.info('Reminder scheduler started');
+    
+    // Start the AI insight detection scheduler (runs every 6 hours)
+    startAIInsightScheduler(6 * 60 * 60 * 1000);
+    logger.info('AI insight scheduler started');
   });
 })();
