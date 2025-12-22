@@ -6,9 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn } from "lucide-react";
 import logoImage from "@assets/Group 626535_1761099357468.png";
 
 export default function CoachLogin() {
@@ -41,10 +39,6 @@ export default function CoachLogin() {
       });
     }
   }, [searchString, toast]);
-
-  const handleOAuthLogin = () => {
-    window.location.href = "/api/oauth/login";
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,25 +187,6 @@ export default function CoachLogin() {
                 >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
-
-                <div className="relative my-4">
-                  <Separator />
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                    or
-                  </span>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleOAuthLogin}
-                  disabled={isLoading}
-                  data-testid="button-oauth-login"
-                >
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Continue with Google, Apple, or GitHub
-                </Button>
               </form>
             </TabsContent>
             <TabsContent value="register" className="mt-4">
@@ -271,25 +246,6 @@ export default function CoachLogin() {
                   data-testid="button-register"
                 >
                   {isLoading ? "Creating account..." : "Create Account"}
-                </Button>
-
-                <div className="relative my-4">
-                  <Separator />
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                    or
-                  </span>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleOAuthLogin}
-                  disabled={isLoading}
-                  data-testid="button-oauth-register"
-                >
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Sign up with Google, Apple, or GitHub
                 </Button>
               </form>
             </TabsContent>
