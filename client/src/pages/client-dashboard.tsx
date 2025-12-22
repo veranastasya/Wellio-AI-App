@@ -101,9 +101,8 @@ export default function ClientDashboard() {
       }
       setClientData(data.client);
       
-      // Show onboarding only on mobile if client hasn't completed it
-      const isMobile = window.innerWidth < 768;
-      if (!data.client.onboardingCompleted && isMobile) {
+      // Show onboarding if client hasn't completed it (on all devices)
+      if (!data.client.onboardingCompleted) {
         setShowOnboarding(true);
       }
     } catch (error) {
