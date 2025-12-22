@@ -246,7 +246,7 @@ export interface IStorage {
   deletePlanMessages(sessionId: string): Promise<boolean>;
 
   // Goals
-  getGoals(): Promise<Goal[]>;
+  getGoals(coachId?: string): Promise<Goal[]>;
   getGoal(id: string): Promise<Goal | undefined>;
   getGoalsByClientId(clientId: string): Promise<Goal[]>;
   createGoal(goal: InsertGoal): Promise<Goal>;
@@ -1583,7 +1583,19 @@ Introduction to consistent training and meal logging habits.
     return result.rowCount !== null && result.rowCount > 0;
   }
 
-  async getGoals(): Promise<Goal[]> {
+  async getGoals(coachId?: string): Promise<Goal[]> {
+    if (coachId) {
+      // Get goals for clients belonging to this coach
+      const coachClientIds = db
+        .select({ id: clients.id })
+        .from(clients)
+        .where(eq(clients.coachId, coachId));
+      
+      return await db
+        .select()
+        .from(goals)
+        .where(inArray(goals.clientId, coachClientIds));
+    }
     return await db.select().from(goals);
   }
 

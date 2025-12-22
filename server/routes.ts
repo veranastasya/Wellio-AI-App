@@ -49,6 +49,12 @@ function requireCoachAuth(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
+
+// Helper to validate that a client belongs to the authenticated coach
+async function assertCoachOwnsClient(coachId: string, clientId: string): Promise<boolean> {
+  const client = await storage.getClient(clientId);
+  return client !== undefined && client.coachId === coachId;
+}
 import { 
   insertClientSchema,
   updateClientSchema,
@@ -3412,10 +3418,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/clients/:id/progress", requireCoachAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      const coachId = req.session.coachId!;
       const client = await storage.getClient(id);
       
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
+      }
+      if (client.coachId && client.coachId !== coachId) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       // Calculate and return the breakdown
@@ -4614,9 +4624,10 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
   });
 
   // Goals routes
-  app.get("/api/goals", requireCoachAuth, async (_req, res) => {
+  app.get("/api/goals", requireCoachAuth, async (req, res) => {
     try {
-      const goals = await storage.getGoals();
+      const coachId = req.session.coachId!;
+      const goals = await storage.getGoals(coachId);
       res.json(goals);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch goals" });
@@ -4625,6 +4636,13 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
   app.get("/api/goals/client/:clientId", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      
+      // Validate coach owns this client
+      if (!await assertCoachOwnsClient(coachId, clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
       const goals = await storage.getGoalsByClientId(req.params.clientId);
       res.json(goals);
     } catch (error) {
@@ -4858,6 +4876,11 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       if (sessionClientId && sessionClientId !== clientId) {
         return res.status(403).json({ error: "Unauthorized" });
       }
+      
+      // Coaches can only access their own clients' logs
+      if (coachId && !await assertCoachOwnsClient(coachId, clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
 
       const logs = await storage.getSmartLogsByClientId(clientId, {
         startDate: startDate as string | undefined,
@@ -4890,6 +4913,11 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       // Verify client can only log for themselves
       if (sessionClientId && validatedData.clientId !== sessionClientId) {
         return res.status(403).json({ error: "Unauthorized - Can only log for yourself" });
+      }
+      
+      // Coaches can only create logs for their own clients
+      if (coachId && !await assertCoachOwnsClient(coachId, validatedData.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       const smartLog = await storage.createSmartLog(validatedData);
@@ -4943,6 +4971,11 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         return res.status(403).json({ error: "Unauthorized" });
       }
       
+      // Coaches can only access their own clients' logs
+      if (coachId && !await assertCoachOwnsClient(coachId, log.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       res.json(log);
     } catch (error) {
       console.error("Error fetching smart log:", error);
@@ -4954,10 +4987,16 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
   app.post("/api/smart-logs/:id/reprocess", requireCoachAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      const coachId = req.session.coachId!;
       
       const log = await storage.getSmartLog(id);
       if (!log) {
         return res.status(404).json({ error: "Smart log not found" });
+      }
+      
+      // Coaches can only reprocess their own clients' logs
+      if (!await assertCoachOwnsClient(coachId, log.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       const result = await processSmartLog(id);
@@ -4986,9 +5025,14 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         return res.status(404).json({ error: "Smart log not found" });
       }
 
-      // Clients can only edit their own logs; coaches can edit any log
+      // Clients can only edit their own logs
       if (sessionClientId && log.clientId !== sessionClientId) {
         return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      // Coaches can only edit their own clients' logs
+      if (coachId && !await assertCoachOwnsClient(coachId, log.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       // Validate input types
