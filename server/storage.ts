@@ -140,7 +140,7 @@ export interface IStorage {
   createActivity(activity: InsertActivity): Promise<Activity>;
 
   // Questionnaires
-  getQuestionnaires(): Promise<Questionnaire[]>;
+  getQuestionnaires(coachId?: string): Promise<Questionnaire[]>;
   getQuestionnaire(id: string): Promise<Questionnaire | undefined>;
   createQuestionnaire(questionnaire: InsertQuestionnaire): Promise<Questionnaire>;
   updateQuestionnaire(id: string, questionnaire: Partial<InsertQuestionnaire>): Promise<Questionnaire | undefined>;
@@ -987,7 +987,10 @@ Introduction to consistent training and meal logging habits.
   }
 
   // Questionnaire methods
-  async getQuestionnaires(): Promise<Questionnaire[]> {
+  async getQuestionnaires(coachId?: string): Promise<Questionnaire[]> {
+    if (coachId) {
+      return await db.select().from(questionnaires).where(eq(questionnaires.coachId, coachId));
+    }
     return await db.select().from(questionnaires);
   }
 

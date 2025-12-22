@@ -1526,6 +1526,7 @@ export const activities = pgTable("activities", {
 
 export const questionnaires = pgTable("questionnaires", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coachId: varchar("coach_id"),
   name: text("name").notNull(),
   status: text("status").notNull().default("draft"),
   questions: json("questions").notNull(),
@@ -1548,7 +1549,9 @@ export const questionnaires = pgTable("questionnaires", {
   deletedAt: text("deleted_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
-});
+}, (table) => ({
+  coachIdIdx: index("questionnaires_coach_id_idx").on(table.coachId),
+}));
 
 export const responses = pgTable("responses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

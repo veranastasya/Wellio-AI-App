@@ -1207,12 +1207,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.clientId || req.session.coachId || "";
       
       // Verify authorization:
-      // - Coaches can upload for any client (have coachId in session)
+      // - Coaches can only upload for their own clients
       // - Clients can only upload for their own conversations
       const isCoach = req.session.coachId !== undefined;
       const isOwnClient = userId === clientId;
       
-      if (!isCoach && !isOwnClient) {
+      if (isCoach) {
+        // Verify the client belongs to this coach
+        if (client.coachId !== req.session.coachId) {
+          return res.status(403).json({ error: "Not authorized to upload for this conversation" });
+        }
+      } else if (!isOwnClient) {
         return res.status(403).json({ error: "Not authorized to upload for this conversation" });
       }
       
@@ -1380,10 +1385,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to verify coach owns questionnaire
+  async function assertCoachOwnsQuestionnaire(coachId: string, questionnaireId: string): Promise<boolean> {
+    const questionnaire = await storage.getQuestionnaire(questionnaireId);
+    if (!questionnaire) return false;
+    return questionnaire.coachId === coachId;
+  }
+
   // Questionnaire routes
-  app.get("/api/questionnaires", requireCoachAuth, async (_req, res) => {
+  app.get("/api/questionnaires", requireCoachAuth, async (req, res) => {
     try {
-      const questionnaires = await storage.getQuestionnaires();
+      const coachId = req.session.coachId!;
+      const questionnaires = await storage.getQuestionnaires(coachId);
       const activeQuestionnaires = questionnaires.filter(q => !q.deleted);
       res.json(activeQuestionnaires);
     } catch (error) {
@@ -1404,6 +1417,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Unauthorized" });
       }
       
+      // Coaches can only view their own questionnaires (draft)
+      if (req.session?.coachId && questionnaire.status === 'draft' && questionnaire.coachId !== req.session.coachId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       res.json(questionnaire);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch questionnaire" });
@@ -1412,7 +1430,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/questionnaires", requireCoachAuth, async (req, res) => {
     try {
-      const validatedData = insertQuestionnaireSchema.parse(req.body);
+      const coachId = req.session.coachId!;
+      const validatedData = insertQuestionnaireSchema.parse({
+        ...req.body,
+        coachId,
+      });
       const questionnaire = await storage.createQuestionnaire(validatedData);
       res.status(201).json(questionnaire);
     } catch (error) {
@@ -1422,6 +1444,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/questionnaires/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      
+      // Verify ownership
+      if (!await assertCoachOwnsQuestionnaire(coachId, req.params.id)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const validatedData = insertQuestionnaireSchema.partial().parse(req.body);
       const questionnaire = await storage.updateQuestionnaire(req.params.id, validatedData);
       if (!questionnaire) {
@@ -1435,6 +1464,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/questionnaires/:id/publish", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      
+      // Verify ownership
+      if (!await assertCoachOwnsQuestionnaire(coachId, req.params.id)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       console.log(`[Publish] Publishing questionnaire ${req.params.id}`);
       const questionnaire = await storage.publishQuestionnaire(req.params.id);
       if (!questionnaire) {
@@ -1451,6 +1487,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/questionnaires/:id/archive", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      
+      // Verify ownership
+      if (!await assertCoachOwnsQuestionnaire(coachId, req.params.id)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const questionnaire = await storage.archiveQuestionnaire(req.params.id);
       if (!questionnaire) {
         return res.status(404).json({ error: "Questionnaire not found" });
@@ -1463,6 +1506,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/questionnaires/:id/restore", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      
+      // Verify ownership
+      if (!await assertCoachOwnsQuestionnaire(coachId, req.params.id)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const questionnaire = await storage.restoreQuestionnaire(req.params.id);
       if (!questionnaire) {
         return res.status(404).json({ error: "Questionnaire not found" });
@@ -1475,6 +1525,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/questionnaires/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      
+      // Verify ownership
+      if (!await assertCoachOwnsQuestionnaire(coachId, req.params.id)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const questionnaire = await storage.getQuestionnaire(req.params.id);
       if (!questionnaire) {
         return res.status(404).json({ error: "Questionnaire not found" });
