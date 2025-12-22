@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Save, LogOut, User, Mail, Phone, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle, Globe } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, type SupportedLanguage } from "@shared/schema";
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, COACH_UI_TRANSLATIONS, type SupportedLanguage, type Coach } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useCoachPushNotifications } from "@/hooks/useCoachPushNotifications";
@@ -58,6 +58,9 @@ export default function CoachSettings() {
     }
   }, [profile]);
 
+  const lang: SupportedLanguage = formData.preferredLanguage || "en";
+  const t = COACH_UI_TRANSLATIONS.settings;
+
   const updateMutation = useMutation({
     mutationFn: async (data: { name: string; email: string; phone: string; preferredLanguage: string }) => {
       const response = await apiRequest("PATCH", "/api/coach/profile", data);
@@ -66,14 +69,14 @@ export default function CoachSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/coach/profile"] });
       toast({
-        title: "Profile updated",
-        description: "Your profile has been saved successfully.",
+        title: t.profileUpdated[lang],
+        description: t.profileUpdatedDescription[lang],
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to update profile. Please try again.",
+        title: t.errorTitle[lang],
+        description: t.errorUpdateProfile[lang],
         variant: "destructive",
       });
     },
@@ -89,8 +92,8 @@ export default function CoachSettings() {
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to log out. Please try again.",
+        title: t.errorTitle[lang],
+        description: t.errorLogout[lang],
         variant: "destructive",
       });
     },
@@ -114,8 +117,8 @@ export default function CoachSettings() {
       setShowTour(true);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to start app tour. Please try again.",
+        title: t.errorTitle[lang],
+        description: t.errorTour[lang],
         variant: "destructive",
       });
     }
@@ -146,10 +149,10 @@ export default function CoachSettings() {
       <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-settings-title">
-            Settings
+            {t.title[lang]}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Manage your coach profile and account
+            {t.subtitle[lang]}
           </p>
         </div>
 
@@ -162,9 +165,9 @@ export default function CoachSettings() {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <span className="text-xl">Profile Information</span>
+                <span className="text-xl">{t.profileInformation[lang]}</span>
                 <CardDescription className="mt-0.5">
-                  Update your name and contact details
+                  {t.profileDescription[lang]}
                 </CardDescription>
               </div>
             </CardTitle>
@@ -174,12 +177,12 @@ export default function CoachSettings() {
               <div className="space-y-2">
                 <Label htmlFor="name" className="flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  Name
+                  {t.name[lang]}
                 </Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Your name"
+                  placeholder={t.yourName[lang]}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   data-testid="input-coach-name"
@@ -189,7 +192,7 @@ export default function CoachSettings() {
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">
                   <Mail className="w-4 h-4" />
-                  Email
+                  {t.email[lang]}
                 </Label>
                 <Input
                   id="email"
@@ -204,7 +207,7 @@ export default function CoachSettings() {
               <div className="space-y-2">
                 <Label htmlFor="phone" className="flex items-center gap-2">
                   <Phone className="w-4 h-4" />
-                  Phone Number
+                  {t.phone[lang]}
                 </Label>
                 <Input
                   id="phone"
@@ -219,19 +222,19 @@ export default function CoachSettings() {
               <div className="space-y-2">
                 <Label htmlFor="language" className="flex items-center gap-2">
                   <Globe className="w-4 h-4" />
-                  Preferred Language
+                  {t.preferredLanguage[lang]}
                 </Label>
                 <Select
                   value={formData.preferredLanguage}
                   onValueChange={(value) => setFormData({ ...formData, preferredLanguage: value as SupportedLanguage })}
                 >
                   <SelectTrigger data-testid="select-coach-language">
-                    <SelectValue placeholder="Select language" />
+                    <SelectValue placeholder={t.selectLanguage[lang]} />
                   </SelectTrigger>
                   <SelectContent>
-                    {SUPPORTED_LANGUAGES.map((lang) => (
-                      <SelectItem key={lang} value={lang} data-testid={`option-language-${lang}`}>
-                        {LANGUAGE_LABELS[lang]}
+                    {SUPPORTED_LANGUAGES.map((langOption) => (
+                      <SelectItem key={langOption} value={langOption} data-testid={`option-language-${langOption}`}>
+                        {LANGUAGE_LABELS[langOption]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -249,7 +252,7 @@ export default function CoachSettings() {
                 ) : (
                   <Save className="w-4 h-4" />
                 )}
-                Save Changes
+                {t.saveChanges[lang]}
               </Button>
             </form>
           </CardContent>
@@ -262,9 +265,9 @@ export default function CoachSettings() {
                 <Bell className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <span className="text-lg">Push Notifications</span>
+                <span className="text-lg">{t.pushNotifications[lang]}</span>
                 <CardDescription className="mt-0.5">
-                  Get notified when clients message you
+                  {t.pushDescription[lang]}
                 </CardDescription>
               </div>
             </CardTitle>
@@ -274,9 +277,9 @@ export default function CoachSettings() {
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
                 <AlertCircle className="w-5 h-5 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium text-foreground">Not Supported</p>
+                  <p className="text-sm font-medium text-foreground">{t.notSupported[lang]}</p>
                   <p className="text-sm text-muted-foreground">
-                    Push notifications are not supported on this browser or device
+                    {t.notSupportedDescription[lang]}
                   </p>
                 </div>
               </div>
@@ -284,23 +287,23 @@ export default function CoachSettings() {
               <>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Status:</span>
+                    <span className="text-sm text-muted-foreground">{t.status[lang]}:</span>
                     {isSubscribed ? (
                       <Badge variant="outline" className="gap-1" data-testid="badge-notifications-enabled">
                         <CheckCircle className="w-3 h-3 text-green-500" />
-                        Enabled
+                        {t.enabled[lang]}
                       </Badge>
                     ) : (
                       <Badge variant="outline" className="gap-1" data-testid="badge-notifications-disabled">
                         <BellOff className="w-3 h-3 text-muted-foreground" />
-                        Disabled
+                        {t.disabled[lang]}
                       </Badge>
                     )}
                   </div>
                   {permission === "denied" && (
                     <Badge variant="destructive" className="gap-1" data-testid="badge-permission-denied">
                       <XCircle className="w-3 h-3" />
-                      Blocked
+                      {t.blocked[lang]}
                     </Badge>
                   )}
                 </div>
@@ -308,10 +311,10 @@ export default function CoachSettings() {
                 {permission === "denied" ? (
                   <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                     <p className="text-sm font-medium text-destructive mb-1">
-                      Notifications Blocked
+                      {t.notificationsBlocked[lang]}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      You have blocked notifications for this site. To enable them, click the lock icon in your browser's address bar and allow notifications.
+                      {t.notificationsBlockedDescription[lang]}
                     </p>
                   </div>
                 ) : isSubscribed ? (
@@ -327,7 +330,7 @@ export default function CoachSettings() {
                     ) : (
                       <BellOff className="w-4 h-4" />
                     )}
-                    Disable Notifications
+                    {t.disableNotifications[lang]}
                   </Button>
                 ) : (
                   <Button
@@ -341,7 +344,7 @@ export default function CoachSettings() {
                     ) : (
                       <Bell className="w-4 h-4" />
                     )}
-                    Enable Notifications
+                    {t.enableNotifications[lang]}
                   </Button>
                 )}
               </>
@@ -356,7 +359,7 @@ export default function CoachSettings() {
                 <HelpCircle className="w-5 h-5 text-[#28A0AE]" />
               </div>
               <div>
-                <span className="text-lg">Help & Settings</span>
+                <span className="text-lg">{t.helpSettings[lang]}</span>
               </div>
             </CardTitle>
           </CardHeader>
@@ -368,19 +371,19 @@ export default function CoachSettings() {
               data-testid="button-retake-tour"
             >
               <HelpCircle className="w-4 h-4" />
-              Retake App Tour
+              {t.retakeAppTour[lang]}
             </Button>
             <p className="text-sm text-muted-foreground mt-2">
-              Learn about features and navigation again
+              {t.retakeDescription[lang]}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Account</CardTitle>
+            <CardTitle className="text-lg">{t.account[lang]}</CardTitle>
             <CardDescription>
-              Sign out of your coach account
+              {t.accountDescription[lang]}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -396,7 +399,7 @@ export default function CoachSettings() {
               ) : (
                 <LogOut className="w-4 h-4" />
               )}
-              Log Out
+              {t.logOut[lang]}
             </Button>
           </CardContent>
         </Card>

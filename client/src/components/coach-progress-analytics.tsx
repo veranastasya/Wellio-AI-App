@@ -29,13 +29,15 @@ import {
   BarChart,
   Bar
 } from "recharts";
-import type { SmartLog, ProgressEvent, AIClassification, PlanTargetsRecord, AIParsedData, ProgressPhoto } from "@shared/schema";
+import type { SmartLog, ProgressEvent, AIClassification, PlanTargetsRecord, AIParsedData, ProgressPhoto, SupportedLanguage } from "@shared/schema";
+import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { format, parseISO, subDays, eachDayOfInterval } from "date-fns";
 import { formatWeight, type UnitsPreference } from "@shared/units";
 
 interface CoachProgressAnalyticsProps {
   clientId: string;
   unitsPreference?: UnitsPreference;
+  lang?: SupportedLanguage;
 }
 
 function convertWeight(valueKg: number, units: UnitsPreference): number {
@@ -87,12 +89,14 @@ function getEventColor(eventType: string): string {
   }
 }
 
-function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) {
+function ParsedDataDisplay({ parsedData, lang = "en" }: { parsedData: AIParsedData | null; lang?: SupportedLanguage }) {
   if (!parsedData) return null;
 
   const { nutrition, workout, weight, sleep, mood } = parsedData;
   const hasData = nutrition || workout || weight || sleep || mood;
   if (!hasData) return null;
+
+  const t = COACH_UI_TRANSLATIONS.analytics;
 
   return (
     <div className="mt-2 space-y-2">
@@ -157,7 +161,7 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
       {weight && (
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 text-xs">
           <span className="font-medium text-blue-800 dark:text-blue-300">
-            Weight: {weight.value} {weight.unit}
+            {t.weight[lang]}: {weight.value} {weight.unit}
           </span>
         </div>
       )}
@@ -165,7 +169,7 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
       {sleep && (
         <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-2 text-xs">
           <span className="font-medium text-indigo-800 dark:text-indigo-300">
-            Sleep: {sleep.hours}h {sleep.quality && `(${sleep.quality})`}
+            {t.sleep[lang]}: {sleep.hours}h {sleep.quality && `(${sleep.quality})`}
           </span>
         </div>
       )}
@@ -173,7 +177,7 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
       {mood && (
         <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-2 text-xs">
           <span className="font-medium text-pink-800 dark:text-pink-300">
-            Mood: {mood.rating}/10
+            {t.mood[lang]}: {mood.rating}/10
           </span>
         </div>
       )}
@@ -181,9 +185,10 @@ function ParsedDataDisplay({ parsedData }: { parsedData: AIParsedData | null }) 
   );
 }
 
-export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }: CoachProgressAnalyticsProps) {
+export function CoachProgressAnalytics({ clientId, unitsPreference = "metric", lang = "en" }: CoachProgressAnalyticsProps) {
   const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
   const weightUnit = getWeightUnit(unitsPreference);
+  const t = COACH_UI_TRANSLATIONS.analytics;
   
   const { data: progressEvents, isLoading: eventsLoading } = useQuery<ProgressEvent[]>({
     queryKey: ["/api/progress-events", clientId],
@@ -286,10 +291,10 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
               <BarChart3 className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Days Logged</span>
+              <span className="text-sm text-muted-foreground">{t.daysLogged[lang]}</span>
             </div>
             <div className="text-2xl font-bold" data-testid="text-days-logged-value">{daysWithData}</div>
-            <div className="text-xs text-muted-foreground">Last 30 days</div>
+            <div className="text-xs text-muted-foreground">{t.last30Days[lang]}</div>
           </CardContent>
         </Card>
 
@@ -297,7 +302,7 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
               <Scale className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Weight Change</span>
+              <span className="text-sm text-muted-foreground">{t.weightChange[lang]}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold" data-testid="text-weight-change-value">
@@ -321,12 +326,12 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
               <Dumbbell className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Workouts</span>
+              <span className="text-sm text-muted-foreground">{t.workouts[lang]}</span>
             </div>
             <div className="text-2xl font-bold" data-testid="text-workouts-value">{workoutsThisWeek}</div>
             <div className="text-xs text-muted-foreground">
-              This week {planTarget?.configJson?.workouts_per_week_target 
-                ? `/ ${planTarget.configJson.workouts_per_week_target} target`
+              {t.thisWeek[lang]} {planTarget?.configJson?.workouts_per_week_target 
+                ? `/ ${planTarget.configJson.workouts_per_week_target} ${t.target[lang]}`
                 : ''
               }
             </div>
@@ -337,15 +342,15 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
               <Apple className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Avg Calories</span>
+              <span className="text-sm text-muted-foreground">{t.avgCalories[lang]}</span>
             </div>
             <div className="text-2xl font-bold" data-testid="text-avg-calories-value">
               {avgCalories > 0 ? Math.round(avgCalories) : '-'}
             </div>
             <div className="text-xs text-muted-foreground">
               {planTarget?.configJson?.calories_target_per_day
-                ? `Target: ${planTarget.configJson.calories_target_per_day}`
-                : 'No target set'
+                ? `${t.target[lang]}: ${planTarget.configJson.calories_target_per_day}`
+                : t.noTargetSet[lang]
               }
             </div>
           </CardContent>
@@ -358,7 +363,7 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center gap-2">
                 <Scale className="w-5 h-5" />
-                Weight Trend ({weightUnit})
+                {t.weightTrend[lang]} ({weightUnit})
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -382,7 +387,7 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '6px'
                       }}
-                      formatter={(value: number) => [`${value.toFixed(1)} ${weightUnit}`, 'Weight']}
+                      formatter={(value: number) => [`${value.toFixed(1)} ${weightUnit}`, t.weight[lang]]}
                     />
                     <Line 
                       type="monotone" 
@@ -402,7 +407,7 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">
               <Apple className="w-5 h-5" />
-              Calories (14 Days)
+              {t.calories14Days[lang]}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -427,7 +432,7 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
                     }}
                     labelStyle={{ color: 'hsl(var(--foreground))' }}
                     itemStyle={{ color: 'hsl(var(--foreground))' }}
-                    formatter={(value: number) => [value ? `${value} cal` : 'No data', 'Calories']}
+                    formatter={(value: number) => [value ? `${value} cal` : t.noData[lang], t.caloriesLabel[lang]]}
                   />
                   <Bar 
                     dataKey="calories" 
@@ -453,7 +458,7 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
 
       <Card data-testid="card-recent-logs">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Recent Smart Logs</CardTitle>
+          <CardTitle className="text-lg">{t.recentSmartLogs[lang]}</CardTitle>
         </CardHeader>
         <CardContent>
           {smartLogs && smartLogs.length > 0 ? (
@@ -489,7 +494,7 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
                         );
                       })}
                     </div>
-                    <ParsedDataDisplay parsedData={parsedData} />
+                    <ParsedDataDisplay parsedData={parsedData} lang={lang} />
                   </div>
                 );
               })}
@@ -497,14 +502,13 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
           ) : (
             <div className="text-center py-8 text-muted-foreground" data-testid="empty-logs-message">
               <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No smart logs yet</p>
-              <p className="text-sm">Client hasn't logged any progress entries</p>
+              <p>{t.noSmartLogsYet[lang]}</p>
+              <p className="text-sm">{t.clientNoLogs[lang]}</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Progress Photos Section */}
       <Card data-testid="card-progress-photos">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-3">
@@ -512,8 +516,8 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
               <Camera className="w-5 h-5 text-teal-600 dark:text-teal-400" />
             </div>
             <div>
-              <CardTitle className="text-lg">Progress Photos</CardTitle>
-              <p className="text-xs text-muted-foreground">Photos shared by client</p>
+              <CardTitle className="text-lg">{t.progressPhotos[lang]}</CardTitle>
+              <p className="text-xs text-muted-foreground">{t.photosSharedByClient[lang]}</p>
             </div>
           </div>
         </CardHeader>
@@ -559,8 +563,8 @@ export function CoachProgressAnalytics({ clientId, unitsPreference = "metric" }:
           ) : (
             <div className="text-center py-8 text-muted-foreground" data-testid="empty-photos-message">
               <ImageOff className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>No shared photos yet</p>
-              <p className="text-sm">Client hasn't shared any progress photos</p>
+              <p>{t.noPhotosYet[lang]}</p>
+              <p className="text-sm">{t.clientNoPhotos[lang]}</p>
             </div>
           )}
         </CardContent>

@@ -1,5 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useCoachAuth } from "@/contexts/coach-auth-context";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -7,6 +8,7 @@ import { SidebarTriggerWithBadge } from "@/components/sidebar-trigger-with-badge
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TourProvider, useTour } from "@/contexts/tour-context";
 import { Loader2 } from "lucide-react";
+import type { Coach, SupportedLanguage } from "@shared/schema";
 
 interface CoachProtectedLayoutProps {
   children: ReactNode;
@@ -29,6 +31,14 @@ function SidebarAutoClose({ children }: { children: ReactNode }) {
 export function CoachProtectedLayout({ children }: CoachProtectedLayoutProps) {
   const { isAuthenticated, isLoading } = useCoachAuth();
   const [, setLocation] = useLocation();
+
+  // Fetch coach profile to get language preference
+  const { data: coachProfile } = useQuery<Omit<Coach, "passwordHash">>({
+    queryKey: ["/api/coach/profile"],
+    enabled: isAuthenticated,
+  });
+
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -60,7 +70,7 @@ export function CoachProtectedLayout({ children }: CoachProtectedLayoutProps) {
       <SidebarProvider style={style as React.CSSProperties}>
         <SidebarAutoClose>
           <div className="flex h-screen-safe w-full">
-            <AppSidebar />
+            <AppSidebar lang={lang} />
             <div className="flex flex-col flex-1 min-w-0 min-h-0">
               <header className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background flex-shrink-0">
                 <SidebarTriggerWithBadge role="coach" />

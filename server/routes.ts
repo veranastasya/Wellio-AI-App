@@ -1019,9 +1019,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send push notification to coach when client sends a message
       const client = await storage.getClient(clientId);
       if (client?.coachId) {
+        // Get coach's language preference for translated notification
+        const coach = await storage.getCoach(client.coachId);
+        const coachLang = (coach?.preferredLanguage || 'en') as 'en' | 'ru' | 'es';
+        const { COACH_UI_TRANSLATIONS } = await import('@shared/schema');
+        const notifTranslations = COACH_UI_TRANSLATIONS.notifications;
+        const newMessageTitle = `${notifTranslations.newMessage[coachLang]} ${client.name}`;
+        
         sendPushNotificationToCoach(
           client.coachId,
-          `New message from ${client.name}`,
+          newMessageTitle,
           validatedData.content.substring(0, 100) + (validatedData.content.length > 100 ? '...' : ''),
           { tag: 'client-message', url: `/communication?client=${clientId}`, type: 'message', metadata: { userType: 'coach' } }
         ).then(result => {
@@ -5586,10 +5593,16 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     try {
       const coachId = req.session.coachId!;
       
+      // Get coach's language preference for translated notification
+      const coach = await storage.getCoach(coachId);
+      const coachLang = (coach?.preferredLanguage || 'en') as 'en' | 'ru' | 'es';
+      const { COACH_UI_TRANSLATIONS } = await import('@shared/schema');
+      const notifTranslations = COACH_UI_TRANSLATIONS.notifications;
+      
       const result = await sendPushNotificationToCoach(
         coachId,
-        'Test Notification',
-        'Push notifications are working! You will receive alerts when clients message you.',
+        notifTranslations.testTitle[coachLang],
+        notifTranslations.testBody[coachLang],
         { 
           type: 'test',
           tag: 'wellio-test',

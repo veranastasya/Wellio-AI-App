@@ -27,10 +27,18 @@ import {
   Cell,
 } from "recharts";
 import { useState } from "react";
-import type { Client, Session } from "@shared/schema";
+import type { Client, Session, Coach, SupportedLanguage } from "@shared/schema";
+import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 
 export default function Analytics() {
   const [timeRange, setTimeRange] = useState("30");
+
+  const { data: coachProfile } = useQuery<Coach>({
+    queryKey: ["/api/coach/profile"],
+  });
+
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const t = COACH_UI_TRANSLATIONS.analytics;
 
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -113,7 +121,7 @@ export default function Analytics() {
     for (let i = monthCount - 1; i >= 0; i--) {
       const date = new Date();
       date.setMonth(date.getMonth() - i);
-      const monthName = date.toLocaleDateString('en-US', { month: 'short' });
+      const monthName = date.toLocaleDateString(lang === "ru" ? "ru-RU" : lang === "es" ? "es-ES" : "en-US", { month: 'short' });
       const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
       const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
       
@@ -147,75 +155,75 @@ export default function Analytics() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-analytics">
-            Progress Analytics
+            {t.title[lang]}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Comprehensive client performance insights and metrics
+            {t.subtitle[lang]}
           </p>
         </div>
         <Select value={timeRange} onValueChange={setTimeRange}>
           <SelectTrigger className="w-full sm:w-48" data-testid="select-timerange">
-            <SelectValue placeholder="Select time range" />
+            <SelectValue placeholder={t.selectTimeRange[lang]} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
-            <SelectItem value="365">Last year</SelectItem>
+            <SelectItem value="7">{t.last7Days[lang]}</SelectItem>
+            <SelectItem value="30">{t.last30Days[lang]}</SelectItem>
+            <SelectItem value="90">{t.last90Days[lang]}</SelectItem>
+            <SelectItem value="365">{t.lastYear[lang]}</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.activeClients[lang]}</CardTitle>
             <Users className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold tracking-tight" data-testid="metric-active-clients">{activeClients}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {clients.length} total clients
+              {clients.length} {t.totalClients[lang]}
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Progress</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.averageProgress[lang]}</CardTitle>
             <Target className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold tracking-tight" data-testid="metric-avg-progress">{avgProgress}%</div>
             <div className="flex items-center gap-1 mt-1">
               <TrendingUp className="w-3 h-3 text-green-600" />
-              <p className="text-xs text-green-600">+5% from last month</p>
+              <p className="text-xs text-green-600">+5% {t.fromLastMonth[lang]}</p>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Session Completion</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.sessionCompletion[lang]}</CardTitle>
             <Calendar className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold tracking-tight" data-testid="metric-completion-rate">{completionRate}%</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {completedSessions} of {totalFilteredSessions} sessions
+              {completedSessions} {t.ofSessions[lang]} {totalFilteredSessions} {t.sessions[lang]}
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Top Performers</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">{t.topPerformers[lang]}</CardTitle>
             <Award className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold tracking-tight" data-testid="metric-top-performers">{clientsAbove80}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Clients above 80% progress
+              {t.clientsAbove80[lang]}
             </p>
           </CardContent>
         </Card>
@@ -224,9 +232,9 @@ export default function Analytics() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Progress Trend Over Time</CardTitle>
+            <CardTitle>{t.progressTrendOverTime[lang]}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Average client progress by month
+              {t.avgClientProgressByMonth[lang]}
             </p>
           </CardHeader>
           <CardContent>
@@ -255,7 +263,7 @@ export default function Analytics() {
                   dataKey="avgProgress"
                   stroke="#28A0AE"
                   strokeWidth={2}
-                  name="Avg Progress (%)"
+                  name={t.avgProgress[lang]}
                   dot={{ fill: '#28A0AE' }}
                 />
                 <Line
@@ -263,7 +271,7 @@ export default function Analytics() {
                   dataKey="sessions"
                   stroke="#E2F9AD"
                   strokeWidth={2}
-                  name="Sessions"
+                  name={t.sessionsLabel[lang]}
                   dot={{ fill: '#E2F9AD' }}
                 />
               </LineChart>
@@ -273,9 +281,9 @@ export default function Analytics() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Goal Distribution</CardTitle>
+            <CardTitle>{t.goalDistribution[lang]}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Client goals breakdown
+              {t.clientGoalsBreakdown[lang]}
             </p>
           </CardHeader>
           <CardContent>
@@ -310,9 +318,9 @@ export default function Analytics() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Individual Client Performance</CardTitle>
+          <CardTitle>{t.individualClientPerformance[lang]}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Current progress scores sorted by performance
+            {t.currentProgressScores[lang]}
           </p>
         </CardHeader>
         <CardContent>
@@ -345,15 +353,15 @@ export default function Analytics() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Performance Insights</CardTitle>
+            <CardTitle>{t.performanceInsights[lang]}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
               <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />
               <div>
-                <p className="font-medium text-green-900 dark:text-green-100">Excellent Progress</p>
+                <p className="font-medium text-green-900 dark:text-green-100">{t.excellentProgress[lang]}</p>
                 <p className="text-sm text-green-700 dark:text-green-300">
-                  {clientsAbove80} clients maintaining 80%+ progress scores
+                  {clientsAbove80} {t.clientsMaintaining80Plus[lang]}
                 </p>
               </div>
             </div>
@@ -361,9 +369,9 @@ export default function Analytics() {
             <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
               <Target className="w-5 h-5 text-blue-600 mt-0.5" />
               <div>
-                <p className="font-medium text-blue-900 dark:text-blue-100">Goal Completion Rate</p>
+                <p className="font-medium text-blue-900 dark:text-blue-100">{t.goalCompletionRate[lang]}</p>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
-                  {completionRate}% of scheduled sessions completed successfully
+                  {completionRate}% {t.sessionsCompletedSuccessfully[lang]}
                 </p>
               </div>
             </div>
@@ -372,9 +380,9 @@ export default function Analytics() {
               <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
                 <TrendingDown className="w-5 h-5 text-amber-600 mt-0.5" />
                 <div>
-                  <p className="font-medium text-amber-900 dark:text-amber-100">Attention Needed</p>
+                  <p className="font-medium text-amber-900 dark:text-amber-100">{t.attentionNeeded[lang]}</p>
                   <p className="text-sm text-amber-700 dark:text-amber-300">
-                    {clients.filter((c) => c.progressScore < 50).length} clients below 50% progress - consider intervention
+                    {clients.filter((c) => c.progressScore < 50).length} {t.clientsBelow50[lang]}
                   </p>
                 </div>
               </div>
@@ -384,9 +392,9 @@ export default function Analytics() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Achievement Badges</CardTitle>
+            <CardTitle>{t.achievementBadges[lang]}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Recognition milestones reached
+              {t.recognitionMilestones[lang]}
             </p>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -396,12 +404,12 @@ export default function Analytics() {
                   <Award className="w-5 h-5 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="font-medium">Top Performer</p>
-                  <p className="text-xs text-muted-foreground">90%+ Progress Score</p>
+                  <p className="font-medium">{t.topPerformerBadge[lang]}</p>
+                  <p className="text-xs text-muted-foreground">{t.progress90Plus[lang]}</p>
                 </div>
               </div>
               <Badge variant="secondary" data-testid="badge-top-performer">
-                {clients.filter((c) => c.progressScore >= 90).length} clients
+                {clients.filter((c) => c.progressScore >= 90).length} {t.clients[lang]}
               </Badge>
             </div>
 
@@ -411,12 +419,12 @@ export default function Analytics() {
                   <Target className="w-5 h-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="font-medium">Goal Achiever</p>
-                  <p className="text-xs text-muted-foreground">75-89% Progress</p>
+                  <p className="font-medium">{t.goalAchiever[lang]}</p>
+                  <p className="text-xs text-muted-foreground">{t.progress75to89[lang]}</p>
                 </div>
               </div>
               <Badge variant="secondary" data-testid="badge-goal-achiever">
-                {clients.filter((c) => c.progressScore >= 75 && c.progressScore < 90).length} clients
+                {clients.filter((c) => c.progressScore >= 75 && c.progressScore < 90).length} {t.clients[lang]}
               </Badge>
             </div>
 
@@ -426,12 +434,12 @@ export default function Analytics() {
                   <TrendingUp className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="font-medium">On Track</p>
-                  <p className="text-xs text-muted-foreground">50-74% Progress</p>
+                  <p className="font-medium">{t.onTrack[lang]}</p>
+                  <p className="text-xs text-muted-foreground">{t.progress50to74[lang]}</p>
                 </div>
               </div>
               <Badge variant="secondary" data-testid="badge-on-track">
-                {clients.filter((c) => c.progressScore >= 50 && c.progressScore < 75).length} clients
+                {clients.filter((c) => c.progressScore >= 50 && c.progressScore < 75).length} {t.clients[lang]}
               </Badge>
             </div>
           </CardContent>

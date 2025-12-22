@@ -39,7 +39,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, MoreVertical, Edit, Eye, Copy, Archive, Trash2, RotateCcw, Send } from "lucide-react";
 import { useLocation } from "wouter";
-import type { Questionnaire } from "@shared/schema";
+import type { Questionnaire, Coach, SupportedLanguage } from "@shared/schema";
+import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 
 export default function Questionnaires() {
   const [, setLocation] = useLocation();
@@ -50,6 +51,13 @@ export default function Questionnaires() {
   const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [selectedQuestionnaire, setSelectedQuestionnaire] = useState<Questionnaire | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  const { data: coachProfile } = useQuery<Omit<Coach, "passwordHash">>({
+    queryKey: ["/api/coach/profile"],
+  });
+
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const t = COACH_UI_TRANSLATIONS.questionnaires;
 
   useEffect(() => {
     const handleResize = () => {
@@ -63,7 +71,6 @@ export default function Questionnaires() {
     queryKey: ["/api/questionnaires"],
   });
 
-  // Filter questionnaires based on tab and status
   const activeQuestionnaires = allQuestionnaires.filter(
     (q) => q.status !== "archived"
   );
@@ -83,14 +90,14 @@ export default function Questionnaires() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/questionnaires"] });
       toast({
-        title: "Success",
-        description: "Questionnaire published successfully",
+        title: t.success[lang],
+        description: t.publishedSuccessfully[lang],
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to publish questionnaire",
+        title: t.error[lang],
+        description: t.failedToPublish[lang],
         variant: "destructive",
       });
     },
@@ -103,16 +110,16 @@ export default function Questionnaires() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/questionnaires"] });
       toast({
-        title: "Success",
-        description: "Questionnaire archived successfully",
+        title: t.success[lang],
+        description: t.archivedSuccessfully[lang],
       });
       setArchiveDialogOpen(false);
       setSelectedQuestionnaire(null);
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to archive questionnaire",
+        title: t.error[lang],
+        description: t.failedToArchive[lang],
         variant: "destructive",
       });
     },
@@ -125,14 +132,14 @@ export default function Questionnaires() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/questionnaires"] });
       toast({
-        title: "Success",
-        description: "Questionnaire restored successfully",
+        title: t.success[lang],
+        description: t.restoredSuccessfully[lang],
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to restore questionnaire",
+        title: t.error[lang],
+        description: t.failedToRestore[lang],
         variant: "destructive",
       });
     },
@@ -151,13 +158,13 @@ export default function Questionnaires() {
       
       if (data?.archived) {
         toast({
-          title: "Questionnaire Archived",
-          description: "This questionnaire was sent to clients and has been archived instead of deleted.",
+          title: t.questionnaireArchived[lang],
+          description: t.archivedInsteadOfDeleted[lang],
         });
       } else {
         toast({
-          title: "Success",
-          description: "Questionnaire deleted successfully",
+          title: t.success[lang],
+          description: t.deletedSuccessfully[lang],
         });
       }
       setDeleteDialogOpen(false);
@@ -165,8 +172,8 @@ export default function Questionnaires() {
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to delete questionnaire",
+        title: t.error[lang],
+        description: t.failedToDelete[lang],
         variant: "destructive",
       });
     },
@@ -192,14 +199,14 @@ export default function Questionnaires() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/questionnaires"] });
       toast({
-        title: "Success",
-        description: "Questionnaire duplicated successfully",
+        title: t.success[lang],
+        description: t.duplicatedSuccessfully[lang],
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to duplicate questionnaire",
+        title: t.error[lang],
+        description: t.failedToDuplicate[lang],
         variant: "destructive",
       });
     },
@@ -238,6 +245,19 @@ export default function Questionnaires() {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "published":
+        return t.published[lang];
+      case "archived":
+        return t.archived[lang];
+      case "draft":
+        return t.draft[lang];
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+  };
+
   const renderQuestionnaireCard = (questionnaire: Questionnaire) => (
     <Card
       key={questionnaire.id}
@@ -254,12 +274,12 @@ export default function Questionnaires() {
                 variant={getStatusBadgeVariant(questionnaire.status)}
                 data-testid={`badge-status-${questionnaire.id}`}
               >
-                {questionnaire.status.charAt(0).toUpperCase() + questionnaire.status.slice(1)}
+                {getStatusLabel(questionnaire.status)}
               </Badge>
             </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span data-testid={`text-usage-count-${questionnaire.id}`}>
-                Sent to: {questionnaire.usageCount || 0}
+                {t.sentTo[lang]}: {questionnaire.usageCount || 0}
               </span>
               <span data-testid={`text-updated-${questionnaire.id}`}>
                 {new Date(questionnaire.updatedAt).toLocaleDateString()}
@@ -290,7 +310,7 @@ export default function Questionnaires() {
                         data-testid={`action-publish-${questionnaire.id}`}
                       >
                         <Send className="h-4 w-4 mr-2" />
-                        Publish
+                        {t.publish[lang]}
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem
@@ -301,7 +321,7 @@ export default function Questionnaires() {
                       data-testid={`action-edit-${questionnaire.id}`}
                     >
                       <Edit className="h-4 w-4 mr-2" />
-                      Edit
+                      {t.edit[lang]}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -311,7 +331,7 @@ export default function Questionnaires() {
                       data-testid={`action-preview-${questionnaire.id}`}
                     >
                       <Eye className="h-4 w-4 mr-2" />
-                      Preview
+                      {t.preview[lang]}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -321,7 +341,7 @@ export default function Questionnaires() {
                       data-testid={`action-duplicate-${questionnaire.id}`}
                     >
                       <Copy className="h-4 w-4 mr-2" />
-                      Duplicate
+                      {t.duplicateQuestionnaire[lang]}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -331,7 +351,7 @@ export default function Questionnaires() {
                       data-testid={`action-archive-${questionnaire.id}`}
                     >
                       <Archive className="h-4 w-4 mr-2" />
-                      Archive
+                      {t.archive[lang]}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -342,7 +362,7 @@ export default function Questionnaires() {
                       className="text-destructive"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
+                      {t.deleteQuestionnaire[lang]}
                     </DropdownMenuItem>
                   </>
                 ) : (
@@ -355,7 +375,7 @@ export default function Questionnaires() {
                       data-testid={`action-restore-${questionnaire.id}`}
                     >
                       <RotateCcw className="h-4 w-4 mr-2" />
-                      Restore
+                      {t.restore[lang]}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={(e) => {
@@ -365,7 +385,7 @@ export default function Questionnaires() {
                       data-testid={`action-duplicate-${questionnaire.id}`}
                     >
                       <Copy className="h-4 w-4 mr-2" />
-                      Duplicate
+                      {t.duplicateQuestionnaire[lang]}
                     </DropdownMenuItem>
                     {(!questionnaire.usageCount || questionnaire.usageCount === 0) && (
                       <DropdownMenuItem
@@ -377,7 +397,7 @@ export default function Questionnaires() {
                         className="text-destructive"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Permanently
+                        {t.deletePermanently[lang]}
                       </DropdownMenuItem>
                     )}
                   </>
@@ -405,7 +425,7 @@ export default function Questionnaires() {
           variant={getStatusBadgeVariant(questionnaire.status)}
           data-testid={`badge-status-${questionnaire.id}`}
         >
-          {questionnaire.status.charAt(0).toUpperCase() + questionnaire.status.slice(1)}
+          {getStatusLabel(questionnaire.status)}
         </Badge>
       </TableCell>
       <TableCell data-testid={`text-usage-count-${questionnaire.id}`}>
@@ -437,7 +457,7 @@ export default function Questionnaires() {
                     data-testid={`action-publish-${questionnaire.id}`}
                   >
                     <Send className="h-4 w-4 mr-2" />
-                    Publish
+                    {t.publish[lang]}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
@@ -448,7 +468,7 @@ export default function Questionnaires() {
                   data-testid={`action-edit-${questionnaire.id}`}
                 >
                   <Edit className="h-4 w-4 mr-2" />
-                  Edit
+                  {t.edit[lang]}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -458,7 +478,7 @@ export default function Questionnaires() {
                   data-testid={`action-preview-${questionnaire.id}`}
                 >
                   <Eye className="h-4 w-4 mr-2" />
-                  Preview
+                  {t.preview[lang]}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -468,7 +488,7 @@ export default function Questionnaires() {
                   data-testid={`action-duplicate-${questionnaire.id}`}
                 >
                   <Copy className="h-4 w-4 mr-2" />
-                  Duplicate
+                  {t.duplicateQuestionnaire[lang]}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -478,7 +498,7 @@ export default function Questionnaires() {
                   data-testid={`action-archive-${questionnaire.id}`}
                 >
                   <Archive className="h-4 w-4 mr-2" />
-                  Archive
+                  {t.archive[lang]}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -489,7 +509,7 @@ export default function Questionnaires() {
                   className="text-destructive"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
+                  {t.deleteQuestionnaire[lang]}
                 </DropdownMenuItem>
               </>
             ) : (
@@ -502,7 +522,7 @@ export default function Questionnaires() {
                   data-testid={`action-restore-${questionnaire.id}`}
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
-                  Restore
+                  {t.restore[lang]}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
@@ -512,7 +532,7 @@ export default function Questionnaires() {
                   data-testid={`action-duplicate-${questionnaire.id}`}
                 >
                   <Copy className="h-4 w-4 mr-2" />
-                  Duplicate
+                  {t.duplicateQuestionnaire[lang]}
                 </DropdownMenuItem>
                 {(!questionnaire.usageCount || questionnaire.usageCount === 0) && (
                   <DropdownMenuItem
@@ -524,7 +544,7 @@ export default function Questionnaires() {
                     className="text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Permanently
+                    {t.deletePermanently[lang]}
                   </DropdownMenuItem>
                 )}
               </>
@@ -540,9 +560,9 @@ export default function Questionnaires() {
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Questionnaires</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">{t.title[lang]}</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Create and manage client intake forms
+              {t.subtitle[lang]}
             </p>
           </div>
           <Button
@@ -551,14 +571,14 @@ export default function Questionnaires() {
             className="w-full sm:w-auto min-h-10"
           >
             <Plus className="h-4 w-4 mr-2" />
-            New Questionnaire
+            {t.newQuestionnaire[lang]}
           </Button>
         </div>
 
         {isLoading ? (
           <Card>
             <CardContent className="p-6">
-              <div className="text-center text-muted-foreground">Loading...</div>
+              <div className="text-center text-muted-foreground">{t.loading[lang]}</div>
             </CardContent>
           </Card>
         ) : allQuestionnaires.length === 0 ? (
@@ -568,16 +588,16 @@ export default function Questionnaires() {
                 <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
                   <Plus className="h-8 w-8 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold">No questionnaires yet</h3>
+                <h3 className="text-lg font-semibold">{t.noQuestionnaires[lang]}</h3>
                 <p className="text-muted-foreground">
-                  Create your first intake form to onboard clients faster.
+                  {t.createFirstQuestionnaire[lang]}
                 </p>
                 <Button
                   onClick={() => setLocation("/questionnaires/new")}
                   data-testid="button-create-first-questionnaire"
                   className="min-h-10"
                 >
-                  Create Questionnaire
+                  {t.createQuestionnaire[lang]}
                 </Button>
               </div>
             </CardContent>
@@ -587,22 +607,22 @@ export default function Questionnaires() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <TabsList data-testid="tabs-list" className="h-auto p-1 bg-muted rounded-lg">
                 <TabsTrigger value="active" data-testid="tab-active" className="min-h-10 py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
-                  Active ({activeQuestionnaires.length})
+                  {t.active[lang]} ({activeQuestionnaires.length})
                 </TabsTrigger>
                 <TabsTrigger value="archived" data-testid="tab-archived" className="min-h-10 py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
-                  Archived ({archivedQuestionnaires.length})
+                  {t.archived[lang]} ({archivedQuestionnaires.length})
                 </TabsTrigger>
               </TabsList>
 
               {activeTab === "active" && (
                 <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
                   <SelectTrigger className="w-full sm:w-[180px] min-h-10" data-testid="select-status-filter">
-                    <SelectValue placeholder="Filter by status" />
+                    <SelectValue placeholder={t.filterByStatus[lang]} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
+                    <SelectItem value="all">{t.all[lang]}</SelectItem>
+                    <SelectItem value="draft">{t.draft[lang]}</SelectItem>
+                    <SelectItem value="published">{t.published[lang]}</SelectItem>
                   </SelectContent>
                 </Select>
               )}
@@ -613,9 +633,11 @@ export default function Questionnaires() {
                 <Card>
                   <CardContent className="p-12 text-center">
                     <div className="text-muted-foreground">
-                      {statusFilter !== "all" 
-                        ? `No ${statusFilter} questionnaires found`
-                        : "No active questionnaires found"
+                      {statusFilter === "draft" 
+                        ? t.noDraftQuestionnaires[lang]
+                        : statusFilter === "published"
+                        ? t.noPublishedQuestionnaires[lang]
+                        : t.noActiveQuestionnaires[lang]
                       }
                     </div>
                   </CardContent>
@@ -623,25 +645,23 @@ export default function Questionnaires() {
               ) : (
                 <>
                   {isMobile ? (
-                    /* Mobile Card Layout */
                     <div className="space-y-3">
                       {filteredQuestionnaires.map(renderQuestionnaireCard)}
                     </div>
                   ) : (
-                    /* Desktop Table Layout */
                     <Card>
                       <CardHeader>
-                        <CardTitle>Active Questionnaires</CardTitle>
+                        <CardTitle>{t.activeQuestionnaires[lang]}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Sent To</TableHead>
-                              <TableHead>Last Updated</TableHead>
-                              <TableHead className="w-[80px]">Actions</TableHead>
+                              <TableHead>{t.name[lang]}</TableHead>
+                              <TableHead>{t.status[lang]}</TableHead>
+                              <TableHead>{t.sentTo[lang]}</TableHead>
+                              <TableHead>{t.lastUpdated[lang]}</TableHead>
+                              <TableHead className="w-[80px]">{t.actions[lang]}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -660,32 +680,30 @@ export default function Questionnaires() {
                 <Card>
                   <CardContent className="p-12 text-center">
                     <div className="text-muted-foreground">
-                      No archived questionnaires
+                      {t.noArchivedQuestionnaires[lang]}
                     </div>
                   </CardContent>
                 </Card>
               ) : (
                 <>
                   {isMobile ? (
-                    /* Mobile Card Layout */
                     <div className="space-y-3">
                       {archivedQuestionnaires.map(renderQuestionnaireCard)}
                     </div>
                   ) : (
-                    /* Desktop Table Layout */
                     <Card>
                       <CardHeader>
-                        <CardTitle>Archived Questionnaires</CardTitle>
+                        <CardTitle>{t.archivedQuestionnaires[lang]}</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Sent To</TableHead>
-                              <TableHead>Archived At</TableHead>
-                              <TableHead className="w-[80px]">Actions</TableHead>
+                              <TableHead>{t.name[lang]}</TableHead>
+                              <TableHead>{t.status[lang]}</TableHead>
+                              <TableHead>{t.sentTo[lang]}</TableHead>
+                              <TableHead>{t.archivedAt[lang]}</TableHead>
+                              <TableHead className="w-[80px]">{t.actions[lang]}</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -705,30 +723,25 @@ export default function Questionnaires() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Questionnaire</AlertDialogTitle>
+            <AlertDialogTitle>{t.deleteConfirmTitle[lang]}</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedQuestionnaire && selectedQuestionnaire.usageCount && selectedQuestionnaire.usageCount > 0 ? (
-                <>
-                  This questionnaire has been sent to {selectedQuestionnaire.usageCount} client(s). 
-                  It will be archived instead of deleted to preserve client responses.
-                </>
+                t.deleteConfirmUsed[lang].replace("{count}", String(selectedQuestionnaire.usageCount))
               ) : (
-                <>
-                  Are you sure you want to delete "{selectedQuestionnaire?.name}"? This action cannot be undone.
-                </>
+                t.deleteConfirmUnused[lang].replace("{name}", selectedQuestionnaire?.name || "")
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-delete">{t.cancel[lang]}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               data-testid="button-confirm-delete"
               className="bg-destructive hover:bg-destructive/90"
             >
               {selectedQuestionnaire && selectedQuestionnaire.usageCount && selectedQuestionnaire.usageCount > 0 
-                ? "Archive" 
-                : "Delete"
+                ? t.archive[lang]
+                : t.deleteQuestionnaire[lang]
               }
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -738,19 +751,18 @@ export default function Questionnaires() {
       <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive Questionnaire</AlertDialogTitle>
+            <AlertDialogTitle>{t.archiveConfirmTitle[lang]}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to archive "{selectedQuestionnaire?.name}"? 
-              It will be hidden from the active list but can be restored later.
+              {t.archiveConfirmDescription[lang].replace("{name}", selectedQuestionnaire?.name || "")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-archive">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-archive">{t.cancel[lang]}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmArchive}
               data-testid="button-confirm-archive"
             >
-              Archive
+              {t.archive[lang]}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

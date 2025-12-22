@@ -15,8 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Client, Response } from "@shared/schema";
-import { getGoalTypeLabel, getActivityLevelLabel } from "@shared/schema";
+import type { Client, Response, Coach, SupportedLanguage } from "@shared/schema";
+import { getGoalTypeLabel, getActivityLevelLabel, COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { type UnitsPreference, formatWeight, formatHeight } from "@shared/units";
 import { PlanBuilderTab } from "@/components/plan-builder-tab";
 import { CoachProgressAnalytics } from "@/components/coach-progress-analytics";
@@ -42,6 +42,15 @@ export default function CoachClientDetail() {
     }
   }, [window.location.search]);
 
+  // Fetch coach profile to get preferred language
+  const { data: coachProfile } = useQuery<Coach>({
+    queryKey: ["/api/coach/profile"],
+  });
+
+  // Set up translation variables
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const t = COACH_UI_TRANSLATIONS;
+
   const { data: client, isLoading: isLoadingClient } = useQuery<Client>({
     queryKey: ["/api/clients", clientId],
     enabled: !!clientId,
@@ -59,14 +68,14 @@ export default function CoachClientDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "responses"] });
       toast({
-        title: "Success",
-        description: "Response pin status updated",
+        title: t.clientDetail.success[lang],
+        description: t.clientDetail.responsePinUpdated[lang],
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to update pin status",
+        title: t.clientDetail.error[lang],
+        description: t.clientDetail.failedPinUpdate[lang],
         variant: "destructive",
       });
     },
@@ -110,14 +119,14 @@ export default function CoachClientDetail() {
     },
     onSuccess: () => {
       toast({
-        title: "Success",
-        description: "PDF downloaded successfully",
+        title: t.clientDetail.success[lang],
+        description: t.clientDetail.pdfDownloadSuccess[lang],
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to generate PDF",
+        title: t.clientDetail.error[lang],
+        description: t.clientDetail.failedGeneratePdf[lang],
         variant: "destructive",
       });
     },
@@ -129,14 +138,14 @@ export default function CoachClientDetail() {
     },
     onSuccess: () => {
       toast({
-        title: "Invite Sent",
-        description: "Account setup email has been sent to the client",
+        title: t.clientDetail.inviteSent[lang],
+        description: t.clientDetail.accountSetupEmailSent[lang],
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to send invite",
+        title: t.clientDetail.error[lang],
+        description: error.message || t.clientDetail.failedSendInvite[lang],
         variant: "destructive",
       });
     },
@@ -167,7 +176,7 @@ export default function CoachClientDetail() {
         <div className="max-w-7xl mx-auto p-4 sm:p-6">
           <Card>
             <CardContent className="py-16 text-center">
-              <p className="text-lg font-medium text-foreground">Client not found</p>
+              <p className="text-lg font-medium text-foreground">{t.clientDetail.clientNotFound[lang]}</p>
               <Button
                 variant="outline"
                 className="mt-4"
@@ -175,7 +184,7 @@ export default function CoachClientDetail() {
                 data-testid="button-back-to-clients"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Clients
+                {t.clientDetail.backToClients[lang]}
               </Button>
             </CardContent>
           </Card>
@@ -198,7 +207,7 @@ export default function CoachClientDetail() {
                 className="cursor-pointer"
                 data-testid="link-breadcrumb-clients"
               >
-                Clients
+                {t.clientDetail.clients[lang]}
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -219,7 +228,7 @@ export default function CoachClientDetail() {
             data-testid="button-back"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Clients
+            {t.clientDetail.backToClients[lang]}
           </Button>
         </div>
 
@@ -244,7 +253,7 @@ export default function CoachClientDetail() {
                     {needsAccountSetup && (
                       <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
                         <AlertCircle className="w-3 h-3 mr-1" />
-                        No portal access
+                        {t.clientDetail.noPortalAccess[lang]}
                       </Badge>
                     )}
                   </div>
@@ -262,7 +271,7 @@ export default function CoachClientDetail() {
                   ) : (
                     <Send className="w-4 h-4" />
                   )}
-                  Send Portal Invite
+                  {t.clientDetail.sendPortalInvite[lang]}
                 </Button>
               )}
             </div>
@@ -273,21 +282,21 @@ export default function CoachClientDetail() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="inline-flex h-auto items-center gap-1 rounded-lg bg-muted p-1">
             <TabsTrigger value="overview" className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-overview">
-              Overview
+              {t.clientDetail.overview[lang]}
             </TabsTrigger>
             <TabsTrigger value="progress" className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-progress">
               <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:inline" />
-              Progress
+              {t.clientDetail.progress[lang]}
             </TabsTrigger>
             <TabsTrigger value="intake" className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-intake">
-              Intake
+              {t.clientDetail.intake[lang]}
             </TabsTrigger>
             <TabsTrigger 
               value="plan" 
               data-testid="tab-plan"
               className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md"
             >
-              Plan Builder
+              {t.clientDetail.planBuilder[lang]}
             </TabsTrigger>
           </TabsList>
 
@@ -303,13 +312,13 @@ export default function CoachClientDetail() {
               {/* Contact Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Contact Information</CardTitle>
+                  <CardTitle>{t.clientDetail.contactInfo[lang]}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center gap-3">
                     <Mail className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <div className="text-sm text-muted-foreground">Email</div>
+                      <div className="text-sm text-muted-foreground">{t.clientDetail.email[lang]}</div>
                       <div className="text-base" data-testid="text-client-email">{client.email}</div>
                     </div>
                   </div>
@@ -317,7 +326,7 @@ export default function CoachClientDetail() {
                     <div className="flex items-center gap-3">
                       <Phone className="w-5 h-5 text-muted-foreground" />
                       <div>
-                        <div className="text-sm text-muted-foreground">Phone</div>
+                        <div className="text-sm text-muted-foreground">{t.clientDetail.phone[lang]}</div>
                         <div className="text-base" data-testid="text-client-phone">{client.phone}</div>
                       </div>
                     </div>
@@ -325,9 +334,9 @@ export default function CoachClientDetail() {
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-muted-foreground" />
                     <div>
-                      <div className="text-sm text-muted-foreground">Joined</div>
+                      <div className="text-sm text-muted-foreground">{t.clientDetail.joined[lang]}</div>
                       <div className="text-base" data-testid="text-client-joined">
-                        {new Date(client.joinedDate).toLocaleDateString('en-US', {
+                        {new Date(client.joinedDate).toLocaleDateString(lang === 'ru' ? 'ru-RU' : lang === 'es' ? 'es-ES' : 'en-US', {
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
@@ -339,14 +348,14 @@ export default function CoachClientDetail() {
                     <div className="flex items-center gap-3">
                       <Calendar className="w-5 h-5 text-muted-foreground" />
                       <div>
-                        <div className="text-sm text-muted-foreground">Program End Date</div>
+                        <div className="text-sm text-muted-foreground">{t.clientDetail.programEndDate[lang]}</div>
                         <div className={`text-base ${new Date(client.endDate) < new Date() ? 'text-red-500 font-medium' : ''}`} data-testid="text-client-end-date">
-                          {new Date(client.endDate).toLocaleDateString('en-US', {
+                          {new Date(client.endDate).toLocaleDateString(lang === 'ru' ? 'ru-RU' : lang === 'es' ? 'es-ES' : 'en-US', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
                           })}
-                          {new Date(client.endDate) < new Date() && ' (Ended)'}
+                          {new Date(client.endDate) < new Date() && ` ${t.clientDetail.ended[lang]}`}
                         </div>
                       </div>
                     </div>
@@ -355,9 +364,9 @@ export default function CoachClientDetail() {
                     <div className="flex items-center gap-3">
                       <Calendar className="w-5 h-5 text-muted-foreground" />
                       <div>
-                        <div className="text-sm text-muted-foreground">Last Session</div>
+                        <div className="text-sm text-muted-foreground">{t.clientDetail.lastSession[lang]}</div>
                         <div className="text-base" data-testid="text-client-last-session">
-                          {new Date(client.lastSession).toLocaleDateString('en-US', {
+                          {new Date(client.lastSession).toLocaleDateString(lang === 'ru' ? 'ru-RU' : lang === 'es' ? 'es-ES' : 'en-US', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric'
@@ -372,37 +381,37 @@ export default function CoachClientDetail() {
               {/* Goal Information */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Goal Information</CardTitle>
+                  <CardTitle>{t.clientDetail.goalInfo[lang]}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {client.goalType ? (
                     <div className="flex items-center gap-3">
                       <Target className="w-5 h-5 text-muted-foreground" />
                       <div>
-                        <div className="text-sm text-muted-foreground">Primary Goal</div>
+                        <div className="text-sm text-muted-foreground">{t.clientDetail.primaryGoal[lang]}</div>
                         <div className="text-base font-medium" data-testid="text-client-goal">
                           {getGoalTypeLabel(client.goalType, client.goalDescription)}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground">No goal set</div>
+                    <div className="text-sm text-muted-foreground">{t.clientDetail.noGoalSet[lang]}</div>
                   )}
                   {client.targetWeight && (
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Target Weight: </span>
+                      <span className="text-muted-foreground">{t.clientDetail.targetWeight[lang]}: </span>
                       <span className="font-medium">{formatWeight(client.targetWeight, unitsPreference)}</span>
                     </div>
                   )}
                   {client.targetBodyFat && (
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Target Body Fat: </span>
+                      <span className="text-muted-foreground">{t.clientDetail.targetBodyFat[lang]}: </span>
                       <span className="font-medium">{client.targetBodyFat}%</span>
                     </div>
                   )}
                   {client.goalWeight && (
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Goal Weight: </span>
+                      <span className="text-muted-foreground">{t.clientDetail.goalWeight[lang]}: </span>
                       <span className="font-medium">{formatWeight(client.goalWeight, unitsPreference)}</span>
                     </div>
                   )}
@@ -412,7 +421,7 @@ export default function CoachClientDetail() {
               {/* Health Metrics */}
               <Card className="md:col-span-2">
                 <CardHeader>
-                  <CardTitle>Health Metrics</CardTitle>
+                  <CardTitle>{t.clientDetail.healthMetrics[lang]}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -420,7 +429,7 @@ export default function CoachClientDetail() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <User className="w-4 h-4" />
-                          Sex
+                          {t.clientDetail.sex[lang]}
                         </div>
                         <div className="text-lg font-semibold capitalize" data-testid="text-client-sex">
                           {client.sex.replace('_', ' ')}
@@ -431,10 +440,10 @@ export default function CoachClientDetail() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="w-4 h-4" />
-                          Age
+                          {t.clientDetail.age[lang]}
                         </div>
                         <div className="text-lg font-semibold" data-testid="text-client-age">
-                          {client.age} years
+                          {client.age} {t.clientDetail.years[lang]}
                         </div>
                       </div>
                     )}
@@ -442,7 +451,7 @@ export default function CoachClientDetail() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Scale className="w-4 h-4" />
-                          Weight
+                          {t.clientDetail.weight[lang]}
                         </div>
                         <div className="text-lg font-semibold" data-testid="text-client-weight">
                           {formatWeight(client.weight, unitsPreference)}
@@ -453,7 +462,7 @@ export default function CoachClientDetail() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Ruler className="w-4 h-4" />
-                          Height
+                          {t.clientDetail.height[lang]}
                         </div>
                         <div className="text-lg font-semibold" data-testid="text-client-height">
                           {formatHeight(client.height, unitsPreference)}
@@ -464,7 +473,7 @@ export default function CoachClientDetail() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <ActivityIcon className="w-4 h-4" />
-                          Activity Level
+                          {t.clientDetail.activityLevel[lang]}
                         </div>
                         <div className="text-base font-semibold" data-testid="text-client-activity">
                           {getActivityLevelLabel(client.activityLevel)}
@@ -475,7 +484,7 @@ export default function CoachClientDetail() {
                       <div className="space-y-2">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Target className="w-4 h-4" />
-                          Body Fat
+                          {t.clientDetail.bodyFat[lang]}
                         </div>
                         <div className="text-lg font-semibold" data-testid="text-client-body-fat">
                           {client.bodyFatPercentage}%
@@ -490,7 +499,7 @@ export default function CoachClientDetail() {
               {client.notes && (
                 <Card className="md:col-span-2">
                   <CardHeader>
-                    <CardTitle>Notes</CardTitle>
+                    <CardTitle>{t.clientDetail.notes[lang]}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <p className="text-base text-foreground whitespace-pre-wrap" data-testid="text-client-notes">
@@ -507,6 +516,7 @@ export default function CoachClientDetail() {
             <CoachProgressAnalytics 
               clientId={clientId} 
               unitsPreference={unitsPreference}
+              lang={lang}
             />
           </TabsContent>
 
@@ -530,9 +540,9 @@ export default function CoachClientDetail() {
               <Card>
                 <CardContent className="py-16 text-center">
                   <FileText className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-lg font-medium text-foreground">No questionnaire submissions yet</p>
+                  <p className="text-lg font-medium text-foreground">{t.clientDetail.noQuestionnaireSubmissions[lang]}</p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    This client hasn't submitted any questionnaires
+                    {t.clientDetail.clientNotSubmittedQuestionnaires[lang]}
                   </p>
                 </CardContent>
               </Card>
@@ -545,17 +555,17 @@ export default function CoachClientDetail() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <CardTitle className="text-lg" data-testid={`text-questionnaire-name-${response.id}`}>
-                              {response.questionnaireName || "Questionnaire"}
+                              {response.questionnaireName || t.clientDetail.questionnaire[lang]}
                             </CardTitle>
                             {response.pinnedForAI && (
                               <Badge variant="default" className="gap-1" data-testid={`badge-pinned-${response.id}`}>
                                 <Pin className="w-3 h-3" />
-                                Pinned for AI
+                                {t.clientDetail.pinnedForAI[lang]}
                               </Badge>
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground mt-1" data-testid={`text-submitted-date-${response.id}`}>
-                            Submitted {new Date(response.submittedAt).toLocaleDateString('en-US', {
+                            {t.clientDetail.submitted[lang]} {new Date(response.submittedAt).toLocaleDateString(lang === 'ru' ? 'ru-RU' : lang === 'es' ? 'es-ES' : 'en-US', {
                               year: 'numeric',
                               month: 'long',
                               day: 'numeric',
@@ -577,7 +587,7 @@ export default function CoachClientDetail() {
                             data-testid={`button-pin-${response.id}`}
                           >
                             <Pin className="w-4 h-4" />
-                            {response.pinnedForAI ? "Unpin" : "Pin for AI"}
+                            {response.pinnedForAI ? t.clientDetail.unpin[lang] : t.clientDetail.pinForAI[lang]}
                           </Button>
                           <Button
                             variant="outline"
@@ -603,7 +613,7 @@ export default function CoachClientDetail() {
                           <AccordionTrigger className="hover:no-underline py-3" data-testid={`button-expand-${response.id}`}>
                             <div className="flex items-center gap-2 text-sm font-medium">
                               <FileText className="w-4 h-4" />
-                              View Questions & Answers
+                              {t.clientDetail.viewQuestionsAnswers[lang]}
                             </div>
                           </AccordionTrigger>
                           <AccordionContent>
@@ -627,7 +637,7 @@ export default function CoachClientDetail() {
                                 // Format the answer based on type
                                 let formattedAnswer = value;
                                 if (typeof value === 'boolean') {
-                                  formattedAnswer = value ? 'Yes' : 'No';
+                                  formattedAnswer = value ? t.clientDetail.yes[lang] : t.clientDetail.no[lang];
                                 } else if (Array.isArray(value)) {
                                   formattedAnswer = value.join(', ');
                                 } else if (typeof value === 'object') {

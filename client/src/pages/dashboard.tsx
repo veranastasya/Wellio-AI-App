@@ -13,7 +13,8 @@ import {
   Plus
 } from "lucide-react";
 import { Link } from "wouter";
-import type { Client, Session, Message, Coach } from "@shared/schema";
+import type { Client, Session, Message, Coach, SupportedLanguage } from "@shared/schema";
+import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { HybridOnboarding } from "@/components/onboarding";
 import { queryClient } from "@/lib/queryClient";
@@ -24,6 +25,10 @@ export default function Dashboard() {
   const { data: coachProfile } = useQuery<Omit<Coach, "passwordHash">>({
     queryKey: ["/api/coach/profile"],
   });
+
+  // Translations
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const t = COACH_UI_TRANSLATIONS;
   
   useEffect(() => {
     if (coachProfile && !coachProfile.onboardingCompleted) {
@@ -111,13 +116,13 @@ export default function Dashboard() {
   };
 
   const getStatusBadge = (progress: number, client?: Client) => {
-    if (progress >= 80) return { label: "Excellent", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
-    if (progress >= 50) return { label: "On Track", color: "bg-primary/20 text-primary dark:bg-primary/30" };
+    if (progress >= 80) return { label: t.dashboard.excellent[lang], color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" };
+    if (progress >= 50) return { label: t.dashboard.onTrack[lang], color: "bg-primary/20 text-primary dark:bg-primary/30" };
     // Check for grace period - show "Getting Started" instead of "Needs Attention" for new clients
     if (progress > 0 && client && isWithinGracePeriod(client)) {
-      return { label: "Getting Started", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" };
+      return { label: t.dashboard.gettingStarted[lang], color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" };
     }
-    return { label: "Needs Attention", color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
+    return { label: t.dashboard.needsAttention[lang], color: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" };
   };
 
   const avatarColors = [
@@ -130,26 +135,26 @@ export default function Dashboard() {
   const formatSessionTime = (date: string, time: string) => {
     const isToday = date === todayStr;
     const isTomorrow = date === tomorrowStr;
-    const dayLabel = isToday ? "Today" : isTomorrow ? "Tomorrow" : date;
+    const dayLabel = isToday ? t.dashboard.today[lang] : isTomorrow ? t.dashboard.tomorrow[lang] : date;
     return `${dayLabel}, ${time}`;
   };
 
   const formatSessionType = (sessionType: string | null) => {
-    if (!sessionType) return "Session";
+    if (!sessionType) return t.dashboard.session[lang];
     const labels: Record<string, string> = {
-      "video": "Video Call",
-      "in-person": "In-Person",
-      "follow_up": "Follow-up",
-      "initial": "Initial Consultation",
-      "check_in": "Check-in",
-      "assessment": "Assessment",
-      "coaching": "Coaching",
+      "video": t.dashboard.videoCall[lang],
+      "in-person": t.dashboard.inPerson[lang],
+      "follow_up": t.dashboard.followUp[lang],
+      "initial": t.dashboard.initialConsultation[lang],
+      "check_in": t.dashboard.checkIn[lang],
+      "assessment": t.dashboard.assessment[lang],
+      "coaching": t.dashboard.coaching[lang],
     };
     return labels[sessionType] || sessionType.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   };
 
   const formatLastActive = (lastActiveAt: string | null | undefined) => {
-    if (!lastActiveAt) return "Never";
+    if (!lastActiveAt) return t.dashboard.never[lang];
     
     const lastActive = new Date(lastActiveAt);
     const now = new Date();
@@ -158,10 +163,10 @@ export default function Dashboard() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
     
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+    if (diffMins < 1) return t.dashboard.justNow[lang];
+    if (diffMins < 60) return `${diffMins} ${t.dashboard.minAgo[lang]}`;
+    if (diffHours < 24) return `${diffHours} ${diffHours > 1 ? t.dashboard.hoursAgo[lang] : t.dashboard.hourAgo[lang]}`;
+    if (diffDays < 7) return `${diffDays} ${diffDays > 1 ? t.dashboard.daysAgo[lang] : t.dashboard.dayAgo[lang]}`;
     return lastActive.toLocaleDateString();
   };
 
@@ -199,10 +204,10 @@ export default function Dashboard() {
         {/* Welcome Header */}
         <div data-testid="dashboard-welcome">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-dashboard-title">
-            Welcome back, Coach!
+            {t.dashboard.welcomeBack[lang]}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Here's what's happening with your clients today
+            {t.dashboard.subtitle[lang]}
           </p>
         </div>
 
@@ -215,7 +220,7 @@ export default function Dashboard() {
               </div>
               <div className="mt-3">
                 <p className="text-2xl sm:text-3xl font-bold text-foreground">{totalClients}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">Total Clients</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t.dashboard.totalClients[lang]}</p>
               </div>
             </CardContent>
           </Card>
@@ -227,7 +232,7 @@ export default function Dashboard() {
               </div>
               <div className="mt-3">
                 <p className="text-2xl sm:text-3xl font-bold text-foreground">{activePrograms}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">Active Programs</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t.dashboard.activePrograms[lang]}</p>
               </div>
             </CardContent>
           </Card>
@@ -239,7 +244,7 @@ export default function Dashboard() {
               </div>
               <div className="mt-3">
                 <p className="text-2xl sm:text-3xl font-bold text-foreground">{thisWeekSessions}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">This Week Sessions</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t.dashboard.thisWeekSessions[lang]}</p>
               </div>
             </CardContent>
           </Card>
@@ -251,7 +256,7 @@ export default function Dashboard() {
               </div>
               <div className="mt-3">
                 <p className="text-2xl sm:text-3xl font-bold text-foreground">{unreadMessages}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">Unread Messages</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">{t.dashboard.unreadMessages[lang]}</p>
               </div>
             </CardContent>
           </Card>
@@ -260,12 +265,12 @@ export default function Dashboard() {
         {/* Progress Cards Row - 2 Colored Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-primary rounded-xl p-4 sm:p-6 text-primary-foreground" data-testid="card-avg-progress">
-            <p className="text-sm font-medium opacity-90">Avg. Client Progress</p>
+            <p className="text-sm font-medium opacity-90">{t.dashboard.avgClientProgress[lang]}</p>
             <p className="text-3xl sm:text-4xl font-bold mt-1">{avgClientProgress}%</p>
           </div>
 
           <div className="bg-primary rounded-xl p-4 sm:p-6 text-primary-foreground" data-testid="card-completion-rate">
-            <p className="text-sm font-medium opacity-90">Completion Rate</p>
+            <p className="text-sm font-medium opacity-90">{t.dashboard.completionRate[lang]}</p>
             <p className="text-3xl sm:text-4xl font-bold mt-1">{completionRate}%</p>
           </div>
 
@@ -276,10 +281,10 @@ export default function Dashboard() {
           {/* Recent Client Activity */}
           <Card data-testid="card-recent-activity">
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-4">
-              <CardTitle className="text-base sm:text-lg">Recent Client Activity</CardTitle>
+              <CardTitle className="text-base sm:text-lg">{t.dashboard.recentClientActivity[lang]}</CardTitle>
               <Link href="/clients">
                 <Button variant="ghost" size="sm" className="text-primary h-auto px-2">
-                  View All
+                  {t.dashboard.viewAll[lang]}
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
@@ -287,7 +292,7 @@ export default function Dashboard() {
             <CardContent className="space-y-4">
               {recentClients.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  No clients yet. Add your first client to get started.
+                  {t.dashboard.noClientsYet[lang]}
                 </p>
               ) : (
                 recentClients.map((client, index) => {
@@ -308,7 +313,7 @@ export default function Dashboard() {
                             {status.label}
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground">Active {formatLastActive(client.lastActiveAt)}</p>
+                        <p className="text-xs text-muted-foreground">{t.dashboard.active[lang]} {formatLastActive(client.lastActiveAt)}</p>
                         <div className="mt-2 flex items-center gap-2">
                           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                             <div 
@@ -329,10 +334,10 @@ export default function Dashboard() {
           {/* Upcoming Sessions */}
           <Card data-testid="card-upcoming-sessions">
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-4">
-              <CardTitle className="text-base sm:text-lg">Upcoming Sessions</CardTitle>
+              <CardTitle className="text-base sm:text-lg">{t.dashboard.upcomingSessions[lang]}</CardTitle>
               <Link href="/scheduling">
                 <Button variant="ghost" size="sm" className="text-primary h-auto px-2">
-                  View Calendar
+                  {t.dashboard.viewCalendar[lang]}
                   <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
@@ -340,7 +345,7 @@ export default function Dashboard() {
             <CardContent className="space-y-4">
               {upcomingSessions.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  No upcoming sessions scheduled.
+                  {t.dashboard.noUpcomingSessions[lang]}
                 </p>
               ) : (
                 upcomingSessions.map((session) => (
@@ -361,7 +366,7 @@ export default function Dashboard() {
                   data-testid="button-schedule-session"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Schedule New Session
+                  {t.dashboard.scheduleNewSession[lang]}
                 </Button>
               </Link>
             </CardContent>
@@ -370,7 +375,7 @@ export default function Dashboard() {
 
         {/* Quick Actions */}
         <div data-testid="quick-actions">
-          <h2 className="text-sm font-medium text-muted-foreground mb-4">Quick Actions</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-4">{t.dashboard.quickActions[lang]}</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Link href="/clients">
               <Card className="hover-elevate cursor-pointer h-full" data-testid="action-manage-clients">
@@ -378,7 +383,7 @@ export default function Dashboard() {
                   <div className="p-3 rounded-lg bg-muted mb-3">
                     <Users className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <p className="text-sm font-medium">Manage Clients</p>
+                  <p className="text-sm font-medium">{t.dashboard.manageClients[lang]}</p>
                 </CardContent>
               </Card>
             </Link>
@@ -389,7 +394,7 @@ export default function Dashboard() {
                   <div className="p-3 rounded-lg bg-muted mb-3">
                     <FileText className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <p className="text-sm font-medium">Create Questionnaire</p>
+                  <p className="text-sm font-medium">{t.dashboard.createQuestionnaire[lang]}</p>
                 </CardContent>
               </Card>
             </Link>
@@ -400,7 +405,7 @@ export default function Dashboard() {
                   <div className="p-3 rounded-lg bg-muted mb-3">
                     <MessageSquare className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <p className="text-sm font-medium">Message Clients</p>
+                  <p className="text-sm font-medium">{t.dashboard.messageClients[lang]}</p>
                 </CardContent>
               </Card>
             </Link>
@@ -411,7 +416,7 @@ export default function Dashboard() {
                   <div className="p-3 rounded-lg bg-muted mb-3">
                     <Lightbulb className="w-6 h-6 text-muted-foreground" />
                   </div>
-                  <p className="text-sm font-medium">View AI Insights</p>
+                  <p className="text-sm font-medium">{t.dashboard.viewAIInsights[lang]}</p>
                 </CardContent>
               </Card>
             </Link>

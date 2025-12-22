@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import type { Message, Client, InsertMessage, MessageAttachment } from "@shared/schema";
+import type { Message, Client, InsertMessage, MessageAttachment, Coach, SupportedLanguage } from "@shared/schema";
+import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { InlineFileAttachment } from "@/components/InlineFileAttachment";
@@ -35,6 +36,13 @@ export default function Communication() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const { data: coachProfile } = useQuery<Coach>({
+    queryKey: ["/api/coach/profile"],
+  });
+
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const t = COACH_UI_TRANSLATIONS;
 
   const { data: clients = [], isLoading: clientsLoading, isError: clientsError } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -160,12 +168,12 @@ export default function Communication() {
     setValidationError("");
     
     if (!selectedClientId || !selectedClient) {
-      setValidationError("Please select a client first");
+      setValidationError(t.communication.selectClientFirst[lang]);
       return;
     }
     
     if (!messageText.trim() && pendingAttachments.length === 0) {
-      setValidationError("Please enter a message or attach a file");
+      setValidationError(t.communication.enterMessageOrFile[lang]);
       return;
     }
 
@@ -233,8 +241,8 @@ export default function Communication() {
       <div className="bg-background">
         <div className="max-w-7xl mx-auto p-4 sm:p-6">
           <div className="mb-4 sm:mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Chat</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">Loading conversations...</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t.communication.title[lang]}</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">{t.communication.loadingConversations[lang]}</p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             <Card>
@@ -267,9 +275,9 @@ export default function Communication() {
         <div className="max-w-7xl mx-auto p-4 sm:p-6">
           <Card className="border-destructive">
             <CardContent className="py-12 sm:py-16 text-center">
-              <p className="text-lg font-medium text-foreground">Failed to load conversations</p>
+              <p className="text-lg font-medium text-foreground">{t.communication.failedToLoad[lang]}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Please try refreshing the page
+                {t.communication.refreshPage[lang]}
               </p>
             </CardContent>
           </Card>
@@ -285,8 +293,8 @@ export default function Communication() {
         {(!isMobile || !selectedClientId) && (
           <div className="mb-4 sm:mb-6 flex-shrink-0">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-chat-title">Chat</h1>
-              <p className="text-sm sm:text-base text-muted-foreground mt-1">Message your clients and manage conversations</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-chat-title">{t.communication.title[lang]}</h1>
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">{t.communication.subtitle[lang]}</p>
             </div>
           </div>
         )}
@@ -295,11 +303,11 @@ export default function Communication() {
           {(!isMobile || !selectedClientId) && (
           <div data-testid="card-client-list" className="lg:max-h-[calc(100vh-200px)] h-full flex flex-col bg-card rounded-lg border">
             <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold text-foreground mb-3">Messages</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-3">{t.communication.messages[lang]}</h2>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search clients..."
+                  placeholder={t.communication.searchClients[lang]}
                   className="pl-10 h-10 bg-muted/50 border-0"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -370,7 +378,7 @@ export default function Communication() {
                 })}
                 {filteredClients.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    No clients found
+                    {t.communication.noClientsFound[lang]}
                   </p>
                 )}
               </div>
@@ -417,7 +425,7 @@ export default function Communication() {
                     <div className="space-y-6 flex-1 overflow-y-auto p-3 sm:p-4">
                       {clientMessages.length === 0 ? (
                         <p className="text-sm text-muted-foreground text-center py-8">
-                          No messages yet. Start the conversation!
+                          {t.communication.noMessages[lang]}
                         </p>
                       ) : (
                         clientMessages.map((msg, index) => (
@@ -562,7 +570,7 @@ export default function Communication() {
                         maxFileSize={25 * 1024 * 1024}
                       />
                       <Input
-                        placeholder="Write a message..."
+                        placeholder={t.communication.typeMessage[lang]}
                         value={messageText}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                           setMessageText(e.target.value);
@@ -597,10 +605,7 @@ export default function Communication() {
             ) : (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="text-lg font-medium text-foreground">Select a client</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Choose a client from the list to start messaging
-                  </p>
+                  <p className="text-lg font-medium text-foreground">{t.communication.selectClient[lang]}</p>
                 </div>
               </div>
             )}

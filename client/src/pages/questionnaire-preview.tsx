@@ -7,12 +7,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Upload } from "lucide-react";
-import type { Questionnaire, Question } from "@shared/schema";
-import { normalizeQuestion } from "@shared/schema";
+import type { Questionnaire, Question, Coach, SupportedLanguage } from "@shared/schema";
+import { normalizeQuestion, COACH_UI_TRANSLATIONS } from "@shared/schema";
 
 export default function QuestionnairePreview() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
+
+  const { data: coachProfile } = useQuery<Omit<Coach, "passwordHash">>({
+    queryKey: ["/api/coach/profile"],
+  });
+
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const t = COACH_UI_TRANSLATIONS.questionnaires;
 
   const { data: questionnaire, isLoading } = useQuery<Questionnaire>({
     queryKey: ["/api/questionnaires", id],
@@ -24,7 +31,7 @@ export default function QuestionnairePreview() {
         <div className="max-w-3xl mx-auto">
           <Card>
             <CardContent className="p-12 text-center">
-              <div className="text-muted-foreground">Loading...</div>
+              <div className="text-muted-foreground">{t.loading[lang]}</div>
             </CardContent>
           </Card>
         </div>
@@ -38,7 +45,7 @@ export default function QuestionnairePreview() {
         <div className="max-w-3xl mx-auto">
           <Card>
             <CardContent className="p-12 text-center">
-              <div className="text-muted-foreground">Questionnaire not found</div>
+              <div className="text-muted-foreground">{t.questionnaireNotFound[lang]}</div>
             </CardContent>
           </Card>
         </div>
@@ -63,7 +70,7 @@ export default function QuestionnairePreview() {
 
         {question.type === "short_text" && (
           <Input 
-            placeholder={settings.placeholder || "Your answer"} 
+            placeholder={settings.placeholder || t.yourAnswer[lang]} 
             disabled 
             data-testid={`preview-input-${question.id}`} 
           />
@@ -71,7 +78,7 @@ export default function QuestionnairePreview() {
 
         {question.type === "paragraph" && (
           <Textarea 
-            placeholder={settings.placeholder || "Your answer"} 
+            placeholder={settings.placeholder || t.yourAnswer[lang]} 
             rows={4} 
             disabled 
             data-testid={`preview-textarea-${question.id}`} 
@@ -100,7 +107,7 @@ export default function QuestionnairePreview() {
           <div className="flex items-center gap-2">
             <Input 
               type="number" 
-              placeholder={settings.placeholder || "Enter a number"} 
+              placeholder={settings.placeholder || t.enterNumber[lang]} 
               disabled 
               data-testid={`preview-input-${question.id}`} 
             />
@@ -148,9 +155,9 @@ export default function QuestionnairePreview() {
                   data-testid={`preview-radio-${question.id}-other`}
                 />
                 <Label htmlFor={`${question.id}-other`} className="font-normal">
-                  Other:
+                  {t.other[lang]}:
                 </Label>
-                <Input placeholder="Please specify" disabled className="ml-2" />
+                <Input placeholder={t.pleaseSpecify[lang]} disabled className="ml-2" />
               </div>
             )}
           </div>
@@ -168,9 +175,9 @@ export default function QuestionnairePreview() {
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox disabled data-testid={`preview-checkbox-${question.id}-other`} />
-                  <Label className="font-normal">Other</Label>
+                  <Label className="font-normal">{t.other[lang]}</Label>
                 </div>
-                <Input placeholder="Please specify" disabled className="ml-6" />
+                <Input placeholder={t.pleaseSpecify[lang]} disabled className="ml-6" />
               </div>
             )}
           </div>
@@ -181,9 +188,9 @@ export default function QuestionnairePreview() {
             <div 
               className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-muted px-3 py-2 text-sm shadow-sm cursor-not-allowed opacity-50"
               data-testid={`preview-select-${question.id}`}
-              aria-label={`${question.label} (preview only)`}
+              aria-label={`${question.label} (${t.previewTitle[lang].toLowerCase()})`}
             >
-              <span className="text-muted-foreground">Select an option</span>
+              <span className="text-muted-foreground">{t.selectAnOption[lang]}</span>
               <svg
                 width="15"
                 height="15"
@@ -201,7 +208,7 @@ export default function QuestionnairePreview() {
               </svg>
             </div>
             <div className="text-xs text-muted-foreground pl-2">
-              Options: {settings.options?.join(", ") || "None configured"}
+              {t.optionsLabel[lang]}: {settings.options?.join(", ") || t.noneConfigured[lang]}
             </div>
           </div>
         )}
@@ -211,12 +218,12 @@ export default function QuestionnairePreview() {
             <div className="flex flex-col items-center justify-center gap-2 text-center">
               <Upload className="h-8 w-8 text-muted-foreground" />
               <div>
-                <p className="text-sm font-medium text-muted-foreground">File upload (preview only)</p>
+                <p className="text-sm font-medium text-muted-foreground">{t.fileUploadPreview[lang]}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Accepts: {settings.allowedTypes?.join(", ") || "any files"}
+                  {t.accepts[lang]}: {settings.allowedTypes?.join(", ") || t.anyFiles[lang]}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Max size: {settings.maxSizeMB || 10}MB, Max files: {settings.maxFiles || 5}
+                  {t.maxSize[lang]}: {settings.maxSizeMB || 10}MB, {t.maxFiles[lang]}: {settings.maxFiles || 5}
                 </p>
               </div>
             </div>
@@ -240,9 +247,9 @@ export default function QuestionnairePreview() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Preview: {questionnaire.name}</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{t.previewTitle[lang]}: {questionnaire.name}</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              This is how clients will see your form
+              {t.howClientsWillSee[lang]}
             </p>
           </div>
         </div>
@@ -258,83 +265,83 @@ export default function QuestionnairePreview() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>
-                  First Name <span className="text-destructive">*</span>
+                  {t.firstName[lang]} <span className="text-destructive">*</span>
                 </Label>
-                <Input placeholder="Enter your first name" disabled />
+                <Input placeholder={t.enterFirstName[lang]} disabled />
               </div>
 
               <div className="space-y-2">
                 <Label>
-                  Last Name <span className="text-destructive">*</span>
+                  {t.lastName[lang]} <span className="text-destructive">*</span>
                 </Label>
-                <Input placeholder="Enter your last name" disabled />
+                <Input placeholder={t.enterLastName[lang]} disabled />
               </div>
 
               <div className="space-y-2">
                 <Label>
-                  Email <span className="text-destructive">*</span>
+                  {t.email[lang]} <span className="text-destructive">*</span>
                 </Label>
-                <Input type="email" placeholder="Enter your email" disabled />
+                <Input type="email" placeholder={t.enterEmail[lang]} disabled />
               </div>
 
               <div className="space-y-2">
                 <Label>
-                  Phone <span className="text-destructive">*</span>
+                  {t.phone[lang]} <span className="text-destructive">*</span>
                 </Label>
-                <Input type="tel" placeholder="Enter your phone number" disabled />
+                <Input type="tel" placeholder={t.enterPhone[lang]} disabled />
               </div>
               
               {questionnaire.standardFields && (questionnaire.standardFields.sex || questionnaire.standardFields.age || questionnaire.standardFields.weight || questionnaire.standardFields.height || questionnaire.standardFields.activityLevel || questionnaire.standardFields.bodyFatPercentage) && (
                 <>
                   {questionnaire.standardFields.sex && (
                     <div className="space-y-2" data-testid="standard-field-sex-preview">
-                      <Label>Sex</Label>
+                      <Label>{t.sex[lang]}</Label>
                       <div 
                         className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-muted px-3 py-2 text-sm shadow-sm cursor-not-allowed opacity-50"
-                        aria-label="Sex (preview only)"
+                        aria-label={`${t.sex[lang]} (${t.previewTitle[lang].toLowerCase()})`}
                       >
-                        <span className="text-muted-foreground">Select sex</span>
+                        <span className="text-muted-foreground">{t.selectSex[lang]}</span>
                       </div>
                     </div>
                   )}
                   
                   {questionnaire.standardFields.age && (
                     <div className="space-y-2" data-testid="standard-field-age-preview">
-                      <Label>Age</Label>
-                      <Input type="number" placeholder="Enter your age" disabled />
+                      <Label>{t.age[lang]}</Label>
+                      <Input type="number" placeholder={t.enterAge[lang]} disabled />
                     </div>
                   )}
                   
                   {questionnaire.standardFields.weight && (
                     <div className="space-y-2" data-testid="standard-field-weight-preview">
-                      <Label>Weight (lbs)</Label>
-                      <Input type="number" step="0.1" placeholder="Enter your weight" disabled />
+                      <Label>{t.weightLbs[lang]}</Label>
+                      <Input type="number" step="0.1" placeholder={t.enterWeight[lang]} disabled />
                     </div>
                   )}
                   
                   {questionnaire.standardFields.height && (
                     <div className="space-y-2" data-testid="standard-field-height-preview">
-                      <Label>Height (inches)</Label>
-                      <Input type="number" step="0.1" placeholder="Enter your height" disabled />
+                      <Label>{t.heightInches[lang]}</Label>
+                      <Input type="number" step="0.1" placeholder={t.enterHeight[lang]} disabled />
                     </div>
                   )}
                   
                   {questionnaire.standardFields.activityLevel && (
                     <div className="space-y-2" data-testid="standard-field-activity-level-preview">
-                      <Label>Activity Level</Label>
+                      <Label>{t.activityLevel[lang]}</Label>
                       <div 
                         className="flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-muted px-3 py-2 text-sm shadow-sm cursor-not-allowed opacity-50"
-                        aria-label="Activity Level (preview only)"
+                        aria-label={`${t.activityLevel[lang]} (${t.previewTitle[lang].toLowerCase()})`}
                       >
-                        <span className="text-muted-foreground">Select activity level</span>
+                        <span className="text-muted-foreground">{t.selectActivityLevel[lang]}</span>
                       </div>
                     </div>
                   )}
                   
                   {questionnaire.standardFields.bodyFatPercentage && (
                     <div className="space-y-2" data-testid="standard-field-body-fat-preview">
-                      <Label>Body Fat %</Label>
-                      <Input type="number" step="0.1" placeholder="Enter your body fat percentage" disabled />
+                      <Label>{t.bodyFatPercentage[lang]}</Label>
+                      <Input type="number" step="0.1" placeholder={t.enterBodyFat[lang]} disabled />
                     </div>
                   )}
                 </>
@@ -360,7 +367,7 @@ export default function QuestionnairePreview() {
 
             <div className="pt-4">
               <Button disabled className="w-full min-h-10" data-testid="button-submit-preview">
-                Submit (Preview Mode)
+                {t.submitPreviewMode[lang]}
               </Button>
             </div>
           </CardContent>

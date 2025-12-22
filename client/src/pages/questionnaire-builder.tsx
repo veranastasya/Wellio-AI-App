@@ -35,8 +35,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Plus, Trash2, GripVertical, ArrowLeft, Save, X } from "lucide-react";
-import type { Questionnaire, Question, QuestionType, QUESTION_TYPES } from "@shared/schema";
-import { normalizeQuestion } from "@shared/schema";
+import type { Questionnaire, Question, QuestionType, Coach, SupportedLanguage } from "@shared/schema";
+import { normalizeQuestion, COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS } from "@shared/units";
 
 const formSchema = z.object({
@@ -48,24 +48,31 @@ const formSchema = z.object({
   defaultUnitsPreference: z.enum(["us", "metric"]),
 });
 
-const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  short_text: "Short Answer",
-  paragraph: "Paragraph",
-  multiple_choice: "Multiple Choice",
-  checkboxes: "Checkboxes",
-  dropdown: "Dropdown",
-  number: "Number",
-  date: "Date",
-  email: "Email",
-  phone: "Phone",
-  file_upload: "File Upload",
-};
-
 export default function QuestionnaireBuilder() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const isEditMode = Boolean(id) && id !== "new";
+
+  const { data: coachProfile } = useQuery<Omit<Coach, "passwordHash">>({
+    queryKey: ["/api/coach/profile"],
+  });
+
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const t = COACH_UI_TRANSLATIONS.questionnaires;
+
+  const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
+    short_text: t.shortText[lang],
+    paragraph: t.paragraph[lang],
+    multiple_choice: t.multipleChoice[lang],
+    checkboxes: t.checkboxes[lang],
+    dropdown: t.dropdown[lang],
+    number: t.number[lang],
+    date: t.dateType[lang],
+    email: t.emailType[lang],
+    phone: t.phoneType[lang],
+    file_upload: t.fileUpload[lang],
+  };
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [initialQuestions, setInitialQuestions] = useState<Question[]>([]);
@@ -96,7 +103,7 @@ export default function QuestionnaireBuilder() {
       welcomeText: "",
       consentText: "",
       consentRequired: false,
-      confirmationMessage: "Thank you for completing the questionnaire!",
+      confirmationMessage: lang === "ru" ? "Спасибо за заполнение анкеты!" : lang === "es" ? "¡Gracias por completar el cuestionario!" : "Thank you for completing the questionnaire!",
       defaultUnitsPreference: "us" as UnitsPreference,
     },
   });
@@ -182,16 +189,16 @@ export default function QuestionnaireBuilder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/questionnaires"] });
       toast({
-        title: "Success",
-        description: "Questionnaire saved successfully",
+        title: t.success[lang],
+        description: t.savedSuccessfully[lang],
       });
       setLocation("/questionnaires");
     },
     onError: (error: any) => {
       console.error("Save questionnaire error:", error);
       toast({
-        title: "Error",
-        description: error?.message || "Failed to save questionnaire",
+        title: t.error[lang],
+        description: error?.message || t.failedToSave[lang],
         variant: "destructive",
       });
     },
@@ -233,9 +240,9 @@ export default function QuestionnaireBuilder() {
     }
   };
 
-  const updateQuestion = (id: string, updates: Partial<Question>) => {
+  const updateQuestion = (qid: string, updates: Partial<Question>) => {
     setQuestions(questions.map(q => {
-      if (q.id === id) {
+      if (q.id === qid) {
         const updated = { ...q, ...updates };
         
         if (updates.type && updates.type !== q.type) {
@@ -248,14 +255,14 @@ export default function QuestionnaireBuilder() {
     }));
   };
 
-  const updateQuestionSettings = (id: string, settings: any) => {
+  const updateQuestionSettings = (qid: string, settings: any) => {
     setQuestions(questions.map(q => 
-      q.id === id ? { ...q, settings: { ...q.settings, ...settings } } : q
+      q.id === qid ? { ...q, settings: { ...q.settings, ...settings } } : q
     ));
   };
 
-  const deleteQuestion = (id: string) => {
-    setQuestions(questions.filter(q => q.id !== id));
+  const deleteQuestion = (qid: string) => {
+    setQuestions(questions.filter(q => q.id !== qid));
   };
 
   const duplicateQuestion = (question: Question) => {
@@ -271,7 +278,6 @@ export default function QuestionnaireBuilder() {
     setQuestions(newQuestions);
   };
 
-  // Check if questions or standard fields have changed
   const hasChanges = () => {
     const formDirty = form.formState.isDirty;
     const questionsChanged = JSON.stringify(questions) !== JSON.stringify(initialQuestions);
@@ -286,8 +292,8 @@ export default function QuestionnaireBuilder() {
     const formData = form.getValues();
     if (!formData.name) {
       toast({
-        title: "Error",
-        description: "Please enter a questionnaire name",
+        title: t.error[lang],
+        description: t.enterQuestionnaireName[lang],
         variant: "destructive",
       });
       return;
@@ -296,8 +302,8 @@ export default function QuestionnaireBuilder() {
     for (const question of questions) {
       if (!question.label || question.label.trim() === "") {
         toast({
-          title: "Validation Error",
-          description: "All questions must have a label",
+          title: t.validationError[lang],
+          description: t.allQuestionsMustHaveLabel[lang],
           variant: "destructive",
         });
         return;
@@ -310,8 +316,8 @@ export default function QuestionnaireBuilder() {
         (!question.settings?.options || question.settings.options.length === 0 || question.settings.options.every((opt: string) => !opt.trim()))
       ) {
         toast({
-          title: "Validation Error",
-          description: `Question "${question.label}" must have at least one option`,
+          title: t.validationError[lang],
+          description: t.questionMustHaveOption[lang].replace("{label}", question.label),
           variant: "destructive",
         });
         return;
@@ -327,7 +333,7 @@ export default function QuestionnaireBuilder() {
         <div className="max-w-6xl mx-auto">
           <Card>
             <CardContent className="p-12 text-center">
-              <div className="text-muted-foreground">Loading...</div>
+              <div className="text-muted-foreground">{t.loading[lang]}</div>
             </CardContent>
           </Card>
         </div>
@@ -351,15 +357,14 @@ export default function QuestionnaireBuilder() {
             </Button>
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold">
-                {isEditMode ? "Edit Questionnaire" : "New Questionnaire"}
+                {isEditMode ? t.editQuestionnaire[lang] : t.newQuestionnaire[lang]}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground mt-1">
-                Create a custom intake form for your clients
+                {t.customIntakeForm[lang]}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 sm:flex-shrink-0">
-            {/* Show Save Draft only for drafts OR published with changes */}
             {(currentStatus === "draft" || (currentStatus === "published" && hasUnsavedChanges)) && (
               <Button
                 variant="outline"
@@ -370,9 +375,9 @@ export default function QuestionnaireBuilder() {
               >
                 <Save className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">
-                  {currentStatus === "published" ? "Save as Draft" : "Save Draft"}
+                  {currentStatus === "published" ? t.saveAsDraft[lang] : t.saveDraft[lang]}
                 </span>
-                <span className="sm:hidden">Draft</span>
+                <span className="sm:hidden">{t.draft[lang]}</span>
               </Button>
             )}
             <Button
@@ -381,15 +386,15 @@ export default function QuestionnaireBuilder() {
               data-testid="button-publish"
               className="min-h-10"
             >
-              {currentStatus === "published" ? "Update" : "Publish"}
+              {currentStatus === "published" ? t.update[lang] : t.publish[lang]}
             </Button>
           </div>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Form Settings</CardTitle>
-            <CardDescription>Configure your questionnaire details</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">{t.formSettings[lang]}</CardTitle>
+            <CardDescription>{t.configureDetails[lang]}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-4 sm:p-6">
             <Form {...form}>
@@ -398,11 +403,11 @@ export default function QuestionnaireBuilder() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Form Name</FormLabel>
+                    <FormLabel>{t.formName[lang]}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="Client Intake Form"
+                        placeholder={lang === "ru" ? "Анкета нового клиента" : lang === "es" ? "Formulario de Cliente" : "Client Intake Form"}
                         data-testid="input-form-name"
                         className="min-h-10"
                       />
@@ -417,11 +422,11 @@ export default function QuestionnaireBuilder() {
                 name="welcomeText"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Welcome Text (Optional)</FormLabel>
+                    <FormLabel>{t.welcomeText[lang]}</FormLabel>
                     <FormControl>
                       <Textarea
                         {...field}
-                        placeholder="Welcome! Please fill out this form to help us understand your goals."
+                        placeholder={lang === "ru" ? "Добро пожаловать! Заполните эту форму, чтобы помочь нам понять ваши цели." : lang === "es" ? "¡Bienvenido! Complete este formulario para ayudarnos a entender sus objetivos." : "Welcome! Please fill out this form to help us understand your goals."}
                         rows={3}
                         data-testid="input-welcome-text"
                       />
@@ -436,11 +441,11 @@ export default function QuestionnaireBuilder() {
                 name="consentText"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Consent Text (Optional)</FormLabel>
+                    <FormLabel>{t.consentText[lang]}</FormLabel>
                     <FormControl>
                       <Textarea
                         {...field}
-                        placeholder="I agree to the terms and conditions..."
+                        placeholder={lang === "ru" ? "Я соглашаюсь с условиями..." : lang === "es" ? "Acepto los términos y condiciones..." : "I agree to the terms and conditions..."}
                         rows={2}
                         data-testid="input-consent-text"
                       />
@@ -456,9 +461,9 @@ export default function QuestionnaireBuilder() {
                 render={({ field }) => (
                   <FormItem className="flex items-center justify-between rounded-lg border p-4">
                     <div className="space-y-0.5">
-                      <FormLabel className="text-base">Require Consent</FormLabel>
+                      <FormLabel className="text-base">{t.requireConsent[lang]}</FormLabel>
                       <div className="text-sm text-muted-foreground">
-                        Clients must agree to consent text before submitting
+                        {t.consentDescription[lang]}
                       </div>
                     </div>
                     <FormControl>
@@ -477,11 +482,11 @@ export default function QuestionnaireBuilder() {
                 name="confirmationMessage"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirmation Message</FormLabel>
+                    <FormLabel>{t.confirmationMessage[lang]}</FormLabel>
                     <FormControl>
                       <Input
                         {...field}
-                        placeholder="Thank you for completing the questionnaire!"
+                        placeholder={lang === "ru" ? "Спасибо за заполнение анкеты!" : lang === "es" ? "¡Gracias por completar el cuestionario!" : "Thank you for completing the questionnaire!"}
                         data-testid="input-confirmation-message"
                         className="min-h-10"
                       />
@@ -497,14 +502,14 @@ export default function QuestionnaireBuilder() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Default Client Information</CardTitle>
-            <CardDescription>Name and Email are required. Phone is optional.</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">{t.defaultClientInfo[lang]}</CardTitle>
+            <CardDescription>{t.nameEmailRequired[lang]}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 p-4 sm:p-6">
             {[
-              { name: "Client Name", required: true },
-              { name: "Email", required: true },
-              { name: "Phone", required: false }
+              { name: t.clientName[lang], required: true },
+              { name: t.email[lang], required: true },
+              { name: t.phone[lang], required: false }
             ].map((field) => (
               <div
                 key={field.name}
@@ -516,7 +521,7 @@ export default function QuestionnaireBuilder() {
                   <span className="font-medium">{field.name}</span>
                 </div>
                 <span className="text-sm text-muted-foreground">
-                  {field.required ? "Required" : "Optional"}
+                  {field.required ? t.required[lang] : t.optional[lang]}
                 </span>
               </div>
             ))}
@@ -527,8 +532,8 @@ export default function QuestionnaireBuilder() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="flex-1">
-                <CardTitle className="text-lg sm:text-xl">Standard Health Metrics</CardTitle>
-                <CardDescription>Enable optional health-related fields for your intake form</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">{t.standardHealthMetrics[lang]}</CardTitle>
+                <CardDescription>{t.enableHealthFields[lang]}</CardDescription>
               </div>
               <div className="w-full sm:w-auto sm:flex-shrink-0">
                 <FormField
@@ -551,13 +556,13 @@ export default function QuestionnaireBuilder() {
           </CardHeader>
           <CardContent className="space-y-3 p-4 sm:p-6">
             {[
-              { key: "sex" as const, label: "Sex", description: "Gender identification (Male, Female, Other, Prefer not to say)" },
-              { key: "age" as const, label: "Age", description: "Client's current age in years" },
-              { key: "weight" as const, label: "Weight", description: "Current weight in kg or lbs" },
-              { key: "height" as const, label: "Height", description: "Current height in cm or ft/in" },
-              { key: "activityLevel" as const, label: "Activity Level", description: "Physical activity level (Sedentary to Extra Active)" },
-              { key: "bodyFatPercentage" as const, label: "Body Fat %", description: "Body fat percentage (0-100%)" },
-              { key: "goal" as const, label: "Goal", description: "Client's primary fitness or wellness goal" },
+              { key: "sex" as const, label: t.sex[lang], description: t.sexDescription[lang] },
+              { key: "age" as const, label: t.age[lang], description: t.ageDescription[lang] },
+              { key: "weight" as const, label: t.weight[lang], description: t.weightDescription[lang] },
+              { key: "height" as const, label: t.height[lang], description: t.heightDescription[lang] },
+              { key: "activityLevel" as const, label: t.activityLevel[lang], description: t.activityLevelDescription[lang] },
+              { key: "bodyFatPercentage" as const, label: t.bodyFatPercentage[lang], description: t.bodyFatDescription[lang] },
+              { key: "goal" as const, label: t.goal[lang], description: t.goalDescription[lang] },
             ].map((field) => (
               <div
                 key={field.key}
@@ -582,8 +587,8 @@ export default function QuestionnaireBuilder() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl">Custom Questions</CardTitle>
-            <CardDescription>Add additional questions to your form</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">{t.customQuestions[lang]}</CardTitle>
+            <CardDescription>{t.addQuestionsDescription[lang]}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-4 sm:p-6">
             <Accordion type="multiple" className="w-full">
@@ -592,6 +597,9 @@ export default function QuestionnaireBuilder() {
                   key={question.id}
                   question={question}
                   index={index}
+                  lang={lang}
+                  t={t}
+                  questionTypeLabels={QUESTION_TYPE_LABELS}
                   onUpdate={(updates) => updateQuestion(question.id, updates)}
                   onUpdateSettings={(settings) => updateQuestionSettings(question.id, settings)}
                   onDelete={() => deleteQuestion(question.id)}
@@ -615,7 +623,7 @@ export default function QuestionnaireBuilder() {
               </Select>
               <Button onClick={addQuestion} variant="outline" data-testid="button-add-question" className="w-full sm:w-auto min-h-10">
                 <Plus className="h-4 w-4 mr-2" />
-                Add Question
+                {t.addQuestion[lang]}
               </Button>
             </div>
           </CardContent>
@@ -628,13 +636,16 @@ export default function QuestionnaireBuilder() {
 interface QuestionEditorProps {
   question: Question;
   index: number;
+  lang: SupportedLanguage;
+  t: typeof COACH_UI_TRANSLATIONS.questionnaires;
+  questionTypeLabels: Record<QuestionType, string>;
   onUpdate: (updates: Partial<Question>) => void;
   onUpdateSettings: (settings: any) => void;
   onDelete: () => void;
   onDuplicate: () => void;
 }
 
-function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete, onDuplicate }: QuestionEditorProps) {
+function QuestionEditor({ question, index, lang, t, questionTypeLabels, onUpdate, onUpdateSettings, onDelete, onDuplicate }: QuestionEditorProps) {
   return (
     <AccordionItem value={question.id}>
       <div className="border rounded-lg">
@@ -644,14 +655,14 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
             <AccordionTrigger className="hover:no-underline py-0">
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-left">
                 <span className="font-medium text-sm sm:text-base">
-                  {question.label || `Question ${index + 1}`}
+                  {question.label || `${t.questionText[lang]} ${index + 1}`}
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-xs sm:text-sm text-muted-foreground">
-                    {QUESTION_TYPE_LABELS[question.type]}
+                    {questionTypeLabels[question.type]}
                   </span>
                   {question.required && (
-                    <span className="text-xs text-destructive">Required</span>
+                    <span className="text-xs text-destructive">{t.required[lang]}</span>
                   )}
                 </div>
               </div>
@@ -688,24 +699,24 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
         <AccordionContent className="px-3 sm:px-4 pb-4 pt-0">
           <div className="space-y-4 sm:pl-7">
             <div className="space-y-2">
-              <Label htmlFor={`question-label-${question.id}`}>Question Label *</Label>
+              <Label htmlFor={`question-label-${question.id}`}>{t.questionLabel[lang]} *</Label>
               <Input
                 id={`question-label-${question.id}`}
                 value={question.label}
                 onChange={(e) => onUpdate({ label: e.target.value })}
-                placeholder="Enter your question"
+                placeholder={t.enterQuestion[lang]}
                 data-testid={`input-question-label-${index}`}
                 className="min-h-10"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor={`question-description-${question.id}`}>Description (Optional)</Label>
+              <Label htmlFor={`question-description-${question.id}`}>{t.descriptionOptional[lang]}</Label>
               <Input
                 id={`question-description-${question.id}`}
                 value={question.description || ""}
                 onChange={(e) => onUpdate({ description: e.target.value })}
-                placeholder="Helper text for this question"
+                placeholder={t.helperText[lang]}
                 data-testid={`input-question-description-${index}`}
                 className="min-h-10"
               />
@@ -713,7 +724,7 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
               <div className="space-y-2 flex-1">
-                <Label>Question Type</Label>
+                <Label>{t.questionType[lang]}</Label>
                 <Select
                   value={question.type}
                   onValueChange={(value) => onUpdate({ type: value as QuestionType })}
@@ -722,9 +733,9 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(QUESTION_TYPE_LABELS) as QuestionType[]).map((type) => (
+                    {(Object.keys(questionTypeLabels) as QuestionType[]).map((type) => (
                       <SelectItem key={type} value={type}>
-                        {QUESTION_TYPE_LABELS[type]}
+                        {questionTypeLabels[type]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -732,7 +743,7 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
               </div>
 
               <div className="flex items-center justify-between sm:justify-start gap-2 rounded-lg border p-3 sm:p-0 sm:border-0 sm:pt-6">
-                <Label className="text-sm">Required</Label>
+                <Label className="text-sm">{t.required[lang]}</Label>
                 <Switch
                   checked={question.required}
                   onCheckedChange={(checked) => onUpdate({ required: checked })}
@@ -744,6 +755,8 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
             <QuestionSettings
               question={question}
               index={index}
+              lang={lang}
+              t={t}
               onUpdateSettings={onUpdateSettings}
             />
           </div>
@@ -756,10 +769,12 @@ function QuestionEditor({ question, index, onUpdate, onUpdateSettings, onDelete,
 interface QuestionSettingsProps {
   question: Question;
   index: number;
+  lang: SupportedLanguage;
+  t: typeof COACH_UI_TRANSLATIONS.questionnaires;
   onUpdateSettings: (settings: any) => void;
 }
 
-function QuestionSettings({ question, index, onUpdateSettings }: QuestionSettingsProps) {
+function QuestionSettings({ question, index, lang, t, onUpdateSettings }: QuestionSettingsProps) {
   const settings = (question.settings || {}) as any;
 
   const addOption = () => {
@@ -793,16 +808,16 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
     case "phone":
       return (
         <div className="space-y-3 pt-2 border-t">
-          <Label className="text-sm font-medium">Settings</Label>
+          <Label className="text-sm font-medium">{t.settings[lang]}</Label>
           <div className="space-y-2">
             <Label htmlFor={`placeholder-${question.id}`} className="text-sm text-muted-foreground">
-              Placeholder Text
+              {t.placeholder[lang]}
             </Label>
             <Input
               id={`placeholder-${question.id}`}
               value={settings.placeholder || ""}
               onChange={(e) => onUpdateSettings({ placeholder: e.target.value })}
-              placeholder="Enter placeholder text..."
+              placeholder={lang === "ru" ? "Введите текст-подсказку..." : lang === "es" ? "Ingresa texto de marcador..." : "Enter placeholder text..."}
               data-testid={`input-placeholder-${index}`}
             />
           </div>
@@ -810,27 +825,27 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor={`min-length-${question.id}`} className="text-sm text-muted-foreground">
-                  Min Length
+                  {t.minLength[lang]}
                 </Label>
                 <Input
                   id={`min-length-${question.id}`}
                   type="number"
                   value={settings.minLength || ""}
                   onChange={(e) => onUpdateSettings({ minLength: e.target.value ? parseInt(e.target.value) : undefined })}
-                  placeholder="Min"
+                  placeholder={t.min[lang]}
                   data-testid={`input-min-length-${index}`}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor={`max-length-${question.id}`} className="text-sm text-muted-foreground">
-                  Max Length
+                  {t.maxLength[lang]}
                 </Label>
                 <Input
                   id={`max-length-${question.id}`}
                   type="number"
                   value={settings.maxLength || ""}
                   onChange={(e) => onUpdateSettings({ maxLength: e.target.value ? parseInt(e.target.value) : undefined })}
-                  placeholder="Max"
+                  placeholder={t.max[lang]}
                   data-testid={`input-max-length-${index}`}
                 />
               </div>
@@ -844,7 +859,7 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
     case "dropdown":
       return (
         <div className="space-y-3 pt-2 border-t">
-          <Label className="text-sm font-medium">Options</Label>
+          <Label className="text-sm font-medium">{t.options[lang]}</Label>
           <div className="space-y-2">
             {(settings.options || []).map((option: string, idx: number) => (
               <div key={idx} className="flex items-center gap-2">
@@ -874,34 +889,34 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
               className="min-h-10"
             >
               <Plus className="h-3 w-3 mr-2" />
-              Add Option
+              {t.addOption[lang]}
             </Button>
           </div>
           {question.type === "checkboxes" && (
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor={`min-selections-${question.id}`} className="text-sm text-muted-foreground">
-                  Min Selections
+                  {t.minSelections[lang]}
                 </Label>
                 <Input
                   id={`min-selections-${question.id}`}
                   type="number"
                   value={settings.minSelections || ""}
                   onChange={(e) => onUpdateSettings({ minSelections: e.target.value ? parseInt(e.target.value) : undefined })}
-                  placeholder="Min"
+                  placeholder={t.min[lang]}
                   data-testid={`input-min-selections-${index}`}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor={`max-selections-${question.id}`} className="text-sm text-muted-foreground">
-                  Max Selections
+                  {t.maxSelections[lang]}
                 </Label>
                 <Input
                   id={`max-selections-${question.id}`}
                   type="number"
                   value={settings.maxSelections || ""}
                   onChange={(e) => onUpdateSettings({ maxSelections: e.target.value ? parseInt(e.target.value) : undefined })}
-                  placeholder="Max"
+                  placeholder={t.max[lang]}
                   data-testid={`input-max-selections-${index}`}
                 />
               </div>
@@ -913,7 +928,7 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
               onCheckedChange={(checked) => onUpdateSettings({ allowOther: checked })}
               data-testid={`switch-allow-other-${index}`}
             />
-            <Label className="text-sm">Allow "Other" option</Label>
+            <Label className="text-sm">{t.allowOther[lang]}</Label>
           </div>
         </div>
       );
@@ -921,22 +936,22 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
     case "number":
       return (
         <div className="space-y-3 pt-2 border-t">
-          <Label className="text-sm font-medium">Settings</Label>
+          <Label className="text-sm font-medium">{t.settings[lang]}</Label>
           <div className="space-y-2">
             <Label htmlFor={`placeholder-${question.id}`} className="text-sm text-muted-foreground">
-              Placeholder Text
+              {t.placeholder[lang]}
             </Label>
             <Input
               id={`placeholder-${question.id}`}
               value={settings.placeholder || ""}
               onChange={(e) => onUpdateSettings({ placeholder: e.target.value })}
-              placeholder="Enter a number..."
+              placeholder={t.enterNumber[lang]}
               data-testid={`input-placeholder-${index}`}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor={`unit-label-${question.id}`} className="text-sm text-muted-foreground">
-              Unit Label (e.g., kg, lbs, cm)
+              {t.unitLabel[lang]}
             </Label>
             <Input
               id={`unit-label-${question.id}`}
@@ -949,33 +964,33 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
               <Label htmlFor={`min-${question.id}`} className="text-sm text-muted-foreground">
-                Min
+                {t.min[lang]}
               </Label>
               <Input
                 id={`min-${question.id}`}
                 type="number"
                 value={settings.min || ""}
                 onChange={(e) => onUpdateSettings({ min: e.target.value ? parseFloat(e.target.value) : undefined })}
-                placeholder="Min"
+                placeholder={t.min[lang]}
                 data-testid={`input-min-${index}`}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor={`max-${question.id}`} className="text-sm text-muted-foreground">
-                Max
+                {t.max[lang]}
               </Label>
               <Input
                 id={`max-${question.id}`}
                 type="number"
                 value={settings.max || ""}
                 onChange={(e) => onUpdateSettings({ max: e.target.value ? parseFloat(e.target.value) : undefined })}
-                placeholder="Max"
+                placeholder={t.max[lang]}
                 data-testid={`input-max-${index}`}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor={`step-${question.id}`} className="text-sm text-muted-foreground">
-                Step
+                {t.step[lang]}
               </Label>
               <Input
                 id={`step-${question.id}`}
@@ -993,11 +1008,11 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
     case "date":
       return (
         <div className="space-y-3 pt-2 border-t">
-          <Label className="text-sm font-medium">Settings</Label>
+          <Label className="text-sm font-medium">{t.settings[lang]}</Label>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor={`min-date-${question.id}`} className="text-sm text-muted-foreground">
-                Min Date
+                {t.minDate[lang]}
               </Label>
               <Input
                 id={`min-date-${question.id}`}
@@ -1009,7 +1024,7 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
             </div>
             <div className="space-y-2">
               <Label htmlFor={`max-date-${question.id}`} className="text-sm text-muted-foreground">
-                Max Date
+                {t.maxDate[lang]}
               </Label>
               <Input
                 id={`max-date-${question.id}`}
@@ -1026,10 +1041,10 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
     case "file_upload":
       return (
         <div className="space-y-3 pt-2 border-t">
-          <Label className="text-sm font-medium">Settings</Label>
+          <Label className="text-sm font-medium">{t.settings[lang]}</Label>
           <div className="space-y-2">
             <Label htmlFor={`allowed-types-${question.id}`} className="text-sm text-muted-foreground">
-              Allowed File Types (comma-separated)
+              {t.allowedFileTypes[lang]}
             </Label>
             <Input
               id={`allowed-types-${question.id}`}
@@ -1044,7 +1059,7 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor={`max-size-${question.id}`} className="text-sm text-muted-foreground">
-                Max Size (MB)
+                {t.maxSize[lang]}
               </Label>
               <Input
                 id={`max-size-${question.id}`}
@@ -1057,7 +1072,7 @@ function QuestionSettings({ question, index, onUpdateSettings }: QuestionSetting
             </div>
             <div className="space-y-2">
               <Label htmlFor={`max-files-${question.id}`} className="text-sm text-muted-foreground">
-                Max Files
+                {t.maxFiles[lang]}
               </Label>
               <Input
                 id={`max-files-${question.id}`}

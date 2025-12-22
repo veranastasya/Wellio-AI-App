@@ -40,7 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type Client, type Session } from "@shared/schema";
+import { type Client, type Session, type Coach, type SupportedLanguage, COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -112,16 +112,6 @@ const sessionTypeDotColors: Record<string, string> = {
   other: "bg-gray-500",
 };
 
-function formatSessionType(type: string): string {
-  const typeMap: Record<string, string> = {
-    consultation: "Consultation",
-    follow_up: "Follow-up",
-    check_in: "Check-in",
-    other: "Other",
-  };
-  return typeMap[type] || type;
-}
-
 function getLocationIcon(location?: string) {
   switch (location) {
     case "video":
@@ -132,19 +122,6 @@ function getLocationIcon(location?: string) {
       return <MapPin className="w-3 h-3" />;
     default:
       return <Video className="w-3 h-3" />;
-  }
-}
-
-function getLocationLabel(location?: string): string {
-  switch (location) {
-    case "video":
-      return "Video";
-    case "phone":
-      return "Phone";
-    case "in-person":
-      return "In-Person";
-    default:
-      return "Video";
   }
 }
 
@@ -163,6 +140,64 @@ export default function Scheduling() {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+
+  const { data: coachProfile } = useQuery<Coach>({
+    queryKey: ["/api/coach/profile"],
+  });
+
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const t = COACH_UI_TRANSLATIONS;
+
+  const getSessionTypeLabel = (type: string): string => {
+    const typeMap: Record<string, keyof typeof t.scheduling> = {
+      consultation: "consultation",
+      follow_up: "followUp",
+      check_in: "checkIn",
+      other: "other",
+    };
+    const key = typeMap[type];
+    if (key && t.scheduling[key]) {
+      return (t.scheduling[key] as Record<SupportedLanguage, string>)[lang];
+    }
+    return type;
+  };
+
+  const getLocationLabel = (location?: string): string => {
+    switch (location) {
+      case "video":
+        return t.scheduling.video[lang];
+      case "phone":
+        return t.scheduling.phone[lang];
+      case "in-person":
+        return t.scheduling.inPerson[lang];
+      default:
+        return t.scheduling.video[lang];
+    }
+  };
+
+  const getStatusLabel = (status: string): string => {
+    const statusMap: Record<string, keyof typeof t.scheduling> = {
+      scheduled: "scheduled",
+      completed: "completed",
+      cancelled: "cancelled",
+      no_show: "noShow",
+    };
+    const key = statusMap[status];
+    if (key && t.scheduling[key]) {
+      return (t.scheduling[key] as Record<SupportedLanguage, string>)[lang];
+    }
+    return status;
+  };
+
+  const getDayNames = (): string[] => [
+    t.scheduling.mon[lang],
+    t.scheduling.tue[lang],
+    t.scheduling.wed[lang],
+    t.scheduling.thu[lang],
+    t.scheduling.fri[lang],
+    t.scheduling.sat[lang],
+    t.scheduling.sun[lang],
+  ];
 
   const { data: clients = [], isLoading: clientsLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -234,16 +269,16 @@ export default function Scheduling() {
       queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       toast({
-        title: "Success",
-        description: "Session booked successfully",
+        title: t.scheduling.success[lang],
+        description: t.scheduling.sessionCreated[lang],
       });
       form.reset();
       setIsDialogOpen(false);
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to book session",
+        title: t.scheduling.error[lang],
+        description: error instanceof Error ? error.message : t.scheduling.failedToCreate[lang],
         variant: "destructive",
       });
     },
@@ -282,8 +317,8 @@ export default function Scheduling() {
       queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       toast({
-        title: "Success",
-        description: "Session updated successfully",
+        title: t.scheduling.success[lang],
+        description: t.scheduling.sessionUpdated[lang],
       });
       editForm.reset();
       setIsEditDialogOpen(false);
@@ -292,8 +327,8 @@ export default function Scheduling() {
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update session",
+        title: t.scheduling.error[lang],
+        description: error instanceof Error ? error.message : t.scheduling.failedToUpdate[lang],
         variant: "destructive",
       });
     },
@@ -314,8 +349,8 @@ export default function Scheduling() {
       queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
       toast({
-        title: "Success",
-        description: "Session deleted successfully",
+        title: t.scheduling.success[lang],
+        description: t.scheduling.sessionDeleted[lang],
       });
       setIsDeleteDialogOpen(false);
       setIsDetailsDialogOpen(false);
@@ -323,8 +358,8 @@ export default function Scheduling() {
     },
     onError: (error) => {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete session",
+        title: t.scheduling.error[lang],
+        description: error instanceof Error ? error.message : t.scheduling.failedToDelete[lang],
         variant: "destructive",
       });
     },
@@ -476,7 +511,7 @@ export default function Scheduling() {
   if (clientsLoading || sessionsLoading) {
     return (
       <div className="flex items-center justify-center p-6">
-        <div className="text-muted-foreground">Loading...</div>
+        <div className="text-muted-foreground">{t.scheduling.loading[lang]}</div>
       </div>
     );
   }
@@ -486,10 +521,10 @@ export default function Scheduling() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-scheduling">
-            Smart Scheduling
+            {t.scheduling.title[lang]}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Manage your coaching sessions and appointments
+            {t.scheduling.subtitle[lang]}
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -499,12 +534,12 @@ export default function Scheduling() {
               className="w-full sm:w-auto bg-primary hover:bg-primary/90"
             >
               <Plus className="w-4 h-4 mr-2" />
-              New Session
+              {t.scheduling.newSession[lang]}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Book New Session</DialogTitle>
+              <DialogTitle>{t.scheduling.bookNewSession[lang]}</DialogTitle>
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -513,11 +548,11 @@ export default function Scheduling() {
                   name="clientId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Client</FormLabel>
+                      <FormLabel>{t.scheduling.client[lang]}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-client">
-                            <SelectValue placeholder="Select a client" />
+                            <SelectValue placeholder={t.scheduling.selectClient[lang]} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -538,18 +573,18 @@ export default function Scheduling() {
                   name="sessionType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Session Type</FormLabel>
+                      <FormLabel>{t.scheduling.sessionType[lang]}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-session-type">
-                            <SelectValue placeholder="Select type" />
+                            <SelectValue placeholder={t.scheduling.selectType[lang]} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="consultation">Consultation</SelectItem>
-                          <SelectItem value="follow_up">Follow-up</SelectItem>
-                          <SelectItem value="check_in">Check-in</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                          <SelectItem value="consultation">{t.scheduling.consultation[lang]}</SelectItem>
+                          <SelectItem value="follow_up">{t.scheduling.followUp[lang]}</SelectItem>
+                          <SelectItem value="check_in">{t.scheduling.checkIn[lang]}</SelectItem>
+                          <SelectItem value="other">{t.scheduling.other[lang]}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -562,17 +597,17 @@ export default function Scheduling() {
                   name="locationType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Location Type</FormLabel>
+                      <FormLabel>{t.scheduling.locationType[lang]}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-location-type">
-                            <SelectValue placeholder="Select location" />
+                            <SelectValue placeholder={t.scheduling.selectLocation[lang]} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="video">Video Call</SelectItem>
-                          <SelectItem value="phone">Phone Call</SelectItem>
-                          <SelectItem value="in-person">In-Person</SelectItem>
+                          <SelectItem value="video">{t.scheduling.videoCall[lang]}</SelectItem>
+                          <SelectItem value="phone">{t.scheduling.phoneCall[lang]}</SelectItem>
+                          <SelectItem value="in-person">{t.scheduling.inPerson[lang]}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -585,7 +620,7 @@ export default function Scheduling() {
                   name="date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Date</FormLabel>
+                      <FormLabel>{t.scheduling.date[lang]}</FormLabel>
                       <FormControl>
                         <Input type="date" {...field} data-testid="input-date" />
                       </FormControl>
@@ -600,12 +635,12 @@ export default function Scheduling() {
                     name="startTime"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Start Time</FormLabel>
+                        <FormLabel>{t.scheduling.startTime[lang]}</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger data-testid="input-start-time">
-                              <SelectValue placeholder="Select time">
-                                {field.value ? formatTimeDisplay(field.value) : "Select time"}
+                              <SelectValue placeholder={t.scheduling.selectTime[lang]}>
+                                {field.value ? formatTimeDisplay(field.value) : t.scheduling.selectTime[lang]}
                               </SelectValue>
                             </SelectTrigger>
                           </FormControl>
@@ -627,21 +662,21 @@ export default function Scheduling() {
                     name="duration"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Duration (min)</FormLabel>
+                        <FormLabel>{t.scheduling.durationMin[lang]}</FormLabel>
                         <Select 
                           onValueChange={(val) => field.onChange(parseInt(val))} 
                           value={field.value?.toString()}
                         >
                           <FormControl>
                             <SelectTrigger data-testid="select-duration">
-                              <SelectValue placeholder="Duration" />
+                              <SelectValue placeholder={t.scheduling.duration[lang]} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="30">30 min</SelectItem>
-                            <SelectItem value="45">45 min</SelectItem>
-                            <SelectItem value="60">60 min</SelectItem>
-                            <SelectItem value="90">90 min</SelectItem>
+                            <SelectItem value="30">30 {t.scheduling.min[lang]}</SelectItem>
+                            <SelectItem value="45">45 {t.scheduling.min[lang]}</SelectItem>
+                            <SelectItem value="60">60 {t.scheduling.min[lang]}</SelectItem>
+                            <SelectItem value="90">90 {t.scheduling.min[lang]}</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -655,7 +690,7 @@ export default function Scheduling() {
                   name="meetingLink"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Meeting Link (Optional)</FormLabel>
+                      <FormLabel>{t.scheduling.meetingLinkOptional[lang]}</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="https://meet.google.com/..."
@@ -674,10 +709,10 @@ export default function Scheduling() {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormLabel>{t.scheduling.notesOptional[lang]}</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Add session notes..."
+                          placeholder={t.scheduling.notes[lang]}
                           {...field}
                           value={field.value || ""}
                           data-testid="input-notes"
@@ -695,14 +730,14 @@ export default function Scheduling() {
                     onClick={() => setIsDialogOpen(false)}
                     data-testid="button-cancel"
                   >
-                    Cancel
+                    {t.scheduling.cancel[lang]}
                   </Button>
                   <Button
                     type="submit"
                     disabled={createSessionMutation.isPending}
                     data-testid="button-submit"
                   >
-                    {createSessionMutation.isPending ? "Booking..." : "Book Session"}
+                    {createSessionMutation.isPending ? t.scheduling.booking[lang] : t.scheduling.bookSession[lang]}
                   </Button>
                 </div>
               </form>
@@ -741,7 +776,7 @@ export default function Scheduling() {
                 className="ml-2"
                 data-testid="button-today"
               >
-                Today
+                {t.scheduling.today[lang]}
               </Button>
             </div>
             <div className="inline-flex items-center rounded-lg bg-muted/50 p-0.5 border border-border/50">
@@ -754,7 +789,7 @@ export default function Scheduling() {
                 }`}
                 data-testid="button-week-view"
               >
-                Week
+                {t.scheduling.weekView[lang]}
               </button>
               <button
                 onClick={() => setViewMode("month")}
@@ -765,7 +800,7 @@ export default function Scheduling() {
                 }`}
                 data-testid="button-month-view"
               >
-                Month
+                {t.scheduling.monthView[lang]}
               </button>
             </div>
           </div>
@@ -779,7 +814,7 @@ export default function Scheduling() {
               <div className="overflow-x-auto">
                 <div className="min-w-[600px]">
                   <div className="grid grid-cols-7 border-b">
-                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+                    {getDayNames().map((day) => (
                       <div key={day} className="text-center text-sm font-medium text-muted-foreground py-3 border-r last:border-r-0">
                         {day}
                       </div>
@@ -830,7 +865,7 @@ export default function Scheduling() {
                             ))}
                             {daySessions.length > 3 && (
                               <div className="text-xs text-muted-foreground">
-                                +{daySessions.length - 3} more
+                                +{daySessions.length - 3} {t.scheduling.more[lang]}
                               </div>
                             )}
                           </div>
@@ -845,11 +880,11 @@ export default function Scheduling() {
                 <div className="min-w-[700px]">
                   <div className="grid grid-cols-8 border-b">
                     <div className="py-3 px-2 text-sm font-medium text-muted-foreground border-r">
-                      Time
+                      {t.scheduling.time[lang]}
                     </div>
                     {weekDays.map((day, i) => {
                       const isToday = day.toDateString() === new Date().toDateString();
-                      const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+                      const dayNames = getDayNames();
                       return (
                         <div 
                           key={i} 
@@ -929,7 +964,7 @@ export default function Scheduling() {
                                     onClick={(e) => openSessionDetails(session, e)}
                                   >
                                     <div className="font-medium">
-                                      {session.startTime} - {formatSessionType(session.sessionType)}
+                                      {session.startTime} - {getSessionTypeLabel(session.sessionType)}
                                     </div>
                                     <div className="opacity-90 truncate">
                                       {session.clientName}
@@ -951,19 +986,19 @@ export default function Scheduling() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">Upcoming Sessions</CardTitle>
+            <CardTitle className="text-base font-semibold">{t.scheduling.upcomingSessions[lang]}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {upcomingSessions.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                No upcoming sessions
+                {t.scheduling.noUpcomingSessions[lang]}
               </div>
             ) : (
               upcomingSessions.map((session: Session) => {
                 const duration = session.endTime 
                   ? calculateDuration(session.startTime, session.endTime)
                   : 45;
-                const displayType = formatSessionType(session.sessionType);
+                const displayType = getSessionTypeLabel(session.sessionType);
                 const locationType = (session as any).locationType || "video";
                 
                 return (
@@ -984,7 +1019,7 @@ export default function Scheduling() {
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />
-                        <span>{session.startTime} • {duration} min</span>
+                        <span>{session.startTime} • {duration} {t.scheduling.min[lang]}</span>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         {getLocationIcon(locationType)}
@@ -1005,7 +1040,7 @@ export default function Scheduling() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-primary" />
-              Session Details
+              {t.scheduling.sessionDetails[lang]}
             </DialogTitle>
           </DialogHeader>
           {selectedSession && (
@@ -1015,7 +1050,7 @@ export default function Scheduling() {
                   sessionTypeDotColors[selectedSession.sessionType] || "bg-blue-500"
                 }`} />
                 <Badge variant="secondary" className="text-sm">
-                  {formatSessionType(selectedSession.sessionType)}
+                  {getSessionTypeLabel(selectedSession.sessionType)}
                 </Badge>
               </div>
 
@@ -1023,7 +1058,7 @@ export default function Scheduling() {
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   <User className="w-4 h-4 text-muted-foreground" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Client</p>
+                    <p className="text-xs text-muted-foreground">{t.scheduling.client[lang]}</p>
                     <p className="font-medium">{selectedSession.clientName}</p>
                   </div>
                 </div>
@@ -1031,9 +1066,9 @@ export default function Scheduling() {
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   <Calendar className="w-4 h-4 text-muted-foreground" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Date</p>
+                    <p className="text-xs text-muted-foreground">{t.scheduling.date[lang]}</p>
                     <p className="font-medium">
-                      {new Date(selectedSession.date).toLocaleDateString("en-US", {
+                      {new Date(selectedSession.date).toLocaleDateString(lang === "ru" ? "ru-RU" : lang === "es" ? "es-ES" : "en-US", {
                         weekday: "long",
                         year: "numeric",
                         month: "long",
@@ -1046,12 +1081,12 @@ export default function Scheduling() {
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   <Clock className="w-4 h-4 text-muted-foreground" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Time</p>
+                    <p className="text-xs text-muted-foreground">{t.scheduling.time[lang]}</p>
                     <p className="font-medium">
                       {selectedSession.startTime} - {selectedSession.endTime}
                       {selectedSession.endTime && (
                         <span className="text-muted-foreground ml-1">
-                          ({calculateDuration(selectedSession.startTime, selectedSession.endTime)} min)
+                          ({calculateDuration(selectedSession.startTime, selectedSession.endTime)} {t.scheduling.min[lang]})
                         </span>
                       )}
                     </p>
@@ -1061,7 +1096,7 @@ export default function Scheduling() {
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   {getLocationIcon((selectedSession as any).locationType || "video")}
                   <div>
-                    <p className="text-xs text-muted-foreground">Location</p>
+                    <p className="text-xs text-muted-foreground">{t.scheduling.location[lang]}</p>
                     <p className="font-medium">
                       {getLocationLabel((selectedSession as any).locationType || "video")}
                     </p>
@@ -1074,8 +1109,8 @@ export default function Scheduling() {
                     selectedSession.status === "completed" ? "bg-blue-500" : "bg-gray-500"
                   }`} />
                   <div>
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <p className="font-medium capitalize">{selectedSession.status}</p>
+                    <p className="text-xs text-muted-foreground">{t.scheduling.status[lang]}</p>
+                    <p className="font-medium">{getStatusLabel(selectedSession.status)}</p>
                   </div>
                 </div>
 
@@ -1083,7 +1118,7 @@ export default function Scheduling() {
                   <div className="p-3 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-2 mb-1">
                       <Link className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-xs text-muted-foreground">Meeting Link</p>
+                      <p className="text-xs text-muted-foreground">{t.scheduling.meetingLink[lang]}</p>
                     </div>
                     <a 
                       href={(selectedSession as any).meetingLink}
@@ -1092,7 +1127,7 @@ export default function Scheduling() {
                       className="text-sm text-primary hover:underline flex items-center gap-1"
                       data-testid="link-meeting"
                     >
-                      Join Meeting
+                      {t.scheduling.joinMeeting[lang]}
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
@@ -1100,7 +1135,7 @@ export default function Scheduling() {
 
                 {selectedSession.notes && (
                   <div className="p-3 rounded-lg bg-muted/50">
-                    <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t.scheduling.notes[lang]}</p>
                     <p className="text-sm">{selectedSession.notes}</p>
                   </div>
                 )}
@@ -1123,7 +1158,7 @@ export default function Scheduling() {
                   data-testid="button-edit-session"
                 >
                   <Pencil className="w-4 h-4 mr-2" />
-                  Edit
+                  {t.scheduling.edit[lang]}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -1131,7 +1166,7 @@ export default function Scheduling() {
                   onClick={() => setIsDetailsDialogOpen(false)}
                   data-testid="button-close-details"
                 >
-                  Close
+                  {t.scheduling.close[lang]}
                 </Button>
               </div>
             </div>
@@ -1143,7 +1178,7 @@ export default function Scheduling() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Session</DialogTitle>
+            <DialogTitle>{t.scheduling.editSession[lang]}</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
@@ -1152,11 +1187,11 @@ export default function Scheduling() {
                 name="clientId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Client</FormLabel>
+                    <FormLabel>{t.scheduling.client[lang]}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="edit-select-client">
-                          <SelectValue placeholder="Select a client" />
+                          <SelectValue placeholder={t.scheduling.selectClient[lang]} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -1177,18 +1212,18 @@ export default function Scheduling() {
                 name="sessionType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Session Type</FormLabel>
+                    <FormLabel>{t.scheduling.sessionType[lang]}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="edit-select-session-type">
-                          <SelectValue placeholder="Select type" />
+                          <SelectValue placeholder={t.scheduling.selectType[lang]} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="consultation">Consultation</SelectItem>
-                        <SelectItem value="follow_up">Follow-up</SelectItem>
-                        <SelectItem value="check_in">Check-in</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="consultation">{t.scheduling.consultation[lang]}</SelectItem>
+                        <SelectItem value="follow_up">{t.scheduling.followUp[lang]}</SelectItem>
+                        <SelectItem value="check_in">{t.scheduling.checkIn[lang]}</SelectItem>
+                        <SelectItem value="other">{t.scheduling.other[lang]}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -1201,17 +1236,17 @@ export default function Scheduling() {
                 name="locationType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location Type</FormLabel>
+                    <FormLabel>{t.scheduling.locationType[lang]}</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="edit-select-location-type">
-                          <SelectValue placeholder="Select location" />
+                          <SelectValue placeholder={t.scheduling.selectLocation[lang]} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="video">Video Call</SelectItem>
-                        <SelectItem value="phone">Phone Call</SelectItem>
-                        <SelectItem value="in-person">In-Person</SelectItem>
+                        <SelectItem value="video">{t.scheduling.videoCall[lang]}</SelectItem>
+                        <SelectItem value="phone">{t.scheduling.phoneCall[lang]}</SelectItem>
+                        <SelectItem value="in-person">{t.scheduling.inPerson[lang]}</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -1224,7 +1259,7 @@ export default function Scheduling() {
                 name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel>{t.scheduling.date[lang]}</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} data-testid="edit-input-date" />
                     </FormControl>
@@ -1239,12 +1274,12 @@ export default function Scheduling() {
                   name="startTime"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Start Time</FormLabel>
+                      <FormLabel>{t.scheduling.startTime[lang]}</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="edit-input-start-time">
-                            <SelectValue placeholder="Select time">
-                              {field.value ? formatTimeDisplay(field.value) : "Select time"}
+                            <SelectValue placeholder={t.scheduling.selectTime[lang]}>
+                              {field.value ? formatTimeDisplay(field.value) : t.scheduling.selectTime[lang]}
                             </SelectValue>
                           </SelectTrigger>
                         </FormControl>
@@ -1266,21 +1301,21 @@ export default function Scheduling() {
                   name="duration"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Duration (min)</FormLabel>
+                      <FormLabel>{t.scheduling.durationMin[lang]}</FormLabel>
                       <Select 
                         onValueChange={(val) => field.onChange(parseInt(val))} 
                         value={field.value?.toString()}
                       >
                         <FormControl>
                           <SelectTrigger data-testid="edit-select-duration">
-                            <SelectValue placeholder="Duration" />
+                            <SelectValue placeholder={t.scheduling.duration[lang]} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="30">30 min</SelectItem>
-                          <SelectItem value="45">45 min</SelectItem>
-                          <SelectItem value="60">60 min</SelectItem>
-                          <SelectItem value="90">90 min</SelectItem>
+                          <SelectItem value="30">30 {t.scheduling.min[lang]}</SelectItem>
+                          <SelectItem value="45">45 {t.scheduling.min[lang]}</SelectItem>
+                          <SelectItem value="60">60 {t.scheduling.min[lang]}</SelectItem>
+                          <SelectItem value="90">90 {t.scheduling.min[lang]}</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1294,7 +1329,7 @@ export default function Scheduling() {
                 name="meetingLink"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Meeting Link (Optional)</FormLabel>
+                    <FormLabel>{t.scheduling.meetingLinkOptional[lang]}</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="https://meet.google.com/..."
@@ -1313,10 +1348,10 @@ export default function Scheduling() {
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormLabel>{t.scheduling.notesOptional[lang]}</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Add session notes..."
+                        placeholder={t.scheduling.notes[lang]}
                         {...field}
                         value={field.value || ""}
                         data-testid="edit-input-notes"
@@ -1334,14 +1369,14 @@ export default function Scheduling() {
                   onClick={() => setIsEditDialogOpen(false)}
                   data-testid="button-cancel-edit"
                 >
-                  Cancel
+                  {t.scheduling.cancel[lang]}
                 </Button>
                 <Button
                   type="submit"
                   disabled={updateSessionMutation.isPending}
                   data-testid="button-submit-edit"
                 >
-                  {updateSessionMutation.isPending ? "Saving..." : "Save Changes"}
+                  {updateSessionMutation.isPending ? t.scheduling.saving[lang] : t.scheduling.saveChanges[lang]}
                 </Button>
               </div>
             </form>
@@ -1353,19 +1388,19 @@ export default function Scheduling() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Session</AlertDialogTitle>
+            <AlertDialogTitle>{t.scheduling.deleteConfirmTitle[lang]}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this session? This action cannot be undone.
+              {t.scheduling.deleteConfirmDescription[lang]}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogCancel data-testid="button-cancel-delete">{t.scheduling.cancel[lang]}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => selectedSession && deleteSessionMutation.mutate(selectedSession.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               data-testid="button-confirm-delete"
             >
-              {deleteSessionMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteSessionMutation.isPending ? t.scheduling.deleting[lang] : t.scheduling.delete[lang]}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

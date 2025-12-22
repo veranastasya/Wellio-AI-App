@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Plus, Search, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, ChevronUp, Users as UsersIcon, Eye, AlertTriangle, CalendarDays, TrendingUp } from "lucide-react";
-import type { Questionnaire, GoalType } from "@shared/schema";
-import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel } from "@shared/schema";
+import type { Questionnaire, GoalType, SupportedLanguage, Coach } from "@shared/schema";
+import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel, COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -68,10 +68,14 @@ export default function Clients() {
     queryKey: ["/api/questionnaires"],
   });
 
-  // Fetch coach profile for invite emails
-  const { data: coachProfile } = useQuery<{ id: string; name: string; email: string; phone: string | null }>({
+  // Fetch coach profile for invite emails and translations
+  const { data: coachProfile } = useQuery<Omit<Coach, "passwordHash">>({
     queryKey: ["/api/coach/profile"],
   });
+
+  // Translations
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const t = COACH_UI_TRANSLATIONS;
 
   // Check if client is within grace period (new client: <5 days old)
   const isWithinGracePeriod = (client: Client) => {
@@ -89,17 +93,17 @@ export default function Clients() {
   const getProgressStatus = (progressScore: number | null | undefined, client?: Client) => {
     const score = progressScore || 0;
     if (score >= 80) {
-      return { label: "Excellent", className: "bg-emerald-500 text-white hover:bg-emerald-500" };
+      return { label: t.dashboard.excellent[lang], className: "bg-emerald-500 text-white hover:bg-emerald-500" };
     } else if (score >= 50) {
-      return { label: "On Track", className: "bg-primary text-white hover:bg-primary" };
+      return { label: t.dashboard.onTrack[lang], className: "bg-primary text-white hover:bg-primary" };
     } else if (score > 0) {
       // Check for grace period - show "Getting Started" instead of "Needs Attention" for new clients
       if (client && isWithinGracePeriod(client)) {
-        return { label: "Getting Started", className: "bg-blue-500 text-white hover:bg-blue-500" };
+        return { label: t.dashboard.gettingStarted[lang], className: "bg-blue-500 text-white hover:bg-blue-500" };
       }
-      return { label: "Needs Attention", className: "bg-amber-500 text-white hover:bg-amber-500" };
+      return { label: t.dashboard.needsAttention[lang], className: "bg-amber-500 text-white hover:bg-amber-500" };
     } else {
-      return { label: "New", className: "bg-muted text-muted-foreground hover:bg-muted" };
+      return { label: t.clients.new[lang], className: "bg-muted text-muted-foreground hover:bg-muted" };
     }
   };
 
@@ -168,14 +172,14 @@ export default function Clients() {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       setIsNewClientOpen(false);
       toast({
-        title: "Success",
-        description: "Client added and invite sent successfully",
+        title: t.common.success[lang],
+        description: t.clients.clientAdded[lang],
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to add client",
+        title: t.common.error[lang],
+        description: error.message || t.clients.clientAdded[lang],
         variant: "destructive",
       });
     },
@@ -190,8 +194,8 @@ export default function Clients() {
       setIsEditOpen(false);
       setSelectedClient(null);
       toast({
-        title: "Success",
-        description: "Client updated successfully",
+        title: t.common.success[lang],
+        description: t.clients.clientUpdated[lang],
       });
     },
   });
@@ -203,8 +207,8 @@ export default function Clients() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
       toast({
-        title: "Success",
-        description: "Client deleted successfully",
+        title: t.common.success[lang],
+        description: t.clients.clientDeleted[lang],
       });
     },
   });
@@ -217,14 +221,14 @@ export default function Clients() {
     onSuccess: (response) => {
       setInviteLink(response.inviteLink);
       toast({
-        title: "Success",
-        description: "Invite created successfully",
+        title: t.common.success[lang],
+        description: t.clients.inviteSent[lang],
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to create invite",
+        title: t.common.error[lang],
+        description: error.message || t.clients.inviteSent[lang],
         variant: "destructive",
       });
     },
@@ -259,14 +263,14 @@ export default function Clients() {
       await navigator.clipboard.writeText(inviteLink);
       setInviteCopied(true);
       toast({
-        title: "Copied!",
-        description: "Invite link copied to clipboard",
+        title: t.clients.copied[lang],
+        description: t.clients.inviteLink[lang],
       });
       setTimeout(() => setInviteCopied(false), 2000);
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to copy link",
+        title: t.common.error[lang],
+        description: t.clients.copyLink[lang],
         variant: "destructive",
       });
     }
@@ -277,8 +281,8 @@ export default function Clients() {
       <div className="bg-background">
         <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Client Management</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">Loading clients...</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{t.clients.title[lang]}</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">{t.common.loading[lang]}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -306,9 +310,9 @@ export default function Clients() {
           <Card className="border-destructive">
             <CardContent className="py-12 sm:py-16 text-center">
               <UsersIcon className="w-16 h-16 mx-auto text-destructive mb-4" />
-              <p className="text-lg font-medium text-foreground">Failed to load clients</p>
+              <p className="text-lg font-medium text-foreground">{t.common.error[lang]}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Please try refreshing the page
+                {t.common.tryRefreshing[lang]}
               </p>
             </CardContent>
           </Card>
@@ -323,8 +327,8 @@ export default function Clients() {
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-clients-title">Client Management</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">Manage your coaching clients and track their progress</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-clients-title">{t.clients.title[lang]}</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">{t.clients.subtitle[lang]}</p>
           </div>
           <div className="flex gap-2 flex-shrink-0">
             <Dialog open={isInviteOpen} onOpenChange={(open) => {
@@ -337,14 +341,14 @@ export default function Clients() {
               <DialogTrigger asChild>
                 <Button variant="outline" className="gap-2" data-testid="button-send-invite">
                   <UserPlus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Send Invite</span>
+                  <span className="hidden sm:inline">{t.clients.sendInvite[lang]}</span>
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Send Client Invite</DialogTitle>
+                  <DialogTitle>{t.clients.sendClientInvite[lang]}</DialogTitle>
                   <DialogDescription>
-                    Create a personalized invite link for your client to complete their onboarding
+                    {t.clients.inviteDescription[lang]}
                   </DialogDescription>
                 </DialogHeader>
 
@@ -355,11 +359,13 @@ export default function Clients() {
                     isLoading={createInviteMutation.isPending}
                     coachName={coachProfile?.name || "Your Coach"}
                     coachId={coachProfile?.id || ""}
+                    lang={lang}
+                    t={t}
                   />
                 ) : (
                   <div className="space-y-4">
                     <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-                      <p className="text-sm font-medium text-foreground">Invite Link Created!</p>
+                      <p className="text-sm font-medium text-foreground">{t.clients.inviteLink[lang]}</p>
                       <div className="flex items-center gap-2">
                         <Input
                           value={inviteLink}
@@ -377,12 +383,12 @@ export default function Clients() {
                         </Button>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Share this link with your client. They'll use it to complete their onboarding questionnaire and create their account.
+                        {t.clients.inviteDescription[lang]}
                       </p>
                     </div>
                     <div className="flex justify-end">
                       <Button onClick={() => setIsInviteOpen(false)} data-testid="button-close-invite">
-                        Close
+                        {t.common.close[lang]}
                       </Button>
                     </div>
                   </div>
@@ -394,20 +400,22 @@ export default function Clients() {
               <DialogTrigger asChild>
                 <Button className="gap-2 bg-primary hover:bg-primary/90" data-testid="button-new-client">
                   <Plus className="w-4 h-4" />
-                  New Client
+                  {t.clients.newClient[lang]}
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Add New Client</DialogTitle>
+                  <DialogTitle>{t.clients.addClient[lang]}</DialogTitle>
                   <DialogDescription>
-                    Enter client details to add them to your roster
+                    {t.clients.inviteDescription[lang]}
                   </DialogDescription>
                 </DialogHeader>
 
                 <ClientForm
                   onSubmit={(data) => createClientMutation.mutate(data)}
                   isLoading={createClientMutation.isPending}
+                  lang={lang}
+                  t={t}
                 />
 
                 <div className="pt-2 border-t text-center">
@@ -419,7 +427,7 @@ export default function Clients() {
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                     data-testid="link-send-questionnaire-instead"
                   >
-                    Or send questionnaire invite instead →
+                    {t.clients.sendInvite[lang]} →
                   </button>
                 </div>
               </DialogContent>
@@ -432,7 +440,7 @@ export default function Clients() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search clients by name or email..."
+              placeholder={t.clients.searchPlaceholder[lang]}
               className="pl-10 h-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -442,38 +450,38 @@ export default function Clients() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2 min-w-[120px]" data-testid="button-status-filter">
-                {statusFilter === "all" ? "All Status" : statusFilter === "active" ? "Active" : "Ended"}
+                {statusFilter === "all" ? t.clients.all[lang] : statusFilter === "active" ? t.clients.activeClients[lang] : t.clients.ended[lang]}
                 <ChevronDown className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setStatusFilter("all")} data-testid="filter-all">
-                All Status
+                {t.clients.all[lang]}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setStatusFilter("active")} data-testid="filter-active">
-                Active
+                {t.clients.activeClients[lang]}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setStatusFilter("ended")} data-testid="filter-ended">
-                Ended
+                {t.clients.ended[lang]}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2 min-w-[140px]" data-testid="button-sort">
-                {sortBy === "dateAdded" ? "Date Added" : sortBy === "name" ? "Name A-Z" : "End Date"}
+                {sortBy === "dateAdded" ? t.clients.dateAdded[lang] : sortBy === "name" ? t.clients.name[lang] : t.clients.endDate[lang]}
                 <ChevronDown className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setSortBy("dateAdded")} data-testid="sort-date-added">
-                Date Added
+                {t.clients.dateAdded[lang]}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSortBy("name")} data-testid="sort-name">
-                Name A-Z
+                {t.clients.name[lang]}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSortBy("endDate")} data-testid="sort-end-date">
-                End Date
+                {t.clients.endDate[lang]}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -525,7 +533,7 @@ export default function Clients() {
                             variant="outline"
                             className="text-xs border bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800"
                           >
-                            Ended
+                            {t.clients.ended[lang]}
                           </Badge>
                         ) : (
                           <Badge 
@@ -568,20 +576,20 @@ export default function Clients() {
                           data-testid={`menu-edit-${index}`}
                         >
                           <Pencil className="w-4 h-4 mr-2" />
-                          Edit Client
+                          {t.clients.editClient[lang]}
                         </DropdownMenuItem>
                         <DropdownMenuItem 
                           className="text-red-600 focus:text-red-600"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm(`Are you sure you want to delete ${client.name}?`)) {
+                            if (confirm(`${t.clients.deleteClient[lang]}: ${client.name}?`)) {
                               deleteClientMutation.mutate(client.id);
                             }
                           }}
                           data-testid={`menu-delete-${index}`}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Delete Client
+                          {t.clients.deleteClient[lang]}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -604,17 +612,17 @@ export default function Clients() {
                   <div className="p-3 bg-muted/50 rounded-xl border border-border/50 min-h-[72px] flex flex-col justify-center">
                     <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1.5">
                       <TrendingUp className="w-3.5 h-3.5" />
-                      Primary Goal
+                      {t.clients.goals[lang]}
                     </p>
                     <p className="text-sm text-foreground line-clamp-2">
-                      {client.goalType ? getGoalTypeLabel(client.goalType, client.goalDescription) : "Not set"}
+                      {client.goalType ? getGoalTypeLabel(client.goalType, client.goalDescription) : t.common.notSet[lang]}
                     </p>
                   </div>
 
                   {/* Progress Bar with Gradient */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-muted-foreground">Progress</span>
+                      <span className="text-xs text-muted-foreground">{t.clients.progress[lang]}</span>
                       <span className="text-sm font-medium text-foreground">{progressScore}%</span>
                     </div>
                     <div className="relative w-full bg-muted rounded-full h-2 overflow-hidden">
@@ -638,7 +646,7 @@ export default function Clients() {
                     {endDateFormatted && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <CalendarDays className="w-4 h-4 flex-shrink-0" />
-                        <span>Ends {endDateFormatted}</span>
+                        <span>{t.clients.endDate[lang]}: {endDateFormatted}</span>
                       </div>
                     )}
                   </div>
@@ -653,17 +661,17 @@ export default function Clients() {
                       <div className="flex flex-wrap gap-2">
                         {client.sex && (
                           <Badge variant="outline" className="text-xs font-normal">
-                            {client.sex === "male" ? "Male" : client.sex === "female" ? "Female" : client.sex}
+                            {client.sex === "male" ? t.common.male[lang] : client.sex === "female" ? t.common.female[lang] : client.sex}
                           </Badge>
                         )}
                         {client.weight && (
                           <Badge variant="outline" className="text-xs font-normal">
-                            Weight {client.weight} kg
+                            {t.clients.weight[lang]} {client.weight} kg
                           </Badge>
                         )}
                         {client.height && (
                           <Badge variant="outline" className="text-xs font-normal">
-                            Height {client.height} cm
+                            {t.clients.height[lang]} {client.height} cm
                           </Badge>
                         )}
                       </div>
@@ -678,7 +686,7 @@ export default function Clients() {
                       data-testid={`button-view-${index}`}
                     >
                       <Eye className="w-4 h-4 mr-2" />
-                      View
+                      {t.clients.viewProfile[lang]}
                     </Button>
                     <Button
                       variant="outline"
@@ -687,7 +695,7 @@ export default function Clients() {
                       data-testid={`button-plan-${index}`}
                     >
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Plan
+                      {t.clientDetail.plan[lang]}
                     </Button>
                   </div>
                 </div>
@@ -700,9 +708,9 @@ export default function Clients() {
           <Card>
             <CardContent className="py-16 text-center">
               <UsersIcon className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-              <p className="text-lg font-medium text-foreground">No clients found</p>
+              <p className="text-lg font-medium text-foreground">{t.clients.noClients[lang]}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {searchQuery ? "Try adjusting your search" : "Add your first client to get started"}
+                {searchQuery ? t.common.tryRefreshing[lang] : t.dashboard.noClientsYet[lang]}
               </p>
             </CardContent>
           </Card>
@@ -711,8 +719,8 @@ export default function Clients() {
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Client</DialogTitle>
-              <DialogDescription>Update client information</DialogDescription>
+              <DialogTitle>{t.clients.editClient[lang]}</DialogTitle>
+              <DialogDescription>{t.clients.inviteDescription[lang]}</DialogDescription>
             </DialogHeader>
             {selectedClient && (
               <ClientForm
@@ -721,6 +729,8 @@ export default function Clients() {
                   updateClientMutation.mutate({ id: selectedClient.id, data })
                 }
                 isLoading={updateClientMutation.isPending}
+                lang={lang}
+                t={t}
               />
             )}
           </DialogContent>
@@ -784,10 +794,14 @@ function ClientForm({
   client,
   onSubmit,
   isLoading,
+  lang = "en" as SupportedLanguage,
+  t = COACH_UI_TRANSLATIONS,
 }: {
   client?: Client;
   onSubmit: (data: InsertClient) => void;
   isLoading: boolean;
+  lang?: SupportedLanguage;
+  t?: typeof COACH_UI_TRANSLATIONS;
 }) {
   const [unitsPreference, setUnitsPreference] = useState<UnitsPreference>(
     (client?.unitsPreference as UnitsPreference) || "us"
@@ -880,7 +894,7 @@ function ClientForm({
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
+                <FormLabel>{t.clients.name[lang]}</FormLabel>
                 <FormControl>
                   <Input placeholder="John Doe" {...field} data-testid="input-client-name" />
                 </FormControl>
@@ -893,7 +907,7 @@ function ClientForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>{t.clients.email[lang]}</FormLabel>
                 <FormControl>
                   <Input type="email" placeholder="john@example.com" {...field} data-testid="input-client-email" />
                 </FormControl>
@@ -909,7 +923,7 @@ function ClientForm({
             name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Phone (Optional)</FormLabel>
+                <FormLabel>{t.clients.phone[lang]} ({t.common.optional[lang]})</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="+1 (555) 123-4567"
@@ -927,17 +941,17 @@ function ClientForm({
             name="status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Status</FormLabel>
+                <FormLabel>{t.clients.status[lang]}</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-client-status">
-                      <SelectValue placeholder="Select status" />
+                      <SelectValue placeholder={t.clients.status[lang]} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="active">{t.common.active[lang]}</SelectItem>
+                    <SelectItem value="inactive">{t.common.inactive[lang]}</SelectItem>
+                    <SelectItem value="pending">{t.common.pending[lang]}</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -947,7 +961,7 @@ function ClientForm({
         </div>
 
         <div className="space-y-3 pt-2">
-          <h3 className="text-sm font-semibold text-foreground">Health Metrics (Optional)</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t.clientDetail.physicalStats[lang]} ({t.common.optional[lang]})</h3>
           
           <FormField
             control={form.control}
@@ -983,18 +997,18 @@ function ClientForm({
               name="sex"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Sex</FormLabel>
+                  <FormLabel>{t.clients.sex[lang]}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger data-testid="select-client-sex">
-                        <SelectValue placeholder="Select sex" />
+                        <SelectValue placeholder={t.clients.sex[lang]} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                      <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                      <SelectItem value="male">{t.common.male[lang]}</SelectItem>
+                      <SelectItem value="female">{t.common.female[lang]}</SelectItem>
+                      <SelectItem value="other">{t.common.otherGender[lang]}</SelectItem>
+                      <SelectItem value="prefer_not_to_say">{t.common.preferNotToSay[lang]}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -1006,7 +1020,7 @@ function ClientForm({
               name="age"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Age</FormLabel>
+                  <FormLabel>{t.clients.age[lang]}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -1030,7 +1044,7 @@ function ClientForm({
             name="weight"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Weight ({unitsPreference === "us" ? "lbs" : "kg"})</FormLabel>
+                <FormLabel>{t.clients.weight[lang]} ({unitsPreference === "us" ? "lbs" : "kg"})</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -1069,7 +1083,7 @@ function ClientForm({
               name="height"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Height</FormLabel>
+                  <FormLabel>{t.clients.height[lang]}</FormLabel>
                   <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
                     <FormControl>
                       <Input
@@ -1119,7 +1133,7 @@ function ClientForm({
               name="height"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Height (cm)</FormLabel>
+                  <FormLabel>{t.clients.height[lang]} (cm)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -1154,11 +1168,11 @@ function ClientForm({
               name="activityLevel"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Activity Level</FormLabel>
+                  <FormLabel>{t.clients.activityLevel[lang]}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger data-testid="select-client-activity-level">
-                        <SelectValue placeholder="Select activity level" />
+                        <SelectValue placeholder={t.clients.activityLevel[lang]} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -1178,7 +1192,7 @@ function ClientForm({
               name="bodyFatPercentage"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Body Fat %</FormLabel>
+                  <FormLabel>{t.analytics.bodyFat[lang]}</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -1205,11 +1219,11 @@ function ClientForm({
             name="goalType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Goal (Optional)</FormLabel>
+                <FormLabel>{t.clients.goals[lang]} ({t.common.optional[lang]})</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value || ""}>
                   <FormControl>
                     <SelectTrigger data-testid="select-client-goal">
-                      <SelectValue placeholder="Select your goal" />
+                      <SelectValue placeholder={t.clients.goals[lang]} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -1229,7 +1243,7 @@ function ClientForm({
             name="endDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>End Date (Optional)</FormLabel>
+                <FormLabel>{t.clients.endDate[lang]} ({t.common.optional[lang]})</FormLabel>
                 <FormControl>
                   <Input 
                     type="date" 
@@ -1251,10 +1265,10 @@ function ClientForm({
             name="goalDescription"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Describe your goal</FormLabel>
+                <FormLabel>{t.clients.goals[lang]}</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="Tell us about your specific goal..."
+                    placeholder={t.clients.goals[lang]}
                     {...field}
                     value={field.value || ""}
                     data-testid="input-client-goal-description"
@@ -1272,7 +1286,7 @@ function ClientForm({
             name="targetWeight"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Target Weight ({unitsPreference === "us" ? "lbs" : "kg"})</FormLabel>
+                <FormLabel>{t.clients.targetWeight[lang]} ({unitsPreference === "us" ? "lbs" : "kg"})</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -1377,8 +1391,8 @@ function ClientForm({
         )}
 
         <div className="space-y-3 pt-4">
-          <h3 className="text-sm font-semibold text-foreground">Wellness Plan Details (Optional)</h3>
-          <p className="text-xs text-muted-foreground">This information helps create personalized AI-powered wellness plans</p>
+          <h3 className="text-sm font-semibold text-foreground">{t.clients.wellnessPlanDetails[lang]} ({t.common.optional[lang]})</h3>
+          <p className="text-xs text-muted-foreground">{t.clients.wellnessPlanHelp[lang]}</p>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
@@ -1386,10 +1400,10 @@ function ClientForm({
               name="occupation"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Occupation</FormLabel>
+                  <FormLabel>{t.clients.occupation[lang]}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g., desk job, works from home"
+                      placeholder={t.clients.occupation[lang]}
                       {...field}
                       value={field.value || ""}
                       data-testid="input-client-occupation"
@@ -1404,10 +1418,10 @@ function ClientForm({
               name="timeframe"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Goal Timeframe</FormLabel>
+                  <FormLabel>{t.clients.timeframe[lang]}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g., 12 weeks, 3 months"
+                      placeholder={t.clients.timeframe[lang]}
                       {...field}
                       value={field.value || ""}
                       data-testid="input-client-timeframe"
@@ -1425,18 +1439,18 @@ function ClientForm({
               name="trainingExperience"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Training Experience</FormLabel>
+                  <FormLabel>{t.clients.trainingExperience[lang]}</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger data-testid="select-client-training-experience">
-                        <SelectValue placeholder="Select experience level" />
+                        <SelectValue placeholder={t.clients.trainingExperience[lang]} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
-                      <SelectItem value="returning_after_break">Returning after break</SelectItem>
+                      <SelectItem value="beginner">{t.clients.beginner[lang]}</SelectItem>
+                      <SelectItem value="intermediate">{t.clients.intermediate[lang]}</SelectItem>
+                      <SelectItem value="advanced">{t.clients.advanced[lang]}</SelectItem>
+                      <SelectItem value="returning_after_break">{t.clients.returningAfterBreak[lang]}</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -1448,10 +1462,10 @@ function ClientForm({
               name="equipmentAccess"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Equipment Access</FormLabel>
+                  <FormLabel>{t.clients.equipmentAccess[lang]}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g., home gym, dumbbells, resistance bands"
+                      placeholder={t.clients.equipmentAccess[lang]}
                       {...field}
                       value={field.value || ""}
                       data-testid="input-client-equipment"
@@ -1468,10 +1482,10 @@ function ClientForm({
             name="medicalNotes"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Medical Notes / Limitations</FormLabel>
+                <FormLabel>{t.clients.medicalNotes[lang]}</FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder="Injuries, conditions, limitations, medications, etc."
+                    placeholder={t.clients.medicalNotes[lang]}
                     className="min-h-20"
                     {...field}
                     value={field.value || ""}
@@ -1489,10 +1503,10 @@ function ClientForm({
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Coach Notes (Optional)</FormLabel>
+              <FormLabel>{t.clients.notes[lang]} ({t.common.optional[lang]})</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Additional notes about the client..."
+                  placeholder={t.clients.notes[lang]}
                   className="min-h-24"
                   {...field}
                   value={field.value || ""}
@@ -1506,7 +1520,7 @@ function ClientForm({
 
         <div className="flex justify-end gap-3 pt-4">
           <Button type="submit" disabled={isLoading} data-testid="button-submit-client">
-            {isLoading ? "Saving..." : client ? "Update Client" : "Add Client & Send Invite"}
+            {isLoading ? t.common.saving[lang] : client ? t.common.update[lang] : t.clients.addClient[lang]}
           </Button>
         </div>
       </form>
@@ -1520,12 +1534,16 @@ function InviteForm({
   isLoading,
   coachName,
   coachId,
+  lang = "en" as SupportedLanguage,
+  t = COACH_UI_TRANSLATIONS,
 }: {
   questionnaires: Questionnaire[];
   onSubmit: (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string; coachId: string }) => void;
   isLoading: boolean;
   coachName: string;
   coachId: string;
+  lang?: SupportedLanguage;
+  t?: typeof COACH_UI_TRANSLATIONS;
 }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -1538,8 +1556,8 @@ function InviteForm({
 
     if (!email.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter client email",
+        title: t.common.error[lang],
+        description: t.clients.email[lang],
         variant: "destructive",
       });
       return;
@@ -1547,8 +1565,8 @@ function InviteForm({
 
     if (!name.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter client name",
+        title: t.common.error[lang],
+        description: t.clients.name[lang],
         variant: "destructive",
       });
       return;
@@ -1556,8 +1574,8 @@ function InviteForm({
 
     if (!questionnaireId) {
       toast({
-        title: "Error",
-        description: "Please select a questionnaire",
+        title: t.common.error[lang],
+        description: t.nav.questionnaires[lang],
         variant: "destructive",
       });
       return;
@@ -1577,10 +1595,10 @@ function InviteForm({
     return (
       <div className="py-8 text-center space-y-4">
         <p className="text-muted-foreground">
-          No published questionnaires available.
+          {t.common.noData[lang]}
         </p>
         <p className="text-sm text-muted-foreground">
-          Create and publish a questionnaire first to use this feature.
+          {t.nav.questionnaires[lang]}
         </p>
       </div>
     );
@@ -1589,7 +1607,7 @@ function InviteForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="invite-email">Client Email</Label>
+        <Label htmlFor="invite-email">{t.clients.email[lang]}</Label>
         <Input
           id="invite-email"
           type="email"
@@ -1601,21 +1619,21 @@ function InviteForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="invite-name">Client Name</Label>
+        <Label htmlFor="invite-name">{t.clients.name[lang]}</Label>
         <Input
           id="invite-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Enter client name"
+          placeholder={t.clients.name[lang]}
           data-testid="input-invite-name"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="invite-questionnaire">Onboarding Questionnaire</Label>
+        <Label htmlFor="invite-questionnaire">{t.nav.questionnaires[lang]}</Label>
         <Select value={questionnaireId} onValueChange={setQuestionnaireId}>
           <SelectTrigger data-testid="select-invite-questionnaire">
-            <SelectValue placeholder="Choose a questionnaire" />
+            <SelectValue placeholder={t.nav.questionnaires[lang]} />
           </SelectTrigger>
           <SelectContent>
             {questionnaires.map((q) => (
@@ -1628,24 +1646,21 @@ function InviteForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="invite-message">Custom Message (Optional)</Label>
+        <Label htmlFor="invite-message">{t.clients.notes[lang]} ({t.common.optional[lang]})</Label>
         <Textarea
           id="invite-message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Add a personal message to your client..."
+          placeholder={t.clients.notes[lang]}
           className="min-h-20"
           data-testid="input-invite-message"
         />
       </div>
 
       <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-        <p className="text-sm font-medium">What happens next?</p>
+        <p className="text-sm font-medium">{t.common.whatHappensNext[lang]}</p>
         <ul className="text-sm text-muted-foreground space-y-1">
-          <li>• Client receives a secure invite link</li>
-          <li>• They complete the questionnaire using the link</li>
-          <li>• Their account is automatically created upon completion</li>
-          <li>• You can track their progress in the dashboard</li>
+          <li>• {t.clients.inviteDescription[lang]}</li>
         </ul>
       </div>
 
@@ -1655,7 +1670,7 @@ function InviteForm({
           disabled={isLoading}
           data-testid="button-create-invite"
         >
-          {isLoading ? "Creating..." : "Send Invite Link"}
+          {isLoading ? t.common.sending[lang] : t.clients.sendInvite[lang]}
         </Button>
       </div>
     </form>
@@ -1666,10 +1681,14 @@ function QuestionnaireForm({
   questionnaires,
   onSubmit,
   isLoading,
+  lang = "en" as SupportedLanguage,
+  t = COACH_UI_TRANSLATIONS,
 }: {
   questionnaires: Questionnaire[];
   onSubmit: (data: InsertClient) => void;
   isLoading: boolean;
+  lang?: SupportedLanguage;
+  t?: typeof COACH_UI_TRANSLATIONS;
 }) {
   const [clientName, setClientName] = useState("");
   const [selectedQuestionnaire, setSelectedQuestionnaire] = useState("");
@@ -1680,8 +1699,8 @@ function QuestionnaireForm({
 
     if (!clientName.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a client name",
+        title: t.common.error[lang],
+        description: t.clients.name[lang],
         variant: "destructive",
       });
       return;
@@ -1689,8 +1708,8 @@ function QuestionnaireForm({
 
     if (!selectedQuestionnaire) {
       toast({
-        title: "Error",
-        description: "Please select a questionnaire",
+        title: t.common.error[lang],
+        description: t.nav.questionnaires[lang],
         variant: "destructive",
       });
       return;
@@ -1722,10 +1741,10 @@ function QuestionnaireForm({
     return (
       <div className="py-8 text-center space-y-4">
         <p className="text-muted-foreground">
-          No published questionnaires available.
+          {t.common.noData[lang]}
         </p>
         <p className="text-sm text-muted-foreground">
-          Create and publish a questionnaire first to use this feature.
+          {t.nav.questionnaires[lang]}
         </p>
       </div>
     );
@@ -1734,21 +1753,21 @@ function QuestionnaireForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="client-name">Client Name</Label>
+        <Label htmlFor="client-name">{t.clients.name[lang]}</Label>
         <Input
           id="client-name"
           value={clientName}
           onChange={(e) => setClientName(e.target.value)}
-          placeholder="Enter client name"
+          placeholder={t.clients.name[lang]}
           data-testid="input-questionnaire-client-name"
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="questionnaire">Select Questionnaire</Label>
+        <Label htmlFor="questionnaire">{t.nav.questionnaires[lang]}</Label>
         <Select value={selectedQuestionnaire} onValueChange={setSelectedQuestionnaire}>
           <SelectTrigger data-testid="select-questionnaire">
-            <SelectValue placeholder="Choose a questionnaire" />
+            <SelectValue placeholder={t.nav.questionnaires[lang]} />
           </SelectTrigger>
           <SelectContent>
             {questionnaires.map((q) => (
@@ -1761,11 +1780,9 @@ function QuestionnaireForm({
       </div>
 
       <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-        <p className="text-sm font-medium">What happens next?</p>
+        <p className="text-sm font-medium">{t.common.whatHappensNext[lang]}</p>
         <ul className="text-sm text-muted-foreground space-y-1">
-          <li>• Client will appear with "Pending" status</li>
-          <li>• You can simulate questionnaire response for MVP</li>
-          <li>• Profile auto-populates when response is submitted</li>
+          <li>• {t.clients.inviteDescription[lang]}</li>
         </ul>
       </div>
 
@@ -1775,7 +1792,7 @@ function QuestionnaireForm({
           disabled={isLoading}
           data-testid="button-send-questionnaire"
         >
-          {isLoading ? "Sending..." : "Send Questionnaire"}
+          {isLoading ? t.common.sending[lang] : t.clients.sendInvite[lang]}
         </Button>
       </div>
     </form>

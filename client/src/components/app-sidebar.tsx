@@ -20,32 +20,38 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useTour } from "@/contexts/tour-context";
 import logoImage from "@assets/Group 626535_1761099357468.png";
-import type { Message } from "@shared/schema";
+import type { Message, SupportedLanguage } from "@shared/schema";
+import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 
+interface AppSidebarProps {
+  lang?: SupportedLanguage;
+}
+
+// Navigation items with translation keys
 const navigationItems = [
   {
-    title: "Dashboard",
+    titleKey: "dashboard" as const,
     url: "/",
     icon: Home,
     locked: false,
     tourId: "dashboard",
   },
   {
-    title: "Client Management",
+    titleKey: "clientManagement" as const,
     url: "/clients",
     icon: Users,
     locked: false,
     tourId: "clients",
   },
   {
-    title: "Questionnaires",
+    titleKey: "questionnaires" as const,
     url: "/questionnaires",
     icon: ClipboardList,
     locked: false,
     tourId: "questionnaires",
   },
   {
-    title: "Progress Analytics",
+    titleKey: "progressAnalytics" as const,
     url: "/analytics",
     icon: TrendingUp,
     locked: false,
@@ -53,13 +59,13 @@ const navigationItems = [
     tourId: "analytics",
   },
   {
-    title: "Calendar",
+    titleKey: "calendar" as const,
     url: "/scheduling",
     icon: Calendar,
     locked: false,
   },
   {
-    title: "Chat",
+    titleKey: "chat" as const,
     url: "/communication",
     icon: MessageSquare,
     locked: false,
@@ -67,42 +73,43 @@ const navigationItems = [
     tourId: "communication",
   },
   {
-    title: "Engagement",
+    titleKey: "engagement" as const,
     url: "/engagement",
     icon: Bell,
     locked: false,
     hidden: true,
   },
   {
-    title: "AI Insights",
+    titleKey: "aiInsights" as const,
     url: "/ai-insights",
     icon: Brain,
     locked: false,
     hidden: true,
   },
   {
-    title: "Client Data Logs",
+    titleKey: "clientDataLogs" as const,
     url: "/client-logs",
     icon: FileText,
     locked: false,
     hidden: true,
   },
   {
-    title: "Predictive Analytics",
+    titleKey: "predictiveAnalytics" as const,
     url: "#",
     icon: LineChart,
     locked: true,
     hidden: true,
   },
   {
-    title: "Settings",
+    titleKey: "settings" as const,
     url: "/settings",
     icon: Settings,
     locked: false,
   },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ lang = "en" }: AppSidebarProps) {
+  const t = COACH_UI_TRANSLATIONS;
   const [location] = useLocation();
   const { isActive: isTourActive, currentTourTarget } = useTour();
 
@@ -114,6 +121,9 @@ export function AppSidebar() {
   const unreadCount = messages.filter(
     (m) => m.sender === "client" && !m.read
   ).length;
+
+  // Helper to get translated title
+  const getTitle = (titleKey: keyof typeof t.nav) => t.nav[titleKey][lang];
 
   return (
     <Sidebar>
@@ -131,15 +141,16 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs uppercase tracking-wider text-muted-foreground px-3 py-2">
-            Navigation
+            {t.nav.navigation[lang]}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.filter(item => !item.hidden).map((item) => {
                 const isTourHighlighted = isTourActive && item.tourId === currentTourTarget;
+                const title = getTitle(item.titleKey);
                 return (
                 <SidebarMenuItem 
-                  key={item.title} 
+                  key={item.titleKey} 
                   data-tour={item.tourId}
                   className={isTourHighlighted ? "ring-2 ring-[#28A0AE] ring-offset-2 ring-offset-sidebar rounded-md animate-pulse" : ""}
                 >
@@ -148,26 +159,26 @@ export function AppSidebar() {
                       <TooltipTrigger asChild>
                         <SidebarMenuButton
                           className="cursor-not-allowed opacity-60"
-                          data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                          data-testid={`nav-${item.titleKey.toLowerCase().replace(/\s+/g, "-")}`}
                         >
                           <item.icon className="w-5 h-5" />
-                          <span>{item.title}</span>
+                          <span>{title}</span>
                           <Lock className="w-3 h-3 ml-auto text-muted-foreground" />
                         </SidebarMenuButton>
                       </TooltipTrigger>
                       <TooltipContent side="right">
-                        <p>Coming soon</p>
+                        <p>{t.nav.comingSoon[lang]}</p>
                       </TooltipContent>
                     </Tooltip>
                   ) : (
                     <SidebarMenuButton
                       asChild
                       isActive={location === item.url}
-                      data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+                      data-testid={`nav-${item.titleKey.toLowerCase().replace(/\s+/g, "-")}`}
                     >
                       <Link href={item.url}>
                         <item.icon className="w-5 h-5" />
-                        <span>{item.title}</span>
+                        <span>{title}</span>
                         {item.showUnreadBadge && unreadCount > 0 && (
                           <Badge 
                             variant="default" 

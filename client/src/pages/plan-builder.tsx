@@ -17,8 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format, startOfWeek, endOfWeek, addDays } from "date-fns";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Client, Goal, PlanSession, PlanMessage } from "@shared/schema";
-import { getGoalTypeLabel, PLAN_SESSION_STATUSES } from "@shared/schema";
+import type { Client, Goal, PlanSession, PlanMessage, Coach, SupportedLanguage } from "@shared/schema";
+import { getGoalTypeLabel, PLAN_SESSION_STATUSES, COACH_UI_TRANSLATIONS } from "@shared/schema";
 
 interface Message {
   id?: string;
@@ -207,6 +207,15 @@ export default function PlanBuilder() {
 
   const computedWeekEndDate = weekStartDate ? addDays(weekStartDate, 6) : undefined;
 
+  // Fetch coach profile for language preference
+  const { data: coach } = useQuery<Coach>({
+    queryKey: ["/api/coach/profile"],
+  });
+
+  // Set up language and translations
+  const lang: SupportedLanguage = (coach?.preferredLanguage as SupportedLanguage) || "en";
+  const t = COACH_UI_TRANSLATIONS.planBuilder;
+
   const { data: allClients } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
   });
@@ -356,14 +365,14 @@ export default function PlanBuilder() {
       queryClient.invalidateQueries({ queryKey: ["/api/clients", clientId, "plan-status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/client-plans"] });
       toast({
-        title: "Plan Assigned",
-        description: "The plan has been assigned to the client and is now visible in their portal.",
+        title: t.planAssigned[lang],
+        description: t.planAssignedDesc[lang],
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to assign plan",
+        title: t.error[lang],
+        description: error.message || t.failedToAssign[lang],
         variant: "destructive",
       });
     },
@@ -454,8 +463,8 @@ export default function PlanBuilder() {
       }
       
       toast({
-        title: "Error",
-        description: error.message || "Failed to get AI response. Please try again.",
+        title: t.error[lang],
+        description: error.message || t.failedAIResponse[lang],
         variant: "destructive",
       });
       // Reset initialization flag if auto-prompt fails so it can retry
@@ -466,11 +475,11 @@ export default function PlanBuilder() {
   const savePlanMutation = useMutation({
     mutationFn: async () => {
       if (!planName.trim()) {
-        throw new Error("Please enter a plan name");
+        throw new Error(t.enterPlanName[lang]);
       }
       
       if (!planContent.trim()) {
-        throw new Error("Please add content to your plan");
+        throw new Error(t.addPlanContent[lang]);
       }
       
       const response = await apiRequest("POST", "/api/client-plans", {
@@ -487,15 +496,15 @@ export default function PlanBuilder() {
     onSuccess: (plan) => {
       queryClient.invalidateQueries({ queryKey: ["/api/client-plans"] });
       toast({
-        title: "Success",
-        description: "Plan saved successfully!",
+        title: t.success[lang],
+        description: t.planSavedSuccess[lang],
       });
       return plan;
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to save plan",
+        title: t.error[lang],
+        description: error.message || t.failedToSave[lang],
         variant: "destructive",
       });
     },
@@ -508,15 +517,15 @@ export default function PlanBuilder() {
     },
     onSuccess: (data) => {
       toast({
-        title: "Success",
-        description: "PDF generated successfully!",
+        title: t.success[lang],
+        description: t.pdfGenerated[lang],
       });
       window.open(data.pdfUrl, "_blank");
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to generate PDF",
+        title: t.error[lang],
+        description: t.failedToGeneratePdf[lang],
         variant: "destructive",
       });
     },
@@ -530,14 +539,14 @@ export default function PlanBuilder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/client-plans"] });
       toast({
-        title: "Success",
-        description: "Plan shared with client!",
+        title: t.success[lang],
+        description: t.planShared[lang],
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to share plan",
+        title: t.error[lang],
+        description: t.failedToShare[lang],
         variant: "destructive",
       });
     },
@@ -557,8 +566,8 @@ export default function PlanBuilder() {
       return prev + "\n\n" + formattedContent;
     });
     toast({
-      title: "Added to canvas",
-      description: "Content added. You can now edit it.",
+      title: t.addedToCanvas[lang],
+      description: t.contentAdded[lang],
     });
     
     // Scroll to bottom of canvas
@@ -661,11 +670,11 @@ export default function PlanBuilder() {
             </Button>
           </Link>
           <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-bold">AI Plan Builder</h2>
+            <h2 className="text-xl sm:text-2xl font-bold">{t.title[lang]}</h2>
             <Separator orientation="vertical" className="hidden sm:block h-6" />
             <Select value={clientId} onValueChange={(value) => setLocation(`/coach/plan-builder/${value}`)}>
               <SelectTrigger className="w-full sm:w-64 min-h-10" data-testid="select-client">
-                <SelectValue placeholder="Select a client" />
+                <SelectValue placeholder={t.selectClient[lang]} />
               </SelectTrigger>
               <SelectContent>
                 {allClients?.map((client) => (
@@ -681,28 +690,28 @@ export default function PlanBuilder() {
           {planStatus === "ASSIGNED" ? (
             <Badge variant="default" className="bg-green-600 hover:bg-green-600">
               <CheckCircle className="w-3 h-3 mr-1" />
-              Plan Assigned
+              {t.planAssignedBadge[lang]}
             </Badge>
           ) : (
             <Badge variant="secondary">
-              In Progress
+              {t.inProgress[lang]}
             </Badge>
           )}
           <Select value={planType} onValueChange={(value: "long_term" | "weekly") => setPlanType(value)}>
             <SelectTrigger className="w-full sm:w-36 min-h-10" data-testid="select-plan-type">
-              <SelectValue placeholder="Plan Type" />
+              <SelectValue placeholder={t.planType[lang]} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="long_term">
                 <div className="flex items-center gap-2">
                   <Target className="w-4 h-4" />
-                  Long-Term
+                  {t.longTerm[lang]}
                 </div>
               </SelectItem>
               <SelectItem value="weekly">
                 <div className="flex items-center gap-2">
                   <CalendarDays className="w-4 h-4" />
-                  Weekly
+                  {t.weekly[lang]}
                 </div>
               </SelectItem>
             </SelectContent>
@@ -717,7 +726,7 @@ export default function PlanBuilder() {
                       {format(weekStartDate, "MMM d")} - {format(computedWeekEndDate!, "MMM d")}
                     </span>
                   ) : (
-                    "Select Week"
+                    t.selectWeek[lang]
                   )}
                 </Button>
               </PopoverTrigger>
@@ -737,7 +746,7 @@ export default function PlanBuilder() {
           )}
           <Input
             type="text"
-            placeholder={planType === "weekly" ? "Weekly plan name" : "Plan name (e.g., '12-Week Transformation Plan')"}
+            placeholder={planType === "weekly" ? t.weeklyPlanName[lang] : t.planNamePlaceholder[lang]}
             value={planName}
             onChange={(e) => setPlanName(e.target.value)}
             className="text-sm min-h-10 w-full sm:w-64"
@@ -755,7 +764,7 @@ export default function PlanBuilder() {
               ) : (
                 <Share2 className="w-4 h-4 mr-2" />
               )}
-              Assign to Client
+              {t.assignToClient[lang]}
             </Button>
           )}
         </div>
@@ -767,7 +776,7 @@ export default function PlanBuilder() {
             <CardHeader className="pb-3 flex-shrink-0">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Activity className="w-4 h-4" />
-                AI Chat
+                {t.aiChat[lang]}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col flex-1 min-h-0 pb-4">
@@ -776,8 +785,8 @@ export default function PlanBuilder() {
                   {messages.length === 0 && (
                     <div className="text-center text-muted-foreground py-8">
                       <Activity className="w-10 h-10 mx-auto mb-3 opacity-50" />
-                      <p className="font-medium text-sm">Chat with AI to generate plan content</p>
-                      <p className="text-xs mt-2">Ask questions, request sections, or get suggestions</p>
+                      <p className="font-medium text-sm">{t.chatWithAI[lang]}</p>
+                      <p className="text-xs mt-2">{t.askQuestions[lang]}</p>
                     </div>
                   )}
                   {messages.map((message, idx) => (
@@ -819,7 +828,7 @@ export default function PlanBuilder() {
                       handleSendMessage();
                     }
                   }}
-                  placeholder="Ask AI to create plan sections..."
+                  placeholder={t.typeMessage[lang]}
                   className="flex-1 min-h-10 text-base"
                   rows={2}
                   data-testid="input-message"
@@ -842,7 +851,7 @@ export default function PlanBuilder() {
               <div className="flex items-center gap-3 text-muted-foreground mb-3">
                 <Monitor className="w-5 h-5 flex-shrink-0" />
                 <p className="text-sm" data-testid="text-mobile-canvas-notice">
-                  Canvas view is not supported on mobile yet. Please use a desktop to build or edit plans.
+                  {t.mobileCanvasNotice[lang]}
                 </p>
               </div>
               <div className="flex flex-col gap-2">
@@ -856,12 +865,12 @@ export default function PlanBuilder() {
                     data-testid="button-download-pdf-mobile"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    {isSaving ? "Generating..." : "Download PDF"}
+                    {isSaving ? t.generating[lang] : t.downloadPdf[lang]}
                   </Button>
                   {planStatus === "ASSIGNED" ? (
                     <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-3 flex items-center">
                       <CheckCircle className="w-3 h-3 mr-1" />
-                      Assigned
+                      {t.assigned[lang]}
                     </Badge>
                   ) : (
                     <Button
@@ -873,13 +882,13 @@ export default function PlanBuilder() {
                       data-testid="button-assign-to-client-mobile"
                     >
                       <UserPlus className="w-4 h-4 mr-2" />
-                      {assignPlanMutation.isPending ? "Assigning..." : "Assign"}
+                      {assignPlanMutation.isPending ? t.assigning[lang] : t.assign[lang]}
                     </Button>
                   )}
                 </div>
                 {!planContent.trim() && (
                   <p className="text-xs text-muted-foreground text-center mt-1">
-                    Chat with AI to generate plan content first
+                    {t.chatToGenerateFirst[lang]}
                   </p>
                 )}
               </div>
@@ -892,7 +901,7 @@ export default function PlanBuilder() {
             <CardHeader className="pb-3 flex-shrink-0">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Activity className="w-4 h-4" />
-                AI Chat
+                {t.aiChat[lang]}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col flex-1 min-h-0">
@@ -901,8 +910,8 @@ export default function PlanBuilder() {
                   {messages.length === 0 && (
                     <div className="text-center text-muted-foreground py-12">
                       <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p className="font-medium">Chat with AI to generate plan content</p>
-                      <p className="text-sm mt-2">Ask questions, request sections, or get suggestions</p>
+                      <p className="font-medium">{t.chatWithAI[lang]}</p>
+                      <p className="text-sm mt-2">{t.askQuestions[lang]}</p>
                     </div>
                   )}
                   {messages.map((message, idx) => (
@@ -931,7 +940,7 @@ export default function PlanBuilder() {
                             data-testid={`button-add-to-canvas-${idx}`}
                           >
                             <ArrowLeft className="w-3 h-3 mr-1 rotate-180" />
-                            Add to Canvas
+                            {t.addToCanvas[lang]}
                           </Button>
                         </div>
                       )}
@@ -958,7 +967,7 @@ export default function PlanBuilder() {
                       handleSendMessage();
                     }
                   }}
-                  placeholder="Ask AI to create plan sections..."
+                  placeholder={t.typeMessage[lang]}
                   className="flex-1 min-h-10"
                   rows={2}
                   data-testid="input-message"
@@ -982,7 +991,7 @@ export default function PlanBuilder() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-base">
                     <FileText className="w-4 h-4" />
-                    Plan Canvas
+                    {t.planCanvas[lang]}
                   </CardTitle>
                   <div className="flex items-center gap-1 sm:gap-2">
                     <Button
@@ -1003,25 +1012,25 @@ export default function PlanBuilder() {
                       data-testid="button-download-pdf"
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      {isSaving ? "Generating..." : "Download PDF"}
+                      {isSaving ? t.generating[lang] : t.downloadPdf[lang]}
                     </Button>
                   </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     type="text"
-                    placeholder="Plan filename"
+                    placeholder={t.planFilename[lang]}
                     value={planName}
                     onChange={(e) => setPlanName(e.target.value)}
                     className="text-sm min-h-10 w-full sm:w-48"
                     data-testid="input-canvas-filename"
                   />
                   <Select onValueChange={(value) => {
-                    const template = SECTION_TEMPLATES.find(t => t.heading === value);
+                    const template = SECTION_TEMPLATES.find(tpl => tpl.heading === value);
                     if (template) handleAddSection(template);
                   }}>
                     <SelectTrigger className="w-full sm:w-40 min-h-10 text-sm">
-                      <SelectValue placeholder="Add section..." />
+                      <SelectValue placeholder={t.addSection[lang]} />
                     </SelectTrigger>
                     <SelectContent>
                       {SECTION_TEMPLATES.map((template) => (
@@ -1038,9 +1047,9 @@ export default function PlanBuilder() {
               {!planContent.trim() ? (
                 <div className="text-center text-muted-foreground py-12">
                   <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="font-medium">Your plan canvas is empty</p>
-                  <p className="text-sm mt-2">Chat with AI and click "Add to Canvas" to start building</p>
-                  <p className="text-sm mt-1">Or use the dropdown above to add pre-structured sections</p>
+                  <p className="font-medium">{t.canvasEmpty[lang]}</p>
+                  <p className="text-sm mt-2">{t.chatToStart[lang]}</p>
+                  <p className="text-sm mt-1">{t.useDropdown[lang]}</p>
                 </div>
               ) : (
                 <Textarea
@@ -1050,7 +1059,7 @@ export default function PlanBuilder() {
                   className={`flex-1 text-sm resize-none border focus-visible:ring-1 font-mono leading-relaxed ${
                     isCanvasExpanded ? 'min-h-[calc(100vh-200px)]' : 'min-h-[200px] sm:min-h-[400px]'
                   }`}
-                  placeholder="Your plan content will appear here..."
+                  placeholder={t.planContentPlaceholder[lang]}
                   data-testid="textarea-plan-canvas"
                 />
               )}
