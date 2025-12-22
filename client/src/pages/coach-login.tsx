@@ -133,17 +133,19 @@ export default function CoachLogin() {
           <div>
             <CardTitle className="text-3xl">Wellio Coach</CardTitle>
             <CardDescription className="text-base mt-2">
-              Sign in or create your coaching account
+              Sign in to your coaching account
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="login" className="w-full">
+            {/* Create Account tab hidden - coaches are added manually for now
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login" data-testid="tab-login">Sign In</TabsTrigger>
               <TabsTrigger value="register" data-testid="tab-register">Create Account</TabsTrigger>
             </TabsList>
-            <TabsContent value="login" className="mt-4">
+            */}
+            <TabsContent value="login" className="mt-0">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="login-email">Email</Label>
