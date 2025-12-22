@@ -259,16 +259,28 @@ export default function ClientChat() {
   // Scroll to bottom on initial load and when new messages arrive
   useEffect(() => {
     if (messages.length > 0 && !messagesLoading) {
-      // On initial load, use instant scroll with a longer delay to ensure DOM is ready
+      // On initial load, use instant scroll with multiple attempts to ensure it works
       if (isInitialLoadRef.current) {
-        // Use requestAnimationFrame + timeout for more reliable initial scroll
-        const timer = setTimeout(() => {
+        // First attempt after short delay
+        const timer1 = setTimeout(() => {
+          scrollToBottom(true);
+        }, 50);
+        // Second attempt after DOM is more likely ready
+        const timer2 = setTimeout(() => {
           requestAnimationFrame(() => {
             scrollToBottom(true);
             isInitialLoadRef.current = false;
           });
-        }, 100);
-        return () => clearTimeout(timer);
+        }, 200);
+        // Third attempt as fallback for slow rendering
+        const timer3 = setTimeout(() => {
+          scrollToBottom(true);
+        }, 500);
+        return () => {
+          clearTimeout(timer1);
+          clearTimeout(timer2);
+          clearTimeout(timer3);
+        };
       } else {
         // For new messages, scroll smoothly
         scrollToBottom(false);
