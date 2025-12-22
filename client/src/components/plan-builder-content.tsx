@@ -302,25 +302,35 @@ export function PlanBuilderContent({
 
         <Card className={`flex-1 lg:flex-[1.2] flex flex-col ${isCanvasExpanded ? 'fixed inset-4 z-50' : ''}`}>
           <CardHeader className="pb-3 flex-shrink-0">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="w-4 h-4" />
-                Plan Canvas
-              </CardTitle>
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="w-4 h-4" />
+                  Plan Canvas
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsCanvasExpanded(!isCanvasExpanded)}
+                  data-testid="button-toggle-canvas-expand"
+                >
+                  {isCanvasExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
                 <Input
                   type="text"
                   placeholder="Plan filename"
                   value={planName}
                   onChange={(e) => setPlanName(e.target.value)}
-                  className="text-sm min-h-8 w-48"
+                  className="text-sm min-h-8 w-full sm:w-48 flex-shrink-0"
                   data-testid="input-canvas-filename"
                 />
                 <Select onValueChange={(value) => {
                   const template = SECTION_TEMPLATES.find(t => t.heading === value);
                   if (template) handleAddSection(template);
                 }}>
-                  <SelectTrigger className="w-40 min-h-8 text-sm">
+                  <SelectTrigger className="w-full sm:w-40 min-h-8 text-sm">
                     <SelectValue placeholder="Add section..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -331,43 +341,40 @@ export function PlanBuilderContent({
                     ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setIsCanvasExpanded(!isCanvasExpanded)}
-                  data-testid="button-toggle-canvas-expand"
-                >
-                  {isCanvasExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSavePlan}
-                  disabled={isSaving || !planContent.trim() || !planName.trim()}
-                  className="min-h-8"
-                  data-testid="button-download-pdf"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  {isSaving ? "Generating..." : "Download PDF"}
-                </Button>
-                {isAssigned ? (
-                  <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-8 px-3">
-                    <CheckCircle className="w-3 h-3 mr-1" />
-                    Plan Assigned
-                  </Badge>
-                ) : (
+                <div className="flex items-center gap-2 flex-wrap">
                   <Button
-                    variant="default"
+                    variant="outline"
                     size="sm"
-                    onClick={handleAssignToClient}
-                    disabled={isAssigning || !planContent.trim() || !planName.trim()}
-                    className="min-h-8"
-                    data-testid="button-assign-to-client"
+                    onClick={handleSavePlan}
+                    disabled={isSaving || !planContent.trim() || !planName.trim()}
+                    className="min-h-8 text-xs sm:text-sm"
+                    data-testid="button-download-pdf"
                   >
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    {isAssigning ? "Assigning..." : "Assign to Client"}
+                    <Download className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{isSaving ? "Generating..." : "Download PDF"}</span>
+                    <span className="sm:hidden">{isSaving ? "..." : "PDF"}</span>
                   </Button>
-                )}
+                  {isAssigned ? (
+                    <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-8 px-2 sm:px-3 text-xs sm:text-sm">
+                      <CheckCircle className="w-3 h-3 sm:mr-1" />
+                      <span className="hidden sm:inline">Plan Assigned</span>
+                      <span className="sm:hidden">Done</span>
+                    </Badge>
+                  ) : (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleAssignToClient}
+                      disabled={isAssigning || !planContent.trim() || !planName.trim()}
+                      className="min-h-8 text-xs sm:text-sm"
+                      data-testid="button-assign-to-client"
+                    >
+                      <UserPlus className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">{isAssigning ? "Assigning..." : "Assign to Client"}</span>
+                      <span className="sm:hidden">{isAssigning ? "..." : "Assign"}</span>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardHeader>

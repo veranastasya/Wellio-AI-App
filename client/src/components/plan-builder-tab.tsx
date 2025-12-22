@@ -1947,8 +1947,9 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
               </div>
               <div className="flex flex-wrap gap-2">
                 {onSwitchToClientView && (
-                  <Button variant="outline" size="sm" onClick={onSwitchToClientView} data-testid="button-switch-view">
-                    <Eye className="w-4 h-4 mr-2" /> Client View
+                  <Button variant="outline" size="sm" onClick={onSwitchToClientView} className="text-xs sm:text-sm" data-testid="button-switch-view">
+                    <Eye className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Client View</span>
                   </Button>
                 )}
                 <Button 
@@ -1956,21 +1957,23 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
                   size="sm" 
                   onClick={handleCopyToNextWeek}
                   disabled={isCopying || !hasWeekData}
+                  className="text-xs sm:text-sm"
                   data-testid="button-copy-week"
                 >
                   {isCopying ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
                   ) : (
-                    <Copy className="w-4 h-4 mr-2" />
+                    <Copy className="w-4 h-4 sm:mr-2" />
                   )}
-                  Copy to Next Week
+                  <span className="hidden sm:inline">Copy to Next Week</span>
+                  <span className="sm:hidden">Copy</span>
                 </Button>
                 <Button 
                   size="sm" 
                   onClick={handleAssignToClient}
                   disabled={!canAssign}
                   className={cn(
-                    "transition-all",
+                    "transition-all text-xs sm:text-sm",
                     isAssigned 
                       ? "bg-green-600 hover:bg-green-600 text-white" 
                       : "bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white"
@@ -1978,23 +1981,24 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
                   data-testid="button-assign-plan"
                 >
                   {isAssigning ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
                   ) : isAssigned ? (
-                    <Check className="w-4 h-4 mr-2" />
+                    <Check className="w-4 h-4 sm:mr-2" />
                   ) : isCoachLoading ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
                   ) : (
-                    <Send className="w-4 h-4 mr-2" />
+                    <Send className="w-4 h-4 sm:mr-2" />
                   )}
-                  {isAssigned ? "Assigned" : isCoachLoading ? "Loading..." : "Assign to Client"}
+                  <span className="hidden sm:inline">{isAssigned ? "Assigned" : isCoachLoading ? "Loading..." : "Assign to Client"}</span>
+                  <span className="sm:hidden">{isAssigned ? "Done" : "Assign"}</span>
                 </Button>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 sm:gap-4">
               {/* Program Start Date Editor */}
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground whitespace-nowrap">Week 1 starts:</span>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-muted-foreground whitespace-nowrap text-xs sm:text-sm">Week 1 starts:</span>
                 <Input
                   type="date"
                   value={programStartDate || joinedDate?.split('T')[0] || ''}
@@ -2025,18 +2029,22 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
                   size="sm"
                   onClick={() => setWeekIndex((prev) => Math.max(1, prev - 1))}
                   disabled={weekIndex === 1}
+                  className="px-2 sm:px-3"
                   data-testid="button-prev-week"
                 >
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                  <ChevronLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline ml-1">Previous</span>
                 </Button>
-                <Badge className="px-3 bg-[#E2F9AD] text-[#1a1a1a] hover:bg-[#E2F9AD]">Week {weekIndex}</Badge>
+                <Badge className="px-2 sm:px-3 bg-[#E2F9AD] text-[#1a1a1a] hover:bg-[#E2F9AD] whitespace-nowrap">Week {weekIndex}</Badge>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setWeekIndex((prev) => prev + 1)}
+                  className="px-2 sm:px-3"
                   data-testid="button-next-week"
                 >
-                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                  <span className="hidden sm:inline mr-1">Next</span>
+                  <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
             </div>
