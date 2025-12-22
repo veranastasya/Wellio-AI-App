@@ -42,6 +42,11 @@ export default function CoachClientDetail() {
     }
   }, [window.location.search]);
 
+  // Scroll to top on mobile when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [clientId]);
+
   // Fetch coach profile to get preferred language
   const { data: coachProfile } = useQuery<Coach>({
     queryKey: ["/api/coach/profile"],

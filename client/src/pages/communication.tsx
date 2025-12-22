@@ -392,17 +392,15 @@ export default function Communication() {
               <>
                 <div className="p-3 sm:p-4 border-b flex items-center justify-between gap-3 flex-shrink-0">
                   <div className="flex items-center gap-3 min-w-0">
-                    {isMobile && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSelectedClientId(null)}
-                        className="flex-shrink-0"
-                        data-testid="button-back-to-list"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setSelectedClientId(null)}
+                      className="flex-shrink-0 lg:hidden"
+                      data-testid="button-back-to-list"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </Button>
                     <Avatar className="w-10 h-10 bg-primary flex-shrink-0">
                       <AvatarFallback className="bg-primary text-white font-medium text-sm">
                         {getInitials(selectedClient.name)}
