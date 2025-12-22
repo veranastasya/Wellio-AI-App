@@ -584,14 +584,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.session.coachId = coach.id;
       }
       
-      // Only allow updating name, email, phone, onboardingCompleted
-      const { name, email, phone, onboardingCompleted } = req.body;
-      const updateData: { name?: string; email?: string; phone?: string | null; onboardingCompleted?: boolean } = {};
+      // Only allow updating name, email, phone, onboardingCompleted, preferredLanguage
+      const { name, email, phone, onboardingCompleted, preferredLanguage } = req.body;
+      const updateData: Partial<{name: string; email: string; phone: string | null; onboardingCompleted: boolean; preferredLanguage: string}> = {};
       
       if (name !== undefined) updateData.name = name;
       if (email !== undefined) updateData.email = email;
       if (phone !== undefined) updateData.phone = phone;
       if (onboardingCompleted !== undefined) updateData.onboardingCompleted = onboardingCompleted;
+      if (preferredLanguage !== undefined) updateData.preferredLanguage = preferredLanguage;
+      
+      logger.debug('Updating coach profile', { coachId: coach.id, updateData });
       
       const updated = await storage.updateCoach(coach.id, updateData);
       if (!updated) {
