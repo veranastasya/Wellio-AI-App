@@ -427,7 +427,7 @@ export default function Clients() {
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                     data-testid="link-send-questionnaire-instead"
                   >
-                    {t.clients.sendInvite[lang]} →
+                    {t.clients.sendQuestionnaire[lang]} →
                   </button>
                 </div>
               </DialogContent>
@@ -1520,7 +1520,7 @@ function ClientForm({
 
         <div className="flex justify-end gap-3 pt-4">
           <Button type="submit" disabled={isLoading} data-testid="button-submit-client">
-            {isLoading ? t.common.saving[lang] : client ? t.common.update[lang] : t.clients.addClient[lang]}
+            {isLoading ? t.common.saving[lang] : client ? t.common.update[lang] : t.clients.addClientAndInvite[lang]}
           </Button>
         </div>
       </form>

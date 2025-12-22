@@ -656,6 +656,157 @@ export class DatabaseStorage implements IStorage {
     ];
 
     await db.insert(checkIns).values(sampleCheckIns);
+
+    // Seed sample weekly plans with real content
+    const now = new Date();
+    const getMonday = (d: Date) => {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(date.setDate(diff));
+    };
+    const getSunday = (monday: Date) => {
+      const sunday = new Date(monday);
+      sunday.setDate(sunday.getDate() + 6);
+      return sunday;
+    };
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    
+    const thisMonday = getMonday(now);
+    const thisSunday = getSunday(thisMonday);
+    const lastMonday = new Date(thisMonday);
+    lastMonday.setDate(lastMonday.getDate() - 7);
+    const lastSunday = getSunday(lastMonday);
+
+    const weeklyPlanContent = {
+      content: `# Weekly Wellness Plan
+
+## This Week's Focus
+Building consistency with your workout routine while maintaining balanced nutrition.
+
+## Workout Schedule
+
+**Monday:** Upper body strength training (45 min)
+- Bench press: 4 sets x 10 reps
+- Dumbbell rows: 3 sets x 12 reps
+- Shoulder press: 3 sets x 10 reps
+- Bicep curls: 3 sets x 12 reps
+
+**Wednesday:** Lower body & core (45 min)
+- Squats: 4 sets x 10 reps
+- Romanian deadlifts: 3 sets x 10 reps
+- Lunges: 3 sets x 12 reps (each leg)
+- Plank: 3 sets x 45 seconds
+
+**Friday:** Full body circuit (40 min)
+- Burpees: 3 sets x 10 reps
+- Kettlebell swings: 3 sets x 15 reps
+- Push-ups: 3 sets x 15 reps
+- Mountain climbers: 3 sets x 20 reps
+
+## Nutrition Guidelines
+
+**Daily Targets:**
+- Calories: 2000-2200 kcal
+- Protein: 130-150g
+- Carbohydrates: 200-250g
+- Healthy fats: 60-70g
+
+**Meal Timing:**
+- Breakfast: Within 1 hour of waking
+- Pre-workout: 1-2 hours before training
+- Post-workout: Within 45 minutes of training
+- Dinner: 2-3 hours before bed
+
+## Recovery & Wellness
+- Aim for 7-8 hours of sleep each night
+- Stay hydrated: drink 8-10 glasses of water daily
+- Take 10 minutes daily for stretching or mobility work
+- Practice stress management: 5 min breathing exercises
+
+## Weekly Goals
+1. Complete all 3 scheduled workouts
+2. Log your meals daily using the AI Tracker
+3. Hit your protein target at least 5 days this week
+4. Get at least 7 hours of sleep each night`
+    };
+
+    const pastWeekPlanContent = {
+      content: `# Weekly Wellness Plan
+
+## Last Week's Focus
+Introduction to consistent training and meal logging habits.
+
+## Workout Schedule
+
+**Monday:** Cardio & mobility (30 min)
+- Brisk walking or light jogging: 20 min
+- Dynamic stretching: 10 min
+
+**Wednesday:** Full body basics (35 min)
+- Bodyweight squats: 3 sets x 15 reps
+- Push-ups (or modified): 3 sets x 10 reps
+- Dumbbell rows: 3 sets x 10 reps
+- Plank: 3 sets x 30 seconds
+
+**Friday:** Active recovery
+- Light yoga or stretching: 30 min
+- Foam rolling: 10 min
+
+## Nutrition Guidelines
+
+**Focus Areas:**
+- Start logging all meals
+- Increase vegetable intake
+- Reduce processed foods
+- Drink more water`
+    };
+
+    // Create weekly plans for the first two clients
+    const sampleWeeklyPlans: InsertClientPlan[] = [
+      {
+        clientId: clientIds[0],
+        coachId: "default-coach",
+        planName: `Week of ${formatDate(thisMonday)} - ${formatDate(thisSunday)}`,
+        planContent: weeklyPlanContent,
+        status: "active",
+        shared: true,
+        planType: "weekly",
+        weekStartDate: formatDate(thisMonday),
+        weekEndDate: formatDate(thisSunday),
+      },
+      {
+        clientId: clientIds[0],
+        coachId: "default-coach",
+        planName: `Week of ${formatDate(lastMonday)} - ${formatDate(lastSunday)}`,
+        planContent: pastWeekPlanContent,
+        status: "archived",
+        shared: true,
+        planType: "weekly",
+        weekStartDate: formatDate(lastMonday),
+        weekEndDate: formatDate(lastSunday),
+      },
+      {
+        clientId: clientIds[1],
+        coachId: "default-coach",
+        planName: `Week of ${formatDate(thisMonday)} - ${formatDate(thisSunday)}`,
+        planContent: weeklyPlanContent,
+        status: "active",
+        shared: true,
+        planType: "weekly",
+        weekStartDate: formatDate(thisMonday),
+        weekEndDate: formatDate(thisSunday),
+      },
+    ];
+
+    const nowIso = now.toISOString();
+    for (const plan of sampleWeeklyPlans) {
+      await db.insert(clientPlans).values({
+        ...plan,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      });
+    }
   }
 
   // Coach methods

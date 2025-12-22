@@ -3797,18 +3797,113 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       doc.moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke('#E2F9AD');
       doc.moveDown(1.5);
 
-      // Handle multiple formats: string, { content: string }, or { sections: [] }
+      // Handle multiple formats: string, { content: string }, { sections: [] }, or { type: "weekly_program" }
       let contentText = '';
       if (typeof plan.planContent === 'string') {
         // Direct string format
         contentText = plan.planContent;
       } else if (typeof plan.planContent === 'object') {
+        const planObj = plan.planContent as any;
+        
         // Check for { content: string } format (current format)
-        if ((plan.planContent as any).content && typeof (plan.planContent as any).content === 'string') {
-          contentText = (plan.planContent as any).content;
-        } else {
-          // Old format: sections array
-          const sections = (plan.planContent as any).sections || [];
+        if (planObj.content && typeof planObj.content === 'string') {
+          contentText = planObj.content;
+        }
+        // Check for weekly_program format
+        else if (planObj.type === 'weekly_program') {
+          const parts: string[] = [];
+          
+          // Add week info header if available
+          if (planObj.week) {
+            parts.push(`# Week ${planObj.week} Program\n`);
+          }
+          
+          // Add training section
+          if (planObj.training && Array.isArray(planObj.training) && planObj.training.length > 0) {
+            parts.push('# Training Schedule\n');
+            for (const day of planObj.training) {
+              const dayLabel = day.day || 'Training Day';
+              const titlePart = day.title ? ': ' + day.title : '';
+              parts.push(`## ${dayLabel}${titlePart}\n`);
+              if (day.exercises && Array.isArray(day.exercises) && day.exercises.length > 0) {
+                for (const ex of day.exercises) {
+                  const exName = ex.name || 'Exercise';
+                  let exerciseLine = `- **${exName}**`;
+                  if (ex.sets && ex.reps) {
+                    exerciseLine += `: ${ex.sets} sets x ${ex.reps} reps`;
+                  } else if (ex.duration) {
+                    exerciseLine += `: ${ex.duration}`;
+                  }
+                  if (ex.note) {
+                    exerciseLine += ` (${ex.note})`;
+                  }
+                  parts.push(exerciseLine);
+                }
+              } else {
+                parts.push('- No exercises specified');
+              }
+              parts.push('');
+            }
+          }
+          
+          // Add nutrition section
+          if (planObj.nutrition && Array.isArray(planObj.nutrition) && planObj.nutrition.length > 0) {
+            parts.push('\n# Nutrition Plan\n');
+            for (const day of planObj.nutrition) {
+              const dayLabel = day.day || 'Nutrition Day';
+              const titlePart = day.title ? ': ' + day.title : '';
+              parts.push(`## ${dayLabel}${titlePart}\n`);
+              if (day.meals && Array.isArray(day.meals) && day.meals.length > 0) {
+                for (const meal of day.meals) {
+                  const mealType = meal.type || 'Meal';
+                  const mealName = meal.name || 'Not specified';
+                  let mealLine = `- **${mealType}**: ${mealName}`;
+                  if (meal.calories) {
+                    mealLine += ` (${meal.calories} cal`;
+                    if (meal.protein) mealLine += `, ${meal.protein}g protein`;
+                    if (meal.carbs) mealLine += `, ${meal.carbs}g carbs`;
+                    if (meal.fat) mealLine += `, ${meal.fat}g fat`;
+                    mealLine += ')';
+                  }
+                  parts.push(mealLine);
+                }
+              } else {
+                parts.push('- No meals specified');
+              }
+              parts.push('');
+            }
+          }
+          
+          // Add habits section
+          if (planObj.habits && Array.isArray(planObj.habits) && planObj.habits.length > 0) {
+            parts.push('\n# Daily Habits\n');
+            for (const habit of planObj.habits) {
+              const habitName = habit.name || 'Habit';
+              parts.push(`- ${habitName}${habit.frequency ? ' (' + habit.frequency + ')' : ''}`);
+            }
+            parts.push('');
+          }
+          
+          // Add tasks section
+          if (planObj.tasks && Array.isArray(planObj.tasks) && planObj.tasks.length > 0) {
+            parts.push('\n# Weekly Tasks\n');
+            for (const task of planObj.tasks) {
+              const taskName = task.name || 'Task';
+              parts.push(`- ${taskName}${task.dueDay ? ' (Due: ' + task.dueDay + ')' : ''}`);
+            }
+            parts.push('');
+          }
+          
+          // Ensure we have at least some content
+          if (parts.length === 0) {
+            parts.push('Weekly program details not available.');
+          }
+          
+          contentText = parts.join('\n');
+        }
+        // Old format: sections array
+        else if (planObj.sections && Array.isArray(planObj.sections)) {
+          const sections = planObj.sections;
           if (sections.length === 0) {
             contentText = 'No content available.';
           } else {
@@ -3824,6 +3919,8 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
               return text;
             }).join('\n');
           }
+        } else {
+          contentText = 'No content available.';
         }
       }
       

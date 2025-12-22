@@ -596,6 +596,8 @@ export const COACH_UI_TRANSLATIONS = {
     copyLink: { en: "Copy Link", ru: "Скопировать ссылку", es: "Copiar Enlace" },
     copied: { en: "Copied!", ru: "Скопировано!", es: "¡Copiado!" },
     sendInvite: { en: "Send Invite", ru: "Отправить приглашение", es: "Enviar Invitación" },
+    sendQuestionnaire: { en: "Send questionnaire", ru: "Отправить анкету", es: "Enviar cuestionario" },
+    addClientAndInvite: { en: "Add Client & Send Invite", ru: "Добавить и отправить", es: "Añadir y Enviar" },
     resendInvite: { en: "Resend Invite", ru: "Отправить повторно", es: "Reenviar Invitación" },
     // Client card
     progress: { en: "Progress", ru: "Прогресс", es: "Progreso" },
