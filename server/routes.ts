@@ -893,9 +893,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Session routes
-  app.get("/api/sessions", requireCoachAuth, async (_req, res) => {
+  app.get("/api/sessions", requireCoachAuth, async (req, res) => {
     try {
-      const sessions = await storage.getSessions();
+      const coachId = req.session.coachId!;
+      const sessions = await storage.getSessions(coachId);
       res.json(sessions);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch sessions" });
@@ -1071,9 +1072,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Coach message routes (no client auth required - for coach access)
-  app.get("/api/coach/messages", requireCoachAuth, async (_req, res) => {
+  app.get("/api/coach/messages", requireCoachAuth, async (req, res) => {
     try {
-      const messages = await storage.getMessages();
+      const coachId = req.session.coachId!;
+      const messages = await storage.getMessages(coachId);
       res.json(messages);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch messages" });
@@ -1340,9 +1342,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Activity routes
-  app.get("/api/activities", requireCoachAuth, async (_req, res) => {
+  app.get("/api/activities", requireCoachAuth, async (req, res) => {
     try {
-      const activities = await storage.getActivities();
+      const coachId = req.session.coachId!;
+      const activities = await storage.getActivities(coachId);
       res.json(activities);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch activities" });

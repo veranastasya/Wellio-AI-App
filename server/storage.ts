@@ -122,20 +122,20 @@ export interface IStorage {
   deleteClient(id: string): Promise<boolean>;
 
   // Sessions
-  getSessions(): Promise<Session[]>;
+  getSessions(coachId?: string): Promise<Session[]>;
   getSession(id: string): Promise<Session | undefined>;
   createSession(session: InsertSession): Promise<Session>;
   updateSession(id: string, session: Partial<InsertSession>): Promise<Session | undefined>;
   deleteSession(id: string): Promise<boolean>;
 
   // Messages
-  getMessages(): Promise<Message[]>;
+  getMessages(coachId?: string): Promise<Message[]>;
   getMessage(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: string, message: Partial<InsertMessage>): Promise<Message | undefined>;
 
   // Activities
-  getActivities(): Promise<Activity[]>;
+  getActivities(coachId?: string): Promise<Activity[]>;
   getActivity(id: string): Promise<Activity | undefined>;
   createActivity(activity: InsertActivity): Promise<Activity>;
 
@@ -883,7 +883,19 @@ Introduction to consistent training and meal logging habits.
   }
 
   // Session methods
-  async getSessions(): Promise<Session[]> {
+  async getSessions(coachId?: string): Promise<Session[]> {
+    if (coachId) {
+      // Get sessions for clients belonging to this coach
+      const coachClientIds = db
+        .select({ id: clients.id })
+        .from(clients)
+        .where(eq(clients.coachId, coachId));
+      
+      return await db
+        .select()
+        .from(sessions)
+        .where(inArray(sessions.clientId, coachClientIds));
+    }
     return await db.select().from(sessions);
   }
 
@@ -912,7 +924,19 @@ Introduction to consistent training and meal logging habits.
   }
 
   // Message methods
-  async getMessages(): Promise<Message[]> {
+  async getMessages(coachId?: string): Promise<Message[]> {
+    if (coachId) {
+      // Get messages for clients belonging to this coach
+      const coachClientIds = db
+        .select({ id: clients.id })
+        .from(clients)
+        .where(eq(clients.coachId, coachId));
+      
+      return await db
+        .select()
+        .from(messages)
+        .where(inArray(messages.clientId, coachClientIds));
+    }
     return await db.select().from(messages);
   }
 
@@ -936,7 +960,19 @@ Introduction to consistent training and meal logging habits.
   }
 
   // Activity methods
-  async getActivities(): Promise<Activity[]> {
+  async getActivities(coachId?: string): Promise<Activity[]> {
+    if (coachId) {
+      // Get activities for clients belonging to this coach
+      const coachClientIds = db
+        .select({ id: clients.id })
+        .from(clients)
+        .where(eq(clients.coachId, coachId));
+      
+      return await db
+        .select()
+        .from(activities)
+        .where(inArray(activities.clientId, coachClientIds));
+    }
     return await db.select().from(activities);
   }
 
