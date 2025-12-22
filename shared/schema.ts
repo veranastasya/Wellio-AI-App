@@ -1213,6 +1213,7 @@ export const COACH_UI_TRANSLATIONS = {
     overallProgress: { en: "Overall Progress", ru: "Общий прогресс", es: "Progreso General" },
     consistency: { en: "Consistency", ru: "Последовательность", es: "Consistencia" },
     dataPoints: { en: "Data Points", ru: "Записей", es: "Puntos de Datos" },
+    bodyFat: { en: "Body Fat %", ru: "% жира", es: "% Grasa Corporal" },
     // Insights
     performanceInsights: { en: "Performance Insights", ru: "Аналитика эффективности", es: "Información de Rendimiento" },
     excellentProgress: { en: "Excellent Progress", ru: "Отличный прогресс", es: "Progreso Excelente" },

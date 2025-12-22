@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Mail, Phone, Calendar, Pencil, User, Scale, Ruler, Target, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle, Globe } from "lucide-react";
+import { Loader2, Mail, Phone, Calendar, User, Scale, Ruler, Target, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle, Globe } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client } from "@shared/schema";
@@ -193,10 +193,6 @@ export default function ClientProfile() {
               {t.profile.title[lang]}
             </h1>
           </div>
-          <Button className="gap-2" data-testid="button-edit-profile">
-            <Pencil className="w-4 h-4" />
-            {t.common.edit[lang]}
-          </Button>
         </div>
 
         <Card>
