@@ -3019,7 +3019,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Coach-facing endpoint to get all plans for a client
   app.get("/api/client-plans/client/:clientId", requireCoachAuth, async (req, res) => {
     try {
-      const plans = await storage.getClientPlansByClientId(req.params.clientId);
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const plans = await storage.getClientPlansByClientId(clientId);
       res.json(plans);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch plans" });
@@ -3028,7 +3036,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/client-plans/client/:clientId/active", requireCoachAuth, async (req, res) => {
     try {
-      const plan = await storage.getActiveClientPlan(req.params.clientId);
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const plan = await storage.getActiveClientPlan(clientId);
       res.json(plan || null);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch active plan" });
@@ -3037,10 +3053,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/client-plans/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
       const plan = await storage.getClientPlan(req.params.id);
       if (!plan) {
         return res.status(404).json({ error: "Plan not found" });
       }
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, plan.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       res.json(plan);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch plan" });
@@ -3049,6 +3072,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/client-plans/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      const existingPlan = await storage.getClientPlan(req.params.id);
+      if (!existingPlan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, existingPlan.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const validatedData = insertClientPlanSchema.partial().parse(req.body);
       const plan = await storage.updateClientPlan(req.params.id, validatedData);
       if (!plan) {
@@ -3062,6 +3096,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/client-plans/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      const existingPlan = await storage.getClientPlan(req.params.id);
+      if (!existingPlan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, existingPlan.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const success = await storage.deleteClientPlan(req.params.id);
       if (!success) {
         return res.status(404).json({ error: "Plan not found" });
@@ -3075,6 +3120,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Share plan with client
   app.post("/api/client-plans/:id/share", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      const existingPlan = await storage.getClientPlan(req.params.id);
+      if (!existingPlan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, existingPlan.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const plan = await storage.updateClientPlan(req.params.id, { shared: true });
       if (!plan) {
         return res.status(404).json({ error: "Plan not found" });
@@ -3090,7 +3146,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all plan sessions (for client cards dynamic button labels)
   app.get("/api/plan-sessions", requireCoachAuth, async (req, res) => {
     try {
-      const sessions = await storage.getPlanSessions();
+      const coachId = req.session.coachId!;
+      const sessions = await storage.getPlanSessions(coachId);
       res.json(sessions);
     } catch (error) {
       console.error("Error fetching all plan sessions:", error);
@@ -3101,7 +3158,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get or create active session for a client
   app.get("/api/plan-sessions/client/:clientId", requireCoachAuth, async (req, res) => {
     try {
-      const sessions = await storage.getPlanSessionsByClientId(req.params.clientId);
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const sessions = await storage.getPlanSessionsByClientId(clientId);
       res.json(sessions);
     } catch (error) {
       console.error("Error fetching plan sessions:", error);
@@ -3112,7 +3177,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get active session for a client (or return null if none)
   app.get("/api/plan-sessions/client/:clientId/active", requireCoachAuth, async (req, res) => {
     try {
-      const session = await storage.getActivePlanSession(req.params.clientId);
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const session = await storage.getActivePlanSession(clientId);
       res.json(session || null);
     } catch (error) {
       console.error("Error fetching active plan session:", error);
@@ -3123,6 +3196,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new plan session
   app.post("/api/plan-sessions", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, req.body.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const validatedData = insertPlanSessionSchema.parse(req.body);
       const session = await storage.createPlanSession(validatedData);
       res.status(201).json(session);
@@ -3135,10 +3215,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get specific session
   app.get("/api/plan-sessions/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
       const session = await storage.getPlanSession(req.params.id);
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
       }
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, session.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       res.json(session);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch session" });
@@ -3148,6 +3235,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update session (canvas content, status, etc.)
   app.patch("/api/plan-sessions/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      const existingSession = await storage.getPlanSession(req.params.id);
+      if (!existingSession) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, existingSession.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const validatedData = insertPlanSessionSchema.partial().parse(req.body);
       const session = await storage.updatePlanSession(req.params.id, validatedData);
       if (!session) {
@@ -3162,6 +3260,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete session
   app.delete("/api/plan-sessions/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      const existingSession = await storage.getPlanSession(req.params.id);
+      if (!existingSession) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, existingSession.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const success = await storage.deletePlanSession(req.params.id);
       if (!success) {
         return res.status(404).json({ error: "Session not found" });
@@ -3177,7 +3286,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all messages for a session
   app.get("/api/plan-sessions/:sessionId/messages", requireCoachAuth, async (req, res) => {
     try {
-      const messages = await storage.getPlanMessages(req.params.sessionId);
+      const coachId = req.session.coachId!;
+      const { sessionId } = req.params;
+      
+      // First get the session to verify ownership
+      const session = await storage.getPlanSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, session.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const messages = await storage.getPlanMessages(sessionId);
       res.json(messages);
     } catch (error) {
       console.error("Error fetching plan messages:", error);
@@ -3188,9 +3311,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add a message to a session
   app.post("/api/plan-sessions/:sessionId/messages", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      const { sessionId } = req.params;
+      
+      // First get the session to verify ownership
+      const session = await storage.getPlanSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, session.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const validatedData = insertPlanMessageSchema.parse({
         ...req.body,
-        sessionId: req.params.sessionId,
+        sessionId,
       });
       const message = await storage.createPlanMessage(validatedData);
       res.status(201).json(message);
@@ -5135,6 +5272,11 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       if (sessionClientId && sessionClientId !== clientId) {
         return res.status(403).json({ error: "Unauthorized" });
       }
+      
+      // Coaches can only access their own clients' progress events
+      if (coachId && !await assertCoachOwnsClient(coachId, clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
 
       const events = await storage.getProgressEventsByClientId(clientId, {
         startDate: startDate as string | undefined,
@@ -5165,6 +5307,11 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       if (sessionClientId && validatedData.clientId !== sessionClientId) {
         return res.status(403).json({ error: "Unauthorized" });
       }
+      
+      // Coaches can only create events for their own clients
+      if (coachId && !await assertCoachOwnsClient(coachId, validatedData.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
 
       const event = await storage.createProgressEvent(validatedData);
       
@@ -5194,6 +5341,11 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       if (!event) {
         return res.status(404).json({ error: "Progress event not found" });
       }
+      
+      // Coaches can only update their own clients' events
+      if (!await assertCoachOwnsClient(coachId, event.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
 
       const validatedData = insertProgressEventSchema.partial().parse(req.body);
       const updated = await storage.updateProgressEvent(id, validatedData);
@@ -5208,10 +5360,16 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
   app.delete("/api/progress-events/:id", requireCoachAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      const coachId = req.session.coachId!;
       
       const event = await storage.getProgressEvent(id);
       if (!event) {
         return res.status(404).json({ error: "Progress event not found" });
+      }
+      
+      // Coaches can only delete their own clients' events
+      if (!await assertCoachOwnsClient(coachId, event.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       await storage.deleteProgressEvent(id);
@@ -5451,6 +5609,12 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
   app.post("/api/engagement/triggers", requireCoachAuth, async (req, res) => {
     try {
       const coachId = req.session!.coachId!;
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, req.body.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const validatedData = insertEngagementTriggerSchema.parse({
         ...req.body,
         coachId,
@@ -5468,10 +5632,16 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
   app.patch("/api/engagement/triggers/:id/resolve", requireCoachAuth, async (req, res) => {
     try {
       const { id } = req.params;
+      const coachId = req.session!.coachId!;
       
       const trigger = await storage.getEngagementTrigger(id);
       if (!trigger) {
         return res.status(404).json({ error: "Trigger not found" });
+      }
+      
+      // Coaches can only resolve their own clients' triggers
+      if (!await assertCoachOwnsClient(coachId, trigger.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
       }
 
       const resolved = await storage.resolveEngagementTrigger(id);
@@ -5505,6 +5675,12 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
   app.post("/api/engagement/recommendations", requireCoachAuth, async (req, res) => {
     try {
       const coachId = req.session!.coachId!;
+      
+      // Verify client belongs to this coach
+      if (!await assertCoachOwnsClient(coachId, req.body.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       const validatedData = insertEngagementRecommendationSchema.parse({
         ...req.body,
         coachId,

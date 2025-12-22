@@ -232,7 +232,7 @@ export interface IStorage {
   getCurrentWeeklyPlan(clientId: string): Promise<ClientPlan | undefined>;
 
   // Plan Sessions (AI Plan Builder chat history)
-  getPlanSessions(): Promise<PlanSession[]>;
+  getPlanSessions(coachId?: string): Promise<PlanSession[]>;
   getPlanSession(id: string): Promise<PlanSession | undefined>;
   getPlanSessionsByClientId(clientId: string): Promise<PlanSession[]>;
   getActivePlanSession(clientId: string): Promise<PlanSession | undefined>;
@@ -1495,7 +1495,15 @@ Introduction to consistent training and meal logging habits.
   }
 
   // Plan Sessions (AI Plan Builder chat history)
-  async getPlanSessions(): Promise<PlanSession[]> {
+  async getPlanSessions(coachId?: string): Promise<PlanSession[]> {
+    if (coachId) {
+      // Only return sessions for clients belonging to this coach
+      const coachClientIds = db.select({ id: clients.id }).from(clients).where(eq(clients.coachId, coachId));
+      return await db.select()
+        .from(planSessions)
+        .where(inArray(planSessions.clientId, coachClientIds))
+        .orderBy(desc(planSessions.createdAt));
+    }
     return await db.select().from(planSessions).orderBy(desc(planSessions.createdAt));
   }
 
