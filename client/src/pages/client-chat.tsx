@@ -247,20 +247,34 @@ export default function ClientChat() {
     });
   }, [messages, clientData]);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      // On initial load, scroll instantly to bottom. On subsequent updates, scroll smoothly.
-      const behavior = isInitialLoadRef.current ? "instant" : "smooth";
-      
-      // Small delay to ensure DOM is rendered before scrolling
-      const timer = setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: behavior as ScrollBehavior });
-        isInitialLoadRef.current = false;
-      }, 50);
-      
-      return () => clearTimeout(timer);
+  // Scroll to bottom function
+  const scrollToBottom = useCallback((instant: boolean = false) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: instant ? "instant" : "smooth" 
+      });
     }
-  }, [messages]);
+  }, []);
+
+  // Scroll to bottom on initial load and when new messages arrive
+  useEffect(() => {
+    if (messages.length > 0 && !messagesLoading) {
+      // On initial load, use instant scroll with a longer delay to ensure DOM is ready
+      if (isInitialLoadRef.current) {
+        // Use requestAnimationFrame + timeout for more reliable initial scroll
+        const timer = setTimeout(() => {
+          requestAnimationFrame(() => {
+            scrollToBottom(true);
+            isInitialLoadRef.current = false;
+          });
+        }, 100);
+        return () => clearTimeout(timer);
+      } else {
+        // For new messages, scroll smoothly
+        scrollToBottom(false);
+      }
+    }
+  }, [messages, messagesLoading, scrollToBottom]);
 
   const handleSendMessage = () => {
     if (!clientData) {
