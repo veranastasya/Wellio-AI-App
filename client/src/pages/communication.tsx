@@ -93,6 +93,32 @@ export default function Communication() {
     ).length;
   };
 
+  // Calculate client online status based on lastActiveAt
+  const getClientStatus = (client: Client): { status: "online" | "away" | "offline"; color: string; label: string } => {
+    const statusLabels = {
+      online: { en: "Online", ru: "В сети", es: "En línea" },
+      away: { en: "Away", ru: "Отошёл", es: "Ausente" },
+      offline: { en: "Offline", ru: "Не в сети", es: "Desconectado" },
+    };
+    
+    if (!client.lastActiveAt) {
+      return { status: "offline", color: "bg-gray-400", label: statusLabels.offline[lang] };
+    }
+    
+    const lastActive = new Date(client.lastActiveAt);
+    const now = new Date();
+    const diffMs = now.getTime() - lastActive.getTime();
+    const diffMinutes = diffMs / (1000 * 60);
+    
+    if (diffMinutes < 5) {
+      return { status: "online", color: "bg-green-500", label: statusLabels.online[lang] };
+    } else if (diffMinutes < 60) {
+      return { status: "away", color: "bg-amber-500", label: statusLabels.away[lang] };
+    } else {
+      return { status: "offline", color: "bg-gray-400", label: statusLabels.offline[lang] };
+    }
+  };
+
   // Computed values using helper functions
   const filteredClients = clients
     .filter((client) =>
@@ -353,8 +379,8 @@ export default function Communication() {
                       {getInitials(client.name)}
                     </AvatarFallback>
                   </Avatar>
-                  {/* Online indicator dot */}
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-card" />
+                  {/* Status indicator dot */}
+                  <div className={`absolute bottom-0 right-0 w-3 h-3 ${getClientStatus(client).color} rounded-full border-2 border-card`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
@@ -415,8 +441,8 @@ export default function Communication() {
                 <div>
                   <h2 className="font-semibold text-foreground">{selectedClient.name}</h2>
                   <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <span className="w-2 h-2 bg-green-500 rounded-full" />
-                    Online
+                    <span className={`w-2 h-2 ${getClientStatus(selectedClient).color} rounded-full`} />
+                    {getClientStatus(selectedClient).label}
                   </p>
                 </div>
               </div>
