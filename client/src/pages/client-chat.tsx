@@ -583,14 +583,14 @@ export default function ClientChat() {
           data-testid="input-file-upload"
         />
         
-        {/* Telegram-style compact composer */}
-        <div className="flex items-center gap-2 px-3 py-2">
+        {/* Telegram-style compact composer - mobile optimized */}
+        <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           {/* Unified pill: paperclip + input + emoji */}
-          <div className="flex-1 flex items-center h-12 bg-muted/50 dark:bg-muted/30 rounded-full border border-border/40 px-1.5 gap-1">
-            {/* Paperclip inside pill */}
+          <div className="flex-1 flex items-center h-11 sm:h-12 bg-muted/50 dark:bg-muted/30 rounded-full border border-border/40 px-1 sm:px-1.5 gap-0.5 sm:gap-1">
+            {/* Paperclip inside pill - 44px touch target on mobile */}
             <button
               type="button"
-              className="h-9 w-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors flex-shrink-0"
+              className="h-10 w-10 sm:h-9 sm:w-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors flex-shrink-0"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading || sendMessageMutation.isPending}
               data-testid="button-attach-file"
@@ -609,26 +609,26 @@ export default function ClientChat() {
               onChange={(e) => setMessageText(e.target.value)}
               onKeyDown={handleKeyPress}
               disabled={sendMessageMutation.isPending}
-              className="flex-1 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground min-w-0"
+              className="flex-1 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground min-w-0 px-1"
               data-testid="input-message"
             />
             
-            {/* Emoji button inside pill */}
+            {/* Emoji button inside pill - 44px touch target on mobile */}
             <button
               type="button"
-              className="h-9 w-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors flex-shrink-0"
+              className="h-10 w-10 sm:h-9 sm:w-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors flex-shrink-0"
               data-testid="button-emoji"
             >
               <Smile className="w-5 h-5" />
             </button>
           </div>
           
-          {/* Send button - circular */}
+          {/* Send button - 44px touch target */}
           <Button
             onClick={handleSendMessage}
             disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending || isUploading}
             size="icon"
-            className="flex-shrink-0 rounded-full h-10 w-10 bg-primary hover:bg-primary/90"
+            className="flex-shrink-0 rounded-full h-11 w-11 sm:h-10 sm:w-10 bg-primary hover:bg-primary/90"
             data-testid="button-send"
           >
             {sendMessageMutation.isPending ? (
