@@ -14,6 +14,7 @@ interface InlineFileAttachmentProps {
   allowedTypes?: string[];
   disabled?: boolean;
   className?: string;
+  iconClassName?: string;
 }
 
 const DEFAULT_ALLOWED_TYPES = [
@@ -40,6 +41,7 @@ export function InlineFileAttachment({
   allowedTypes = DEFAULT_ALLOWED_TYPES,
   disabled = false,
   className = "",
+  iconClassName = "w-4 h-4",
 }: InlineFileAttachmentProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -201,9 +203,9 @@ export function InlineFileAttachment({
         data-testid="button-attach-file"
       >
         {isUploading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className={`${iconClassName} animate-spin`} />
         ) : (
-          <Paperclip className="w-4 h-4" />
+          <Paperclip className={iconClassName} />
         )}
       </Button>
     </>

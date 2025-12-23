@@ -583,26 +583,25 @@ export default function ClientChat() {
           data-testid="input-file-upload"
         />
         
-        {/* Composer row */}
+        {/* Composer row - unified input area */}
         <div className="flex items-center gap-2 px-4 py-3">
-          {/* Paperclip - circular button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="flex-shrink-0 rounded-full w-10 h-10 text-muted-foreground hover:text-foreground"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading || sendMessageMutation.isPending}
-            data-testid="button-attach-file"
-          >
-            {isUploading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Paperclip className="w-5 h-5" />
-            )}
-          </Button>
-          
-          {/* Pill input */}
-          <div className="flex-1 flex items-center bg-muted/60 dark:bg-muted/40 rounded-full border border-border/50 px-4 py-2 min-h-[44px]">
+          {/* Unified pill with paperclip, input, and emoji inside */}
+          <div className="flex-1 flex items-center bg-muted/60 dark:bg-muted/40 rounded-full border border-border/50 pl-2 pr-3 py-1 min-h-[44px]">
+            {/* Paperclip inside pill */}
+            <button
+              type="button"
+              className="flex-shrink-0 rounded-full w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading || sendMessageMutation.isPending}
+              data-testid="button-attach-file"
+            >
+              {isUploading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Paperclip className="w-5 h-5" />
+              )}
+            </button>
+            
             <input
               type="text"
               placeholder={t.coachChat.messagePlaceholder[lang]}
@@ -610,12 +609,21 @@ export default function ClientChat() {
               onChange={(e) => setMessageText(e.target.value)}
               onKeyDown={handleKeyPress}
               disabled={sendMessageMutation.isPending}
-              className="flex-1 bg-transparent border-0 focus:outline-none text-sm placeholder:text-muted-foreground"
+              className="flex-1 bg-transparent border-0 focus:outline-none text-sm placeholder:text-muted-foreground px-2"
               data-testid="input-message"
             />
+            
+            {/* Emoji button inside pill */}
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+              data-testid="button-emoji"
+            >
+              <Smile className="w-5 h-5" />
+            </button>
           </div>
           
-          {/* Send button - circular */}
+          {/* Send button - circular, outside the pill */}
           <Button
             onClick={handleSendMessage}
             disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending || isUploading}

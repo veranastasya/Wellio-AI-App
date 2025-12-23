@@ -567,21 +567,22 @@ export default function Communication() {
                       </div>
                     )}
                     
-                    {/* Telegram-style composer row */}
+                    {/* Telegram-style composer row - unified input area */}
                     <div className="flex items-center gap-2 px-4 py-3">
-                      {/* Paperclip - circular button (accepts all files) */}
-                      <InlineFileAttachment
-                        onAttachmentsAdded={handleAttachmentsAdded}
-                        clientId={selectedClientId || ""}
-                        currentAttachmentCount={pendingAttachments.length}
-                        disabled={!selectedClientId || sendMessageMutation.isPending}
-                        maxFiles={5}
-                        maxFileSize={25 * 1024 * 1024}
-                        className="rounded-full w-10 h-10"
-                      />
-                      
-                      {/* Pill input with emoji inside */}
-                      <div className="flex-1 flex items-center bg-muted/60 dark:bg-muted/40 rounded-full border border-border/50 px-4 py-2 min-h-[44px]">
+                      {/* Unified pill with paperclip, input, and emoji inside */}
+                      <div className="flex-1 flex items-center bg-muted/60 dark:bg-muted/40 rounded-full border border-border/50 pl-2 pr-3 py-1 min-h-[44px]">
+                        {/* Paperclip inside pill */}
+                        <InlineFileAttachment
+                          onAttachmentsAdded={handleAttachmentsAdded}
+                          clientId={selectedClientId || ""}
+                          currentAttachmentCount={pendingAttachments.length}
+                          disabled={!selectedClientId || sendMessageMutation.isPending}
+                          maxFiles={5}
+                          maxFileSize={25 * 1024 * 1024}
+                          className="rounded-full w-8 h-8"
+                          iconClassName="w-5 h-5"
+                        />
+                        
                         <Input
                           ref={messageInputRef}
                           placeholder={t.communication.typeMessage[lang]}
@@ -596,7 +597,7 @@ export default function Communication() {
                               handleSendMessage();
                             }
                           }}
-                          className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 text-sm"
+                          className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 text-sm px-2"
                           data-testid="input-message"
                         />
                         
@@ -605,7 +606,7 @@ export default function Communication() {
                           <PopoverTrigger asChild>
                             <button
                               type="button"
-                              className="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+                              className="text-muted-foreground hover:text-foreground transition-colors p-1"
                               data-testid="button-emoji"
                             >
                               <Smile className="w-5 h-5" />
@@ -629,7 +630,7 @@ export default function Communication() {
                         </Popover>
                       </div>
                       
-                      {/* Send button - circular */}
+                      {/* Send button - circular, outside the pill */}
                       <Button
                         onClick={handleSendMessage}
                         disabled={sendMessageMutation.isPending || (!messageText.trim() && pendingAttachments.length === 0)}
