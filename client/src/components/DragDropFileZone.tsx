@@ -176,10 +176,6 @@ export function DragDropFileZone({
 
         if (successfulAttachments.length > 0) {
           onAttachmentsAdded(successfulAttachments);
-          toast({
-            title: "Files Attached",
-            description: `${successfulAttachments.length} file(s) ready to send`,
-          });
         }
 
         const failedCount = validFiles.length - successfulAttachments.length;

@@ -334,10 +334,6 @@ export default function Communication() {
       
       if (uploadedAttachments.length > 0) {
         handleAttachmentsAdded(uploadedAttachments);
-        toast({
-          title: "Images Attached",
-          description: `${uploadedAttachments.length} image(s) ready to send`,
-        });
       }
       
       if (errors.length > 0) {
