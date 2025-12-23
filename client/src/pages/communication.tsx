@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip } from "lucide-react";
+import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip, Smile, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -369,31 +369,40 @@ export default function Communication() {
           <>
             {/* Fixed Chat Header */}
             <div className="bg-card border-b p-4 flex-shrink-0">
-              <div className="flex items-center gap-4">
-                {/* Back button - mobile only */}
-                <button
-                  onClick={() => setSelectedClientId(null)}
-                  className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
-                  data-testid="button-back-to-list"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <div className="relative flex-shrink-0">
-                  <Avatar className="w-12 h-12 bg-primary">
-                    <AvatarFallback className="bg-primary text-white font-medium">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {/* Back button - mobile only */}
+                  <button
+                    onClick={() => setSelectedClientId(null)}
+                    className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                    data-testid="button-back-to-list"
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <Avatar className="w-10 h-10 bg-primary">
+                    <AvatarFallback className="bg-primary text-white font-medium text-sm">
                       {getInitials(selectedClient.name)}
                     </AvatarFallback>
                   </Avatar>
-                  {/* Online indicator */}
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-card" />
+                  <div>
+                    <h2 className="font-semibold text-foreground">{selectedClient.name}</h2>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                      <span className="w-2 h-2 bg-green-500 rounded-full" />
+                      Online
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-semibold text-foreground">{selectedClient.name}</h2>
-                  <p className="text-sm text-green-600 flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block" />
-                    Online
-                  </p>
-                </div>
+                {/* Switch to Client View button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`/client-login?preview=${selectedClientId}`, '_blank')}
+                  className="text-primary border-primary hover:bg-primary/10 gap-2"
+                  data-testid="button-switch-client-view"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Switch to Client View
+                </Button>
               </div>
             </div>
 
@@ -406,7 +415,7 @@ export default function Communication() {
             )}
 
             {/* Scrollable Messages Area - ONLY this scrolls */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
               {clientMessages.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   {t.communication.noMessages[lang]}
@@ -415,15 +424,15 @@ export default function Communication() {
                 clientMessages.map((msg, index) => (
                   <div
                     key={msg.id}
-                    className={`flex ${msg.sender === "coach" ? "justify-end" : "justify-start"}`}
+                    className={`flex w-full ${msg.sender === "coach" ? "justify-end" : "justify-start"}`}
                     data-testid={`message-${index}`}
                   >
                     <div
-                      className={`max-w-[80%] ${
+                      className={`max-w-[65%] ${
                         msg.sender === "coach"
-                          ? "bg-primary text-white"
-                          : "bg-card text-foreground border border-border"
-                      } rounded-2xl px-4 py-3 shadow-sm`}
+                          ? "bg-primary text-white rounded-2xl rounded-br-md"
+                          : "bg-white dark:bg-card text-foreground border border-border/50 rounded-2xl rounded-bl-md"
+                      } px-4 py-2.5`}
                     >
                       <p className="text-sm leading-relaxed">{msg.content}</p>
                       
@@ -545,7 +554,8 @@ export default function Communication() {
                       </div>
                     )}
                     
-                    <div className="flex items-center gap-2 bg-muted/50 rounded-full px-3 py-2">
+                    <div className="flex items-center gap-3">
+                      {/* Attachment icon */}
                       <InlineFileAttachment
                         onAttachmentsAdded={handleAttachmentsAdded}
                         clientId={selectedClientId || ""}
@@ -554,22 +564,55 @@ export default function Communication() {
                         maxFiles={5}
                         maxFileSize={25 * 1024 * 1024}
                       />
-                      <Input
-                        placeholder={t.communication.typeMessage[lang]}
-                        value={messageText}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                          setMessageText(e.target.value);
-                          if (validationError) setValidationError("");
-                        }}
-                        onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }
-                        }}
-                        className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-2"
-                        data-testid="input-message"
-                      />
+                      {/* Image icon */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            data-testid="button-add-image"
+                          >
+                            <ImageIcon className="w-5 h-5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Add image</TooltipContent>
+                      </Tooltip>
+                      
+                      {/* Input field */}
+                      <div className="flex-1 flex items-center bg-muted/50 rounded-full px-4 py-2">
+                        <Input
+                          placeholder={t.communication.typeMessage[lang]}
+                          value={messageText}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            setMessageText(e.target.value);
+                            if (validationError) setValidationError("");
+                          }}
+                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendMessage();
+                            }
+                          }}
+                          className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8"
+                          data-testid="input-message"
+                        />
+                      </div>
+                      
+                      {/* Emoji icon */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            data-testid="button-emoji"
+                          >
+                            <Smile className="w-5 h-5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Add emoji</TooltipContent>
+                      </Tooltip>
+                      
+                      {/* Send button */}
                       <Button
                         onClick={handleSendMessage}
                         disabled={sendMessageMutation.isPending}
