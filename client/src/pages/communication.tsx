@@ -382,26 +382,24 @@ export default function Communication() {
           >
             {selectedClient ? (
               <>
-                <div className="p-3 sm:p-4 border-b flex items-center gap-3 flex-shrink-0 sticky top-0 bg-card z-10">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setSelectedClientId(null)}
-                    className="flex-shrink-0 lg:hidden"
-                    data-testid="button-back-to-list"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                  </Button>
-                  <Avatar className="w-10 h-10 bg-primary flex-shrink-0">
-                    <AvatarFallback className="bg-primary text-white font-medium text-sm">
-                      {getInitials(selectedClient.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-semibold text-foreground truncate">{selectedClient.name}</h3>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                      <span className="text-xs text-muted-foreground">{t.communication.online[lang]}</span>
+                <div className="p-3 sm:p-4 border-b flex items-center justify-between gap-3 flex-shrink-0 sticky top-0 bg-card z-10">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setSelectedClientId(null)}
+                      className="flex-shrink-0 lg:hidden border-primary text-primary"
+                      data-testid="button-back-to-list"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </Button>
+                    <Avatar className="w-10 h-10 bg-primary flex-shrink-0">
+                      <AvatarFallback className="bg-primary text-white font-medium text-sm">
+                        {getInitials(selectedClient.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-semibold text-foreground truncate">{selectedClient.name}</h3>
                     </div>
                   </div>
                 </div>

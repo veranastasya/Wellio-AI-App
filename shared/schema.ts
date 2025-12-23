@@ -742,7 +742,6 @@ export const COACH_UI_TRANSLATIONS = {
     enterMessageOrFile: { en: "Please enter a message or attach a file", ru: "Введите сообщение или прикрепите файл", es: "Por favor, ingrese un mensaje o adjunte un archivo" },
     dragDropHint: { en: "Drop files here or click to attach", ru: "Перетащите файлы сюда или нажмите, чтобы прикрепить", es: "Suelta archivos aquí o haz clic para adjuntar" },
     fileAttachment: { en: "File attachment", ru: "Файл-вложение", es: "Archivo adjunto" },
-    online: { en: "Online", ru: "В сети", es: "En línea" },
   },
   // Scheduling page
   scheduling: {
