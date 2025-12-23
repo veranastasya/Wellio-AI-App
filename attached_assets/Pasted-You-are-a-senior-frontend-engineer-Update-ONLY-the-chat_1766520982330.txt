@@ -1,0 +1,38 @@
+You are a senior frontend engineer. Update ONLY the chat composer (input area) UI to be more sleek and concise, using Telegram’s composer layout as the UX reference. KEEP our styling and branding. Keep all existing functionality working (text input, send, image upload, file upload, emoji picker). Do not break keyboard behavior or message sending. 
+
+Reference image (Telegram composer): attached 
+
+What we want (Telegram-like structure) 
+1) Single compact “pill” composer row
+- A rounded pill container for the text field (and emoji icon inside it), with subtle border and soft shadow.
+- Keep height compact (around 44–52px on desktop).
+- Input should feel “one line” by default but allow expanding to 3–5 lines when the message is long (auto-grow textarea). When expanded, keep the pill shape and padding consistent.
+
+2) Icon layout (left to right)
+- Left: one attachment button (paperclip) as a circular icon button.
+  - Clicking opens attachment options:
+    a) Upload image (same as photo icon)
+    b) Upload file (non-image)
+  - If you keep two separate icons (paperclip + image), that’s acceptable, but the UI should still look minimal and aligned.
+- Center: the pill text input.
+- Inside the pill on the right: emoji button (smiley). Clicking opens emoji picker anchored to the composer.
+- Far right: send button as a circular icon button (paper plane). Disabled state when input is empty and no pending attachment.
+
+3) Spacing + alignment rules
+- Everything vertically centered.
+- Tight gaps (8–12px) between attachment button, pill input, and send button.
+- No extra toolbars, no wasted padding, no giant empty margins.
+
+4) Interaction behavior (must preserve functionality)
+- Enter sends message; Shift+Enter creates a new line.
+- If there’s text OR an attachment selected, send is enabled.
+- When an image/file is selected, show a small inline “chip” preview above the composer (filename + remove X). Keep it minimal.
+- Emoji insertion works at cursor position.
+- Clicking attachment opens file picker and uploads as before.
+
+Implementation guidance (likely fixes):
+- Replace current composer layout with a dedicated component structure:
+  - Wrapper: sticky bottom, full width, padding.
+  - Row: flex items-center.
+  - AttachmentIconButton (left)
+  - InputPill
