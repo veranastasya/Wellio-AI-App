@@ -1,0 +1,49 @@
+Goal: Make the chat look and behave like the north star:
+1) 2-column layout
+   - Left sidebar: fixed width (~320px), contains “Messages” title + search input + conversation list.
+   - Main pane: full remaining width, contains header, message thread, and composer.
+   - Entire page height = 100vh, no weird extra whitespace.
+
+2) Main pane structure (top to bottom)
+   - Header (sticky): avatar + client name + online status on the left; “Switch to Client View” button on the right.
+   - Message thread (scrollable): takes all remaining vertical space between header and composer.
+   - Composer (sticky bottom): attachment icon, optional image icon, text input, emoji icon, send button.
+
+3) Message bubbles
+   - Incoming (client) bubbles: aligned left; white background; subtle border; rounded corners; max width 60–70% of the thread width; consistent padding; timestamp below/inside in smaller muted text.
+   - Outgoing (coach) bubbles: aligned right; teal background; white text; same max width rules; consistent padding; timestamp in smaller text.
+   - Add consistent vertical spacing between messages (e.g., 12–16px).
+   - Prevent “tiny bubble stuck in the middle” behavior: bubble width should fit content but never exceed max width; the container should span full width so alignment works.
+
+4) Scrolling + layout rules (this is likely the bug)
+   - The message thread must be the ONLY scrollable area in the main pane (overflow-y-auto).
+   - Header and composer must not scroll away (sticky/fixed within the main pane).
+   - Ensure no parent container is accidentally constraining the thread width (avoid max-w-sm on the whole thread, avoid inline-block wrappers that shrink the layout).
+   - Use a flex column layout for the main pane: `display: flex; flex-direction: column; height: 100vh;`
+     Header: `flex: 0 0 auto`
+     Thread: `flex: 1 1 auto; overflow-y: auto;`
+     Composer: `flex: 0 0 auto`
+
+5) Responsiveness
+   - Desktop: sidebar visible.
+   - Smaller screens: sidebar can collapse or overlay (simple approach is fine), but the main pane must still keep header/thread/composer structure.
+
+Implementation requirements:
+- Use the existing stack in the repo (React + Tailwind if present; otherwise plain CSS is fine, but be consistent with the codebase).
+- Do not redesign colors or typography beyond what’s needed to match the north star.
+- Identify the exact components/files responsible (e.g., ChatPage layout, ConversationList, MessageList/Thread, MessageBubble, Composer).
+- Provide a clear set of code edits (actual code), not just advice.
+
+Steps you must follow:
+A) Inspect current components and find why the thread is not using full width and why bubbles are floating in a narrow column (likely a container width or display rule).
+B) Refactor layout to the flex column model described above.
+C) Update message bubble components to enforce max-width and alignment reliably.
+D) Verify: long messages wrap correctly; thread scrolls; composer stays pinned to bottom; no massive empty whitespace; looks like the north star screenshot.
+
+Deliverable:
+- A patch-style response with the updated code for the relevant files/components and a short explanation of what caused the issue and what you changed.
+
+
+
+
+
