@@ -4,6 +4,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Loader2, Send, MessageSquare, X, FileText, Image as ImageIcon, Video, FileAudio, Download, Paperclip } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Smile } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client, Message, InsertMessage, MessageAttachment } from "@shared/schema";
@@ -157,7 +159,6 @@ export default function ClientChat() {
   const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const isInitialLoadRef = useRef(true);
   const { toast } = useToast();
   
@@ -543,31 +544,30 @@ export default function ClientChat() {
         )}
       </div>
 
-      <div className="flex-shrink-0 border-t p-4 bg-background">
+      {/* Telegram-style composer */}
+      <div className="flex-shrink-0 border-t bg-background">
+        {/* Pending attachments - compact chips */}
         {pendingAttachments.length > 0 && (
-          <div className="mb-3 space-y-2">
+          <div className="px-4 pt-3 flex flex-wrap gap-2">
             {pendingAttachments.map((attachment) => {
               const Icon = getAttachmentIcon(attachment.fileType);
               return (
                 <div
                   key={attachment.id}
-                  className="flex items-center gap-2 p-2 bg-muted rounded-md"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full text-sm"
                   data-testid={`pending-attachment-${attachment.id}`}
                 >
-                  <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm font-medium truncate">{attachment.fileName}</p>
-                    <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="ghost"
+                  <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="truncate max-w-[120px]">{attachment.fileName}</span>
+                  <span className="text-xs text-muted-foreground">({formatFileSize(attachment.fileSize)})</span>
+                  <button
+                    type="button"
                     onClick={() => removeAttachment(attachment.id)}
-                    className="flex-shrink-0"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                     data-testid={`button-remove-attachment-${attachment.id}`}
                   >
-                    <X className="w-4 h-4" />
-                  </Button>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               );
             })}
@@ -582,21 +582,14 @@ export default function ClientChat() {
           onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
           data-testid="input-file-upload"
         />
-        <input
-          type="file"
-          ref={imageInputRef}
-          className="hidden"
-          multiple
-          accept="image/*"
-          onChange={(e) => e.target.files && handleFileUpload(e.target.files, true)}
-          data-testid="input-image-upload"
-        />
         
-        <div className="flex items-center gap-3">
+        {/* Composer row */}
+        <div className="flex items-center gap-2 px-4 py-3">
+          {/* Paperclip - circular button */}
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-foreground flex-shrink-0"
+            className="flex-shrink-0 rounded-full w-10 h-10 text-muted-foreground hover:text-foreground"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading || sendMessageMutation.isPending}
             data-testid="button-attach-file"
@@ -608,18 +601,8 @@ export default function ClientChat() {
             )}
           </Button>
           
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground flex-shrink-0"
-            onClick={() => imageInputRef.current?.click()}
-            disabled={isUploading || sendMessageMutation.isPending}
-            data-testid="button-attach-image"
-          >
-            <ImageIcon className="w-5 h-5" />
-          </Button>
-          
-          <div className="flex-1 relative">
+          {/* Pill input */}
+          <div className="flex-1 flex items-center bg-muted/60 dark:bg-muted/40 rounded-full border border-border/50 px-4 py-2 min-h-[44px]">
             <input
               type="text"
               placeholder={t.coachChat.messagePlaceholder[lang]}
@@ -627,22 +610,23 @@ export default function ClientChat() {
               onChange={(e) => setMessageText(e.target.value)}
               onKeyDown={handleKeyPress}
               disabled={sendMessageMutation.isPending}
-              className="w-full px-4 py-3 rounded-full border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-150"
+              className="flex-1 bg-transparent border-0 focus:outline-none text-sm placeholder:text-muted-foreground"
               data-testid="input-message"
             />
           </div>
           
+          {/* Send button - circular */}
           <Button
             onClick={handleSendMessage}
             disabled={(!messageText.trim() && pendingAttachments.length === 0) || sendMessageMutation.isPending || isUploading}
             size="icon"
-            className="rounded-full w-11 h-11 flex-shrink-0"
+            className="flex-shrink-0 rounded-full w-10 h-10 bg-primary hover:bg-primary/90"
             data-testid="button-send"
           >
             {sendMessageMutation.isPending ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Send className="w-5 h-5" />
+              <Send className="w-4 h-4" />
             )}
           </Button>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip, Smile, Loader2 } from "lucide-react";
+import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Smile, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { InlineFileAttachment } from "@/components/InlineFileAttachment";
 import { DragDropFileZone } from "@/components/DragDropFileZone";
 import { AISuggestionsStrip } from "@/components/AISuggestionsStrip";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Common emojis for quick access
 const EMOJI_LIST = [
@@ -30,12 +29,10 @@ export default function Communication() {
   const [searchQuery, setSearchQuery] = useState("");
   const [validationError, setValidationError] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
-  const [isImageUploading, setIsImageUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isInitialLoadRef = useRef(true);
   const lastSelectedClientRef = useRef<string | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -255,97 +252,6 @@ export default function Communication() {
       setMessageText((prev) => prev + emoji);
     }
     setShowEmojiPicker(false);
-  };
-
-  // Handle image upload
-  const handleImageSelect = async (files: FileList | null) => {
-    if (!files || files.length === 0 || !selectedClientId) return;
-    
-    const allowedImageTypes = [
-      "image/jpeg", "image/png", "image/gif", "image/webp", 
-      "image/heic", "image/heif"
-    ];
-    
-    setIsImageUploading(true);
-    const fileArray = Array.from(files);
-    
-    // Reset input
-    if (imageInputRef.current) {
-      imageInputRef.current.value = "";
-    }
-    
-    const validFiles: File[] = [];
-    const errors: string[] = [];
-    
-    fileArray.forEach((file) => {
-      if (!allowedImageTypes.includes(file.type.toLowerCase())) {
-        errors.push(`${file.name}: Invalid image format`);
-      } else if (file.size > 25 * 1024 * 1024) {
-        errors.push(`${file.name}: File too large (max 25MB)`);
-      } else {
-        validFiles.push(file);
-      }
-    });
-    
-    if (errors.length > 0) {
-      toast({
-        title: "Invalid Images",
-        description: errors.join("; "),
-        variant: "destructive",
-      });
-    }
-    
-    if (validFiles.length === 0) {
-      setIsImageUploading(false);
-      return;
-    }
-    
-    try {
-      const uploadedAttachments: MessageAttachment[] = [];
-      
-      for (const file of validFiles) {
-        try {
-          // Get upload URL
-          const uploadRes = await apiRequest("POST", "/api/attachments/upload", {});
-          const uploadData: { uploadURL: string } = await uploadRes.json();
-          
-          // Upload file
-          await fetch(uploadData.uploadURL, {
-            method: "PUT",
-            body: file,
-            headers: { "Content-Type": file.type },
-          });
-          
-          // Save attachment metadata
-          const saveRes = await apiRequest("POST", "/api/attachments/save", {
-            objectURL: uploadData.uploadURL,
-            fileName: file.name,
-            fileType: file.type || "image/jpeg",
-            fileSize: file.size,
-            clientId: selectedClientId,
-          });
-          const saveData: { attachment: MessageAttachment } = await saveRes.json();
-          uploadedAttachments.push(saveData.attachment);
-        } catch (error) {
-          console.error("Error uploading image:", error);
-          errors.push(`${file.name}: Upload failed`);
-        }
-      }
-      
-      if (uploadedAttachments.length > 0) {
-        handleAttachmentsAdded(uploadedAttachments);
-      }
-      
-      if (errors.length > 0) {
-        toast({
-          title: "Some Images Failed",
-          description: errors.join("; "),
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsImageUploading(false);
-    }
   };
 
   if (clientsLoading || messagesLoading) {
@@ -618,7 +524,7 @@ export default function Communication() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Fixed Input Area at Bottom */}
+            {/* Fixed Input Area at Bottom - Telegram style */}
             <DragDropFileZone
                   onAttachmentsAdded={handleAttachmentsAdded}
                   clientId={selectedClientId || ""}
@@ -628,55 +534,42 @@ export default function Communication() {
                   maxFileSize={25 * 1024 * 1024}
                   className="flex-shrink-0"
                 >
-                  <div className="p-3 sm:p-4 border-t space-y-3">
+                  <div className="border-t bg-background">
                     {validationError && (
-                      <p className="text-sm text-destructive mb-2">{validationError}</p>
+                      <p className="text-sm text-destructive px-4 pt-2">{validationError}</p>
                     )}
                     
-                    {/* Pending attachments display */}
+                    {/* Pending attachments - compact chips */}
                     {pendingAttachments.length > 0 && (
-                      <div className="space-y-2">
+                      <div className="px-4 pt-3 flex flex-wrap gap-2">
                         {pendingAttachments.map((attachment) => {
                           const Icon = getAttachmentIcon(attachment.fileType);
                           return (
                             <div
                               key={attachment.id}
-                              className="flex items-center gap-2 p-2 bg-muted rounded-md"
+                              className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full text-sm"
                               data-testid={`pending-attachment-${attachment.id}`}
                             >
-                              <Icon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate">{attachment.fileName}</p>
-                                <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
-                              </div>
-                              <Button
-                                size="icon"
-                                variant="ghost"
+                              <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className="truncate max-w-[120px]">{attachment.fileName}</span>
+                              <span className="text-xs text-muted-foreground">({formatFileSize(attachment.fileSize)})</span>
+                              <button
+                                type="button"
                                 onClick={() => removeAttachment(attachment.id)}
-                                className="flex-shrink-0 h-8 w-8"
+                                className="text-muted-foreground hover:text-foreground transition-colors"
                                 data-testid={`button-remove-attachment-${attachment.id}`}
                               >
-                                <X className="w-4 h-4" />
-                              </Button>
+                                <X className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           );
                         })}
                       </div>
                     )}
                     
-                    <div className="flex items-center gap-3">
-                      {/* Hidden image input */}
-                      <input
-                        ref={imageInputRef}
-                        type="file"
-                        multiple
-                        accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif"
-                        onChange={(e) => handleImageSelect(e.target.files)}
-                        className="hidden"
-                        data-testid="input-image-hidden"
-                      />
-                      
-                      {/* Attachment icon */}
+                    {/* Telegram-style composer row */}
+                    <div className="flex items-center gap-2 px-4 py-3">
+                      {/* Paperclip - circular button (accepts all files) */}
                       <InlineFileAttachment
                         onAttachmentsAdded={handleAttachmentsAdded}
                         clientId={selectedClientId || ""}
@@ -684,30 +577,11 @@ export default function Communication() {
                         disabled={!selectedClientId || sendMessageMutation.isPending}
                         maxFiles={5}
                         maxFileSize={25 * 1024 * 1024}
+                        className="rounded-full w-10 h-10"
                       />
                       
-                      {/* Image icon - now functional */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => imageInputRef.current?.click()}
-                            disabled={isImageUploading || !selectedClientId}
-                            className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                            data-testid="button-add-image"
-                          >
-                            {isImageUploading ? (
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                              <ImageIcon className="w-5 h-5" />
-                            )}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>Add image</TooltipContent>
-                      </Tooltip>
-                      
-                      {/* Input field */}
-                      <div className="flex-1 flex items-center bg-muted/50 rounded-full px-4 py-2">
+                      {/* Pill input with emoji inside */}
+                      <div className="flex-1 flex items-center bg-muted/60 dark:bg-muted/40 rounded-full border border-border/50 px-4 py-2 min-h-[44px]">
                         <Input
                           ref={messageInputRef}
                           placeholder={t.communication.typeMessage[lang]}
@@ -722,49 +596,49 @@ export default function Communication() {
                               handleSendMessage();
                             }
                           }}
-                          className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8"
+                          className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 text-sm"
                           data-testid="input-message"
                         />
+                        
+                        {/* Emoji button inside pill */}
+                        <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+                              data-testid="button-emoji"
+                            >
+                              <Smile className="w-5 h-5" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-2" align="end" side="top">
+                            <div className="grid grid-cols-8 gap-1">
+                              {EMOJI_LIST.map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  onClick={() => handleEmojiSelect(emoji)}
+                                  className="p-1.5 text-lg hover:bg-muted rounded transition-colors"
+                                  data-testid={`emoji-${emoji}`}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                       
-                      {/* Emoji picker */}
-                      <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
-                        <PopoverTrigger asChild>
-                          <button
-                            type="button"
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                            data-testid="button-emoji"
-                          >
-                            <Smile className="w-5 h-5" />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64 p-2" align="end" side="top">
-                          <div className="grid grid-cols-8 gap-1">
-                            {EMOJI_LIST.map((emoji) => (
-                              <button
-                                key={emoji}
-                                type="button"
-                                onClick={() => handleEmojiSelect(emoji)}
-                                className="p-1.5 text-lg hover:bg-muted rounded transition-colors"
-                                data-testid={`emoji-${emoji}`}
-                              >
-                                {emoji}
-                              </button>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                      
-                      {/* Send button */}
+                      {/* Send button - circular */}
                       <Button
                         onClick={handleSendMessage}
-                        disabled={sendMessageMutation.isPending}
+                        disabled={sendMessageMutation.isPending || (!messageText.trim() && pendingAttachments.length === 0)}
                         size="icon"
-                        className="flex-shrink-0 rounded-full bg-primary hover:bg-primary/90"
+                        className="flex-shrink-0 rounded-full w-10 h-10 bg-primary hover:bg-primary/90"
                         data-testid="button-send-message"
                       >
                         {sendMessageMutation.isPending ? (
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <Send className="w-4 h-4" />
                         )}

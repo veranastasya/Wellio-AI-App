@@ -19,7 +19,8 @@ import {
   Sparkles,
   ImageIcon,
   X,
-  Pencil
+  Pencil,
+  Paperclip
 } from "lucide-react";
 import {
   Dialog,
@@ -950,9 +951,11 @@ export default function ClientAITracker() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="flex-shrink-0 p-4 border-t bg-background">
+      {/* Telegram-style composer */}
+      <div className="flex-shrink-0 border-t bg-background">
+        {/* Pending images - compact chips */}
         {pendingImages.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3 max-w-3xl mx-auto">
+          <div className="px-4 pt-3 flex flex-wrap gap-2 max-w-3xl mx-auto">
             {pendingImages.map((image) => (
               <ImagePreview
                 key={image.id}
@@ -963,49 +966,58 @@ export default function ClientAITracker() {
           </div>
         )}
         
-        <div className="flex gap-2 max-w-3xl mx-auto">
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            multiple
-            className="hidden"
-            onChange={handleImageSelect}
-            data-testid="input-image-upload"
-          />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          multiple
+          className="hidden"
+          onChange={handleImageSelect}
+          data-testid="input-image-upload"
+        />
+        
+        {/* Composer row */}
+        <div className="flex items-center gap-2 px-4 py-3 max-w-3xl mx-auto">
+          {/* Paperclip - circular button for images */}
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="rounded-full w-12 h-12 flex-shrink-0"
+            className="flex-shrink-0 rounded-full w-10 h-10 text-muted-foreground hover:text-foreground"
             onClick={() => imageInputRef.current?.click()}
             disabled={isSubmitting}
             data-testid="button-attach-image"
           >
-            <ImageIcon className="w-5 h-5" />
+            <Paperclip className="w-5 h-5" />
           </Button>
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={AI_TRACKER_TRANSLATIONS.placeholder[preferredLanguage]}
-            className="flex-1 px-4 py-3 rounded-full border bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-150"
-            disabled={isSubmitting}
-            data-testid="input-smart-log"
-          />
+          
+          {/* Pill input */}
+          <div className="flex-1 flex items-center bg-muted/60 dark:bg-muted/40 rounded-full border border-border/50 px-4 py-2 min-h-[44px]">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={AI_TRACKER_TRANSLATIONS.placeholder[preferredLanguage]}
+              disabled={isSubmitting}
+              className="flex-1 bg-transparent border-0 focus:outline-none text-sm placeholder:text-muted-foreground"
+              data-testid="input-smart-log"
+            />
+          </div>
+          
+          {/* Send button - circular */}
           <Button
             onClick={handleSubmit}
             disabled={(!inputText.trim() && pendingImages.length === 0) || isSubmitting}
             size="icon"
-            className="rounded-full w-12 h-12"
+            className="flex-shrink-0 rounded-full w-10 h-10 bg-primary hover:bg-primary/90"
             data-testid="button-submit-smart-log"
           >
             {isSubmitting ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Send className="w-5 h-5" />
+              <Send className="w-4 h-4" />
             )}
           </Button>
         </div>
