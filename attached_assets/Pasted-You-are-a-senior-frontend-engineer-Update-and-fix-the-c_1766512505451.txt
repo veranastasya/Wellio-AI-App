@@ -1,0 +1,69 @@
+You are a senior frontend engineer. Update and fix the chat UI and keep ALL existing messaging functionality working (send/receive, attachments, rendering, timestamps, unread counts, etc). Do not break behavior while improving layout.
+
+Reference screenshot (current state): attached 
+North-star behavior: clean single-scroll thread, pinned header + composer, stable sidebar.
+
+Required changes:
+
+1) Remove “Switch to Client View” button
+- Completely remove it from the UI (header). Do not leave an empty gap.
+- If there is route logic behind it, keep the route intact, but remove the button from the header component.
+
+2) Fix the TWO scrollbars issue (remove one)
+- There must be ONLY ONE vertical scrollbar in the main chat area: the message thread.
+- Header and composer must stay visible (not scroll).
+- Root cause is likely nested containers with `overflow-y-auto/scroll` (e.g., page container AND thread container) or `h-screen` applied inconsistently.
+- Find and eliminate the extra scroll by ensuring:
+  - Page wrapper: `height: 100vh; overflow: hidden;`
+  - Main pane (right side): `display: flex; flex-direction: column; height: 100vh; overflow: hidden;`
+  - Message thread only: `flex: 1; overflow-y: auto;`
+  - Sidebar can scroll independently ONLY if its list is long, but do not create a second scrollbar in the main pane.
+- After change, verify there is no “outer” scrollbar on the entire page while still allowing the message thread to scroll.
+
+3) Emojis
+- There are currently no emojis available in the composer.
+- Add an emoji button and make it functional:
+  - Clicking opens a small emoji picker (simple lightweight solution is fine).
+  - Selecting an emoji inserts it at the cursor position in the text input.
+  - Must work on desktop and mobile.
+- Prefer a minimal dependency (or a very small library) consistent with the repo. If the repo avoids new deps, build a basic picker with a small curated set.
+
+4) Image upload must work (photo icon currently does nothing)
+- Clicking the photo/image icon should open a file picker.
+- Support uploads for: HEIC/HEIF, JPG/JPEG, PNG, WEBP, GIF.
+- If HEIC/HEIF is not supported for preview in some browsers, convert to JPEG client-side before upload OR handle server-side conversion; choose the quickest stable approach for this codebase.
+- After upload, images must render inline in the message thread as image bubbles/cards with:
+  - Thumbnail/preview (constrained size, maintain aspect ratio)
+  - Click to open full-size (simple modal/lightbox is fine)
+  - Timestamp preserved
+- Ensure upload errors are handled with a clear message.
+
+5) File attachment behavior (paperclip icon works) — keep it correct
+- Make sure non-image files display properly in the thread:
+  - Show filename, file type (if available), and size (if available)
+  - Provide a clear “Download” action that downloads the file
+- Verify downloads work after your changes.
+- Do not regress current working file upload.
+
+6) Functional safety checks (must not break existing behavior)
+- Sending text messages still works.
+- Thread loads existing messages correctly.
+- New messages appear immediately (optimistic UI if present).
+- Attachments persist and display on reload.
+- Sidebar conversation list still works (selecting a conversation loads the right thread).
+- Unread badges still show.
+
+Implementation expectations:
+- Locate the real components/files (likely ChatPage layout, ChatHeader, MessageThread/MessageList, Composer).
+- Provide actual code changes (patch-style) with explanation of:
+  - What caused the double scroll (which containers had overflow/height conflicts)
+  - How you fixed it (which containers changed and why)
+- Keep styling consistent with existing design (no redesign, just fix UX issues).
+
+Definition of done:
+- Header has NO “Switch to Client View” button.
+- Only ONE scrollbar in the main chat area (the message thread).
+- Emoji picker works.
+- Photo icon opens picker, uploads images, and images display correctly.
+- File uploads remain downloadable and display cleanly.
+- All chat functionality continues to work as expected.
