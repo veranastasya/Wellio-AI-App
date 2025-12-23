@@ -276,236 +276,231 @@ export default function Communication() {
   }
 
   return (
-    <div className="bg-background h-[100dvh] lg:h-full overflow-hidden">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 h-full flex flex-col overflow-hidden">
-        {/* Header - hide on mobile when viewing chat (use CSS for reliability) */}
-        <div className={`mb-4 sm:mb-6 flex-shrink-0 ${selectedClientId ? 'hidden lg:block' : ''}`}>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-chat-title">{t.communication.title[lang]}</h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">{t.communication.subtitle[lang]}</p>
+    <div className="h-[100dvh] flex bg-background overflow-hidden">
+      {/* Client List Sidebar */}
+      <div 
+        data-testid="card-client-list" 
+        className={`${selectedClientId ? 'hidden lg:flex' : 'flex'} w-full lg:w-80 bg-card border-r flex-col flex-shrink-0`}
+      >
+        <div className="p-4 border-b flex-shrink-0">
+          <h2 className="text-lg font-semibold text-foreground mb-3">{t.communication.messages[lang]}</h2>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder={t.communication.searchClients[lang]}
+              className="pl-10 h-10 bg-muted/50 border-0"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              data-testid="input-search-conversations"
+            />
           </div>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 flex-1 min-h-0 overflow-hidden">
-          {/* Client list - hide on mobile when chat is selected */}
-          <div 
-            data-testid="card-client-list" 
-            className={`lg:max-h-[calc(100vh-200px)] h-full flex flex-col bg-card rounded-lg border ${selectedClientId ? 'hidden lg:flex' : 'flex'}`}
-          >
-            <div className="p-4 border-b">
-              <h2 className="text-lg font-semibold text-foreground mb-3">{t.communication.messages[lang]}</h2>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder={t.communication.searchClients[lang]}
-                  className="pl-10 h-10 bg-muted/50 border-0"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  data-testid="input-search-conversations"
-                />
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-2">
-                {filteredClients.map((client, index) => {
-                  const lastMsg = getLastMessage(client.id);
-                  const unreadCount = getUnreadCount(client.id);
-                  const avatarColors = [
-                    "bg-primary",
-                    "bg-amber-500",
-                    "bg-rose-500",
-                    "bg-violet-500",
-                    "bg-emerald-500",
-                    "bg-cyan-500",
-                  ];
-                  const avatarColor = avatarColors[index % avatarColors.length];
-                  
-                  return (
-                    <button
-                      key={client.id}
-                      onClick={() => setSelectedClientId(client.id)}
-                      className={`w-full text-left p-3 rounded-lg transition-colors hover-elevate ${
-                        selectedClientId === client.id
-                          ? "bg-muted"
-                          : ""
-                      }`}
-                      data-testid={`button-client-conversation-${index}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar className={`w-10 h-10 ${avatarColor}`}>
-                          <AvatarFallback className={`${avatarColor} text-white font-medium text-sm`}>
-                            {getInitials(client.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-medium text-sm text-foreground">{client.name}</p>
-                            <div className="flex items-center gap-2">
-                              {lastMsg && (
-                                <span className="text-xs text-muted-foreground">
-                                  {formatRelativeTime(lastMsg.timestamp)}
-                                </span>
-                              )}
-                              {unreadCount > 0 && (
-                                <Badge 
-                                  className="bg-primary text-white h-5 min-w-5 px-1.5 rounded-full"
-                                  data-testid={`badge-unread-count-${index}`}
-                                >
-                                  {unreadCount}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          {lastMsg && (
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">
-                              {lastMsg.content}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-                {filteredClients.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    {t.communication.noClientsFound[lang]}
-                  </p>
+        <div className="flex-1 overflow-y-auto">
+          {filteredClients.map((client, index) => {
+            const lastMsg = getLastMessage(client.id);
+            const unreadCount = getUnreadCount(client.id);
+            const avatarColors = [
+              "bg-primary",
+              "bg-amber-500",
+              "bg-rose-500",
+              "bg-violet-500",
+              "bg-emerald-500",
+              "bg-cyan-500",
+            ];
+            const avatarColor = avatarColors[index % avatarColors.length];
+            
+            return (
+              <button
+                key={client.id}
+                onClick={() => setSelectedClientId(client.id)}
+                className={`w-full text-left p-4 flex items-start gap-3 hover-elevate transition-colors border-b border-border/50 ${
+                  selectedClientId === client.id ? "bg-primary/10" : ""
+                }`}
+                data-testid={`button-client-conversation-${index}`}
+              >
+                <div className="relative flex-shrink-0">
+                  <Avatar className={`w-12 h-12 ${avatarColor}`}>
+                    <AvatarFallback className={`${avatarColor} text-white font-medium`}>
+                      {getInitials(client.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {/* Online indicator dot */}
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-card" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="font-medium text-foreground truncate">{client.name}</p>
+                    {lastMsg && (
+                      <span className="text-xs text-muted-foreground flex-shrink-0">
+                        {formatRelativeTime(lastMsg.timestamp)}
+                      </span>
+                    )}
+                  </div>
+                  {lastMsg && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {lastMsg.content}
+                    </p>
+                  )}
+                </div>
+                {unreadCount > 0 && (
+                  <div className="w-5 h-5 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs" data-testid={`badge-unread-count-${index}`}>
+                      {unreadCount}
+                    </span>
+                  </div>
                 )}
+              </button>
+            );
+          })}
+          {filteredClients.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              {t.communication.noClientsFound[lang]}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Chat Panel */}
+      <div 
+        className={`${selectedClientId ? 'flex' : 'hidden lg:flex'} flex-1 flex-col min-w-0`}
+        data-testid="card-messages"
+      >
+        {selectedClient ? (
+          <>
+            {/* Fixed Chat Header */}
+            <div className="bg-card border-b p-4 flex-shrink-0">
+              <div className="flex items-center gap-4">
+                {/* Back button - mobile only */}
+                <button
+                  onClick={() => setSelectedClientId(null)}
+                  className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                  data-testid="button-back-to-list"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div className="relative flex-shrink-0">
+                  <Avatar className="w-12 h-12 bg-primary">
+                    <AvatarFallback className="bg-primary text-white font-medium">
+                      {getInitials(selectedClient.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {/* Online indicator */}
+                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-card" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-foreground">{selectedClient.name}</h2>
+                  <p className="text-sm text-green-600 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block" />
+                    Online
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Chat panel - show on mobile only when client selected, always show on desktop */}
-          <div 
-            className={`lg:col-span-2 flex flex-col bg-card rounded-lg border overflow-hidden h-full ${selectedClientId ? 'flex' : 'hidden lg:flex'}`} 
-            data-testid="card-messages"
-          >
-            {selectedClient ? (
-              <>
-                <div className="p-3 sm:p-4 border-b flex items-center justify-between gap-3 flex-shrink-0 sticky top-0 bg-card z-10">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setSelectedClientId(null)}
-                      className="flex-shrink-0 lg:hidden border-primary text-primary"
-                      data-testid="button-back-to-list"
+            {/* AI Suggestions Strip */}
+            {selectedClientId && selectedClient && (
+              <AISuggestionsStrip 
+                clientId={selectedClientId}
+                clientName={selectedClient.name}
+              />
+            )}
+
+            {/* Scrollable Messages Area - ONLY this scrolls */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {clientMessages.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  {t.communication.noMessages[lang]}
+                </p>
+              ) : (
+                clientMessages.map((msg, index) => (
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.sender === "coach" ? "justify-end" : "justify-start"}`}
+                    data-testid={`message-${index}`}
+                  >
+                    <div
+                      className={`max-w-[80%] ${
+                        msg.sender === "coach"
+                          ? "bg-primary text-white"
+                          : "bg-card text-foreground border border-border"
+                      } rounded-2xl px-4 py-3 shadow-sm`}
                     >
-                      <ArrowLeft className="w-5 h-5" />
-                    </Button>
-                    <Avatar className="w-10 h-10 bg-primary flex-shrink-0">
-                      <AvatarFallback className="bg-primary text-white font-medium text-sm">
-                        {getInitials(selectedClient.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <h3 className="text-lg font-semibold text-foreground truncate">{selectedClient.name}</h3>
+                      <p className="text-sm leading-relaxed">{msg.content}</p>
+                      
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {msg.attachments.map((attachment) => {
+                            const Icon = getAttachmentIcon(attachment.fileType);
+                            const isImage = attachment.fileType.startsWith("image/");
+                            
+                            return (
+                              <div
+                                key={attachment.id}
+                                className={`rounded-md overflow-hidden ${
+                                  msg.sender === "coach"
+                                    ? "bg-white/10 border border-white/20"
+                                    : "bg-background border"
+                                }`}
+                                data-testid={`attachment-${attachment.id}`}
+                              >
+                                {isImage ? (
+                                  <a
+                                    href={attachment.objectPath}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block hover-elevate"
+                                  >
+                                    <img
+                                      src={attachment.objectPath}
+                                      alt={attachment.fileName}
+                                      className="max-w-full h-auto rounded-md"
+                                    />
+                                  </a>
+                                ) : (
+                                  <a
+                                    href={attachment.objectPath}
+                                    download={attachment.fileName}
+                                    className="flex items-center gap-2 p-2 hover-elevate"
+                                  >
+                                    <Icon className={`w-4 h-4 flex-shrink-0 ${
+                                      msg.sender === "coach" ? "text-white/70" : "text-muted-foreground"
+                                    }`} />
+                                    <div className="flex-1 min-w-0">
+                                      <p className={`text-xs font-medium truncate ${
+                                        msg.sender === "coach" ? "text-white" : "text-foreground"
+                                      }`}>
+                                        {attachment.fileName}
+                                      </p>
+                                      <p className={`text-xs ${
+                                        msg.sender === "coach" ? "text-white/60" : "text-muted-foreground"
+                                      }`}>
+                                        {formatFileSize(attachment.fileSize)}
+                                      </p>
+                                    </div>
+                                    <Download className={`w-4 h-4 flex-shrink-0 ${
+                                      msg.sender === "coach" ? "text-white/70" : "text-muted-foreground"
+                                    }`} />
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <p className={`text-xs mt-1 ${
+                        msg.sender === "coach" ? "text-primary-foreground/70" : "text-muted-foreground"
+                      }`}>
+                        {formatTime(msg.timestamp)}
+                      </p>
                     </div>
                   </div>
-                </div>
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                    {/* AI Suggestions Strip - shows when relevant insights exist */}
-                    {selectedClientId && selectedClient && (
-                      <AISuggestionsStrip 
-                        clientId={selectedClientId}
-                        clientName={selectedClient.name}
-                      />
-                    )}
-                    
-                    <div className="space-y-6 flex-1 overflow-y-auto p-3 sm:p-4">
-                      {clientMessages.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-8">
-                          {t.communication.noMessages[lang]}
-                        </p>
-                      ) : (
-                        clientMessages.map((msg, index) => (
-                          <div
-                            key={msg.id}
-                            className={`flex flex-col ${
-                              msg.sender === "coach" ? "items-end" : "items-start"
-                            }`}
-                            data-testid={`message-${index}`}
-                          >
-                            <div
-                              className={`max-w-[75%] px-4 py-2.5 shadow-sm ${
-                                msg.sender === "coach"
-                                  ? "bg-primary text-white rounded-2xl rounded-tr-sm"
-                                  : "bg-muted text-foreground rounded-2xl rounded-tl-sm"
-                              }`}
-                            >
-                              <p className="text-sm leading-relaxed">{msg.content}</p>
-                              
-                              {msg.attachments && msg.attachments.length > 0 && (
-                                <div className="mt-2 space-y-2">
-                                  {msg.attachments.map((attachment) => {
-                                    const Icon = getAttachmentIcon(attachment.fileType);
-                                    const isImage = attachment.fileType.startsWith("image/");
-                                    
-                                    return (
-                                      <div
-                                        key={attachment.id}
-                                        className={`rounded-md overflow-hidden ${
-                                          msg.sender === "coach"
-                                            ? "bg-white/10 border border-white/20"
-                                            : "bg-background border"
-                                        }`}
-                                        data-testid={`attachment-${attachment.id}`}
-                                      >
-                                        {isImage ? (
-                                          <a
-                                            href={attachment.objectPath}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="block hover-elevate"
-                                          >
-                                            <img
-                                              src={attachment.objectPath}
-                                              alt={attachment.fileName}
-                                              className="max-w-full h-auto rounded-md"
-                                            />
-                                          </a>
-                                        ) : (
-                                          <a
-                                            href={attachment.objectPath}
-                                            download={attachment.fileName}
-                                            className="flex items-center gap-2 p-2 hover-elevate"
-                                          >
-                                            <Icon className={`w-4 h-4 flex-shrink-0 ${
-                                              msg.sender === "coach" ? "text-white/70" : "text-muted-foreground"
-                                            }`} />
-                                            <div className="flex-1 min-w-0">
-                                              <p className={`text-xs font-medium truncate ${
-                                                msg.sender === "coach" ? "text-white" : "text-foreground"
-                                              }`}>
-                                                {attachment.fileName}
-                                              </p>
-                                              <p className={`text-xs ${
-                                                msg.sender === "coach" ? "text-white/60" : "text-muted-foreground"
-                                              }`}>
-                                                {formatFileSize(attachment.fileSize)}
-                                              </p>
-                                            </div>
-                                            <Download className={`w-4 h-4 flex-shrink-0 ${
-                                              msg.sender === "coach" ? "text-white/70" : "text-muted-foreground"
-                                            }`} />
-                                          </a>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1 px-1">
-                              {formatTime(msg.timestamp)}
-                            </p>
-                          </div>
-                        ))
-                      )}
-                      <div ref={messagesEndRef} />
-                    </div>
-                </div>
-                <DragDropFileZone
+                ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Fixed Input Area at Bottom */}
+            <DragDropFileZone
                   onAttachmentsAdded={handleAttachmentsAdded}
                   clientId={selectedClientId || ""}
                   currentAttachmentCount={pendingAttachments.length}
@@ -601,7 +596,5 @@ export default function Communication() {
             )}
           </div>
         </div>
-      </div>
-    </div>
   );
 }
