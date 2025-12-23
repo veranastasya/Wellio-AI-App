@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip, Smile, RefreshCw } from "lucide-react";
+import { Send, Search, X, FileText, Image as ImageIcon, Video, FileAudio, Download, ArrowLeft, Paperclip, Smile, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Message, Client, InsertMessage, MessageAttachment, Coach, SupportedLanguage } from "@shared/schema";
 import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -15,15 +16,27 @@ import { DragDropFileZone } from "@/components/DragDropFileZone";
 import { AISuggestionsStrip } from "@/components/AISuggestionsStrip";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
+// Common emojis for quick access
+const EMOJI_LIST = [
+  "😊", "😄", "😃", "🙂", "😉", "😍", "🥰", "😘",
+  "👍", "👏", "💪", "🎉", "🔥", "⭐", "❤️", "💯",
+  "✅", "🏃", "🏋️", "🥗", "🍎", "💧", "😴", "🧘",
+  "📈", "🎯", "💡", "🙌", "👊", "✨", "🌟", "💚",
+];
+
 export default function Communication() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [validationError, setValidationError] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
+  const [isImageUploading, setIsImageUploading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isInitialLoadRef = useRef(true);
   const lastSelectedClientRef = useRef<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const { data: coachProfile } = useQuery<Coach>({
@@ -225,6 +238,120 @@ export default function Communication() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  // Handle emoji selection - insert at cursor position
+  const handleEmojiSelect = (emoji: string) => {
+    const input = messageInputRef.current;
+    if (input) {
+      const start = input.selectionStart || 0;
+      const end = input.selectionEnd || 0;
+      const newText = messageText.slice(0, start) + emoji + messageText.slice(end);
+      setMessageText(newText);
+      // Set cursor position after the inserted emoji
+      setTimeout(() => {
+        input.focus();
+        input.setSelectionRange(start + emoji.length, start + emoji.length);
+      }, 0);
+    } else {
+      setMessageText((prev) => prev + emoji);
+    }
+    setShowEmojiPicker(false);
+  };
+
+  // Handle image upload
+  const handleImageSelect = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !selectedClientId) return;
+    
+    const allowedImageTypes = [
+      "image/jpeg", "image/png", "image/gif", "image/webp", 
+      "image/heic", "image/heif"
+    ];
+    
+    setIsImageUploading(true);
+    const fileArray = Array.from(files);
+    
+    // Reset input
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+    
+    const validFiles: File[] = [];
+    const errors: string[] = [];
+    
+    fileArray.forEach((file) => {
+      if (!allowedImageTypes.includes(file.type.toLowerCase())) {
+        errors.push(`${file.name}: Invalid image format`);
+      } else if (file.size > 25 * 1024 * 1024) {
+        errors.push(`${file.name}: File too large (max 25MB)`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+    
+    if (errors.length > 0) {
+      toast({
+        title: "Invalid Images",
+        description: errors.join("; "),
+        variant: "destructive",
+      });
+    }
+    
+    if (validFiles.length === 0) {
+      setIsImageUploading(false);
+      return;
+    }
+    
+    try {
+      const uploadedAttachments: MessageAttachment[] = [];
+      
+      for (const file of validFiles) {
+        try {
+          // Get upload URL
+          const uploadRes = await apiRequest("POST", "/api/attachments/upload", {});
+          const uploadData: { uploadURL: string } = await uploadRes.json();
+          
+          // Upload file
+          await fetch(uploadData.uploadURL, {
+            method: "PUT",
+            body: file,
+            headers: { "Content-Type": file.type },
+          });
+          
+          // Save attachment metadata
+          const saveRes = await apiRequest("POST", "/api/attachments/save", {
+            objectURL: uploadData.uploadURL,
+            fileName: file.name,
+            fileType: file.type || "image/jpeg",
+            fileSize: file.size,
+            clientId: selectedClientId,
+          });
+          const saveData: { attachment: MessageAttachment } = await saveRes.json();
+          uploadedAttachments.push(saveData.attachment);
+        } catch (error) {
+          console.error("Error uploading image:", error);
+          errors.push(`${file.name}: Upload failed`);
+        }
+      }
+      
+      if (uploadedAttachments.length > 0) {
+        handleAttachmentsAdded(uploadedAttachments);
+        toast({
+          title: "Images Attached",
+          description: `${uploadedAttachments.length} image(s) ready to send`,
+        });
+      }
+      
+      if (errors.length > 0) {
+        toast({
+          title: "Some Images Failed",
+          description: errors.join("; "),
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsImageUploading(false);
+    }
+  };
+
   if (clientsLoading || messagesLoading) {
     return (
       <div className="bg-background">
@@ -276,7 +403,7 @@ export default function Communication() {
   }
 
   return (
-    <div className="h-[100dvh] flex bg-background overflow-hidden">
+    <div className="h-full flex bg-background overflow-hidden">
       {/* Client List Sidebar */}
       <div 
         data-testid="card-client-list" 
@@ -369,40 +496,27 @@ export default function Communication() {
           <>
             {/* Fixed Chat Header */}
             <div className="bg-card border-b p-4 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {/* Back button - mobile only */}
-                  <button
-                    onClick={() => setSelectedClientId(null)}
-                    className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
-                    data-testid="button-back-to-list"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                  </button>
-                  <Avatar className="w-10 h-10 bg-primary">
-                    <AvatarFallback className="bg-primary text-white font-medium text-sm">
-                      {getInitials(selectedClient.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h2 className="font-semibold text-foreground">{selectedClient.name}</h2>
-                    <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                      <span className="w-2 h-2 bg-green-500 rounded-full" />
-                      Online
-                    </p>
-                  </div>
-                </div>
-                {/* Switch to Client View button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(`/client-login?preview=${selectedClientId}`, '_blank')}
-                  className="text-primary border-primary hover:bg-primary/10 gap-2"
-                  data-testid="button-switch-client-view"
+              <div className="flex items-center gap-3">
+                {/* Back button - mobile only */}
+                <button
+                  onClick={() => setSelectedClientId(null)}
+                  className="lg:hidden p-2 -ml-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
+                  data-testid="button-back-to-list"
                 >
-                  <RefreshCw className="w-4 h-4" />
-                  Switch to Client View
-                </Button>
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <Avatar className="w-10 h-10 bg-primary">
+                  <AvatarFallback className="bg-primary text-white font-medium text-sm">
+                    {getInitials(selectedClient.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h2 className="font-semibold text-foreground">{selectedClient.name}</h2>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    <span className="w-2 h-2 bg-green-500 rounded-full" />
+                    Online
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -555,6 +669,17 @@ export default function Communication() {
                     )}
                     
                     <div className="flex items-center gap-3">
+                      {/* Hidden image input */}
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        multiple
+                        accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif"
+                        onChange={(e) => handleImageSelect(e.target.files)}
+                        className="hidden"
+                        data-testid="input-image-hidden"
+                      />
+                      
                       {/* Attachment icon */}
                       <InlineFileAttachment
                         onAttachmentsAdded={handleAttachmentsAdded}
@@ -564,15 +689,22 @@ export default function Communication() {
                         maxFiles={5}
                         maxFileSize={25 * 1024 * 1024}
                       />
-                      {/* Image icon */}
+                      
+                      {/* Image icon - now functional */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => imageInputRef.current?.click()}
+                            disabled={isImageUploading || !selectedClientId}
+                            className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                             data-testid="button-add-image"
                           >
-                            <ImageIcon className="w-5 h-5" />
+                            {isImageUploading ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                              <ImageIcon className="w-5 h-5" />
+                            )}
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>Add image</TooltipContent>
@@ -581,6 +713,7 @@ export default function Communication() {
                       {/* Input field */}
                       <div className="flex-1 flex items-center bg-muted/50 rounded-full px-4 py-2">
                         <Input
+                          ref={messageInputRef}
                           placeholder={t.communication.typeMessage[lang]}
                           value={messageText}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -598,9 +731,9 @@ export default function Communication() {
                         />
                       </div>
                       
-                      {/* Emoji icon */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
+                      {/* Emoji picker */}
+                      <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                        <PopoverTrigger asChild>
                           <button
                             type="button"
                             className="text-muted-foreground hover:text-foreground transition-colors"
@@ -608,9 +741,23 @@ export default function Communication() {
                           >
                             <Smile className="w-5 h-5" />
                           </button>
-                        </TooltipTrigger>
-                        <TooltipContent>Add emoji</TooltipContent>
-                      </Tooltip>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2" align="end" side="top">
+                          <div className="grid grid-cols-8 gap-1">
+                            {EMOJI_LIST.map((emoji) => (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() => handleEmojiSelect(emoji)}
+                                className="p-1.5 text-lg hover:bg-muted rounded transition-colors"
+                                data-testid={`emoji-${emoji}`}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                       
                       {/* Send button */}
                       <Button
