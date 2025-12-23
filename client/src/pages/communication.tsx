@@ -21,20 +21,23 @@ export default function Communication() {
   const [searchQuery, setSearchQuery] = useState("");
   const [validationError, setValidationError] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [isMobile, setIsMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isInitialLoadRef = useRef(true);
   const lastSelectedClientRef = useRef<string | null>(null);
   const { toast } = useToast();
 
-  // Track window size for mobile/desktop view switching
+  // Track window size for mobile/desktop view switching - check on mount and resize
   useEffect(() => {
-    const handleResize = () => {
+    const checkMobile = () => {
       setIsMobile(window.innerWidth < 1024);
     };
     
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    // Check immediately on mount
+    checkMobile();
+    
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const { data: coachProfile } = useQuery<Coach>({
