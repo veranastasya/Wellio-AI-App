@@ -89,6 +89,12 @@ function getEventLabel(eventType: string, lang: SupportedLanguage = "en"): strin
   }
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function ParsedDataDisplay({ parsedData, lang = "en" }: { parsedData: AIParsedData | null; lang?: SupportedLanguage }) {
   if (!parsedData) return null;
 
@@ -957,11 +963,23 @@ export default function ClientAITracker() {
         {pendingImages.length > 0 && (
           <div className="px-4 pt-3 flex flex-wrap gap-2 max-w-3xl mx-auto">
             {pendingImages.map((image) => (
-              <ImagePreview
+              <div
                 key={image.id}
-                image={image}
-                onRemove={() => removeImage(image.id)}
-              />
+                className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full text-sm"
+                data-testid={`pending-image-${image.id}`}
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="truncate max-w-[120px]">{image.file.name}</span>
+                <span className="text-xs text-muted-foreground">({formatBytes(image.file.size)})</span>
+                <button
+                  type="button"
+                  onClick={() => removeImage(image.id)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  data-testid={`button-remove-image-${image.id}`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
             ))}
           </div>
         )}
