@@ -994,14 +994,14 @@ export default function ClientAITracker() {
           data-testid="input-image-upload"
         />
         
-        {/* Composer row - unified input area */}
-        <div className="flex items-center gap-2 px-4 py-3 max-w-3xl mx-auto">
-          {/* Unified pill with paperclip, input, and emoji inside */}
-          <div className="flex-1 flex items-center bg-muted/60 dark:bg-muted/40 rounded-full border border-border/50 pl-2 pr-3 py-1 min-h-[44px]">
+        {/* Telegram-style compact composer */}
+        <div className="flex items-center gap-2 px-3 py-2 max-w-3xl mx-auto">
+          {/* Unified pill: paperclip + input + emoji */}
+          <div className="flex-1 flex items-center h-12 bg-muted/50 dark:bg-muted/30 rounded-full border border-border/40 px-1.5 gap-1">
             {/* Paperclip inside pill for images */}
             <button
               type="button"
-              className="flex-shrink-0 rounded-full w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              className="h-9 w-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors flex-shrink-0"
               onClick={() => imageInputRef.current?.click()}
               disabled={isSubmitting}
               data-testid="button-attach-image"
@@ -1017,32 +1017,32 @@ export default function ClientAITracker() {
               onKeyDown={handleKeyDown}
               placeholder={AI_TRACKER_TRANSLATIONS.placeholder[preferredLanguage]}
               disabled={isSubmitting}
-              className="flex-1 bg-transparent border-0 focus:outline-none text-sm placeholder:text-muted-foreground px-2"
+              className="flex-1 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground min-w-0"
               data-testid="input-smart-log"
             />
             
             {/* Emoji button inside pill */}
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+              className="h-9 w-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors flex-shrink-0"
               data-testid="button-emoji"
             >
               <Smile className="w-5 h-5" />
             </button>
           </div>
           
-          {/* Send button - circular, outside the pill */}
+          {/* Send button - circular */}
           <Button
             onClick={handleSubmit}
             disabled={(!inputText.trim() && pendingImages.length === 0) || isSubmitting}
             size="icon"
-            className="flex-shrink-0 rounded-full w-10 h-10 bg-primary hover:bg-primary/90"
+            className="flex-shrink-0 rounded-full h-10 w-10 bg-primary hover:bg-primary/90"
             data-testid="button-submit-smart-log"
           >
             {isSubmitting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <Send className="w-4 h-4" />
+              <Send className="w-5 h-5" />
             )}
           </Button>
         </div>

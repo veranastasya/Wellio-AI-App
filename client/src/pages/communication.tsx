@@ -567,10 +567,10 @@ export default function Communication() {
                       </div>
                     )}
                     
-                    {/* Telegram-style composer row - unified input area */}
-                    <div className="flex items-center gap-2 px-4 py-3">
-                      {/* Unified pill with paperclip, input, and emoji inside */}
-                      <div className="flex-1 flex items-center bg-muted/60 dark:bg-muted/40 rounded-full border border-border/50 pl-2 pr-3 py-1 min-h-[44px]">
+                    {/* Telegram-style compact composer */}
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      {/* Unified pill: paperclip + input + emoji */}
+                      <div className="flex-1 flex items-center h-12 bg-muted/50 dark:bg-muted/30 rounded-full border border-border/40 px-1.5 gap-1">
                         {/* Paperclip inside pill */}
                         <InlineFileAttachment
                           onAttachmentsAdded={handleAttachmentsAdded}
@@ -579,25 +579,26 @@ export default function Communication() {
                           disabled={!selectedClientId || sendMessageMutation.isPending}
                           maxFiles={5}
                           maxFileSize={25 * 1024 * 1024}
-                          className="rounded-full w-8 h-8"
+                          className="rounded-full h-9 w-9 flex-shrink-0"
                           iconClassName="w-5 h-5"
                         />
                         
-                        <Input
+                        <input
                           ref={messageInputRef}
+                          type="text"
                           placeholder={t.communication.typeMessage[lang]}
                           value={messageText}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          onChange={(e) => {
                             setMessageText(e.target.value);
                             if (validationError) setValidationError("");
                           }}
-                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                          onKeyDown={(e) => {
                             if (e.key === "Enter" && !e.shiftKey) {
                               e.preventDefault();
                               handleSendMessage();
                             }
                           }}
-                          className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 text-sm px-2"
+                          className="flex-1 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground min-w-0"
                           data-testid="input-message"
                         />
                         
@@ -606,7 +607,7 @@ export default function Communication() {
                           <PopoverTrigger asChild>
                             <button
                               type="button"
-                              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                              className="h-9 w-9 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors flex-shrink-0"
                               data-testid="button-emoji"
                             >
                               <Smile className="w-5 h-5" />
@@ -630,18 +631,18 @@ export default function Communication() {
                         </Popover>
                       </div>
                       
-                      {/* Send button - circular, outside the pill */}
+                      {/* Send button - circular */}
                       <Button
                         onClick={handleSendMessage}
                         disabled={sendMessageMutation.isPending || (!messageText.trim() && pendingAttachments.length === 0)}
                         size="icon"
-                        className="flex-shrink-0 rounded-full w-10 h-10 bg-primary hover:bg-primary/90"
+                        className="flex-shrink-0 rounded-full h-10 w-10 bg-primary hover:bg-primary/90"
                         data-testid="button-send-message"
                       >
                         {sendMessageMutation.isPending ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                          <Send className="w-4 h-4" />
+                          <Send className="w-5 h-5" />
                         )}
                       </Button>
                     </div>
