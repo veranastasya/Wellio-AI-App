@@ -1,155 +1,35 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, FileText, Download, Calendar, Target, CheckCircle2, Sparkles, CalendarDays, ClipboardList, Dumbbell, UtensilsCrossed, ListChecks, Clock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  Loader2, ChevronLeft, ChevronRight, Dumbbell, UtensilsCrossed, 
+  Target, CheckCircle2, Info, Play, Clock, Sparkles
+} from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Client, ClientPlan } from "@shared/schema";
+import type { Client, ClientPlan, WeeklyScheduleItem } from "@shared/schema";
 import { CLIENT_UI_TRANSLATIONS, type SupportedLanguage } from "@shared/schema";
-import { format, parseISO, isWithinInterval } from "date-fns";
+import { format, parseISO, startOfWeek, endOfWeek, addWeeks, subWeeks, isSameDay, isToday, eachDayOfInterval, addDays } from "date-fns";
+import { cn } from "@/lib/utils";
 
-function MarkdownRenderer({ content }: { content: string }) {
-  const lines = content.split('\n');
-  const elements: JSX.Element[] = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i];
-    
-    if (!line.trim()) {
-      elements.push(<div key={`empty-${i}`} className="h-2" />);
-      i++;
-      continue;
-    }
-
-    if (line.startsWith('### ')) {
-      elements.push(
-        <h3 key={`h3-${i}`} className="text-lg font-bold text-foreground mt-4 mb-2">
-          {line.substring(4)}
-        </h3>
-      );
-      i++;
-    } else if (line.startsWith('## ')) {
-      elements.push(
-        <h2 key={`h2-${i}`} className="text-xl font-bold text-foreground mt-5 mb-3">
-          {line.substring(3)}
-        </h2>
-      );
-      i++;
-    } else if (line.startsWith('# ')) {
-      elements.push(
-        <h1 key={`h1-${i}`} className="text-2xl font-bold text-foreground mt-6 mb-3">
-          {line.substring(2)}
-        </h1>
-      );
-      i++;
-    } else if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') {
-      elements.push(
-        <div key={`hr-${i}`} className="border-t border-border my-4" />
-      );
-      i++;
-    } else if ((line.trim().startsWith('- ') || line.trim().startsWith('* ')) && line.trim().endsWith(':')) {
-      const headerText = line.trim().substring(2);
-      elements.push(
-        <h4 key={`subheader-${i}`} className="text-base font-semibold text-primary mt-4 mb-2">
-          {renderInlineFormatting(headerText)}
-        </h4>
-      );
-      i++;
-    } else if (line.includes('**')) {
-      elements.push(
-        <p key={`p-${i}`} className="text-sm leading-relaxed text-foreground">
-          {renderInlineFormatting(line)}
-        </p>
-      );
-      i++;
-    } else if (line.trim().startsWith('- ') || line.trim().startsWith('* ') || line.trim().startsWith('• ')) {
-      elements.push(
-        <div key={`li-${i}`} className="flex gap-3 text-sm leading-relaxed text-foreground ml-2">
-          <span className="text-primary mt-0.5">•</span>
-          <span>{renderInlineFormatting(line.trim().substring(2))}</span>
-        </div>
-      );
-      i++;
-    } else if (/^\d+\. /.test(line.trim())) {
-      const match = line.trim().match(/^(\d+)\. (.*)$/);
-      if (match) {
-        elements.push(
-          <div key={`ol-${i}`} className="flex gap-3 text-sm leading-relaxed text-foreground ml-2">
-            <span className="text-primary font-semibold min-w-fit">{match[1]}.</span>
-            <span>{renderInlineFormatting(match[2])}</span>
-          </div>
-        );
-      }
-      i++;
-    } else {
-      elements.push(
-        <p key={`text-${i}`} className="text-sm leading-relaxed text-foreground">
-          {renderInlineFormatting(line)}
-        </p>
-      );
-      i++;
-    }
-  }
-
-  return <div className="space-y-2">{elements}</div>;
-}
-
-function renderInlineFormatting(text: string): JSX.Element | string {
-  const parts: (JSX.Element | string)[] = [];
-  let lastIndex = 0;
-  const regex = /\*\*(.+?)\*\*|\*(.+?)\*|__(.+?)__(?!_)|_(.+?)_(?!_)/g;
-  let match;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.substring(lastIndex, match.index));
-    }
-
-    const boldText = match[1];
-    const italicText = match[2];
-    const boldText2 = match[3];
-    const italicText2 = match[4];
-
-    if (boldText) {
-      parts.push(
-        <strong key={`bold-${match.index}`} className="font-bold">
-          {boldText}
-        </strong>
-      );
-    } else if (italicText) {
-      parts.push(
-        <em key={`italic-${match.index}`} className="italic">
-          {italicText}
-        </em>
-      );
-    } else if (boldText2) {
-      parts.push(
-        <strong key={`bold2-${match.index}`} className="font-bold">
-          {boldText2}
-        </strong>
-      );
-    } else if (italicText2) {
-      parts.push(
-        <em key={`italic2-${match.index}`} className="italic">
-          {italicText2}
-        </em>
-      );
-    }
-
-    lastIndex = regex.lastIndex;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.substring(lastIndex));
-  }
-
-  return parts.length === 0 ? text : <>{parts}</>;
+interface MyPlanData {
+  weekStartDay: string;
+  weeklyExists: boolean;
+  program: {
+    id: string;
+    name: string;
+    description: string | null;
+    content: any;
+    progressPercent: number;
+    createdAt: string;
+  } | null;
+  scheduleItems: WeeklyScheduleItem[];
 }
 
 interface Exercise {
@@ -158,6 +38,7 @@ interface Exercise {
   sets: number;
   reps: number;
   note?: string;
+  completed?: boolean;
 }
 
 interface TrainingDay {
@@ -165,6 +46,7 @@ interface TrainingDay {
   day: string;
   date?: string;
   title: string;
+  duration?: number;
   exercises: Exercise[];
 }
 
@@ -172,10 +54,11 @@ interface Meal {
   id: string;
   type: string;
   name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  completed?: boolean;
 }
 
 interface NutritionDay {
@@ -190,303 +73,672 @@ interface Habit {
   id: string;
   name: string;
   frequency: string;
-  completed: boolean;
+  completed?: boolean;
 }
 
-interface Task {
+interface ProgramPhase {
   id: string;
   name: string;
-  dueDay: string;
-  completed: boolean;
+  weeks: string;
+  status: "completed" | "current" | "upcoming";
+  description?: string;
 }
 
 interface WeeklyProgramContent {
   type: string;
-  week: number;
+  week?: number;
+  totalWeeks?: number;
+  programName?: string;
+  programDescription?: string;
   weekStartDate?: string;
   weekEndDate?: string;
-  training: TrainingDay[];
-  nutrition: NutritionDay[];
-  habits: Habit[];
-  tasks: Task[];
+  training?: TrainingDay[];
+  nutrition?: NutritionDay[];
+  habits?: Habit[];
+  phases?: ProgramPhase[];
 }
 
-function WeeklyProgramRenderer({ content }: { content: WeeklyProgramContent }) {
-  const { training, nutrition, habits, tasks } = content;
-  
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function getWeekDates(baseDate: Date, weekStartDay: string = "Mon"): Date[] {
+  const startOffset = DAY_NAMES.indexOf(weekStartDay);
+  const start = startOfWeek(baseDate, { weekStartsOn: startOffset === -1 ? 1 : (startOffset as 0 | 1 | 2 | 3 | 4 | 5 | 6) });
+  return eachDayOfInterval({ start, end: addDays(start, 6) });
+}
+
+function DayChips({ 
+  weekDates, 
+  selectedDate, 
+  onSelectDate 
+}: { 
+  weekDates: Date[]; 
+  selectedDate: Date; 
+  onSelectDate: (date: Date) => void;
+}) {
   return (
-    <div className="space-y-6">
-      {training && training.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <Dumbbell className="w-5 h-5" />
-            <h3>Training Schedule</h3>
-          </div>
-          <div className="space-y-4">
-            {training.map((day) => (
-              <div key={day.id} className="border rounded-lg p-4 bg-card">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <span className="font-semibold text-foreground">{day.title}</span>
-                    <span className="text-muted-foreground text-sm ml-2">({day.day})</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {day.exercises.map((exercise) => (
-                    <div key={exercise.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                      <span className="text-sm text-foreground">{exercise.name}</span>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span>{String(exercise.sets)} sets</span>
-                        <span>{String(exercise.reps)} reps</span>
-                        {exercise.note && (
-                          <span className="text-xs italic text-primary/70">{exercise.note}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {nutrition && nutrition.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <UtensilsCrossed className="w-5 h-5" />
-            <h3>Nutrition Plan</h3>
-          </div>
-          <div className="space-y-4">
-            {nutrition.map((day) => (
-              <div key={day.id} className="border rounded-lg p-4 bg-card">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <span className="font-semibold text-foreground">{day.title}</span>
-                    <span className="text-muted-foreground text-sm ml-2">({day.day})</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {day.meals.map((meal) => (
-                    <div key={meal.id} className="py-2 border-b border-border last:border-0">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-xs text-muted-foreground uppercase">{meal.type}</span>
-                          <p className="text-sm font-medium text-foreground">{meal.name}</p>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{String(meal.calories)} cal</span>
-                          <span className="text-blue-500">P:{String(meal.protein)}g</span>
-                          <span className="text-amber-500">C:{String(meal.carbs)}g</span>
-                          <span className="text-rose-500">F:{String(meal.fat)}g</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {habits && habits.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <ListChecks className="w-5 h-5" />
-            <h3>Daily Habits</h3>
-          </div>
-          <div className="border rounded-lg p-4 bg-card space-y-2">
-            {habits.map((habit) => (
-              <div key={habit.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                <span className="text-sm text-foreground">{habit.name}</span>
-                <Badge variant="secondary" className="text-xs">{habit.frequency}</Badge>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tasks && tasks.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-primary font-semibold">
-            <Clock className="w-5 h-5" />
-            <h3>Weekly Tasks</h3>
-          </div>
-          <div className="border rounded-lg p-4 bg-card space-y-2">
-            {tasks.map((task) => (
-              <div key={task.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                <span className="text-sm text-foreground">{task.name}</span>
-                <Badge variant="outline" className="text-xs">{task.dueDay}</Badge>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2">
+      {weekDates.map((date) => {
+        const isSelected = isSameDay(date, selectedDate);
+        const isTodayDate = isToday(date);
+        
+        return (
+          <button
+            key={date.toISOString()}
+            onClick={() => onSelectDate(date)}
+            className={cn(
+              "flex flex-col items-center min-w-[52px] sm:min-w-[64px] p-2 sm:p-3 rounded-lg border transition-all",
+              isSelected 
+                ? "border-primary bg-primary/5 text-primary" 
+                : "border-border hover-elevate"
+            )}
+            data-testid={`day-chip-${format(date, 'yyyy-MM-dd')}`}
+          >
+            <span className={cn(
+              "text-xs font-medium",
+              isSelected ? "text-primary" : "text-muted-foreground"
+            )}>
+              {format(date, 'EEE')}
+            </span>
+            <span className={cn(
+              "text-sm font-semibold",
+              isSelected ? "text-primary" : "text-foreground"
+            )}>
+              {format(date, 'MMM d')}
+            </span>
+            {isTodayDate && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mt-1 bg-primary/20 text-primary">
+                Today
+              </Badge>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function PlanCard({ plan, isCurrentWeek = false }: { plan: ClientPlan; isCurrentWeek?: boolean }) {
-  const planContentObj = plan.planContent as any;
+function ExerciseItem({ 
+  exercise, 
+  onToggle 
+}: { 
+  exercise: Exercise; 
+  onToggle: (id: string, completed: boolean) => void;
+}) {
+  const isCompleted = exercise.completed ?? false;
   
-  const isWeeklyProgram = planContentObj?.type === "weekly_program" && 
-    (planContentObj?.training || planContentObj?.nutrition || planContentObj?.habits || planContentObj?.tasks);
-  
-  let contentText = '';
-  if (!isWeeklyProgram) {
-    if (planContentObj?.content && typeof planContentObj.content === 'string') {
-      contentText = planContentObj.content;
-    } else if (planContentObj?.messages && Array.isArray(planContentObj.messages)) {
-      const assistantMessages = planContentObj.messages.filter((msg: any) => msg.role === "assistant");
-      contentText = assistantMessages.map((msg: any) => msg.content).join('\n\n');
-    }
-  }
-
-  const formatWeekRange = (startDate: string | null, endDate: string | null) => {
-    if (!startDate || !endDate) return null;
-    try {
-      const start = parseISO(startDate);
-      const end = parseISO(endDate);
-      return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
-    } catch {
-      return null;
-    }
-  };
-
-  const weekRange = formatWeekRange(plan.weekStartDate, plan.weekEndDate);
-
   return (
-    <Card data-testid={`plan-${plan.id}`} className={isCurrentWeek ? "border-primary/50 bg-primary/5" : ""}>
-      <CardHeader className="p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <CardTitle className="text-lg sm:text-xl">{plan.planName}</CardTitle>
-              {isCurrentWeek && (
-                <Badge variant="default" className="text-xs">Current Week</Badge>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground">
-              {weekRange && (
-                <div className="flex items-center gap-1">
-                  <CalendarDays className="w-3 h-3 sm:w-4 sm:h-4" />
-                  {weekRange}
-                </div>
-              )}
-              {!weekRange && (
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                  Created {new Date(plan.createdAt).toLocaleDateString()}
-                </div>
-              )}
-            </div>
-          </div>
-          {plan.pdfUrl && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(plan.pdfUrl!, "_blank")}
-              data-testid="button-download-pdf"
-              className="w-full sm:w-auto min-h-10"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Download PDF
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 sm:p-6 pt-0">
-        <ScrollArea className="h-[300px] sm:h-[400px] pr-2 sm:pr-4">
-          <div className="space-y-4">
-            {isWeeklyProgram ? (
-              <WeeklyProgramRenderer content={planContentObj as WeeklyProgramContent} />
-            ) : contentText ? (
-              <MarkdownRenderer content={contentText} />
-            ) : (
-              <p className="text-muted-foreground text-sm italic">
-                No plan content available
-              </p>
-            )}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+    <div 
+      className={cn(
+        "flex items-start gap-3 p-3 sm:p-4 rounded-lg border transition-all",
+        isCompleted ? "bg-primary/5 border-primary/30" : "bg-card border-border"
+      )}
+      data-testid={`exercise-item-${exercise.id}`}
+    >
+      <Checkbox
+        checked={isCompleted}
+        onCheckedChange={(checked) => onToggle(exercise.id, checked as boolean)}
+        className="mt-0.5 h-5 w-5"
+        data-testid={`checkbox-exercise-${exercise.id}`}
+      />
+      <div className="flex-1 min-w-0">
+        <p className={cn(
+          "font-medium text-sm sm:text-base",
+          isCompleted && "line-through text-muted-foreground"
+        )}>
+          {exercise.name}
+        </p>
+        <p className="text-xs sm:text-sm text-muted-foreground">
+          {exercise.sets} sets • {exercise.reps} reps
+        </p>
+        {exercise.note && (
+          <p className="text-xs text-primary/70 mt-1 flex items-center gap-1">
+            <span className="text-amber-500">💡</span> {exercise.note}
+          </p>
+        )}
+      </div>
+    </div>
   );
 }
 
-function WeeklyPlanAccordionItem({ plan, isCurrentWeek = false }: { plan: ClientPlan; isCurrentWeek?: boolean }) {
-  const planContentObj = plan.planContent as any;
+function MealItem({ 
+  meal, 
+  onToggle 
+}: { 
+  meal: Meal; 
+  onToggle: (id: string, completed: boolean) => void;
+}) {
+  const isCompleted = meal.completed ?? false;
   
-  const isWeeklyProgram = planContentObj?.type === "weekly_program" && 
-    (planContentObj?.training || planContentObj?.nutrition || planContentObj?.habits || planContentObj?.tasks);
-  
-  let contentText = '';
-  if (!isWeeklyProgram) {
-    if (planContentObj?.content && typeof planContentObj.content === 'string') {
-      contentText = planContentObj.content;
-    } else if (planContentObj?.messages && Array.isArray(planContentObj.messages)) {
-      const assistantMessages = planContentObj.messages.filter((msg: any) => msg.role === "assistant");
-      contentText = assistantMessages.map((msg: any) => msg.content).join('\n\n');
-    }
-  }
-
-  const formatWeekRange = (startDate: string | null, endDate: string | null) => {
-    if (!startDate || !endDate) return "Week Plan";
-    try {
-      const start = parseISO(startDate);
-      const end = parseISO(endDate);
-      return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
-    } catch {
-      return "Week Plan";
-    }
-  };
-
-  const weekRange = formatWeekRange(plan.weekStartDate, plan.weekEndDate);
-
   return (
-    <AccordionItem value={plan.id} className={isCurrentWeek ? "border-primary/50 bg-primary/5 rounded-lg" : ""}>
-      <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid={`accordion-trigger-${plan.id}`}>
-        <div className="flex items-center gap-3 text-left">
-          <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold">{plan.planName}</span>
-              {isCurrentWeek && (
-                <Badge variant="default" className="text-xs">Current</Badge>
-              )}
-            </div>
-            <span className="text-sm text-muted-foreground">{weekRange}</span>
+    <div 
+      className={cn(
+        "flex items-start gap-3 p-3 sm:p-4 rounded-lg border transition-all",
+        isCompleted ? "bg-primary/5 border-primary/30" : "bg-card border-border"
+      )}
+      data-testid={`meal-item-${meal.id}`}
+    >
+      <Checkbox
+        checked={isCompleted}
+        onCheckedChange={(checked) => onToggle(meal.id, checked as boolean)}
+        className="mt-0.5 h-5 w-5"
+        data-testid={`checkbox-meal-${meal.id}`}
+      />
+      <div className="flex-1 min-w-0">
+        <span className="text-[10px] uppercase text-muted-foreground font-medium">{meal.type}</span>
+        <p className={cn(
+          "font-medium text-sm sm:text-base",
+          isCompleted && "line-through text-muted-foreground"
+        )}>
+          {meal.name}
+        </p>
+        {(meal.calories || meal.protein) && (
+          <div className="flex gap-2 text-xs text-muted-foreground mt-1">
+            {meal.calories && <span>{meal.calories} cal</span>}
+            {meal.protein && <span className="text-blue-500">P:{meal.protein}g</span>}
+            {meal.carbs && <span className="text-amber-500">C:{meal.carbs}g</span>}
+            {meal.fat && <span className="text-rose-500">F:{meal.fat}g</span>}
           </div>
-          {plan.pdfUrl && (
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HabitItem({ 
+  habit, 
+  onToggle 
+}: { 
+  habit: Habit; 
+  onToggle: (id: string, completed: boolean) => void;
+}) {
+  const isCompleted = habit.completed ?? false;
+  
+  return (
+    <div 
+      className={cn(
+        "flex items-center gap-3 p-3 sm:p-4 rounded-lg border transition-all",
+        isCompleted ? "bg-primary/5 border-primary/30" : "bg-card border-border"
+      )}
+      data-testid={`habit-item-${habit.id}`}
+    >
+      <Checkbox
+        checked={isCompleted}
+        onCheckedChange={(checked) => onToggle(habit.id, checked as boolean)}
+        className="h-5 w-5"
+        data-testid={`checkbox-habit-${habit.id}`}
+      />
+      <div className="flex-1 min-w-0">
+        <p className={cn(
+          "font-medium text-sm sm:text-base",
+          isCompleted && "line-through text-muted-foreground"
+        )}>
+          {habit.name}
+        </p>
+        <p className="text-xs text-muted-foreground">{habit.frequency}</p>
+      </div>
+    </div>
+  );
+}
+
+function TrainingSection({ 
+  training, 
+  selectedDate,
+  onToggleExercise 
+}: { 
+  training: TrainingDay[]; 
+  selectedDate: Date;
+  onToggleExercise: (exerciseId: string, completed: boolean) => void;
+}) {
+  const dayName = format(selectedDate, 'EEEE');
+  const todayTraining = training.find(t => 
+    t.day.toLowerCase() === dayName.toLowerCase() || 
+    (t.date && isSameDay(parseISO(t.date), selectedDate))
+  );
+  
+  if (!todayTraining || todayTraining.exercises.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center">
+          <Dumbbell className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-muted-foreground text-sm">No training scheduled for {dayName}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  const completedCount = todayTraining.exercises.filter(e => e.completed).length;
+  const totalCount = todayTraining.exercises.length;
+  
+  return (
+    <Accordion type="single" defaultValue="training" collapsible>
+      <AccordionItem value="training" className="border rounded-lg">
+        <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="accordion-training">
+          <div className="flex items-center gap-3 text-left">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Dumbbell className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-foreground">{todayTraining.title}</p>
+              <p className="text-sm text-muted-foreground">
+                {completedCount} of {totalCount} exercises
+                {todayTraining.duration && ` • ${todayTraining.duration} min`}
+              </p>
+            </div>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="px-4 pb-4">
+          <div className="space-y-2">
+            {todayTraining.exercises.map((exercise) => (
+              <ExerciseItem 
+                key={exercise.id} 
+                exercise={exercise} 
+                onToggle={onToggleExercise}
+              />
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
+function NutritionSection({ 
+  nutrition, 
+  selectedDate,
+  onToggleMeal 
+}: { 
+  nutrition: NutritionDay[]; 
+  selectedDate: Date;
+  onToggleMeal: (mealId: string, completed: boolean) => void;
+}) {
+  const dayName = format(selectedDate, 'EEEE');
+  const todayNutrition = nutrition.find(n => 
+    n.day.toLowerCase() === dayName.toLowerCase() ||
+    (n.date && isSameDay(parseISO(n.date), selectedDate))
+  );
+  
+  if (!todayNutrition || todayNutrition.meals.length === 0) {
+    return null;
+  }
+  
+  const completedCount = todayNutrition.meals.filter(m => m.completed).length;
+  const totalCount = todayNutrition.meals.length;
+  
+  return (
+    <Accordion type="single" collapsible>
+      <AccordionItem value="nutrition" className="border rounded-lg">
+        <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="accordion-nutrition">
+          <div className="flex items-center gap-3 text-left">
+            <div className="p-2 rounded-lg bg-orange-500/10">
+              <UtensilsCrossed className="w-5 h-5 text-orange-500" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-foreground">Nutrition Plan</p>
+              <p className="text-sm text-muted-foreground">
+                {completedCount} of {totalCount} meals
+              </p>
+            </div>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="px-4 pb-4">
+          <div className="space-y-2">
+            {todayNutrition.meals.map((meal) => (
+              <MealItem 
+                key={meal.id} 
+                meal={meal} 
+                onToggle={onToggleMeal}
+              />
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
+function HabitsSection({ 
+  habits,
+  onToggleHabit 
+}: { 
+  habits: Habit[];
+  onToggleHabit: (habitId: string, completed: boolean) => void;
+}) {
+  if (!habits || habits.length === 0) return null;
+  
+  const completedCount = habits.filter(h => h.completed).length;
+  const totalCount = habits.length;
+  
+  return (
+    <Accordion type="single" collapsible>
+      <AccordionItem value="habits" className="border rounded-lg">
+        <AccordionTrigger className="px-4 py-3 hover:no-underline" data-testid="accordion-habits">
+          <div className="flex items-center gap-3 text-left">
+            <div className="p-2 rounded-lg bg-violet-500/10">
+              <Target className="w-5 h-5 text-violet-500" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-foreground">Daily Habits</p>
+              <p className="text-sm text-muted-foreground">
+                {completedCount} of {totalCount} habits
+              </p>
+            </div>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="px-4 pb-4">
+          <div className="space-y-2">
+            {habits.map((habit) => (
+              <HabitItem 
+                key={habit.id} 
+                habit={habit} 
+                onToggle={onToggleHabit}
+              />
+            ))}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
+function ThisWeekTab({ 
+  planData, 
+  weeklyContent,
+  onViewProgram
+}: { 
+  planData: MyPlanData;
+  weeklyContent: WeeklyProgramContent | null;
+  onViewProgram: () => void;
+}) {
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  
+  const weekDates = useMemo(() => {
+    const baseDate = currentWeekOffset === 0 
+      ? new Date() 
+      : addWeeks(new Date(), currentWeekOffset);
+    return getWeekDates(baseDate, planData.weekStartDay);
+  }, [currentWeekOffset, planData.weekStartDay]);
+  
+  const weekStart = weekDates[0];
+  const weekEnd = weekDates[weekDates.length - 1];
+  
+  const handleToggleExercise = (exerciseId: string, completed: boolean) => {
+    console.log('Toggle exercise:', exerciseId, completed);
+  };
+  
+  const handleToggleMeal = (mealId: string, completed: boolean) => {
+    console.log('Toggle meal:', mealId, completed);
+  };
+  
+  const handleToggleHabit = (habitId: string, completed: boolean) => {
+    console.log('Toggle habit:', habitId, completed);
+  };
+  
+  const training = weeklyContent?.training || [];
+  const nutrition = weeklyContent?.nutrition || [];
+  const habits = weeklyContent?.habits || [];
+  
+  const dayName = format(selectedDate, 'EEEE');
+  const todayTraining = training.find(t => t.day.toLowerCase() === dayName.toLowerCase());
+  const todayNutrition = nutrition.find(n => n.day.toLowerCase() === dayName.toLowerCase());
+  
+  const totalItems = (todayTraining?.exercises.length || 0) + 
+                     (todayNutrition?.meals.length || 0) + 
+                     (habits.length || 0);
+  const completedItems = (todayTraining?.exercises.filter(e => e.completed).length || 0) +
+                         (todayNutrition?.meals.filter(m => m.completed).length || 0) +
+                         (habits.filter(h => h.completed).length || 0);
+  const progressPercent = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+  
+  return (
+    <div className="space-y-4">
+      {planData.program && (
+        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">{planData.program.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Week {weeklyContent?.week || 1} of {weeklyContent?.totalWeeks || 12}
+                </p>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onViewProgram}
+              className="text-primary"
+              data-testid="button-view-program"
+            >
+              View Full Program
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      
+      <Card>
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
             <Button
               variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(plan.pdfUrl!, "_blank");
-              }}
-              data-testid={`button-download-pdf-${plan.id}`}
+              size="sm"
+              onClick={() => setCurrentWeekOffset(prev => prev - 1)}
+              data-testid="button-prev-week"
             >
-              <Download className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Previous Week
             </Button>
-          )}
+            
+            <div className="flex items-center gap-2 text-sm">
+              {currentWeekOffset === 0 && (
+                <Badge variant="outline" className="text-primary border-primary">
+                  <Play className="w-3 h-3 mr-1" />
+                  Current Week
+                </Badge>
+              )}
+              <span className="text-muted-foreground">
+                {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d')}
+              </span>
+            </div>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentWeekOffset(prev => prev + 1)}
+              data-testid="button-next-week"
+            >
+              Next Week
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+          
+          <DayChips
+            weekDates={weekDates}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="font-semibold text-foreground">{dayName}'s Progress</p>
+              <p className="text-sm text-muted-foreground">
+                {completedItems} of {totalItems} completed
+              </p>
+            </div>
+            <span className="text-xl font-bold text-primary">{progressPercent}%</span>
+          </div>
+          <Progress value={progressPercent} className="h-2" />
+        </CardContent>
+      </Card>
+      
+      <div className="space-y-3">
+        <TrainingSection 
+          training={training}
+          selectedDate={selectedDate}
+          onToggleExercise={handleToggleExercise}
+        />
+        <NutritionSection 
+          nutrition={nutrition}
+          selectedDate={selectedDate}
+          onToggleMeal={handleToggleMeal}
+        />
+        <HabitsSection 
+          habits={habits}
+          onToggleHabit={handleToggleHabit}
+        />
+      </div>
+    </div>
+  );
+}
+
+function MyProgramTab({ planData, weeklyContent }: { planData: MyPlanData; weeklyContent: WeeklyProgramContent | null }) {
+  const program = planData.program;
+  const phases = weeklyContent?.phases || [];
+  const currentWeek = weeklyContent?.week || 1;
+  const totalWeeks = weeklyContent?.totalWeeks || 12;
+  const progressPercent = Math.round((currentWeek / totalWeeks) * 100);
+  
+  if (!program) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16">
+          <Target className="w-16 h-16 text-muted-foreground opacity-50 mb-4" />
+          <h3 className="text-xl font-semibold mb-2">No Program Yet</h3>
+          <p className="text-muted-foreground text-center max-w-md">
+            Your coach hasn't assigned a program to you yet. Check back soon!
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <div className="space-y-4">
+      <Card className="overflow-hidden">
+        <div className="bg-gradient-to-br from-primary to-primary/80 p-6 text-white">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h2 className="text-xl sm:text-2xl font-bold mb-2">{program.name}</h2>
+              {program.description && (
+                <p className="text-white/80 text-sm sm:text-base mb-4">{program.description}</p>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Week {currentWeek} of {totalWeeks}</span>
+                <span className="text-sm font-medium">{progressPercent}% Complete</span>
+              </div>
+              <Progress value={progressPercent} className="h-2 mt-2 bg-white/20" />
+            </div>
+            <div className="ml-4 p-3 rounded-full bg-white/10">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+          </div>
         </div>
-      </AccordionTrigger>
-      <AccordionContent className="px-4 pb-4">
-        <div className="pt-2">
-          {isWeeklyProgram ? (
-            <WeeklyProgramRenderer content={planContentObj as WeeklyProgramContent} />
-          ) : contentText ? (
-            <MarkdownRenderer content={contentText} />
-          ) : (
-            <p className="text-muted-foreground text-sm italic">
-              No plan content available
-            </p>
-          )}
-        </div>
-      </AccordionContent>
-    </AccordionItem>
+      </Card>
+      
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Info className="w-4 h-4 text-muted-foreground" />
+            About This Program
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {program.description || weeklyContent?.programDescription || 
+             `A ${totalWeeks}-week progressive program designed to help you achieve your fitness goals. Each week builds on the last with gradual increases in intensity.`}
+          </p>
+        </CardContent>
+      </Card>
+      
+      {phases.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Program Phases</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-2">
+            {phases.map((phase) => (
+              <div 
+                key={phase.id}
+                className={cn(
+                  "p-4 rounded-lg border transition-all",
+                  phase.status === "completed" && "bg-primary/5 border-primary/30",
+                  phase.status === "current" && "bg-primary/10 border-primary",
+                  phase.status === "upcoming" && "bg-muted/50 border-border"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  {phase.status === "completed" && (
+                    <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                  )}
+                  {phase.status === "current" && (
+                    <Play className="w-5 h-5 text-primary shrink-0" />
+                  )}
+                  {phase.status === "upcoming" && (
+                    <Clock className="w-5 h-5 text-muted-foreground shrink-0" />
+                  )}
+                  <div className="flex-1">
+                    <p className={cn(
+                      "font-medium",
+                      phase.status === "upcoming" && "text-muted-foreground"
+                    )}>
+                      {phase.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {phase.weeks} • {phase.status === "completed" ? "Completed" : phase.status === "current" ? "Current" : "Upcoming"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+      
+      {phases.length === 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Program Phases</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-2">
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/30">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <p className="font-medium">Phase 1: Foundation</p>
+                  <p className="text-sm text-muted-foreground">Weeks 1-4 • Completed</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary">
+              <div className="flex items-center gap-3">
+                <Play className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <p className="font-medium">Phase 2: Building</p>
+                  <p className="text-sm text-muted-foreground">Weeks 5-8 • Current</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 rounded-lg bg-muted/50 border border-border">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-muted-foreground shrink-0" />
+                <div>
+                  <p className="font-medium text-muted-foreground">Phase 3: Peak Performance</p>
+                  <p className="text-sm text-muted-foreground">Weeks 9-12 • Upcoming</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 
@@ -495,9 +747,8 @@ export default function ClientPlan() {
   const [clientData, setClientData] = useState<Client | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
   const [clientId, setClientId] = useState<string | null>(null);
-  const hasMarkedViewed = useRef(false);
+  const [activeTab, setActiveTab] = useState("this-week");
   
-  // Translation helper
   const lang = (clientData?.preferredLanguage || "en") as SupportedLanguage;
   const t = CLIENT_UI_TRANSLATIONS;
 
@@ -533,39 +784,17 @@ export default function ClientPlan() {
     }
   };
 
-  const { data: longTermPlan, isLoading: isLoadingLongTerm } = useQuery<ClientPlan | null>({
-    queryKey: ["/api/client-plans/my-long-term"],
+  const { data: planData, isLoading: isLoadingPlan } = useQuery<MyPlanData>({
+    queryKey: ["/api/client/my-plan"],
     enabled: !!clientId,
   });
 
-  const { data: weeklyPlans, isLoading: isLoadingWeekly } = useQuery<ClientPlan[]>({
-    queryKey: ["/api/client-plans/my-weekly"],
-    enabled: !!clientId,
-  });
-
-  const { data: currentWeekPlan } = useQuery<ClientPlan | null>({
+  const { data: currentWeekPlan } = useQuery<any>({
     queryKey: ["/api/client-plans/my-current-week"],
     enabled: !!clientId,
   });
 
-  // Mark plans as viewed once when the page loads and data is ready
-  useEffect(() => {
-    const hasPlans = longTermPlan || (weeklyPlans && weeklyPlans.length > 0);
-    
-    if (clientId && !isLoadingWeekly && !isLoadingLongTerm && hasPlans && !hasMarkedViewed.current) {
-      hasMarkedViewed.current = true;
-      apiRequest("POST", "/api/client-plans/mark-viewed")
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/client-plans/unread-count"] });
-        })
-        .catch((error) => {
-          console.error("Error marking plans as viewed:", error);
-          hasMarkedViewed.current = false; // Reset on error to allow retry
-        });
-    }
-  }, [clientId, isLoadingWeekly, isLoadingLongTerm, longTermPlan, weeklyPlans]);
-
-  const isLoading = isVerifying || isLoadingLongTerm || isLoadingWeekly;
+  const isLoading = isVerifying || isLoadingPlan;
 
   if (isLoading) {
     return (
@@ -579,138 +808,53 @@ export default function ClientPlan() {
     return null;
   }
 
-  const hasLongTermPlan = !!longTermPlan;
-  const hasWeeklyPlans = weeklyPlans && weeklyPlans.length > 0;
-  const hasAnyPlans = hasLongTermPlan || hasWeeklyPlans;
-
-  const pastWeeklyPlans = weeklyPlans?.filter(p => p.id !== currentWeekPlan?.id) || [];
+  const weeklyContent = currentWeekPlan?.planContent as WeeklyProgramContent | null;
+  const hasWeeklyContent = weeklyContent?.type === "weekly_program";
+  
+  const effectivePlanData: MyPlanData = planData || {
+    weekStartDay: "Mon",
+    weeklyExists: false,
+    program: null,
+    scheduleItems: [],
+  };
 
   return (
     <div className="bg-background min-h-screen">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2" data-testid="text-plan-title">
-              <Sparkles className="w-7 h-7 sm:w-8 sm:h-8" />
-              My Wellness Plans
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">View your personalized plans from your coach</p>
-          </div>
+      <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-plan-title">
+            My Plan
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Your personalized program and weekly schedule
+          </p>
         </div>
 
-        {!hasAnyPlans ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <FileText className="w-16 h-16 text-muted-foreground opacity-50 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">{t.myPlan.noPlan[lang]}</h3>
-              <p className="text-muted-foreground text-center max-w-md">
-                {t.myPlan.noPlanDescription[lang]}
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Tabs defaultValue={currentWeekPlan ? "weekly" : (hasLongTermPlan ? "long-term" : "weekly")} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4" data-testid="tabs-plan-type">
-              <TabsTrigger value="long-term" className="flex items-center gap-2" data-testid="tab-long-term">
-                <Target className="w-4 h-4" />
-                {t.myPlan.currentPlan[lang]}
-              </TabsTrigger>
-              <TabsTrigger value="weekly" className="flex items-center gap-2" data-testid="tab-weekly">
-                <CalendarDays className="w-4 h-4" />
-                {t.myPlan.weeklyPlan[lang]}
-                {weeklyPlans && weeklyPlans.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 text-xs">{weeklyPlans.length}</Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 max-w-xs" data-testid="tabs-plan-type">
+            <TabsTrigger value="this-week" data-testid="tab-this-week">
+              This Week
+            </TabsTrigger>
+            <TabsTrigger value="my-program" data-testid="tab-my-program">
+              My Program
+            </TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="long-term" className="space-y-4">
-              {longTermPlan ? (
-                <PlanCard plan={longTermPlan} />
-              ) : (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <Target className="w-12 h-12 text-muted-foreground opacity-50 mb-3" />
-                    <h3 className="text-lg font-semibold mb-1">{t.myPlan.noPlan[lang]}</h3>
-                    <p className="text-muted-foreground text-center text-sm max-w-md">
-                      {t.myPlan.noPlanDescription[lang]}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
+          <TabsContent value="this-week" className="mt-4">
+            <ThisWeekTab 
+              planData={effectivePlanData}
+              weeklyContent={weeklyContent || null}
+              onViewProgram={() => setActiveTab("my-program")}
+            />
+          </TabsContent>
 
-            <TabsContent value="weekly" className="space-y-4">
-              {currentWeekPlan && (
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <ClipboardList className="w-5 h-5 text-primary" />
-                    {t.myPlan.thisWeeksPlan[lang]}
-                  </h3>
-                  <PlanCard plan={currentWeekPlan} isCurrentWeek />
-                </div>
-              )}
-
-              {pastWeeklyPlans.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-muted-foreground" />
-                    {t.myPlan.pastWeeks[lang]}
-                  </h3>
-                  <Accordion type="single" collapsible className="space-y-2">
-                    {pastWeeklyPlans.map((plan) => (
-                      <WeeklyPlanAccordionItem key={plan.id} plan={plan} />
-                    ))}
-                  </Accordion>
-                </div>
-              )}
-
-              {!hasWeeklyPlans && (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-12">
-                    <CalendarDays className="w-12 h-12 text-muted-foreground opacity-50 mb-3" />
-                    <h3 className="text-lg font-semibold mb-1">{t.myPlan.noPlan[lang]}</h3>
-                    <p className="text-muted-foreground text-center text-sm max-w-md">
-                      {t.myPlan.noPlanDescription[lang]}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-          </Tabs>
-        )}
-
-        <Card>
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="text-base sm:text-lg">{t.myPlan.yourProgress[lang]}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Target className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold">{t.myPlan.overallProgress[lang]}</h3>
-                </div>
-                <div className="text-3xl font-bold">{clientData.progressScore}%</div>
-                <p className="text-sm text-muted-foreground">
-                  {t.myPlan.keepUpGreatWork[lang]}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold">{t.myPlan.status[lang]}</h3>
-                </div>
-                <Badge variant={clientData.status === "active" ? "default" : "secondary"} className="text-base">
-                  {clientData.status}
-                </Badge>
-                <p className="text-sm text-muted-foreground">
-                  {t.profile.memberSince[lang]} {new Date(clientData.joinedDate).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          <TabsContent value="my-program" className="mt-4">
+            <MyProgramTab 
+              planData={effectivePlanData}
+              weeklyContent={weeklyContent || null}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
