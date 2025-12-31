@@ -82,8 +82,11 @@ import {
   insertEngagementRecommendationSchema,
   insertEngagementNotificationPreferencesSchema,
   insertInAppNotificationSchema,
+  insertWeeklyScheduleItemSchema,
+  weeklyScheduleItems,
   GOAL_TYPES,
   type GoalType,
+  type WeeklyScheduleItem,
 } from "@shared/schema";
 import { classifySmartLog, parseSmartLog, processSmartLogToEvents, processSmartLog } from "./smartLogProcessor";
 import { updateClientProgress, updateAllClientsProgress, calculateClientProgress } from "./progressCalculator";
@@ -3070,6 +3073,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking plans as viewed:", error);
       res.status(500).json({ error: "Failed to mark plans as viewed" });
+    }
+  });
+
+  // ========================================
+  // My Plan API Endpoints (Client-facing)
+  // ========================================
+
+  // Get client's combined My Plan data (program + weekly schedule)
+  app.get("/api/client/my-plan", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      
+      // Get client's coach info for weekStartDay
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      const coach = client.coachId ? await storage.getCoach(client.coachId) : null;
+      const weekStartDay = (coach as any)?.weekStartDay || "Mon";
+      
+      // Get long-term (program) plan
+      const programPlan = await storage.getClientLongTermPlan(clientId);
+      
+      // Get weekly schedule items
+      const scheduleItems = await storage.getWeeklyScheduleItems(clientId);
+      
+      // Group schedule items by week
+      const weeklyExists = scheduleItems.length > 0;
+      
+      // Calculate program progress (from goals) with defensive guards
+      const goals = await storage.getGoalsByClientId(clientId);
+      const longTermGoals = goals.filter(g => g.scope === "long_term" && g.status === "active");
+      let programProgress = 0;
+      if (longTermGoals.length > 0) {
+        const totalProgress = longTermGoals.reduce((sum, goal) => {
+          const currentVal = goal.currentValue ?? 0;
+          const targetVal = goal.targetValue ?? 0;
+          const baselineVal = goal.baselineValue ?? 0;
+          
+          // Guard against division by zero
+          if (baselineVal !== null && baselineVal !== undefined && baselineVal !== targetVal) {
+            const denominator = targetVal - baselineVal;
+            if (denominator === 0) return sum;
+            const progress = ((currentVal - baselineVal) / denominator) * 100;
+            return sum + Math.min(100, Math.max(0, isNaN(progress) ? 0 : progress));
+          } else if (targetVal !== 0) {
+            const progress = (currentVal / targetVal) * 100;
+            return sum + Math.min(100, Math.max(0, isNaN(progress) ? 0 : progress));
+          }
+          return sum;
+        }, 0);
+        programProgress = Math.round(totalProgress / longTermGoals.length);
+      }
+      
+      res.json({
+        weekStartDay,
+        weeklyExists,
+        program: programPlan ? {
+          id: programPlan.id,
+          name: programPlan.planName,
+          description: typeof programPlan.planContent === 'object' 
+            ? (programPlan.planContent as any)?.description 
+            : null,
+          content: programPlan.planContent,
+          progressPercent: programProgress,
+          createdAt: programPlan.createdAt,
+        } : null,
+        scheduleItems,
+      });
+    } catch (error) {
+      console.error("Error fetching my plan:", error);
+      res.status(500).json({ error: "Failed to fetch plan data" });
+    }
+  });
+
+  // Toggle completion of a weekly schedule item
+  app.patch("/api/client/schedule-items/:id/complete", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const { id } = req.params;
+      const { completed } = req.body;
+      
+      // Verify item belongs to this client
+      const item = await storage.getWeeklyScheduleItem(id);
+      if (!item) {
+        return res.status(404).json({ error: "Item not found" });
+      }
+      if (item.clientId !== clientId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const now = new Date().toISOString();
+      const updatedItem = await storage.updateWeeklyScheduleItem(id, {
+        completed: completed ?? !item.completed,
+        completedAt: (completed ?? !item.completed) ? now : null,
+        updatedAt: now,
+      });
+      
+      // Update client's lastActiveAt
+      await storage.updateClient(clientId, { lastActiveAt: now });
+      
+      res.json(updatedItem);
+    } catch (error) {
+      console.error("Error toggling item completion:", error);
+      res.status(500).json({ error: "Failed to update item" });
+    }
+  });
+
+  // Complete all items for a specific day
+  app.post("/api/client/schedule-items/complete-day", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const { date } = req.body; // YYYY-MM-DD
+      
+      if (!date) {
+        return res.status(400).json({ error: "Date is required" });
+      }
+      
+      const now = new Date().toISOString();
+      const items = await storage.getWeeklyScheduleItemsByDate(clientId, date);
+      
+      // Mark all incomplete items as completed
+      const updates = items
+        .filter(item => !item.completed)
+        .map(item => storage.updateWeeklyScheduleItem(item.id, {
+          completed: true,
+          completedAt: now,
+          updatedAt: now,
+        }));
+      
+      await Promise.all(updates);
+      
+      // Update client's lastActiveAt
+      await storage.updateClient(clientId, { lastActiveAt: now });
+      
+      res.json({ success: true, completedCount: updates.length });
+    } catch (error) {
+      console.error("Error completing day:", error);
+      res.status(500).json({ error: "Failed to complete day" });
+    }
+  });
+
+  // Coach-facing: Create weekly schedule items for a client
+  app.post("/api/weekly-schedule-items", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const validatedData = insertWeeklyScheduleItemSchema.parse(req.body);
+      
+      // Verify client belongs to coach
+      if (!await assertCoachOwnsClient(coachId, validatedData.clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const now = new Date().toISOString();
+      const item = await storage.createWeeklyScheduleItem({
+        ...validatedData,
+        coachId,
+        createdAt: now,
+        updatedAt: now,
+      });
+      
+      res.json(item);
+    } catch (error) {
+      console.error("Error creating schedule item:", error);
+      res.status(500).json({ error: "Failed to create schedule item" });
+    }
+  });
+
+  // Coach-facing: Get schedule items for a client
+  app.get("/api/weekly-schedule-items/client/:clientId", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      
+      if (!await assertCoachOwnsClient(coachId, clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const items = await storage.getWeeklyScheduleItems(clientId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching schedule items:", error);
+      res.status(500).json({ error: "Failed to fetch schedule items" });
     }
   });
 

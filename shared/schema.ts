@@ -1399,6 +1399,10 @@ export function getActivityLevelMultiplier(activityLevel: string | null | undefi
   return ACTIVITY_LEVEL_MULTIPLIERS[activityLevel as ActivityLevel];
 }
 
+// Week start day options for coach settings
+export const WEEK_START_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+export type WeekStartDay = typeof WEEK_START_DAYS[number];
+
 export const coaches = pgTable("coaches", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -1410,6 +1414,7 @@ export const coaches = pgTable("coaches", {
   profileImageUrl: text("profile_image_url"),
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   preferredLanguage: text("preferred_language").notNull().default("en"),
+  weekStartDay: text("week_start_day").notNull().default("Mon"), // Coach-defined week start day
 });
 
 export const insertCoachSchema = createInsertSchema(coaches).omit({ id: true });
@@ -1707,6 +1712,52 @@ export const clientPlans = pgTable("client_plans", {
   clientIdIdx: index("client_plans_client_id_idx").on(table.clientId),
   planTypeIdx: index("client_plans_plan_type_idx").on(table.planType),
 }));
+
+// Weekly Schedule Item section types
+export const SCHEDULE_SECTION_TYPES = ["training", "nutrition", "habits", "tasks"] as const;
+export type ScheduleSectionType = typeof SCHEDULE_SECTION_TYPES[number];
+
+// Weekly Schedule Items - individual tasks/activities for client's weekly plan
+export const weeklyScheduleItems = pgTable("weekly_schedule_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  planId: varchar("plan_id"), // Optional link to clientPlans
+  coachId: varchar("coach_id").notNull(),
+  weekStartDate: text("week_start_date").notNull(), // YYYY-MM-DD (based on coach's weekStartDay)
+  scheduledDate: text("scheduled_date").notNull(), // YYYY-MM-DD for the specific day
+  sectionType: text("section_type").notNull(), // training, nutrition, habits, tasks
+  title: text("title").notNull(),
+  description: text("description"),
+  metadata: json("metadata").$type<{
+    sets?: number;
+    reps?: number;
+    duration?: string;
+    time?: string;
+    calories?: number;
+    notes?: string;
+  }>(),
+  coachNote: text("coach_note"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  completed: boolean("completed").notNull().default(false),
+  completedAt: text("completed_at"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => ({
+  clientIdIdx: index("weekly_schedule_items_client_id_idx").on(table.clientId),
+  weekStartIdx: index("weekly_schedule_items_week_start_idx").on(table.weekStartDate),
+  scheduledDateIdx: index("weekly_schedule_items_date_idx").on(table.scheduledDate),
+}));
+
+export const insertWeeklyScheduleItemSchema = createInsertSchema(weeklyScheduleItems).omit({
+  id: true,
+}).extend({
+  sectionType: z.enum(SCHEDULE_SECTION_TYPES),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type InsertWeeklyScheduleItem = z.infer<typeof insertWeeklyScheduleItemSchema>;
+export type WeeklyScheduleItem = typeof weeklyScheduleItems.$inferSelect;
 
 // Plan Sessions - tracks each AI plan building session
 // Plan lifecycle: NOT_STARTED -> IN_PROGRESS -> ASSIGNED

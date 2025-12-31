@@ -66,6 +66,8 @@ import {
   type InsertProgressPhoto,
   type PasswordResetToken,
   type InsertPasswordResetToken,
+  type WeeklyScheduleItem,
+  type InsertWeeklyScheduleItem,
   coaches,
   clients,
   sessions,
@@ -99,6 +101,7 @@ import {
   sentReminders,
   progressPhotos,
   passwordResetTokens,
+  weeklyScheduleItems,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte, inArray, ne } from "drizzle-orm";
@@ -230,6 +233,14 @@ export interface IStorage {
   getClientLongTermPlan(clientId: string): Promise<ClientPlan | undefined>;
   getClientWeeklyPlans(clientId: string): Promise<ClientPlan[]>;
   getCurrentWeeklyPlan(clientId: string): Promise<ClientPlan | undefined>;
+
+  // Weekly Schedule Items
+  getWeeklyScheduleItems(clientId: string): Promise<WeeklyScheduleItem[]>;
+  getWeeklyScheduleItem(id: string): Promise<WeeklyScheduleItem | undefined>;
+  getWeeklyScheduleItemsByDate(clientId: string, date: string): Promise<WeeklyScheduleItem[]>;
+  createWeeklyScheduleItem(item: InsertWeeklyScheduleItem): Promise<WeeklyScheduleItem>;
+  updateWeeklyScheduleItem(id: string, item: Partial<InsertWeeklyScheduleItem>): Promise<WeeklyScheduleItem | undefined>;
+  deleteWeeklyScheduleItem(id: string): Promise<boolean>;
 
   // Plan Sessions (AI Plan Builder chat history)
   getPlanSessions(coachId?: string): Promise<PlanSession[]>;
@@ -1501,6 +1512,49 @@ Introduction to consistent training and meal logging habits.
       ))
       .limit(1);
     return plan || undefined;
+  }
+
+  // Weekly Schedule Items
+  async getWeeklyScheduleItems(clientId: string): Promise<WeeklyScheduleItem[]> {
+    return await db.select()
+      .from(weeklyScheduleItems)
+      .where(eq(weeklyScheduleItems.clientId, clientId))
+      .orderBy(weeklyScheduleItems.scheduledDate, weeklyScheduleItems.sortOrder);
+  }
+
+  async getWeeklyScheduleItem(id: string): Promise<WeeklyScheduleItem | undefined> {
+    const [item] = await db.select()
+      .from(weeklyScheduleItems)
+      .where(eq(weeklyScheduleItems.id, id));
+    return item || undefined;
+  }
+
+  async getWeeklyScheduleItemsByDate(clientId: string, date: string): Promise<WeeklyScheduleItem[]> {
+    return await db.select()
+      .from(weeklyScheduleItems)
+      .where(and(
+        eq(weeklyScheduleItems.clientId, clientId),
+        eq(weeklyScheduleItems.scheduledDate, date)
+      ));
+  }
+
+  async createWeeklyScheduleItem(item: InsertWeeklyScheduleItem): Promise<WeeklyScheduleItem> {
+    const [created] = await db.insert(weeklyScheduleItems).values(item).returning();
+    return created;
+  }
+
+  async updateWeeklyScheduleItem(id: string, item: Partial<InsertWeeklyScheduleItem>): Promise<WeeklyScheduleItem | undefined> {
+    const [updated] = await db.update(weeklyScheduleItems)
+      .set(item)
+      .where(eq(weeklyScheduleItems.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteWeeklyScheduleItem(id: string): Promise<boolean> {
+    const result = await db.delete(weeklyScheduleItems)
+      .where(eq(weeklyScheduleItems.id, id));
+    return (result.rowCount || 0) > 0;
   }
 
   // Plan Sessions (AI Plan Builder chat history)
