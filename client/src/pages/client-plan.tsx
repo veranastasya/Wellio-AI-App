@@ -443,14 +443,19 @@ function HabitsSection({
 function ThisWeekTab({ 
   planData, 
   weeklyContent,
-  onViewProgram
+  onViewProgram,
+  clientId,
+  planId
 }: { 
   planData: MyPlanData;
   weeklyContent: WeeklyProgramContent | null;
   onViewProgram: () => void;
+  clientId: string;
+  planId: string | null;
 }) {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [localCompletions, setLocalCompletions] = useState<Record<string, Record<string, boolean>>>({});
   
   const weekDates = useMemo(() => {
     const baseDate = currentWeekOffset === 0 
@@ -461,22 +466,96 @@ function ThisWeekTab({
   
   const weekStart = weekDates[0];
   const weekEnd = weekDates[weekDates.length - 1];
+  const dateKey = format(selectedDate, 'yyyy-MM-dd');
+  
+  const { data: serverCompletions, isLoading: isLoadingCompletions } = useQuery<Record<string, boolean>>({
+    queryKey: ["/api/client/plan-completions", planId, dateKey],
+    enabled: !!planId,
+  });
+  
+  const completionMutation = useMutation({
+    mutationFn: async (data: { itemId: string; itemType: string; completed: boolean }) => {
+      const response = await apiRequest("POST", "/api/client/plan-completions", {
+        planId,
+        itemId: data.itemId,
+        itemType: data.itemType,
+        date: dateKey,
+        completed: data.completed,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/client/plan-completions", planId, dateKey] });
+      setLocalCompletions(prev => {
+        const { [dateKey]: _, ...rest } = prev;
+        return rest;
+      });
+    },
+    onError: () => {
+      setLocalCompletions(prev => {
+        const { [dateKey]: _, ...rest } = prev;
+        return rest;
+      });
+    },
+  });
+  
+  const dateLocalCompletions = localCompletions[dateKey] || {};
+  const completions: Record<string, boolean> = useMemo(() => {
+    const base = serverCompletions ?? {};
+    return { ...base, ...dateLocalCompletions };
+  }, [serverCompletions, dateLocalCompletions]);
+  
+  const handleToggle = (itemId: string, itemType: string, completed: boolean) => {
+    setLocalCompletions(prev => ({
+      ...prev,
+      [dateKey]: { ...(prev[dateKey] || {}), [itemId]: completed },
+    }));
+    if (planId) {
+      completionMutation.mutate({ itemId, itemType, completed });
+    }
+  };
   
   const handleToggleExercise = (exerciseId: string, completed: boolean) => {
-    console.log('Toggle exercise:', exerciseId, completed);
+    handleToggle(exerciseId, 'exercise', completed);
   };
   
   const handleToggleMeal = (mealId: string, completed: boolean) => {
-    console.log('Toggle meal:', mealId, completed);
+    handleToggle(mealId, 'meal', completed);
   };
   
   const handleToggleHabit = (habitId: string, completed: boolean) => {
-    console.log('Toggle habit:', habitId, completed);
+    handleToggle(habitId, 'habit', completed);
   };
   
-  const training = weeklyContent?.training || [];
-  const nutrition = weeklyContent?.nutrition || [];
-  const habits = weeklyContent?.habits || [];
+  const training = useMemo(() => {
+    const rawTraining = weeklyContent?.training || [];
+    return rawTraining.map(day => ({
+      ...day,
+      exercises: day.exercises.map(ex => ({
+        ...ex,
+        completed: completions[ex.id] ?? ex.completed ?? false,
+      })),
+    }));
+  }, [weeklyContent?.training, completions]);
+  
+  const nutrition = useMemo(() => {
+    const rawNutrition = weeklyContent?.nutrition || [];
+    return rawNutrition.map(day => ({
+      ...day,
+      meals: day.meals.map(meal => ({
+        ...meal,
+        completed: completions[meal.id] ?? meal.completed ?? false,
+      })),
+    }));
+  }, [weeklyContent?.nutrition, completions]);
+  
+  const habits = useMemo(() => {
+    const rawHabits = weeklyContent?.habits || [];
+    return rawHabits.map(habit => ({
+      ...habit,
+      completed: completions[habit.id] ?? habit.completed ?? false,
+    }));
+  }, [weeklyContent?.habits, completions]);
   
   const dayName = format(selectedDate, 'EEEE');
   const todayTraining = training.find(t => t.day.toLowerCase() === dayName.toLowerCase());
@@ -845,6 +924,8 @@ export default function ClientPlan() {
               planData={effectivePlanData}
               weeklyContent={weeklyContent || null}
               onViewProgram={() => setActiveTab("my-program")}
+              clientId={clientId!}
+              planId={currentWeekPlan?.id || null}
             />
           </TabsContent>
 

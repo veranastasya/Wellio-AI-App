@@ -3260,6 +3260,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Client-facing: Get plan item completions for a specific date
+  app.get("/api/client/plan-completions/:planId/:date", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const { planId, date } = req.params;
+      
+      const completions = await storage.getPlanItemCompletions(clientId, planId, date);
+      
+      // Transform to a simple map for frontend
+      const completionMap: Record<string, boolean> = {};
+      completions.forEach(c => {
+        completionMap[c.itemId] = c.completed;
+      });
+      
+      res.json(completionMap);
+    } catch (error) {
+      console.error("Error fetching plan completions:", error);
+      res.status(500).json({ error: "Failed to fetch completions" });
+    }
+  });
+
+  // Client-facing: Toggle plan item completion
+  app.post("/api/client/plan-completions", requireClientAuth, async (req, res) => {
+    try {
+      const clientId = req.session.clientId!;
+      const { planId, itemId, itemType, date, completed } = req.body;
+      
+      if (!planId || !itemId || !itemType || !date) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      // Verify plan belongs to client
+      const plan = await storage.getClientPlan(planId);
+      if (!plan || plan.clientId !== clientId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const completion = await storage.upsertPlanItemCompletion({
+        clientId,
+        planId,
+        itemId,
+        itemType,
+        date,
+        completed: completed ?? true,
+        createdAt: new Date().toISOString(),
+      });
+      
+      // Update client's lastActiveAt
+      await storage.updateClient(clientId, { lastActiveAt: new Date().toISOString() });
+      
+      res.json(completion);
+    } catch (error) {
+      console.error("Error toggling plan completion:", error);
+      res.status(500).json({ error: "Failed to update completion" });
+    }
+  });
+
   // Coach-facing endpoint to get all plans for a client
   app.get("/api/client-plans/client/:clientId", requireCoachAuth, async (req, res) => {
     try {

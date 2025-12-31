@@ -1759,6 +1759,31 @@ export const insertWeeklyScheduleItemSchema = createInsertSchema(weeklyScheduleI
 export type InsertWeeklyScheduleItem = z.infer<typeof insertWeeklyScheduleItemSchema>;
 export type WeeklyScheduleItem = typeof weeklyScheduleItems.$inferSelect;
 
+// Plan Item Completions - tracks completion state for plan content items (exercises, meals, habits)
+export const planItemCompletions = pgTable("plan_item_completions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").notNull(),
+  planId: varchar("plan_id").notNull(), // Links to clientPlans
+  itemId: varchar("item_id").notNull(), // The ID of the item within plan content (exercise.id, meal.id, habit.id)
+  itemType: text("item_type").notNull(), // "exercise", "meal", "habit"
+  date: text("date").notNull(), // YYYY-MM-DD - the date for which this completion applies
+  completed: boolean("completed").notNull().default(false),
+  completedAt: text("completed_at"),
+  createdAt: text("created_at").notNull(),
+}, (table) => ({
+  clientIdIdx: index("plan_item_completions_client_id_idx").on(table.clientId),
+  planIdIdx: index("plan_item_completions_plan_id_idx").on(table.planId),
+  dateIdx: index("plan_item_completions_date_idx").on(table.date),
+  uniqueCompletion: index("plan_item_completions_unique_idx").on(table.clientId, table.planId, table.itemId, table.date),
+}));
+
+export const insertPlanItemCompletionSchema = createInsertSchema(planItemCompletions).omit({
+  id: true,
+});
+
+export type InsertPlanItemCompletion = z.infer<typeof insertPlanItemCompletionSchema>;
+export type PlanItemCompletion = typeof planItemCompletions.$inferSelect;
+
 // Plan Sessions - tracks each AI plan building session
 // Plan lifecycle: NOT_STARTED -> IN_PROGRESS -> ASSIGNED
 export const PLAN_SESSION_STATUSES = ["NOT_STARTED", "IN_PROGRESS", "ASSIGNED"] as const;

@@ -68,6 +68,8 @@ import {
   type InsertPasswordResetToken,
   type WeeklyScheduleItem,
   type InsertWeeklyScheduleItem,
+  type PlanItemCompletion,
+  type InsertPlanItemCompletion,
   coaches,
   clients,
   sessions,
@@ -102,6 +104,7 @@ import {
   progressPhotos,
   passwordResetTokens,
   weeklyScheduleItems,
+  planItemCompletions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte, inArray, ne } from "drizzle-orm";
@@ -241,6 +244,12 @@ export interface IStorage {
   createWeeklyScheduleItem(item: InsertWeeklyScheduleItem): Promise<WeeklyScheduleItem>;
   updateWeeklyScheduleItem(id: string, item: Partial<InsertWeeklyScheduleItem>): Promise<WeeklyScheduleItem | undefined>;
   deleteWeeklyScheduleItem(id: string): Promise<boolean>;
+
+  // Plan Item Completions
+  getPlanItemCompletions(clientId: string, planId: string, date: string): Promise<PlanItemCompletion[]>;
+  getPlanItemCompletion(clientId: string, planId: string, itemId: string, date: string): Promise<PlanItemCompletion | undefined>;
+  upsertPlanItemCompletion(completion: InsertPlanItemCompletion): Promise<PlanItemCompletion>;
+  deletePlanItemCompletions(clientId: string, planId: string): Promise<boolean>;
 
   // Plan Sessions (AI Plan Builder chat history)
   getPlanSessions(coachId?: string): Promise<PlanSession[]>;
@@ -1554,6 +1563,67 @@ Introduction to consistent training and meal logging habits.
   async deleteWeeklyScheduleItem(id: string): Promise<boolean> {
     const result = await db.delete(weeklyScheduleItems)
       .where(eq(weeklyScheduleItems.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Plan Item Completions
+  async getPlanItemCompletions(clientId: string, planId: string, date: string): Promise<PlanItemCompletion[]> {
+    return await db.select()
+      .from(planItemCompletions)
+      .where(and(
+        eq(planItemCompletions.clientId, clientId),
+        eq(planItemCompletions.planId, planId),
+        eq(planItemCompletions.date, date)
+      ));
+  }
+
+  async getPlanItemCompletion(clientId: string, planId: string, itemId: string, date: string): Promise<PlanItemCompletion | undefined> {
+    const [completion] = await db.select()
+      .from(planItemCompletions)
+      .where(and(
+        eq(planItemCompletions.clientId, clientId),
+        eq(planItemCompletions.planId, planId),
+        eq(planItemCompletions.itemId, itemId),
+        eq(planItemCompletions.date, date)
+      ));
+    return completion;
+  }
+
+  async upsertPlanItemCompletion(completion: InsertPlanItemCompletion): Promise<PlanItemCompletion> {
+    const existing = await this.getPlanItemCompletion(
+      completion.clientId,
+      completion.planId,
+      completion.itemId,
+      completion.date
+    );
+    
+    if (existing) {
+      const [updated] = await db.update(planItemCompletions)
+        .set({
+          completed: completion.completed,
+          completedAt: completion.completed ? new Date().toISOString() : null,
+        })
+        .where(eq(planItemCompletions.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(planItemCompletions)
+        .values({
+          ...completion,
+          createdAt: new Date().toISOString(),
+          completedAt: completion.completed ? new Date().toISOString() : null,
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  async deletePlanItemCompletions(clientId: string, planId: string): Promise<boolean> {
+    const result = await db.delete(planItemCompletions)
+      .where(and(
+        eq(planItemCompletions.clientId, clientId),
+        eq(planItemCompletions.planId, planId)
+      ));
     return (result.rowCount || 0) > 0;
   }
 
