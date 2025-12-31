@@ -1,0 +1,110 @@
+You are a senior product engineer and UX-minded frontend developer. Implement the “My Plan” client experience with conditional weekly vs program-only behavior. Follow these requirements exactly and do not invent features.
+
+GOAL
+Build a Client “My Plan” screen that supports two assignment types:
+A) Weekly schedule + Main Program
+B) Main Program only (self-paced, no weekly)
+
+PRIMARY UX RULES (non-negotiable)
+1) Never show an empty weekly view.
+2) Do not show navigation or tabs that do not apply.
+3) Coach-defined week start day controls the week layout (client locale must NOT override it).
+4) Program is the anchor; weekly is contextual.
+5) Clients can navigate to past/future weeks only if those weeks exist.
+
+INFORMATION ARCHITECTURE
+- Screen title: “My Plan”
+- If weekly exists, show 2 tabs:
+  - “This Week” (default)
+  - “My Program”
+- If weekly does NOT exist:
+  - Hide the “This Week” tab entirely
+  - Default to “My Program”
+  - Show subtle helper text near the program header:
+    “Your coach designed this as a self-paced program. Complete workouts in any order.”
+
+PROGRAM (MY PROGRAM TAB)
+- Always available.
+- Show a program header card with:
+  - Program name
+  - Short description
+  - Duration label (e.g., “Week 3 of 12” or “12-week program”)
+  - Overall program progress (percent + progress bar)
+- Below that, show “About this program” section (if description exists).
+
+WEEKLY (THIS WEEK TAB) — only if weekly exists
+Weekly header must include:
+- Week range label (e.g., “Dec 23 - Dec 29”)
+- “Previous Week” and “Next Week” controls
+- “Current Week” shortcut
+Behavior:
+- Previous/Next buttons must be disabled or hidden if there is no previous/next week in data.
+- “Current Week” returns to the week containing today (using coach-defined week start).
+- Day chips row shows 7 days aligned to coach-defined week start day.
+- “Today” badge appears on the chip that matches today’s date (if within the shown week).
+- Clicking a day chip loads that day’s plan items.
+
+DAILY CONTENT (weekly view)
+For selected day:
+- Show “<Day>’s Progress” with:
+  - completedCount / totalCount
+  - percent complete
+- Sections (accordion or cards) for:
+  - Training
+  - Nutrition
+  - Daily Habits
+  - Tasks & Check-ins
+Only render sections that have items. If a day has zero items total:
+- Show neutral empty state: “No scheduled items for today.”
+- Do NOT show a progress bar for empty days.
+
+ITEM COMPLETION
+- Each item has a checkbox toggle.
+- Toggling updates progress immediately and persists.
+- Completed items appear visually distinct but readable.
+
+WHOLE-DAY COMPLETION (not displayed yet, but must be supported)
+- Backend + state model must support a “Complete Day” action.
+- When triggered, all incomplete items for that day become completed and progress becomes 100%.
+- If item completion supports undo, this must be reversible.
+
+DATA MODEL (define and use these fields)
+Coach settings:
+- weekStartDay: one of ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+
+Program:
+- programId, programName, programDescription
+- totalWeeks (int)
+- overallProgressPercent (0-100)
+
+Weekly:
+- weeklyEnabled (boolean)
+- weeks: array of week objects, each with:
+  - weekId
+  - startDate (ISO)
+  - endDate (ISO)
+  - days: array of 7 day objects aligned to coach weekStartDay
+Day object:
+- date (ISO)
+- sections: { trainingItems[], nutritionItems[], habitItems[], taskItems[] }
+Item object:
+- itemId, title, metadata (sets/reps/time optional), coachNote optional
+- completed (boolean)
+
+DERIVED LOGIC
+- weeklyExists = weeklyEnabled AND weeks.length > 0
+- Default tab:
+  - if weeklyExists => "This Week"
+  - else => "My Program"
+- Week date range must be computed from coach weekStartDay.
+- Only allow navigating to weeks that exist in `weeks`.
+
+DELIVERABLES
+1) Implement the UI with responsive layout similar to modern fitness apps.
+2) Implement state handling for tab selection, week navigation, day selection, and completion.
+3) Ensure conditional rendering matches UX rules (no empty weekly screens, hide non-applicable tab).
+4) Include clean component structure: PlanHeaderCard, Tabs, WeekNavigator, DayChips, DayProgress, SectionList, PlanItemRow.
+
+IMPORTANT
+- If weeklyExists is false, do not show weekly header, week navigator, or day chips at all.
+- Do not invent extra pages. Everything stays within “My Plan” with conditional UI.
