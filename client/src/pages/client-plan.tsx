@@ -100,6 +100,58 @@ interface WeeklyProgramContent {
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+function formatInlineMarkdown(text: string): JSX.Element[] {
+  const parts: JSX.Element[] = [];
+  let remaining = text;
+  let keyIndex = 0;
+  
+  while (remaining.length > 0) {
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+    const italicMatch = remaining.match(/(?<!\*)\*([^*]+?)\*(?!\*)/);
+    
+    let firstMatch: { index: number; length: number; content: string; type: 'bold' | 'italic' } | null = null;
+    
+    if (boldMatch && boldMatch.index !== undefined) {
+      firstMatch = { 
+        index: boldMatch.index, 
+        length: boldMatch[0].length, 
+        content: boldMatch[1], 
+        type: 'bold' 
+      };
+    }
+    
+    if (italicMatch && italicMatch.index !== undefined) {
+      if (!firstMatch || italicMatch.index < firstMatch.index) {
+        firstMatch = { 
+          index: italicMatch.index, 
+          length: italicMatch[0].length, 
+          content: italicMatch[1], 
+          type: 'italic' 
+        };
+      }
+    }
+    
+    if (firstMatch) {
+      if (firstMatch.index > 0) {
+        parts.push(<span key={`text-${keyIndex++}`}>{remaining.substring(0, firstMatch.index)}</span>);
+      }
+      
+      if (firstMatch.type === 'bold') {
+        parts.push(<strong key={`bold-${keyIndex++}`} className="font-semibold">{firstMatch.content}</strong>);
+      } else {
+        parts.push(<em key={`italic-${keyIndex++}`}>{firstMatch.content}</em>);
+      }
+      
+      remaining = remaining.substring(firstMatch.index + firstMatch.length);
+    } else {
+      parts.push(<span key={`text-${keyIndex++}`}>{remaining}</span>);
+      break;
+    }
+  }
+  
+  return parts;
+}
+
 function MarkdownRenderer({ content }: { content: string }) {
   const lines = content.split('\n');
   const elements: JSX.Element[] = [];
@@ -109,42 +161,42 @@ function MarkdownRenderer({ content }: { content: string }) {
     const line = lines[i];
     
     if (!line.trim()) {
-      elements.push(<div key={`empty-${i}`} className="h-2" />);
+      elements.push(<div key={`empty-${i}`} className="h-3" />);
       i++;
       continue;
     }
 
     if (line.startsWith('### ')) {
       elements.push(
-        <h3 key={`h3-${i}`} className="text-lg font-bold text-foreground mt-4 mb-2">
-          {line.substring(4)}
+        <h3 key={`h3-${i}`} className="text-lg font-bold text-foreground mt-5 mb-2">
+          {formatInlineMarkdown(line.substring(4))}
         </h3>
       );
       i++;
     } else if (line.startsWith('## ')) {
       elements.push(
-        <h2 key={`h2-${i}`} className="text-xl font-bold text-foreground mt-5 mb-3">
-          {line.substring(3)}
+        <h2 key={`h2-${i}`} className="text-xl font-bold text-foreground mt-6 mb-3">
+          {formatInlineMarkdown(line.substring(3))}
         </h2>
       );
       i++;
     } else if (line.startsWith('# ')) {
       elements.push(
         <h1 key={`h1-${i}`} className="text-2xl font-bold text-foreground mt-6 mb-3">
-          {line.substring(2)}
+          {formatInlineMarkdown(line.substring(2))}
         </h1>
       );
       i++;
     } else if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') {
       elements.push(
-        <div key={`hr-${i}`} className="border-t border-border my-4" />
+        <div key={`hr-${i}`} className="border-t border-border my-5" />
       );
       i++;
     } else if (line.trim().startsWith('- ') || line.trim().startsWith('* ') || line.trim().startsWith('• ')) {
       elements.push(
-        <div key={`li-${i}`} className="flex gap-3 text-sm leading-relaxed text-foreground ml-2">
+        <div key={`li-${i}`} className="flex gap-3 text-sm leading-relaxed text-foreground ml-4 py-0.5">
           <span className="text-primary mt-0.5">•</span>
-          <span>{line.trim().substring(2)}</span>
+          <span>{formatInlineMarkdown(line.trim().substring(2))}</span>
         </div>
       );
       i++;
@@ -152,24 +204,23 @@ function MarkdownRenderer({ content }: { content: string }) {
       const match = line.trim().match(/^(\d+)\. (.*)$/);
       if (match) {
         elements.push(
-          <div key={`ol-${i}`} className="flex gap-3 text-sm leading-relaxed text-foreground ml-2">
-            <span className="text-primary font-semibold min-w-fit">{match[1]}.</span>
-            <span>{match[2]}</span>
-          </div>
+          <h3 key={`ol-${i}`} className="text-lg font-bold text-foreground mt-5 mb-2">
+            {match[1]}. {formatInlineMarkdown(match[2])}
+          </h3>
         );
       }
       i++;
     } else {
       elements.push(
-        <p key={`text-${i}`} className="text-sm leading-relaxed text-foreground">
-          {line}
+        <p key={`text-${i}`} className="text-sm leading-relaxed text-muted-foreground">
+          {formatInlineMarkdown(line)}
         </p>
       );
       i++;
     }
   }
 
-  return <div className="space-y-2">{elements}</div>;
+  return <div className="space-y-1">{elements}</div>;
 }
 
 function getContentFromPlanData(content: any): string {
@@ -781,9 +832,8 @@ function ThisWeekTab({
   );
 }
 
-function MyProgramTab({ planData, weeklyContent }: { planData: MyPlanData; weeklyContent: WeeklyProgramContent | null }) {
+function MyProgramTab({ planData }: { planData: MyPlanData }) {
   const program = planData.program;
-  const progressPercent = program?.progressPercent || 0;
   const planContent = program?.content ? getContentFromPlanData(program.content) : '';
   
   if (!program) {
@@ -806,17 +856,12 @@ function MyProgramTab({ planData, weeklyContent }: { planData: MyPlanData; weekl
         <div className="bg-gradient-to-br from-primary to-primary/80 p-6 text-white">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold mb-2" data-testid="text-program-name">
+              <h2 className="text-xl sm:text-2xl font-bold" data-testid="text-program-name">
                 {program.name}
               </h2>
               {program.description && (
-                <p className="text-white/80 text-sm sm:text-base mb-4">{program.description}</p>
+                <p className="text-white/80 text-sm sm:text-base mt-2">{program.description}</p>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Goal Progress</span>
-                <span className="text-sm font-medium">{progressPercent}% Complete</span>
-              </div>
-              <Progress value={progressPercent} className="h-2 mt-2 bg-white/20" />
             </div>
             <div className="ml-4 p-3 rounded-full bg-white/10">
               <Sparkles className="w-6 h-6 text-white" />
@@ -955,10 +1000,7 @@ export default function ClientPlan() {
           </TabsContent>
 
           <TabsContent value="my-program" className="mt-4">
-            <MyProgramTab 
-              planData={effectivePlanData}
-              weeklyContent={weeklyContent || null}
-            />
+            <MyProgramTab planData={effectivePlanData} />
           </TabsContent>
         </Tabs>
       </div>
