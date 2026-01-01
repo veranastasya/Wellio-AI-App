@@ -235,7 +235,7 @@ export interface IStorage {
   // Plan type-specific methods
   getClientLongTermPlan(clientId: string): Promise<ClientPlan | undefined>;
   getClientWeeklyPlans(clientId: string): Promise<ClientPlan[]>;
-  getCurrentWeeklyPlan(clientId: string): Promise<ClientPlan | undefined>;
+  getCurrentWeeklyPlan(clientId: string, weekStartDate?: string, weekEndDate?: string): Promise<ClientPlan | undefined>;
 
   // Weekly Schedule Items
   getWeeklyScheduleItems(clientId: string): Promise<WeeklyScheduleItem[]>;
@@ -1506,19 +1506,27 @@ Introduction to consistent training and meal logging habits.
       .orderBy(desc(clientPlans.weekStartDate));
   }
 
-  async getCurrentWeeklyPlan(clientId: string): Promise<ClientPlan | undefined> {
+  async getCurrentWeeklyPlan(clientId: string, weekStartDate?: string, weekEndDate?: string): Promise<ClientPlan | undefined> {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     
+    // If specific dates provided, find plans that overlap with that range
+    // Otherwise fall back to finding plans containing today's date
+    const rangeStart = weekStartDate || today;
+    const rangeEnd = weekEndDate || today;
+    
+    // Overlap logic: plan overlaps if plan.weekStartDate <= rangeEnd AND plan.weekEndDate >= rangeStart
     const [plan] = await db.select()
       .from(clientPlans)
       .where(and(
         eq(clientPlans.clientId, clientId),
         eq(clientPlans.planType, 'weekly'),
         eq(clientPlans.shared, true),
-        lte(clientPlans.weekStartDate, today),
-        gte(clientPlans.weekEndDate, today)
+        eq(clientPlans.status, 'active'),
+        lte(clientPlans.weekStartDate, rangeEnd),
+        gte(clientPlans.weekEndDate, rangeStart)
       ))
+      .orderBy(desc(clientPlans.createdAt))
       .limit(1);
     return plan || undefined;
   }

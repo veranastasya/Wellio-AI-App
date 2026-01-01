@@ -597,16 +597,12 @@ function HabitsSection({
 
 function ThisWeekTab({ 
   planData, 
-  weeklyContent,
   onViewProgram,
-  clientId,
-  planId
+  clientId
 }: { 
   planData: MyPlanData;
-  weeklyContent: WeeklyProgramContent | null;
   onViewProgram: () => void;
   clientId: string;
-  planId: string | null;
 }) {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -621,7 +617,19 @@ function ThisWeekTab({
   
   const weekStart = weekDates[0];
   const weekEnd = weekDates[weekDates.length - 1];
+  const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+  const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
   const dateKey = format(selectedDate, 'yyyy-MM-dd');
+  
+  const { data: currentWeekPlan, isLoading: isLoadingWeekPlan } = useQuery<any>({
+    queryKey: [`/api/client-plans/my-current-week?weekStartDate=${weekStartStr}&weekEndDate=${weekEndStr}`],
+    enabled: !!clientId,
+    refetchOnWindowFocus: true,
+    staleTime: 10000,
+  });
+  
+  const weeklyContent = currentWeekPlan?.planContent as WeeklyProgramContent | null;
+  const planId = currentWeekPlan?.id || null;
   
   const { data: serverCompletions, isLoading: isLoadingCompletions } = useQuery<Record<string, boolean>>({
     queryKey: ["/api/client/plan-completions", planId, dateKey],
@@ -927,14 +935,6 @@ export default function ClientPlan() {
     staleTime: 10000,
   });
 
-  const { data: currentWeekPlan } = useQuery<any>({
-    queryKey: ["/api/client-plans/my-current-week"],
-    enabled: !!clientId,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: true,
-    staleTime: 10000,
-  });
-
   const isLoading = isVerifying || isLoadingPlan;
 
   if (isLoading) {
@@ -949,9 +949,6 @@ export default function ClientPlan() {
     return null;
   }
 
-  const weeklyContent = currentWeekPlan?.planContent as WeeklyProgramContent | null;
-  const hasWeeklyContent = weeklyContent?.type === "weekly_program";
-  
   const effectivePlanData: MyPlanData = planData || {
     weekStartDay: "Mon",
     weeklyExists: false,
@@ -984,10 +981,8 @@ export default function ClientPlan() {
           <TabsContent value="this-week" className="mt-4">
             <ThisWeekTab 
               planData={effectivePlanData}
-              weeklyContent={weeklyContent || null}
               onViewProgram={() => setActiveTab("my-program")}
               clientId={clientId!}
-              planId={currentWeekPlan?.id || null}
             />
           </TabsContent>
 

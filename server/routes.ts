@@ -3028,11 +3028,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get current week's plan
+  // Get current week's plan (or plan for a specific week if dates provided)
   app.get("/api/client-plans/my-current-week", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.session.clientId!;
-      const plan = await storage.getCurrentWeeklyPlan(clientId);
+      const weekStartDate = req.query.weekStartDate as string | undefined;
+      const weekEndDate = req.query.weekEndDate as string | undefined;
+      const plan = await storage.getCurrentWeeklyPlan(clientId, weekStartDate, weekEndDate);
       res.json(plan || null);
     } catch (error) {
       console.error("Error fetching current week plan:", error);
