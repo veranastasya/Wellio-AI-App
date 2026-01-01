@@ -270,7 +270,7 @@ function DayChips({
   onSelectDate: (date: Date) => void;
 }) {
   return (
-    <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2">
+    <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
       {weekDates.map((date) => {
         const isSelected = isSameDay(date, selectedDate);
         const isTodayDate = isToday(date);
@@ -280,7 +280,7 @@ function DayChips({
             key={date.toISOString()}
             onClick={() => onSelectDate(date)}
             className={cn(
-              "flex flex-col items-center min-w-[52px] sm:min-w-[64px] p-2 sm:p-3 rounded-lg border transition-all",
+              "flex flex-col items-center flex-shrink-0 min-w-[44px] sm:min-w-[56px] py-2 px-1.5 sm:p-3 rounded-lg border transition-all touch-manipulation",
               isSelected 
                 ? "border-primary bg-primary/5 text-primary" 
                 : "border-border hover-elevate"
@@ -288,21 +288,22 @@ function DayChips({
             data-testid={`day-chip-${format(date, 'yyyy-MM-dd')}`}
           >
             <span className={cn(
-              "text-xs font-medium",
+              "text-[10px] sm:text-xs font-medium uppercase",
               isSelected ? "text-primary" : "text-muted-foreground"
             )}>
               {format(date, 'EEE')}
             </span>
             <span className={cn(
-              "text-sm font-semibold",
+              "text-xs sm:text-sm font-semibold",
               isSelected ? "text-primary" : "text-foreground"
             )}>
-              {format(date, 'MMM d')}
+              {format(date, 'd')}
             </span>
             {isTodayDate && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mt-1 bg-primary/20 text-primary">
-                Today
-              </Badge>
+              <div className={cn(
+                "w-1.5 h-1.5 rounded-full mt-1",
+                isSelected ? "bg-primary" : "bg-primary/60"
+              )} />
             )}
           </button>
         );
@@ -724,17 +725,17 @@ function ThisWeekTab({
   const progressPercent = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {planData.program && (
         <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Sparkles className="w-5 h-5 text-primary" />
+          <CardContent className="p-3 sm:p-4 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
               </div>
-              <div>
-                <p className="font-semibold text-foreground">{planData.program.name}</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="min-w-0">
+                <p className="font-semibold text-sm sm:text-base text-foreground truncate">{planData.program.name}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Week {weeklyContent?.week || 1} of {weeklyContent?.totalWeeks || 12}
                 </p>
               </div>
@@ -743,10 +744,11 @@ function ThisWeekTab({
               variant="ghost" 
               size="sm" 
               onClick={onViewProgram}
-              className="text-primary"
+              className="text-primary flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
               data-testid="button-view-program"
             >
-              View Full Program
+              <span className="hidden sm:inline">View Full Program</span>
+              <span className="sm:hidden">View</span>
               <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </CardContent>
@@ -754,38 +756,40 @@ function ThisWeekTab({
       )}
       
       <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="flex items-center justify-between">
+        <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between gap-1">
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => setCurrentWeekOffset(prev => prev - 1)}
+              className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
               data-testid="button-prev-week"
             >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              Previous Week
+              <ChevronLeft className="w-4 h-4" />
+              <span className="hidden sm:inline ml-1">Previous</span>
             </Button>
             
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-center">
               {currentWeekOffset === 0 && (
-                <Badge variant="outline" className="text-primary border-primary">
-                  <Play className="w-3 h-3 mr-1" />
-                  Current Week
+                <Badge variant="outline" className="text-primary border-primary text-[10px] sm:text-xs px-1.5 sm:px-2">
+                  <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                  Current
                 </Badge>
               )}
-              <span className="text-muted-foreground">
+              <span className="text-xs sm:text-sm text-muted-foreground">
                 {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d')}
               </span>
             </div>
             
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => setCurrentWeekOffset(prev => prev + 1)}
+              className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
               data-testid="button-next-week"
             >
-              Next Week
-              <ChevronRight className="w-4 h-4 ml-1" />
+              <span className="hidden sm:inline mr-1">Next</span>
+              <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
           
@@ -798,21 +802,21 @@ function ThisWeekTab({
       </Card>
       
       <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="font-semibold text-foreground">{dayName}'s Progress</p>
-              <p className="text-sm text-muted-foreground">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-2 gap-2">
+            <div className="min-w-0">
+              <p className="font-semibold text-sm sm:text-base text-foreground">{dayName}'s Progress</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {completedItems} of {totalItems} completed
               </p>
             </div>
-            <span className="text-xl font-bold text-primary">{progressPercent}%</span>
+            <span className="text-lg sm:text-xl font-bold text-primary flex-shrink-0">{progressPercent}%</span>
           </div>
           <Progress value={progressPercent} className="h-2" />
         </CardContent>
       </Card>
       
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         <TrainingSection 
           training={training}
           selectedDate={selectedDate}
@@ -851,43 +855,25 @@ function MyProgramTab({ planData }: { planData: MyPlanData }) {
   }
   
   return (
-    <div className="space-y-4">
-      <Card className="overflow-hidden">
-        <div className="bg-gradient-to-br from-primary to-primary/80 p-6 text-white">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold" data-testid="text-program-name">
-                {program.name}
-              </h2>
-              {program.description && (
-                <p className="text-white/80 text-sm sm:text-base mt-2">{program.description}</p>
-              )}
-            </div>
-            <div className="ml-4 p-3 rounded-full bg-white/10">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-          </div>
-        </div>
-      </Card>
-      
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Info className="w-4 h-4 text-muted-foreground" />
-            Your Plan
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {planContent ? (
-            <MarkdownRenderer content={planContent} />
-          ) : (
-            <p className="text-sm text-muted-foreground leading-relaxed text-center py-8">
-              Plan content is not available. Please contact your coach.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-semibold flex items-center gap-2" data-testid="text-program-name">
+          {program.name}
+        </CardTitle>
+        {program.description && (
+          <p className="text-sm text-muted-foreground">{program.description}</p>
+        )}
+      </CardHeader>
+      <CardContent className="pt-0">
+        {planContent ? (
+          <MarkdownRenderer content={planContent} />
+        ) : (
+          <p className="text-sm text-muted-foreground leading-relaxed text-center py-8">
+            Plan content is not available. Please contact your coach.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -936,11 +922,17 @@ export default function ClientPlan() {
   const { data: planData, isLoading: isLoadingPlan } = useQuery<MyPlanData>({
     queryKey: ["/api/client/my-plan"],
     enabled: !!clientId,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+    staleTime: 10000,
   });
 
   const { data: currentWeekPlan } = useQuery<any>({
     queryKey: ["/api/client-plans/my-current-week"],
     enabled: !!clientId,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+    staleTime: 10000,
   });
 
   const isLoading = isVerifying || isLoadingPlan;

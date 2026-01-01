@@ -150,6 +150,9 @@ export default function ClientWeeklyPlan() {
   const { data: plans = [], isLoading: plansLoading } = useQuery<ClientPlan[]>({
     queryKey: ["/api/client-plans/my-plans"],
     enabled: !!clientData,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+    staleTime: 10000,
   });
 
   const activePlan = plans.find(p => p.status === 'active' && p.shared);
