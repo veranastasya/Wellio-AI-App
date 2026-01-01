@@ -100,6 +100,109 @@ interface WeeklyProgramContent {
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+function MarkdownRenderer({ content }: { content: string }) {
+  const lines = content.split('\n');
+  const elements: JSX.Element[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    
+    if (!line.trim()) {
+      elements.push(<div key={`empty-${i}`} className="h-2" />);
+      i++;
+      continue;
+    }
+
+    if (line.startsWith('### ')) {
+      elements.push(
+        <h3 key={`h3-${i}`} className="text-lg font-bold text-foreground mt-4 mb-2">
+          {line.substring(4)}
+        </h3>
+      );
+      i++;
+    } else if (line.startsWith('## ')) {
+      elements.push(
+        <h2 key={`h2-${i}`} className="text-xl font-bold text-foreground mt-5 mb-3">
+          {line.substring(3)}
+        </h2>
+      );
+      i++;
+    } else if (line.startsWith('# ')) {
+      elements.push(
+        <h1 key={`h1-${i}`} className="text-2xl font-bold text-foreground mt-6 mb-3">
+          {line.substring(2)}
+        </h1>
+      );
+      i++;
+    } else if (line.trim() === '---' || line.trim() === '***' || line.trim() === '___') {
+      elements.push(
+        <div key={`hr-${i}`} className="border-t border-border my-4" />
+      );
+      i++;
+    } else if (line.trim().startsWith('- ') || line.trim().startsWith('* ') || line.trim().startsWith('• ')) {
+      elements.push(
+        <div key={`li-${i}`} className="flex gap-3 text-sm leading-relaxed text-foreground ml-2">
+          <span className="text-primary mt-0.5">•</span>
+          <span>{line.trim().substring(2)}</span>
+        </div>
+      );
+      i++;
+    } else if (/^\d+\. /.test(line.trim())) {
+      const match = line.trim().match(/^(\d+)\. (.*)$/);
+      if (match) {
+        elements.push(
+          <div key={`ol-${i}`} className="flex gap-3 text-sm leading-relaxed text-foreground ml-2">
+            <span className="text-primary font-semibold min-w-fit">{match[1]}.</span>
+            <span>{match[2]}</span>
+          </div>
+        );
+      }
+      i++;
+    } else {
+      elements.push(
+        <p key={`text-${i}`} className="text-sm leading-relaxed text-foreground">
+          {line}
+        </p>
+      );
+      i++;
+    }
+  }
+
+  return <div className="space-y-2">{elements}</div>;
+}
+
+function getContentFromPlanData(content: any): string {
+  if (!content) return '';
+  
+  if (typeof content === 'string') {
+    return content;
+  }
+  
+  if (typeof content === 'object') {
+    const textContent = (content as any).content;
+    if (textContent && typeof textContent === 'string') {
+      return textContent;
+    }
+    
+    const sections = (content as any).sections;
+    if (sections && Array.isArray(sections)) {
+      return sections.map((section: any) => {
+        let text = '';
+        if (section.heading) {
+          text += `## ${section.heading}\n\n`;
+        }
+        if (section.content) {
+          text += `${section.content}\n\n`;
+        }
+        return text;
+      }).join('\n');
+    }
+  }
+  
+  return '';
+}
+
 function getWeekDates(baseDate: Date, weekStartDay: string = "Mon"): Date[] {
   const startOffset = DAY_NAMES.indexOf(weekStartDay);
   const start = startOfWeek(baseDate, { weekStartsOn: startOffset === -1 ? 1 : (startOffset as 0 | 1 | 2 | 3 | 4 | 5 | 6) });
@@ -680,10 +783,8 @@ function ThisWeekTab({
 
 function MyProgramTab({ planData, weeklyContent }: { planData: MyPlanData; weeklyContent: WeeklyProgramContent | null }) {
   const program = planData.program;
-  const phases = weeklyContent?.phases || [];
-  const currentWeek = weeklyContent?.week || 1;
-  const totalWeeks = weeklyContent?.totalWeeks || 12;
-  const progressPercent = Math.round((currentWeek / totalWeeks) * 100);
+  const progressPercent = program?.progressPercent || 0;
+  const planContent = program?.content ? getContentFromPlanData(program.content) : '';
   
   if (!program) {
     return (
@@ -705,12 +806,14 @@ function MyProgramTab({ planData, weeklyContent }: { planData: MyPlanData; weekl
         <div className="bg-gradient-to-br from-primary to-primary/80 p-6 text-white">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold mb-2">{program.name}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold mb-2" data-testid="text-program-name">
+                {program.name}
+              </h2>
               {program.description && (
                 <p className="text-white/80 text-sm sm:text-base mb-4">{program.description}</p>
               )}
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Week {currentWeek} of {totalWeeks}</span>
+                <span className="text-sm font-medium">Goal Progress</span>
                 <span className="text-sm font-medium">{progressPercent}% Complete</span>
               </div>
               <Progress value={progressPercent} className="h-2 mt-2 bg-white/20" />
@@ -726,97 +829,19 @@ function MyProgramTab({ planData, weeklyContent }: { planData: MyPlanData; weekl
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Info className="w-4 h-4 text-muted-foreground" />
-            About This Program
+            Your Plan
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {program.description || weeklyContent?.programDescription || 
-             `A ${totalWeeks}-week progressive program designed to help you achieve your fitness goals. Each week builds on the last with gradual increases in intensity.`}
-          </p>
+          {planContent ? (
+            <MarkdownRenderer content={planContent} />
+          ) : (
+            <p className="text-sm text-muted-foreground leading-relaxed text-center py-8">
+              Plan content is not available. Please contact your coach.
+            </p>
+          )}
         </CardContent>
       </Card>
-      
-      {phases.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Program Phases</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-2">
-            {phases.map((phase) => (
-              <div 
-                key={phase.id}
-                className={cn(
-                  "p-4 rounded-lg border transition-all",
-                  phase.status === "completed" && "bg-primary/5 border-primary/30",
-                  phase.status === "current" && "bg-primary/10 border-primary",
-                  phase.status === "upcoming" && "bg-muted/50 border-border"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  {phase.status === "completed" && (
-                    <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
-                  )}
-                  {phase.status === "current" && (
-                    <Play className="w-5 h-5 text-primary shrink-0" />
-                  )}
-                  {phase.status === "upcoming" && (
-                    <Clock className="w-5 h-5 text-muted-foreground shrink-0" />
-                  )}
-                  <div className="flex-1">
-                    <p className={cn(
-                      "font-medium",
-                      phase.status === "upcoming" && "text-muted-foreground"
-                    )}>
-                      {phase.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {phase.weeks} • {phase.status === "completed" ? "Completed" : phase.status === "current" ? "Current" : "Upcoming"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-      
-      {phases.length === 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Program Phases</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0 space-y-2">
-            <div className="p-4 rounded-lg bg-primary/5 border border-primary/30">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
-                <div>
-                  <p className="font-medium">Phase 1: Foundation</p>
-                  <p className="text-sm text-muted-foreground">Weeks 1-4 • Completed</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 rounded-lg bg-primary/10 border border-primary">
-              <div className="flex items-center gap-3">
-                <Play className="w-5 h-5 text-primary shrink-0" />
-                <div>
-                  <p className="font-medium">Phase 2: Building</p>
-                  <p className="text-sm text-muted-foreground">Weeks 5-8 • Current</p>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50 border border-border">
-              <div className="flex items-center gap-3">
-                <Clock className="w-5 h-5 text-muted-foreground shrink-0" />
-                <div>
-                  <p className="font-medium text-muted-foreground">Phase 3: Peak Performance</p>
-                  <p className="text-sm text-muted-foreground">Weeks 9-12 • Upcoming</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
