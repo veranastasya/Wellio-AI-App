@@ -30,7 +30,7 @@ Wellio is built with a React frontend and an Express.js backend. Data is stored 
 - **Contextual AI Assistance**: AI-powered insights embedded throughout the coach workflow (e.g., AISuggestionsStrip, AIInsightsCard, ClientAttentionIndicator).
 - **Automatic AI Insight Detection**: Background service analyzing client activity for inactivity, missed workouts, and nutrition concerns, with auto-resolve and severity escalation.
 - **AI Insights Dashboard**: Delivers AI-powered trend analysis for nutrition, activity, and progress with actionable recommendations and goal predictions.
-- **Goal Setting & Progress Tracking**: CRUD for client goals, composite progress scoring, and automatic recalculation.
+- **Goal Setting & Progress Tracking**: CRUD for client goals, composite progress scoring (50% long-term goals, 30% weekly plan adherence, 20% activity consistency), and automatic recalculation. Weekly plan adherence tracks client checkmarks on their assigned schedule items.
 - **Client Data Logs**: Tabbed interface for recording nutrition, workout, and check-in data.
 - **AI-Assisted Plan Builder**: Interactive plan creation using OpenAI GPT-4, conversation memory, streaming responses, and professional PDF generation with plan assignment.
 - **Wearables Integration**: Two-tier architecture using ROOK API and ROOK iOS SDK for data from over 400 devices and Apple Health.

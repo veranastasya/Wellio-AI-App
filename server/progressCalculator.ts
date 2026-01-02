@@ -1,11 +1,11 @@
 import { db } from "./db";
-import { clients, goals, progressEvents } from "@shared/schema";
+import { clients, goals, progressEvents, weeklyScheduleItems } from "@shared/schema";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
 // Weight configuration for composite score
 const WEIGHTS = {
   longTermGoals: 0.5,   // 50% - Long-term goal progress
-  weeklyTasks: 0.3,     // 30% - Weekly task completion
+  planAdherence: 0.3,   // 30% - Weekly plan item completion (exercises, meals, habits)
   activity: 0.2,        // 20% - Activity consistency
 };
 
@@ -81,25 +81,23 @@ export async function calculateClientProgress(clientId: string): Promise<Progres
     goalProgress = Math.round(goalProgressSum / longTermGoals.length);
   }
 
-  // 2. Calculate Weekly Task Progress (30%)
-  const weeklyTasks = await db
+  // 2. Calculate Weekly Plan Adherence (30%)
+  // Query weekly schedule items (exercises, meals, habits, tasks) for the current week
+  const weeklyItems = await db
     .select()
-    .from(goals)
+    .from(weeklyScheduleItems)
     .where(
       and(
-        eq(goals.clientId, clientId),
-        eq(goals.scope, "weekly_task"),
-        gte(goals.weekStartDate, weekStart),
-        lte(goals.weekStartDate, weekEnd)
+        eq(weeklyScheduleItems.clientId, clientId),
+        gte(weeklyScheduleItems.scheduledDate, weekStart),
+        lte(weeklyScheduleItems.scheduledDate, weekEnd)
       )
     );
 
   let weeklyProgress = 0;
-  if (weeklyTasks.length > 0) {
-    const completedTasks = weeklyTasks.filter(
-      (task) => task.status === "completed" || task.currentValue >= task.targetValue
-    );
-    weeklyProgress = Math.round((completedTasks.length / weeklyTasks.length) * 100);
+  if (weeklyItems.length > 0) {
+    const completedItems = weeklyItems.filter((item) => item.completed);
+    weeklyProgress = Math.round((completedItems.length / weeklyItems.length) * 100);
   }
 
   // 3. Calculate Activity Consistency (20%)
@@ -153,7 +151,7 @@ export async function calculateClientProgress(clientId: string): Promise<Progres
   // 4. Calculate Composite Score
   const compositeScore = Math.round(
     goalProgress * WEIGHTS.longTermGoals +
-    weeklyProgress * WEIGHTS.weeklyTasks +
+    weeklyProgress * WEIGHTS.planAdherence +
     activityProgress * WEIGHTS.activity
   );
 
