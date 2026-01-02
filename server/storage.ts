@@ -2420,6 +2420,17 @@ Introduction to consistent training and meal logging habits.
     return result.length;
   }
 
+  async getRecentSentReminders(clientId: string, reminderType: string, withinHours: number): Promise<SentReminder[]> {
+    const cutoffTime = new Date(Date.now() - withinHours * 60 * 60 * 1000).toISOString();
+    return await db.select().from(sentReminders)
+      .where(and(
+        eq(sentReminders.clientId, clientId),
+        eq(sentReminders.reminderType, reminderType),
+        gte(sentReminders.sentAt, cutoffTime)
+      ))
+      .orderBy(desc(sentReminders.sentAt));
+  }
+
   async createSentReminder(reminder: InsertSentReminder): Promise<SentReminder> {
     const result = await db.insert(sentReminders).values(reminder).returning();
     return result[0];

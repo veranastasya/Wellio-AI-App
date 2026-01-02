@@ -12,6 +12,25 @@ interface ReminderCandidate {
   message: string;
   relatedGoalId?: string;
   relatedPlanId?: string;
+  severity?: "high" | "medium" | "low";
+  daysSince?: number;
+}
+
+// Cooldown periods in hours per reminder category
+// High severity inactivity reminders bypass these cooldowns
+const REMINDER_COOLDOWNS: Record<string, number> = {
+  inactivity: 24,      // 24 hours between inactivity reminders of same type
+  goal: 24,            // 24 hours between goal reminders of same type
+  plan: 24,            // 24 hours between plan reminders
+  daily_checkin: 24,   // Once per day for meal-time check-ins
+};
+
+// High severity threshold - notifications above this bypass cooldowns
+const HIGH_SEVERITY_DAYS_THRESHOLD = 5;
+
+async function hasRecentReminderOfType(clientId: string, reminderType: ReminderType, cooldownHours: number): Promise<boolean> {
+  const recentReminders = await storage.getRecentSentReminders(clientId, reminderType, cooldownHours);
+  return recentReminders.length > 0;
 }
 
 function isWithinQuietHours(settings: ClientReminderSettings): boolean {
@@ -85,24 +104,34 @@ async function getGoalReminders(client: Client, settings: ClientReminderSettings
 
   const goals = await storage.getGoalsByClientId(client.id);
   const activeGoals = goals.filter(g => g.status === "active" && g.scope === "long_term");
-  const reminders: ReminderCandidate[] = [];
-  const today = getTodayDateString();
+  const cooldownHours = REMINDER_COOLDOWNS.goal;
 
-  // Fetch all sent reminders for today once (O(1) instead of O(goals))
-  const allSentToday = await storage.getSentReminders(client.id, today);
-  const sentTypes = new Set(allSentToday.map(r => r.reminderType));
-
+  // Group goals by reminder type to ensure deterministic selection
+  const goalsByType = new Map<ReminderType, Goal[]>();
   for (const goal of activeGoals) {
     const reminderType = getGoalReminderType(goal.goalType);
-    
-    // Skip if this type was already sent today
-    if (sentTypes.has(reminderType)) continue;
+    if (!goalsByType.has(reminderType)) {
+      goalsByType.set(reminderType, []);
+    }
+    goalsByType.get(reminderType)!.push(goal);
+  }
 
-    const reminder = createGoalReminder(client, goal);
-    if (reminder) {
-      reminders.push(reminder);
-      // Mark as sent to prevent duplicates within same run
-      sentTypes.add(reminderType);
+  const reminders: ReminderCandidate[] = [];
+
+  // Process each type once, picking the first valid goal for that type
+  const entries = Array.from(goalsByType.entries());
+  for (const [reminderType, goalsOfType] of entries) {
+    // Check cooldown for this type first (before creating any reminders)
+    const hasRecentReminder = await hasRecentReminderOfType(client.id, reminderType, cooldownHours);
+    if (hasRecentReminder) continue;
+
+    // Find the first goal that produces a valid reminder
+    for (const goal of goalsOfType) {
+      const reminder = createGoalReminder(client, goal);
+      if (reminder) {
+        reminders.push(reminder);
+        break; // Only one reminder per type
+      }
     }
   }
 
@@ -170,9 +199,9 @@ function createGoalReminder(client: Client, goal: Goal): ReminderCandidate | nul
 async function getPlanReminders(client: Client, settings: ClientReminderSettings): Promise<ReminderCandidate[]> {
   if (!settings.planRemindersEnabled) return [];
 
-  const today = getTodayDateString();
-  const alreadySent = await storage.getSentRemindersByTypeAndDate(client.id, "plan_daily", today);
-  if (alreadySent.length > 0) return [];
+  const cooldownHours = REMINDER_COOLDOWNS.plan;
+  const hasRecentReminder = await hasRecentReminderOfType(client.id, "plan_daily", cooldownHours);
+  if (hasRecentReminder) return [];
 
   const plans = await storage.getClientPlansByClientId(client.id);
   // Include both "assigned" and "active" status plans
@@ -242,43 +271,69 @@ async function getInactivityReminders(client: Client, settings: ClientReminderSe
     title: string;
     message: string;
     daysSince: number;
+    severity: "high" | "medium" | "low";
   }
 
   const eligibleReminders: InactivityCandidate[] = [];
+  const cooldownHours = REMINDER_COOLDOWNS.inactivity;
 
-  // Only add reminders that meet threshold AND haven't been sent today
+  // Helper to determine severity based on days since activity
+  const getSeverity = (days: number): "high" | "medium" | "low" => {
+    if (days >= HIGH_SEVERITY_DAYS_THRESHOLD) return "high";
+    if (days >= 3) return "medium";
+    return "low";
+  };
+
+  // Check inactivity with smart cooldown logic
+  // High severity (5+ days) bypasses cooldowns to ensure critical notifications get through
   if (daysSinceMeal >= thresholdDays && daysSinceMeal < 999) {
-    const alreadySent = await storage.getSentRemindersByTypeAndDate(client.id, "inactivity_meals", today);
-    if (alreadySent.length === 0) {
+    const severity = getSeverity(daysSinceMeal);
+    const hasRecentReminder = await hasRecentReminderOfType(client.id, "inactivity_meals", cooldownHours);
+    
+    // High severity bypasses cooldowns, otherwise respect cooldown period
+    if (severity === "high" || !hasRecentReminder) {
       eligibleReminders.push({
         type: "inactivity_meals",
-        title: "We miss your meal logs!",
-        message: `It's been ${daysSinceMeal} days since your last meal log. Quick check-in: what did you eat today?`,
+        title: severity === "high" ? "We're concerned about you!" : "We miss your meal logs!",
+        message: severity === "high" 
+          ? `It's been ${daysSinceMeal} days since your last meal log. Everything okay? We're here to help!`
+          : `It's been ${daysSinceMeal} days since your last meal log. Quick check-in: what did you eat today?`,
         daysSince: daysSinceMeal,
+        severity,
       });
     }
   }
 
   if (daysSinceWorkout >= thresholdDays && daysSinceWorkout < 999) {
-    const alreadySent = await storage.getSentRemindersByTypeAndDate(client.id, "inactivity_workouts", today);
-    if (alreadySent.length === 0) {
+    const severity = getSeverity(daysSinceWorkout);
+    const hasRecentReminder = await hasRecentReminderOfType(client.id, "inactivity_workouts", cooldownHours);
+    
+    if (severity === "high" || !hasRecentReminder) {
       eligibleReminders.push({
         type: "inactivity_workouts",
-        title: "Time to get moving!",
-        message: `It's been ${daysSinceWorkout} days since your last workout. Even a short session counts!`,
+        title: severity === "high" ? "We haven't seen you in a while!" : "Time to get moving!",
+        message: severity === "high"
+          ? `It's been ${daysSinceWorkout} days since your last workout. Need help getting back on track?`
+          : `It's been ${daysSinceWorkout} days since your last workout. Even a short session counts!`,
         daysSince: daysSinceWorkout,
+        severity,
       });
     }
   }
 
   if (daysSinceCheckIn >= thresholdDays + 1 && daysSinceCheckIn < 999) {
-    const alreadySent = await storage.getSentRemindersByTypeAndDate(client.id, "inactivity_checkin", today);
-    if (alreadySent.length === 0) {
+    const severity = getSeverity(daysSinceCheckIn);
+    const hasRecentReminder = await hasRecentReminderOfType(client.id, "inactivity_checkin", cooldownHours);
+    
+    if (severity === "high" || !hasRecentReminder) {
       eligibleReminders.push({
         type: "inactivity_checkin",
-        title: "How are you feeling?",
-        message: `We haven't heard from you in a while. A quick check-in helps your coach support you better!`,
+        title: severity === "high" ? "We're thinking of you!" : "How are you feeling?",
+        message: severity === "high"
+          ? `We haven't heard from you in ${daysSinceCheckIn} days. Your coach is here to support you - just say hi!`
+          : `We haven't heard from you in a while. A quick check-in helps your coach support you better!`,
         daysSince: daysSinceCheckIn,
+        severity,
       });
     }
   }
@@ -297,13 +352,14 @@ async function getInactivityReminders(client: Client, settings: ClientReminderSe
     category: "inactivity",
     title: mostConcerning.title,
     message: mostConcerning.message,
+    severity: mostConcerning.severity,
+    daysSince: mostConcerning.daysSince,
   }];
 }
 
 // Daily check-in reminders - encouraging messages for breakfast, lunch, dinner
 async function getDailyCheckInReminders(client: Client, settings: ClientReminderSettings): Promise<ReminderCandidate[]> {
   const reminders: ReminderCandidate[] = [];
-  const today = getTodayDateString();
   const clientTimezone = settings.timezone || "America/New_York";
   const currentHour = getClientLocalHour(clientTimezone);
 
@@ -353,12 +409,14 @@ async function getDailyCheckInReminders(client: Client, settings: ClientReminder
     },
   };
 
+  const cooldownHours = REMINDER_COOLDOWNS.daily_checkin;
+
   for (const [meal, config] of Object.entries(checkInMessages)) {
     // Check if current time is within the meal's window
     if (currentHour >= config.hour.start && currentHour < config.hour.end) {
-      // Check if already sent today
-      const alreadySent = await storage.getSentRemindersByTypeAndDate(client.id, config.type, today);
-      if (alreadySent.length === 0) {
+      // Use timestamp-based cooldown instead of daily check
+      const hasRecentReminder = await hasRecentReminderOfType(client.id, config.type, cooldownHours);
+      if (!hasRecentReminder) {
         // Pick a random message for variety
         const titleIndex = Math.floor(Math.random() * config.titles.length);
         const messageIndex = Math.floor(Math.random() * config.messages.length);
@@ -489,34 +547,40 @@ export async function processRemindersForClient(client: Client, options: Process
       return { sentCount: 0, skippedReason: "Reminders are disabled for this client" };
     }
 
-    if (!options.bypassQuietHours && isWithinQuietHours(settings)) {
+    // Check quiet hours - but high severity inactivity notifications can bypass
+    const inQuietHours = !options.bypassQuietHours && isWithinQuietHours(settings);
+    
+    // Collect reminders by priority category (highest to lowest)
+    // Priority: inactivity (most urgent) > goals > plan > daily check-in (least urgent)
+    // Each getter handles its own cooldown logic internally
+    
+    const inactivityReminders = await getInactivityReminders(client, settings);
+    
+    // High severity inactivity reminders bypass quiet hours - client really needs to hear from us
+    const hasHighSeverityInactivity = inactivityReminders.length > 0 && 
+      inactivityReminders[0].severity === "high";
+    
+    if (inQuietHours && !hasHighSeverityInactivity) {
       logger.debug("Skipping reminders during quiet hours", { clientId: client.id });
       return { sentCount: 0, skippedReason: "Currently within quiet hours" };
     }
-
-    const alreadySentToday = await storage.countSentRemindersToday(client.id, today);
-    if (alreadySentToday >= settings.maxRemindersPerDay) {
-      logger.debug("Max daily reminders reached", { clientId: client.id, count: alreadySentToday });
-      return { sentCount: 0, skippedReason: "Daily reminder limit reached" };
-    }
-
-    const remainingSlots = settings.maxRemindersPerDay - alreadySentToday;
-
-    // Collect reminders by priority category (highest to lowest)
-    // Priority: inactivity (most urgent) > goals > plan > daily check-in (least urgent)
-    // We only send 1 reminder per cycle to avoid notification overload
     
     const goalReminders = await getGoalReminders(client, settings);
     const planReminders = await getPlanReminders(client, settings);
-    const inactivityReminders = await getInactivityReminders(client, settings);
     const dailyCheckInReminders = await getDailyCheckInReminders(client, settings);
 
-    // Pick ONLY ONE reminder, in priority order
-    // This prevents sending multiple notifications at once which overwhelms users
+    // Pick the most important reminder using priority order
+    // Inactivity > goals > plan > daily check-in
+    // Each type manages its own cooldown, so we just pick the highest priority available
     let selectedReminder: ReminderCandidate | null = null;
 
     if (inactivityReminders.length > 0) {
       selectedReminder = inactivityReminders[0];
+      logger.debug("Selected inactivity reminder", { 
+        clientId: client.id, 
+        severity: inactivityReminders[0].severity,
+        daysSince: inactivityReminders[0].daysSince 
+      });
     } else if (goalReminders.length > 0) {
       selectedReminder = goalReminders[0];
     } else if (planReminders.length > 0) {
