@@ -510,21 +510,13 @@ export default function Clients() {
                 onClick={() => setLocation(`/coach/clients/${client.id}`)}
               >
                 <div className="p-5 flex flex-col flex-1 space-y-3">
-                  {/* Header: Avatar with status dot, Name, Badge, Expand Toggle */}
+                  {/* Header: Avatar, Name, Badge, Expand Toggle */}
                   <div className="flex items-start gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className="relative flex-shrink-0">
                         <div className={`w-14 h-14 rounded-2xl ${isEnded ? "bg-muted" : getAvatarColor(index)} flex items-center justify-center shadow-sm`}>
                           <span className={`text-lg font-semibold ${isEnded ? "text-muted-foreground" : ""}`}>{getInitials(client.name)}</span>
                         </div>
-                        {/* Status indicator dot on avatar - reflects active/inactive or ended status */}
-                        <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-card shadow-sm ${
-                          isEnded 
-                            ? "bg-red-500" 
-                            : client.status === "active" 
-                            ? "bg-emerald-500" 
-                            : "bg-muted-foreground"
-                        }`} />
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className={`font-semibold truncate mb-1.5 ${isEnded ? "text-muted-foreground" : "text-foreground"}`}>{client.name}</h3>
