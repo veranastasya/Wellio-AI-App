@@ -236,6 +236,22 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
           })),
         };
         onAddTrainingDay(newDay);
+      } else if (result.type === "add_schedule" && result.data?.schedule) {
+        for (const dayData of result.data.schedule) {
+          const newDay: TrainingDay = {
+            id: generateId(),
+            day: dayData.day || "Monday",
+            title: dayData.title || "New Workout",
+            exercises: (dayData.exercises || []).map((e: any) => ({
+              id: generateId(),
+              name: e.name,
+              sets: e.sets || 3,
+              reps: e.reps || 10,
+              note: e.note,
+            })),
+          };
+          onAddTrainingDay(newDay);
+        }
       } else if (result.type === "modify_training" && result.data?.exercisesToAdd) {
         const targetDay = result.data.targetDay;
         const existingDay = trainingDays.find(d => 

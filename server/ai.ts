@@ -1048,7 +1048,7 @@ function generateFallbackSummary(
 }
 
 export interface ProgramBuilderAction {
-  type: "add_training" | "add_meal" | "add_habit" | "add_task" | "modify_training" | "none";
+  type: "add_training" | "add_schedule" | "add_meal" | "add_habit" | "add_task" | "modify_training" | "none";
   response: string;
   data?: {
     day?: string;
@@ -1058,6 +1058,16 @@ export interface ProgramBuilderAction {
       sets: number;
       reps: number;
       note?: string;
+    }>;
+    schedule?: Array<{
+      day: string;
+      title: string;
+      exercises: Array<{
+        name: string;
+        sets: number;
+        reps: number;
+        note?: string;
+      }>;
     }>;
     meal?: {
       type: string;
@@ -1114,13 +1124,19 @@ Common corrections:
 
 You must respond with a JSON object in this exact format:
 {
-  "type": "add_training" | "add_meal" | "add_habit" | "add_task" | "modify_training" | "none",
+  "type": "add_training" | "add_schedule" | "add_meal" | "add_habit" | "add_task" | "modify_training" | "none",
   "response": "A friendly confirmation message describing what you did",
   "data": {
-    // For add_training:
+    // For add_training (single workout day):
     "day": "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday",
     "title": "Workout Title",
     "exercises": [{ "name": "Exercise Name", "sets": 4, "reps": 10, "note": "optional note" }]
+    
+    // For add_schedule (MULTIPLE workout days - use when user asks for a weekly schedule, multiple days, or X-day program):
+    "schedule": [
+      { "day": "Monday", "title": "Upper Body", "exercises": [{ "name": "Bench Press", "sets": 4, "reps": 10 }] },
+      { "day": "Wednesday", "title": "Lower Body", "exercises": [{ "name": "Squats", "sets": 4, "reps": 8 }] }
+    ]
     
     // For modify_training (adding exercises to existing day):
     "targetDay": "Wednesday",
@@ -1136,6 +1152,8 @@ You must respond with a JSON object in this exact format:
     "task": { "name": "Task description", "dueDay": "Mon|Tue|Wed|Thu|Fri|Sat|Sun" }
   }
 }
+
+IMPORTANT: When the user requests multiple training days (e.g., "4-day split", "weekly schedule", "3 day workout plan", "upper lower split"), use "add_schedule" with an array of days. Only use "add_training" for a single workout day.
 
 If you don't understand the request or it's unrelated to fitness programming, use type "none" and provide a helpful response explaining what you can do.
 
