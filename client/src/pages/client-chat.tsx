@@ -157,7 +157,7 @@ export default function ClientChat() {
   const [messageText, setMessageText] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isInitialLoadRef = useRef(true);
   const { toast } = useToast();
@@ -248,12 +248,18 @@ export default function ClientChat() {
     });
   }, [messages, clientData]);
 
-  // Scroll to bottom function
+  // Scroll to bottom function using container scrollTop for mobile compatibility
   const scrollToBottom = useCallback((instant: boolean = false) => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: instant ? "instant" : "smooth" 
-      });
+    const container = messagesContainerRef.current;
+    if (container) {
+      if (instant) {
+        container.scrollTop = container.scrollHeight;
+      } else {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: "smooth",
+        });
+      }
     }
   }, []);
 
@@ -486,7 +492,7 @@ export default function ClientChat() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6">
         {clientMessages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
             <MessageSquare className="w-16 h-16 text-muted-foreground/50" />
@@ -539,7 +545,6 @@ export default function ClientChat() {
                 </div>
               );
             })}
-            <div ref={messagesEndRef} />
           </div>
         )}
       </div>

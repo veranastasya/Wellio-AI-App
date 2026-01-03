@@ -30,7 +30,7 @@ export default function Communication() {
   const [validationError, setValidationError] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<MessageAttachment[]>([]);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isInitialLoadRef = useRef(true);
   const lastSelectedClientRef = useRef<string | null>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
@@ -178,11 +178,21 @@ export default function Communication() {
     }
     
     // Use instant scroll on initial load / new client selection, smooth for updates
-    const behavior = isInitialLoadRef.current ? "instant" : "smooth";
+    const isInstant = isInitialLoadRef.current;
     
     // Small delay to ensure DOM is rendered before scrolling
     const timer = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: behavior as ScrollBehavior });
+      const container = messagesContainerRef.current;
+      if (container) {
+        if (isInstant) {
+          container.scrollTop = container.scrollHeight;
+        } else {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      }
       isInitialLoadRef.current = false;
     }, 50);
     
@@ -457,7 +467,7 @@ export default function Communication() {
             )}
 
             {/* Scrollable Messages Area - ONLY this scrolls */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
               {clientMessages.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   {t.communication.noMessages[lang]}
@@ -547,7 +557,6 @@ export default function Communication() {
                   </div>
                 ))
               )}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Fixed Input Area at Bottom - Telegram style */}
