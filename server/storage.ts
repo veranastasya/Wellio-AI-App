@@ -239,6 +239,7 @@ export interface IStorage {
 
   // Weekly Schedule Items
   getWeeklyScheduleItems(clientId: string): Promise<WeeklyScheduleItem[]>;
+  getWeeklyScheduleItemsByCoach(coachId: string): Promise<WeeklyScheduleItem[]>;
   getWeeklyScheduleItem(id: string): Promise<WeeklyScheduleItem | undefined>;
   getWeeklyScheduleItemsByDate(clientId: string, date: string): Promise<WeeklyScheduleItem[]>;
   createWeeklyScheduleItem(item: InsertWeeklyScheduleItem): Promise<WeeklyScheduleItem>;
@@ -1536,6 +1537,13 @@ Introduction to consistent training and meal logging habits.
     return await db.select()
       .from(weeklyScheduleItems)
       .where(eq(weeklyScheduleItems.clientId, clientId))
+      .orderBy(weeklyScheduleItems.scheduledDate, weeklyScheduleItems.sortOrder);
+  }
+
+  async getWeeklyScheduleItemsByCoach(coachId: string): Promise<WeeklyScheduleItem[]> {
+    return await db.select()
+      .from(weeklyScheduleItems)
+      .where(eq(weeklyScheduleItems.coachId, coachId))
       .orderBy(weeklyScheduleItems.scheduledDate, weeklyScheduleItems.sortOrder);
   }
 

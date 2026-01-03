@@ -3218,6 +3218,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Coach-facing: Get all weekly schedule items for dashboard stats
+  app.get("/api/weekly-schedule-items", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const items = await storage.getWeeklyScheduleItemsByCoach(coachId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching all schedule items:", error);
+      res.status(500).json({ error: "Failed to fetch schedule items" });
+    }
+  });
+
   // Coach-facing: Create weekly schedule items for a client
   app.post("/api/weekly-schedule-items", requireCoachAuth, async (req, res) => {
     try {

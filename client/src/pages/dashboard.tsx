@@ -13,7 +13,7 @@ import {
   Plus
 } from "lucide-react";
 import { Link } from "wouter";
-import type { Client, Session, Message, Coach, SupportedLanguage } from "@shared/schema";
+import type { Client, Session, Message, Coach, SupportedLanguage, WeeklyScheduleItem } from "@shared/schema";
 import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { HybridOnboarding } from "@/components/onboarding";
@@ -52,6 +52,10 @@ export default function Dashboard() {
     queryKey: ["/api/messages"],
   });
 
+  const { data: scheduleItems = [] } = useQuery<WeeklyScheduleItem[]>({
+    queryKey: ["/api/weekly-schedule-items"],
+  });
+
   const isLoading = clientsLoading || sessionsLoading;
 
   const totalClients = clients.length;
@@ -85,9 +89,16 @@ export default function Dashboard() {
     ? Math.round(activeClients.reduce((sum, c) => sum + c.progressScore, 0) / activeClients.length)
     : 0;
 
-  const completedSessions = sessions.filter(s => s.status === "completed").length;
-  const totalSessions = sessions.length;
-  const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+  // Get client IDs of active clients for filtering schedule items
+  const activeClientIds = new Set(activeClients.map(c => c.id));
+  
+  // Filter schedule items to only include those from active clients
+  const activeScheduleItems = scheduleItems.filter(item => activeClientIds.has(item.clientId));
+  
+  // Completion rate: completed schedule items / total schedule items for active clients
+  const completedItems = activeScheduleItems.filter(item => item.completed).length;
+  const totalItems = activeScheduleItems.length;
+  const completionRate = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   
   const upcomingSessions = sessions
     .filter(s => s.status === "scheduled" && (s.date === todayStr || s.date === tomorrowStr))
