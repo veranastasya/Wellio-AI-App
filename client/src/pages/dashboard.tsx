@@ -58,6 +58,9 @@ export default function Dashboard() {
   const activePrograms = clients.filter(c => c.status === "active").length;
   
   const today = new Date();
+  const todayStr = today.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+  const tomorrowStr = new Date(today.getTime() + 86400000).toLocaleDateString('en-CA');
+  
   const weekStart = new Date(today);
   weekStart.setDate(today.getDate() - today.getDay());
   const weekEnd = new Date(weekStart);
@@ -70,17 +73,21 @@ export default function Dashboard() {
 
   const unreadMessages = messages.filter(m => !m.read && m.sender !== "coach").length;
 
-  const avgClientProgress = clients.length > 0
-    ? Math.round(clients.reduce((sum, c) => sum + c.progressScore, 0) / clients.length)
+  // Filter out clients with ended programs (endDate in the past)
+  // Use direct string comparison (YYYY-MM-DD format) to avoid timezone issues
+  const activeClients = clients.filter(c => {
+    if (!c.endDate) return true; // No end date = active
+    // c.endDate is already in YYYY-MM-DD format from the database
+    return c.endDate >= todayStr; // End date today or future = still active
+  });
+
+  const avgClientProgress = activeClients.length > 0
+    ? Math.round(activeClients.reduce((sum, c) => sum + c.progressScore, 0) / activeClients.length)
     : 0;
 
   const completedSessions = sessions.filter(s => s.status === "completed").length;
   const totalSessions = sessions.length;
   const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
-
-
-  const todayStr = today.toLocaleDateString('en-CA');
-  const tomorrowStr = new Date(today.getTime() + 86400000).toLocaleDateString('en-CA');
   
   const upcomingSessions = sessions
     .filter(s => s.status === "scheduled" && (s.date === todayStr || s.date === tomorrowStr))
