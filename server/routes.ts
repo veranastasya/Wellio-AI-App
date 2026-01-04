@@ -3177,6 +3177,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update client's lastActiveAt
       await storage.updateClient(clientId, { lastActiveAt: now });
       
+      // Recalculate client progress (non-blocking)
+      updateClientProgress(clientId).catch((err: unknown) => {
+        console.error("Failed to update client progress after item completion:", err);
+      });
+      
       res.json(updatedItem);
     } catch (error) {
       console.error("Error toggling item completion:", error);
@@ -3210,6 +3215,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update client's lastActiveAt
       await storage.updateClient(clientId, { lastActiveAt: now });
+      
+      // Recalculate client progress (non-blocking)
+      updateClientProgress(clientId).catch((err: unknown) => {
+        console.error("Failed to update client progress after completing day:", err);
+      });
       
       res.json({ success: true, completedCount: updates.length });
     } catch (error) {
