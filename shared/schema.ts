@@ -1313,6 +1313,64 @@ export const COACH_UI_TRANSLATIONS = {
     testTitle: { en: "Test Notification", ru: "Тестовое уведомление", es: "Notificación de Prueba" },
     testBody: { en: "Push notifications are working correctly!", ru: "Push-уведомления работают правильно!", es: "¡Las notificaciones push funcionan correctamente!" },
   },
+  // Client Data Logs page
+  dataLogs: {
+    title: { en: "Client Data Logs", ru: "Журналы данных клиентов", es: "Registros de Datos de Clientes" },
+    subtitle: { en: "Track client nutrition, workouts, and check-ins", ru: "Отслеживайте питание, тренировки и отметки клиентов", es: "Rastrea nutrición, entrenamientos y registros de clientes" },
+    selectClient: { en: "Select a client...", ru: "Выберите клиента...", es: "Seleccionar un cliente..." },
+    nutrition: { en: "Nutrition", ru: "Питание", es: "Nutrición" },
+    workout: { en: "Workout", ru: "Тренировка", es: "Ejercicio" },
+    checkIn: { en: "Check-in", ru: "Отметка", es: "Registro" },
+    goals: { en: "Goals", ru: "Цели", es: "Objetivos" },
+    devices: { en: "Devices", ru: "Устройства", es: "Dispositivos" },
+    // Nutrition form
+    logNutrition: { en: "Log Nutrition", ru: "Записать питание", es: "Registrar Nutrición" },
+    trackMeals: { en: "Track meals and nutrition for", ru: "Отслеживание приёмов пищи для", es: "Rastrea comidas y nutrición para" },
+    date: { en: "Date", ru: "Дата", es: "Fecha" },
+    calories: { en: "Calories", ru: "Калории", es: "Calorías" },
+    protein: { en: "Protein (g)", ru: "Белок (г)", es: "Proteína (g)" },
+    carbs: { en: "Carbs (g)", ru: "Углеводы (г)", es: "Carbohidratos (g)" },
+    fats: { en: "Fats (g)", ru: "Жиры (г)", es: "Grasas (g)" },
+    notes: { en: "Notes", ru: "Заметки", es: "Notas" },
+    notesPlaceholder: { en: "Any additional observations...", ru: "Дополнительные наблюдения...", es: "Observaciones adicionales..." },
+    saveNutrition: { en: "Save Nutrition Log", ru: "Сохранить запись питания", es: "Guardar Registro de Nutrición" },
+    // Workout form
+    logWorkout: { en: "Log Workout", ru: "Записать тренировку", es: "Registrar Ejercicio" },
+    trackTraining: { en: "Track training sessions for", ru: "Отслеживание тренировок для", es: "Rastrea sesiones de entrenamiento para" },
+    workoutType: { en: "Workout Type", ru: "Тип тренировки", es: "Tipo de Ejercicio" },
+    duration: { en: "Duration (min)", ru: "Длительность (мин)", es: "Duración (min)" },
+    intensity: { en: "Intensity", ru: "Интенсивность", es: "Intensidad" },
+    workoutNotes: { en: "Workout Notes", ru: "Заметки о тренировке", es: "Notas del Ejercicio" },
+    workoutNotesPlaceholder: { en: "Exercises performed, sets, reps, etc...", ru: "Упражнения, подходы, повторения и т.д...", es: "Ejercicios realizados, series, repeticiones, etc..." },
+    saveWorkout: { en: "Save Workout Log", ru: "Сохранить запись тренировки", es: "Guardar Registro de Ejercicio" },
+    // Workout types
+    strength: { en: "Strength", ru: "Силовая", es: "Fuerza" },
+    cardio: { en: "Cardio", ru: "Кардио", es: "Cardio" },
+    hiit: { en: "HIIT", ru: "ВИИТ", es: "HIIT" },
+    flexibility: { en: "Flexibility", ru: "Гибкость", es: "Flexibilidad" },
+    sports: { en: "Sports", ru: "Спорт", es: "Deportes" },
+    // Intensity levels
+    low: { en: "Low", ru: "Низкая", es: "Baja" },
+    moderate: { en: "Moderate", ru: "Умеренная", es: "Moderada" },
+    high: { en: "High", ru: "Высокая", es: "Alta" },
+    // Check-in form
+    logCheckIn: { en: "Log Check-in", ru: "Записать отметку", es: "Registrar Check-in" },
+    trackProgress: { en: "Track progress and well-being for", ru: "Отслеживание прогресса и состояния для", es: "Rastrea progreso y bienestar para" },
+    weight: { en: "Weight", ru: "Вес", es: "Peso" },
+    bodyFat: { en: "Body Fat %", ru: "% жира", es: "% Grasa Corporal" },
+    checkInNotes: { en: "Check-in Notes", ru: "Заметки отметки", es: "Notas del Registro" },
+    checkInNotesPlaceholder: { en: "Energy levels, measurements, photos, etc...", ru: "Уровень энергии, измерения, фото и т.д...", es: "Niveles de energía, medidas, fotos, etc..." },
+    saveCheckIn: { en: "Save Check-in", ru: "Сохранить отметку", es: "Guardar Registro" },
+    // History section
+    recentLogs: { en: "Recent Logs", ru: "Недавние записи", es: "Registros Recientes" },
+    noLogsYet: { en: "No logs recorded yet", ru: "Записей пока нет", es: "Sin registros aún" },
+    startLogging: { en: "Start by recording nutrition, workout, or check-in data", ru: "Начните с записи питания, тренировки или отметки", es: "Comienza registrando datos de nutrición, ejercicio o check-in" },
+    // Messages
+    logSaved: { en: "Log saved successfully", ru: "Запись сохранена", es: "Registro guardado" },
+    logDeleted: { en: "Log deleted", ru: "Запись удалена", es: "Registro eliminado" },
+    failedToSave: { en: "Failed to save log", ru: "Не удалось сохранить запись", es: "Error al guardar registro" },
+    saving: { en: "Saving...", ru: "Сохранение...", es: "Guardando..." },
+  },
 } as const;
 
 // Helper function to get coach UI translation

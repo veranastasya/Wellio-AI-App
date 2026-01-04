@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,7 +29,8 @@ import { ClipboardList, Apple, Dumbbell, Scale, Target, History, Trash2, Calenda
 import { z } from "zod";
 import { DeviceConnection } from "@/components/device-connection";
 import { ClientGoals } from "@/components/goals/client-goals";
-import type { ClientDataLog } from "@shared/schema";
+import type { ClientDataLog, SupportedLanguage, Coach } from "@shared/schema";
+import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { format, parseISO } from "date-fns";
 
 interface Client {
@@ -70,6 +71,19 @@ type CheckInFormData = z.infer<typeof checkinFormSchema>;
 export default function ClientLogs() {
   const { toast } = useToast();
   const [selectedClientId, setSelectedClientId] = useState<string>("");
+  const [lang, setLang] = useState<SupportedLanguage>("en");
+  
+  const t = COACH_UI_TRANSLATIONS.dataLogs;
+
+  const { data: coachProfile } = useQuery<Coach>({
+    queryKey: ["/api/coach/profile"],
+  });
+
+  useEffect(() => {
+    if (coachProfile?.preferredLanguage) {
+      setLang(coachProfile.preferredLanguage as SupportedLanguage);
+    }
+  }, [coachProfile]);
 
   const { data: clients, isLoading: clientsLoading } = useQuery<Client[]>({
     queryKey: ["/api/clients"],
@@ -333,10 +347,10 @@ export default function ClientLogs() {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground" data-testid="heading-client-logs">
-              Client Data Logs
+              {t.title[lang]}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Track nutrition, workouts, and progress check-ins
+              {t.subtitle[lang]}
             </p>
           </div>
         </div>
@@ -346,13 +360,12 @@ export default function ClientLogs() {
         <div className="max-w-4xl mx-auto space-y-6">
           <Card data-testid="card-client-selector">
             <CardHeader>
-              <CardTitle className="text-lg">Select Client</CardTitle>
-              <CardDescription>Choose a client to log their data</CardDescription>
+              <CardTitle className="text-lg">{t.selectClient[lang]}</CardTitle>
             </CardHeader>
             <CardContent>
               <Select value={selectedClientId} onValueChange={handleClientChange}>
                 <SelectTrigger data-testid="select-client">
-                  <SelectValue placeholder="Select a client..." />
+                  <SelectValue placeholder={t.selectClient[lang]} />
                 </SelectTrigger>
                 <SelectContent>
                   {activeClients.map((client) => (
@@ -377,23 +390,23 @@ export default function ClientLogs() {
               <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 h-auto p-1 bg-muted rounded-lg">
                 <TabsTrigger value="nutrition" data-testid="tab-nutrition" className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
                   <Apple className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Nutrition</span>
-                  <span className="sm:hidden">Nutr</span>
+                  <span className="hidden sm:inline">{t.nutrition[lang]}</span>
+                  <span className="sm:hidden">{t.nutrition[lang].slice(0, 4)}</span>
                 </TabsTrigger>
                 <TabsTrigger value="workout" data-testid="tab-workout" className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
                   <Dumbbell className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Workout</span>
-                  <span className="sm:hidden">Work</span>
+                  <span className="hidden sm:inline">{t.workout[lang]}</span>
+                  <span className="sm:hidden">{t.workout[lang].slice(0, 4)}</span>
                 </TabsTrigger>
                 <TabsTrigger value="checkin" data-testid="tab-checkin" className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
                   <Scale className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Check-in</span>
+                  <span className="hidden sm:inline">{t.checkIn[lang]}</span>
                   <span className="sm:hidden">Check</span>
                 </TabsTrigger>
                 <TabsTrigger value="goals" data-testid="tab-goals" className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
                   <Target className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Goals</span>
-                  <span className="sm:hidden">Goals</span>
+                  <span className="hidden sm:inline">{t.goals[lang]}</span>
+                  <span className="sm:hidden">{t.goals[lang].slice(0, 4)}</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -401,9 +414,9 @@ export default function ClientLogs() {
                 <div className="grid gap-6 lg:grid-cols-2">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Log Nutrition Data</CardTitle>
+                      <CardTitle>{t.logNutrition[lang]}</CardTitle>
                       <CardDescription>
-                        Track daily macronutrient intake for {selectedClient?.name}
+                        {t.trackMeals[lang]} {selectedClient?.name}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -414,7 +427,7 @@ export default function ClientLogs() {
                             name="date"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Date</FormLabel>
+                                <FormLabel>{t.date[lang]}</FormLabel>
                                 <FormControl>
                                   <Input type="date" {...field} data-testid="input-nutrition-date" />
                                 </FormControl>
@@ -429,7 +442,7 @@ export default function ClientLogs() {
                               name="calories"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Calories</FormLabel>
+                                  <FormLabel>{t.calories[lang]}</FormLabel>
                                   <FormControl>
                                     <Input 
                                       type="number" 
@@ -449,7 +462,7 @@ export default function ClientLogs() {
                               name="protein"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Protein (g)</FormLabel>
+                                  <FormLabel>{t.protein[lang]}</FormLabel>
                                   <FormControl>
                                     <Input 
                                       type="number" 
@@ -469,7 +482,7 @@ export default function ClientLogs() {
                               name="carbs"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Carbs (g)</FormLabel>
+                                  <FormLabel>{t.carbs[lang]}</FormLabel>
                                   <FormControl>
                                     <Input 
                                       type="number" 
@@ -489,7 +502,7 @@ export default function ClientLogs() {
                               name="fats"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Fats (g)</FormLabel>
+                                  <FormLabel>{t.fats[lang]}</FormLabel>
                                   <FormControl>
                                     <Input 
                                       type="number" 
@@ -510,12 +523,12 @@ export default function ClientLogs() {
                             name="notes"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Notes (Optional)</FormLabel>
+                                <FormLabel>{t.notes[lang]}</FormLabel>
                                 <FormControl>
                                   <Textarea 
                                     {...field} 
                                     value={field.value || ""}
-                                    placeholder="Any additional observations..."
+                                    placeholder={t.notesPlaceholder[lang]}
                                     data-testid="input-nutrition-notes" 
                                   />
                                 </FormControl>
@@ -529,7 +542,7 @@ export default function ClientLogs() {
                             disabled={createLogMutation.isPending}
                             data-testid="button-save-nutrition"
                           >
-                            {createLogMutation.isPending ? "Saving..." : "Save Nutrition Log"}
+                            {createLogMutation.isPending ? t.saving[lang] : t.saveNutrition[lang]}
                           </Button>
                         </form>
                       </Form>
@@ -540,11 +553,8 @@ export default function ClientLogs() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <History className="w-5 h-5" />
-                        Recent Nutrition Logs
+                        {t.recentLogs[lang]}
                       </CardTitle>
-                      <CardDescription>
-                        Last 10 nutrition entries for {selectedClient?.name}
-                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       {logsLoading ? (
@@ -561,9 +571,9 @@ export default function ClientLogs() {
                 <div className="grid gap-6 lg:grid-cols-2">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Log Workout Data</CardTitle>
+                      <CardTitle>{t.logWorkout[lang]}</CardTitle>
                       <CardDescription>
-                        Track training sessions for {selectedClient?.name}
+                        {t.trackTraining[lang]} {selectedClient?.name}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -574,7 +584,7 @@ export default function ClientLogs() {
                             name="date"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Date</FormLabel>
+                                <FormLabel>{t.date[lang]}</FormLabel>
                                 <FormControl>
                                   <Input type="date" {...field} data-testid="input-workout-date" />
                                 </FormControl>
@@ -589,7 +599,7 @@ export default function ClientLogs() {
                               name="workoutType"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Workout Type</FormLabel>
+                                  <FormLabel>{t.workoutType[lang]}</FormLabel>
                                   <Select 
                                     onValueChange={field.onChange} 
                                     defaultValue={field.value}
@@ -601,11 +611,11 @@ export default function ClientLogs() {
                                       </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                      <SelectItem value="strength">Strength</SelectItem>
-                                      <SelectItem value="cardio">Cardio</SelectItem>
-                                      <SelectItem value="hiit">HIIT</SelectItem>
-                                      <SelectItem value="flexibility">Flexibility</SelectItem>
-                                      <SelectItem value="sports">Sports</SelectItem>
+                                      <SelectItem value="strength">{t.strength[lang]}</SelectItem>
+                                      <SelectItem value="cardio">{t.cardio[lang]}</SelectItem>
+                                      <SelectItem value="hiit">{t.hiit[lang]}</SelectItem>
+                                      <SelectItem value="flexibility">{t.flexibility[lang]}</SelectItem>
+                                      <SelectItem value="sports">{t.sports[lang]}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                   <FormMessage />
@@ -618,7 +628,7 @@ export default function ClientLogs() {
                               name="duration"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Duration (min)</FormLabel>
+                                  <FormLabel>{t.duration[lang]}</FormLabel>
                                   <FormControl>
                                     <Input 
                                       type="number" 
@@ -639,7 +649,7 @@ export default function ClientLogs() {
                             name="intensity"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Intensity</FormLabel>
+                                <FormLabel>{t.intensity[lang]}</FormLabel>
                                 <Select 
                                   onValueChange={field.onChange} 
                                   defaultValue={field.value ?? undefined}
@@ -651,9 +661,9 @@ export default function ClientLogs() {
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="low">Low</SelectItem>
-                                    <SelectItem value="moderate">Moderate</SelectItem>
-                                    <SelectItem value="high">High</SelectItem>
+                                    <SelectItem value="low">{t.low[lang]}</SelectItem>
+                                    <SelectItem value="moderate">{t.moderate[lang]}</SelectItem>
+                                    <SelectItem value="high">{t.high[lang]}</SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -666,12 +676,12 @@ export default function ClientLogs() {
                             name="notes"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Notes (Optional)</FormLabel>
+                                <FormLabel>{t.workoutNotes[lang]}</FormLabel>
                                 <FormControl>
                                   <Textarea 
                                     {...field} 
                                     value={field.value || ""}
-                                    placeholder="Exercises performed, sets, reps, etc..."
+                                    placeholder={t.workoutNotesPlaceholder[lang]}
                                     data-testid="input-workout-notes" 
                                   />
                                 </FormControl>
@@ -685,7 +695,7 @@ export default function ClientLogs() {
                             disabled={createLogMutation.isPending}
                             data-testid="button-save-workout"
                           >
-                            {createLogMutation.isPending ? "Saving..." : "Save Workout Log"}
+                            {createLogMutation.isPending ? t.saving[lang] : t.saveWorkout[lang]}
                           </Button>
                         </form>
                       </Form>
@@ -696,11 +706,8 @@ export default function ClientLogs() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <History className="w-5 h-5" />
-                        Recent Workout Logs
+                        {t.recentLogs[lang]}
                       </CardTitle>
-                      <CardDescription>
-                        Last 10 workout entries for {selectedClient?.name}
-                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       {logsLoading ? (
@@ -717,9 +724,9 @@ export default function ClientLogs() {
                 <div className="grid gap-6 lg:grid-cols-2">
                   <Card>
                     <CardHeader>
-                      <CardTitle>Log Check-in Data</CardTitle>
+                      <CardTitle>{t.logCheckIn[lang]}</CardTitle>
                       <CardDescription>
-                        Track body metrics and progress for {selectedClient?.name}
+                        {t.trackProgress[lang]} {selectedClient?.name}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -730,7 +737,7 @@ export default function ClientLogs() {
                             name="date"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Date</FormLabel>
+                                <FormLabel>{t.date[lang]}</FormLabel>
                                 <FormControl>
                                   <Input type="date" {...field} data-testid="input-checkin-date" />
                                 </FormControl>
@@ -745,7 +752,7 @@ export default function ClientLogs() {
                               name="weight"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Weight (lbs)</FormLabel>
+                                  <FormLabel>{t.weight[lang]}</FormLabel>
                                   <FormControl>
                                     <Input 
                                       type="number" 
@@ -766,7 +773,7 @@ export default function ClientLogs() {
                               name="bodyFat"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Body Fat (%)</FormLabel>
+                                  <FormLabel>{t.bodyFat[lang]}</FormLabel>
                                   <FormControl>
                                     <Input 
                                       type="number" 
@@ -788,12 +795,12 @@ export default function ClientLogs() {
                             name="notes"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Notes (Optional)</FormLabel>
+                                <FormLabel>{t.checkInNotes[lang]}</FormLabel>
                                 <FormControl>
                                   <Textarea 
                                     {...field} 
                                     value={field.value || ""}
-                                    placeholder="Energy levels, measurements, photos, etc..."
+                                    placeholder={t.checkInNotesPlaceholder[lang]}
                                     data-testid="input-checkin-notes" 
                                   />
                                 </FormControl>
@@ -807,7 +814,7 @@ export default function ClientLogs() {
                             disabled={createLogMutation.isPending}
                             data-testid="button-save-checkin"
                           >
-                            {createLogMutation.isPending ? "Saving..." : "Save Check-in Log"}
+                            {createLogMutation.isPending ? t.saving[lang] : t.saveCheckIn[lang]}
                           </Button>
                         </form>
                       </Form>
@@ -818,11 +825,8 @@ export default function ClientLogs() {
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <History className="w-5 h-5" />
-                        Recent Check-in Logs
+                        {t.recentLogs[lang]}
                       </CardTitle>
-                      <CardDescription>
-                        Last 10 check-in entries for {selectedClient?.name}
-                      </CardDescription>
                     </CardHeader>
                     <CardContent>
                       {logsLoading ? (
