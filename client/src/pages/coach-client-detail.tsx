@@ -395,7 +395,7 @@ export default function CoachClientDetail() {
                       <div>
                         <div className="text-sm text-muted-foreground">{t.clientDetail.primaryGoal[lang]}</div>
                         <div className="text-base font-medium" data-testid="text-client-goal">
-                          {getGoalTypeLabelTranslated(client.goalType, client.goalDescription, lang)}
+                          {getGoalTypeLabelTranslated(client.goalType, lang, client.goalDescription)}
                         </div>
                       </div>
                     </div>
