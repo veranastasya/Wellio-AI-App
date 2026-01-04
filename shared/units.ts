@@ -1,9 +1,21 @@
+import type { SupportedLanguage } from "./schema";
+
 export type UnitsPreference = "us" | "metric";
 
 export const UNITS_LABELS: Record<UnitsPreference, string> = {
   us: "U.S. Units",
   metric: "Metric",
 };
+
+export const UNITS_LABELS_TRANSLATED: Record<SupportedLanguage, Record<UnitsPreference, string>> = {
+  en: { us: "U.S. Units", metric: "Metric" },
+  ru: { us: "Американские", metric: "Метрическая" },
+  es: { us: "Sistema Imperial", metric: "Métrico" },
+};
+
+export function getUnitsLabel(units: UnitsPreference, lang: SupportedLanguage = "en"): string {
+  return UNITS_LABELS_TRANSLATED[lang]?.[units] || UNITS_LABELS[units];
+}
 
 export function lbsToKg(lbs: number): number {
   return Number((lbs * 0.453592).toFixed(2));

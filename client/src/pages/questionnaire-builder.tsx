@@ -37,7 +37,7 @@ import {
 import { Plus, Trash2, GripVertical, ArrowLeft, Save, X } from "lucide-react";
 import type { Questionnaire, Question, QuestionType, Coach, SupportedLanguage } from "@shared/schema";
 import { normalizeQuestion, COACH_UI_TRANSLATIONS } from "@shared/schema";
-import { type UnitsPreference, UNITS_LABELS } from "@shared/units";
+import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED } from "@shared/units";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -545,8 +545,8 @@ export default function QuestionnaireBuilder() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
-                        <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
+                        <SelectItem value="us">{UNITS_LABELS_TRANSLATED[lang].us}</SelectItem>
+                        <SelectItem value="metric">{UNITS_LABELS_TRANSLATED[lang].metric}</SelectItem>
                       </SelectContent>
                     </Select>
                   )}

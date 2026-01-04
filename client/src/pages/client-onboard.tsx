@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Loader2, AlertCircle, Upload, X } from "lucide-react";
 import type { Question, Questionnaire } from "@shared/schema";
 import { normalizeQuestion, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, GOAL_TYPES, GOAL_TYPE_LABELS } from "@shared/schema";
-import { type UnitsPreference, UNITS_LABELS, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
+import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 
 export default function ClientOnboard() {
   const [, setLocation] = useLocation();
@@ -594,8 +594,8 @@ export default function ClientOnboard() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
-                      <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
+                      <SelectItem value="us">{UNITS_LABELS_TRANSLATED.en.us}</SelectItem>
+                      <SelectItem value="metric">{UNITS_LABELS_TRANSLATED.en.metric}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

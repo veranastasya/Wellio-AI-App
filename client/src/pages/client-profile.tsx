@@ -10,8 +10,8 @@ import { Loader2, Mail, Phone, Calendar, User, Scale, Ruler, Target, Bell, BellO
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client } from "@shared/schema";
-import { getGoalTypeLabel, getActivityLevelLabel, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS, CLIENT_UI_TRANSLATIONS, type SupportedLanguage } from "@shared/schema";
-import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight } from "@shared/units";
+import { getGoalTypeLabel, getGoalTypeLabelTranslated, getActivityLevelLabel, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS, CLIENT_UI_TRANSLATIONS, type SupportedLanguage } from "@shared/schema";
+import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED, formatWeight, formatHeight } from "@shared/units";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { HybridOnboarding } from "@/components/onboarding";
 import { syncLanguage } from "@/lib/i18n";
@@ -178,12 +178,8 @@ export default function ClientProfile() {
   const progressPercent = totalToLose > 0 ? Math.min(100, Math.max(0, ((startWeight - currentWeight) / totalToLose) * 100)) : 0;
 
   const goals = [];
-  if (clientData.goalType === "lose_weight") goals.push("Weight Loss");
-  if (clientData.goalType === "improve_health") goals.push("Improve Health");
-  if (clientData.goalType === "build_muscle") goals.push("Build Muscle");
-  if (clientData.goalType === "improve_fitness") goals.push("Boost Energy");
-  if (goals.length === 0 && clientData.goalType) {
-    goals.push(getGoalTypeLabel(clientData.goalType, clientData.goalDescription));
+  if (clientData.goalType) {
+    goals.push(getGoalTypeLabelTranslated(clientData.goalType, lang, clientData.goalDescription));
   }
 
   return (
@@ -256,8 +252,8 @@ export default function ClientProfile() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
-                    <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
+                    <SelectItem value="us">{UNITS_LABELS_TRANSLATED[lang].us}</SelectItem>
+                    <SelectItem value="metric">{UNITS_LABELS_TRANSLATED[lang].metric}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

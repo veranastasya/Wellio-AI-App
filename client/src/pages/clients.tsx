@@ -4,7 +4,7 @@ import { Link, useLocation } from "wouter";
 import { Plus, Search, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, ChevronUp, Users as UsersIcon, Eye, AlertTriangle, CalendarDays, TrendingUp } from "lucide-react";
 import type { Questionnaire, GoalType, SupportedLanguage, Coach } from "@shared/schema";
 import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel, COACH_UI_TRANSLATIONS } from "@shared/schema";
-import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
+import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -974,8 +974,8 @@ function ClientForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="us">{UNITS_LABELS.us}</SelectItem>
-                    <SelectItem value="metric">{UNITS_LABELS.metric}</SelectItem>
+                    <SelectItem value="us">{UNITS_LABELS_TRANSLATED[lang].us}</SelectItem>
+                    <SelectItem value="metric">{UNITS_LABELS_TRANSLATED[lang].metric}</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
