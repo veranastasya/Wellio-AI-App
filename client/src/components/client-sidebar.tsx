@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Home, MessageSquare, TrendingUp, User, Bot, LogOut, BarChart3 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +21,7 @@ import logoImage from "@assets/Group 626535_1761099357468.png";
 import type { Message, SupportedLanguage } from "@shared/schema";
 import { CLIENT_NAV_TRANSLATIONS } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { syncLanguage } from "@/lib/i18n";
 
 type NavItemKey = "dashboard" | "myProgress" | "myPlan" | "coachChat" | "aiTracker" | "profile";
 
@@ -77,14 +79,16 @@ export function ClientSidebar() {
   const { isActive: isTourActive, currentTourTarget } = useTour();
   const [preferredLanguage, setPreferredLanguage] = useState<SupportedLanguage>("en");
 
-  // Fetch client's preferred language
+  // Fetch client's preferred language and sync with i18next
   useEffect(() => {
     const fetchClientLanguage = async () => {
       try {
         const response = await apiRequest("GET", "/api/client-auth/me");
         const data = await response.json();
         if (data.client?.preferredLanguage) {
-          setPreferredLanguage(data.client.preferredLanguage as SupportedLanguage);
+          const lang = data.client.preferredLanguage as SupportedLanguage;
+          setPreferredLanguage(lang);
+          syncLanguage(lang);
         }
       } catch (error) {
         console.error("Failed to fetch client language preference:", error);

@@ -14,6 +14,7 @@ import { getGoalTypeLabel, getActivityLevelLabel, SUPPORTED_LANGUAGES, LANGUAGE_
 import { type UnitsPreference, UNITS_LABELS, formatWeight, formatHeight } from "@shared/units";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { HybridOnboarding } from "@/components/onboarding";
+import { syncLanguage } from "@/lib/i18n";
 
 export default function ClientProfile() {
   const [, setLocation] = useLocation();
@@ -126,6 +127,7 @@ export default function ClientProfile() {
       setPreferredLanguage(newLanguage);
       setClientData({ ...clientData, preferredLanguage: newLanguage });
       queryClient.invalidateQueries({ queryKey: ["/api/client-auth/me"] });
+      syncLanguage(newLanguage);
       
       toast({
         title: "Language updated",
