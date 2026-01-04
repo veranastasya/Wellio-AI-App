@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, Response, Coach, SupportedLanguage } from "@shared/schema";
-import { getGoalTypeLabel, getActivityLevelLabel, COACH_UI_TRANSLATIONS } from "@shared/schema";
+import { getGoalTypeLabelTranslated, getActivityLevelLabelTranslated, COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { type UnitsPreference, formatWeight, formatHeight } from "@shared/units";
 import { PlanBuilderTab } from "@/components/plan-builder-tab";
 import { CoachProgressAnalytics } from "@/components/coach-progress-analytics";
@@ -253,7 +253,7 @@ export default function CoachClientDetail() {
                   </h1>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant={client.status === "active" ? "default" : "secondary"} data-testid="badge-client-status">
-                      {client.status}
+                      {t.status[client.status as keyof typeof t.status]?.[lang] || client.status}
                     </Badge>
                     {needsAccountSetup && (
                       <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
@@ -395,7 +395,7 @@ export default function CoachClientDetail() {
                       <div>
                         <div className="text-sm text-muted-foreground">{t.clientDetail.primaryGoal[lang]}</div>
                         <div className="text-base font-medium" data-testid="text-client-goal">
-                          {getGoalTypeLabel(client.goalType, client.goalDescription)}
+                          {getGoalTypeLabelTranslated(client.goalType, client.goalDescription, lang)}
                         </div>
                       </div>
                     </div>
@@ -437,7 +437,7 @@ export default function CoachClientDetail() {
                           {t.clientDetail.sex[lang]}
                         </div>
                         <div className="text-lg font-semibold capitalize" data-testid="text-client-sex">
-                          {client.sex.replace('_', ' ')}
+                          {t.gender[client.sex as keyof typeof t.gender]?.[lang] || client.sex.replace('_', ' ')}
                         </div>
                       </div>
                     )}
@@ -481,7 +481,7 @@ export default function CoachClientDetail() {
                           {t.clientDetail.activityLevel[lang]}
                         </div>
                         <div className="text-base font-semibold" data-testid="text-client-activity">
-                          {getActivityLevelLabel(client.activityLevel)}
+                          {getActivityLevelLabelTranslated(client.activityLevel, lang)}
                         </div>
                       </div>
                     )}

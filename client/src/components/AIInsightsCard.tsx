@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Sparkles, AlertTriangle, TrendingDown, Clock, MessageSquare, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { InsertMessage } from "@shared/schema";
+import type { InsertMessage, Coach, SupportedLanguage } from "@shared/schema";
+import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 
 interface Trigger {
   id: string;
@@ -73,6 +74,14 @@ export function AIInsightsCard({ clientId, clientName }: AIInsightsCardProps) {
   const [selectedTrigger, setSelectedTrigger] = useState<Trigger | null>(null);
   const [messageText, setMessageText] = useState("");
 
+  // Fetch coach profile for language preference
+  const { data: coachProfile } = useQuery<Coach>({
+    queryKey: ["/api/coach/profile"],
+  });
+  
+  const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const t = COACH_UI_TRANSLATIONS.aiInsights;
+
   useEffect(() => {
     if (!clientId) return;
 
@@ -101,8 +110,8 @@ export function AIInsightsCard({ clientId, clientName }: AIInsightsCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
       toast({
-        title: "Message Sent",
-        description: `Check-in sent to ${clientName}`,
+        title: t.messageSent[lang],
+        description: `${t.checkInSentTo[lang]} ${clientName}`,
       });
       setMessageModalOpen(false);
       setSelectedTrigger(null);
@@ -110,8 +119,8 @@ export function AIInsightsCard({ clientId, clientName }: AIInsightsCardProps) {
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to send message",
+        title: COACH_UI_TRANSLATIONS.common.error[lang],
+        description: t.failedToSend[lang],
         variant: "destructive",
       });
     },
@@ -158,9 +167,9 @@ export function AIInsightsCard({ clientId, clientName }: AIInsightsCardProps) {
               <div className="p-1.5 rounded-md bg-primary/10">
                 <Sparkles className="w-4 h-4 text-primary" />
               </div>
-              AI Insights
+              {t.title[lang]}
               <Badge variant="outline" className="ml-2 text-xs">
-                {triggers.length} {triggers.length === 1 ? "alert" : "alerts"}
+                {triggers.length} {triggers.length === 1 ? t.alert[lang] : t.alerts[lang]}
               </Badge>
             </CardTitle>
             {isExpanded ? (
@@ -187,7 +196,7 @@ export function AIInsightsCard({ clientId, clientName }: AIInsightsCardProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <Badge variant="outline" className={`text-xs ${getSeverityColor(trigger.severity)}`}>
-                        {trigger.severity}
+                        {trigger.severity === "High" ? t.high[lang] : trigger.severity === "Medium" ? t.medium[lang] : t.low[lang]}
                       </Badge>
                     </div>
                     <p className="text-sm text-foreground">
@@ -202,7 +211,7 @@ export function AIInsightsCard({ clientId, clientName }: AIInsightsCardProps) {
                     data-testid={`button-send-checkin-${trigger.id}`}
                   >
                     <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
-                    Check In
+                    {t.checkIn[lang]}
                   </Button>
                 </div>
               );
@@ -216,10 +225,10 @@ export function AIInsightsCard({ clientId, clientName }: AIInsightsCardProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Send className="w-5 h-5 text-primary" />
-              Send Check-In
+              {t.sendCheckIn[lang]}
             </DialogTitle>
             <DialogDescription>
-              Send a personalized message to {clientName}
+              {t.sendPersonalizedMessage[lang]} {clientName}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
@@ -227,13 +236,13 @@ export function AIInsightsCard({ clientId, clientName }: AIInsightsCardProps) {
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               className="min-h-[120px] resize-none"
-              placeholder="Enter your message..."
+              placeholder={t.enterMessage[lang]}
               data-testid="textarea-checkin-message"
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setMessageModalOpen(false)}>
-              Cancel
+              {t.cancel[lang]}
             </Button>
             <Button 
               onClick={handleSend} 
@@ -241,7 +250,7 @@ export function AIInsightsCard({ clientId, clientName }: AIInsightsCardProps) {
               data-testid="button-send-checkin"
             >
               <Send className="w-4 h-4 mr-2" />
-              {sendMessageMutation.isPending ? "Sending..." : "Send"}
+              {sendMessageMutation.isPending ? t.sending[lang] : t.send[lang]}
             </Button>
           </DialogFooter>
         </DialogContent>

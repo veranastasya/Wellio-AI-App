@@ -1176,6 +1176,37 @@ export const COACH_UI_TRANSLATIONS = {
     recommendations: { en: "Recommendations", ru: "Рекомендации", es: "Recomendaciones" },
     strengths: { en: "Strengths", ru: "Сильные стороны", es: "Fortalezas" },
     opportunities: { en: "Opportunities", ru: "Возможности для улучшения", es: "Oportunidades" },
+    // Severity badges
+    high: { en: "high", ru: "высокий", es: "alto" },
+    medium: { en: "medium", ru: "средний", es: "medio" },
+    low: { en: "low", ru: "низкий", es: "bajo" },
+    // Alert counts
+    alert: { en: "alert", ru: "оповещение", es: "alerta" },
+    alerts: { en: "alerts", ru: "оповещений", es: "alertas" },
+    // Check-in dialog
+    checkIn: { en: "Check In", ru: "Написать", es: "Escribir" },
+    sendCheckIn: { en: "Send Check-In", ru: "Отправить сообщение", es: "Enviar Mensaje" },
+    sendPersonalizedMessage: { en: "Send a personalized message to", ru: "Отправить персональное сообщение", es: "Enviar un mensaje personalizado a" },
+    enterMessage: { en: "Enter your message...", ru: "Введите сообщение...", es: "Ingresa tu mensaje..." },
+    cancel: { en: "Cancel", ru: "Отмена", es: "Cancelar" },
+    send: { en: "Send", ru: "Отправить", es: "Enviar" },
+    sending: { en: "Sending...", ru: "Отправка...", es: "Enviando..." },
+    messageSent: { en: "Message Sent", ru: "Сообщение отправлено", es: "Mensaje Enviado" },
+    checkInSentTo: { en: "Check-in sent to", ru: "Сообщение отправлено", es: "Mensaje enviado a" },
+    failedToSend: { en: "Failed to send message", ru: "Не удалось отправить сообщение", es: "Error al enviar mensaje" },
+  },
+  // Gender labels
+  gender: {
+    male: { en: "Male", ru: "Мужской", es: "Masculino" },
+    female: { en: "Female", ru: "Женский", es: "Femenino" },
+    other: { en: "Other", ru: "Другой", es: "Otro" },
+    notSet: { en: "Not set", ru: "Не указано", es: "No especificado" },
+  },
+  // Status labels
+  status: {
+    active: { en: "Active", ru: "Активный", es: "Activo" },
+    inactive: { en: "Inactive", ru: "Неактивный", es: "Inactivo" },
+    pending: { en: "Pending", ru: "Ожидает", es: "Pendiente" },
   },
   // Analytics page
   analytics: {
