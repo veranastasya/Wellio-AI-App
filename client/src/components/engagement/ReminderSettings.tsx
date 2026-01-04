@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -7,13 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
@@ -42,6 +36,7 @@ interface ReminderSettingsProps {
 }
 
 export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [hasChanges, setHasChanges] = useState(false);
   const [testingSending, setTestingSending] = useState(false);
@@ -78,14 +73,14 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
       queryClient.invalidateQueries({ queryKey: ['/api/clients', clientId, 'reminder-settings'] });
       setHasChanges(false);
       toast({
-        title: "Settings saved",
-        description: "Notification settings have been updated.",
+        title: t('reminderSettings.settingsSaved'),
+        description: t('reminderSettings.settingsSavedDescription'),
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to save settings. Please try again.",
+        title: t('reminderSettings.error'),
+        description: t('reminderSettings.saveFailed'),
         variant: "destructive",
       });
     },
@@ -108,18 +103,21 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
     try {
       await apiRequest('POST', `/api/clients/${clientId}/trigger-reminders`, { bypassQuietHours: true });
       toast({
-        title: "Test triggered",
-        description: "Reminders have been processed for this client.",
+        title: t('reminderSettings.testTriggered'),
+        description: t('reminderSettings.testTriggeredDescription'),
       });
     } catch {
       toast({
-        title: "Error",
-        description: "Failed to trigger test notification.",
+        title: t('reminderSettings.error'),
+        description: t('reminderSettings.testFailed'),
         variant: "destructive",
       });
     }
     setTestingSending(false);
   };
+
+  const thresholdDays = localSettings.inactivityThresholdDays ?? 2;
+  const daysLabel = thresholdDays === 1 ? t('reminderSettings.day') : t('reminderSettings.days');
 
   if (isLoading) {
     return (
@@ -136,10 +134,10 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
       <CardHeader className="pb-3 border-b">
         <CardTitle className="text-lg font-semibold flex items-center gap-2">
           <Settings2 className="w-5 h-5 text-primary" />
-          Notification Settings
+          {t('reminderSettings.title')}
           {clientName && (
             <span className="text-muted-foreground font-normal text-sm">
-              for {clientName}
+              {t('reminderSettings.forClient', { name: clientName })}
             </span>
           )}
         </CardTitle>
@@ -149,8 +147,8 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
           <div className="flex items-center gap-3">
             <Bell className="w-4 h-4 text-primary" />
             <div>
-              <p className="text-sm font-medium">All Notifications</p>
-              <p className="text-xs text-muted-foreground">Master toggle for all reminders</p>
+              <p className="text-sm font-medium">{t('reminderSettings.allNotifications')}</p>
+              <p className="text-xs text-muted-foreground">{t('reminderSettings.masterToggle')}</p>
             </div>
           </div>
           <Switch
@@ -163,13 +161,13 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
         <Separator />
 
         <div className="space-y-3">
-          <h4 className="text-sm font-medium">Reminder Types</h4>
+          <h4 className="text-sm font-medium">{t('reminderSettings.reminderTypes')}</h4>
           
           <div className="space-y-2">
             <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
               <div className="flex items-center gap-3">
                 <Target className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">Goal Reminders</span>
+                <span className="text-sm">{t('reminderSettings.goalReminders')}</span>
               </div>
               <Switch
                 checked={localSettings.goalRemindersEnabled ?? true}
@@ -182,7 +180,7 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
             <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
               <div className="flex items-center gap-3">
                 <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">Plan Reminders</span>
+                <span className="text-sm">{t('reminderSettings.planReminders')}</span>
               </div>
               <Switch
                 checked={localSettings.planRemindersEnabled ?? true}
@@ -195,7 +193,7 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
             <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
               <div className="flex items-center gap-3">
                 <Activity className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">Inactivity Reminders</span>
+                <span className="text-sm">{t('reminderSettings.inactivityReminders')}</span>
               </div>
               <Switch
                 checked={localSettings.inactivityRemindersEnabled ?? true}
@@ -211,9 +209,9 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">Inactivity Threshold</h4>
+            <h4 className="text-sm font-medium">{t('reminderSettings.inactivityThreshold')}</h4>
             <Badge variant="secondary" className="text-xs">
-              {localSettings.inactivityThresholdDays} day{(localSettings.inactivityThresholdDays ?? 2) !== 1 ? 's' : ''}
+              {thresholdDays} {daysLabel}
             </Badge>
           </div>
           <Slider
@@ -228,15 +226,15 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
           />
           <p className="text-xs text-muted-foreground flex items-start gap-1.5">
             <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-            Trigger inactivity reminder after this many days without activity
+            {t('reminderSettings.inactivityThresholdDescription')}
           </p>
         </div>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">Daily Limit</h4>
+            <h4 className="text-sm font-medium">{t('reminderSettings.dailyLimit')}</h4>
             <Badge variant="secondary" className="text-xs">
-              Max {localSettings.maxRemindersPerDay ?? 3} per day
+              {t('reminderSettings.maxPerDay', { count: localSettings.maxRemindersPerDay ?? 3 })}
             </Badge>
           </div>
           <Slider
@@ -261,11 +259,11 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
         <div className="space-y-3">
           <h4 className="text-sm font-medium flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            Quiet Hours
+            {t('reminderSettings.quietHours')}
           </h4>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Start</Label>
+              <Label className="text-xs text-muted-foreground">{t('reminderSettings.start')}</Label>
               <Input
                 type="time"
                 value={localSettings.quietHoursStart ?? "21:00"}
@@ -275,7 +273,7 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">End</Label>
+              <Label className="text-xs text-muted-foreground">{t('reminderSettings.end')}</Label>
               <Input
                 type="time"
                 value={localSettings.quietHoursEnd ?? "08:00"}
@@ -286,7 +284,7 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            No notifications will be sent during quiet hours
+            {t('reminderSettings.quietHoursDescription')}
           </p>
         </div>
 
@@ -304,7 +302,7 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            Save Settings
+            {t('reminderSettings.saveSettings')}
           </Button>
           
           <Tooltip>
@@ -323,7 +321,7 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Trigger reminders now</p>
+              <p>{t('reminderSettings.triggerNow')}</p>
             </TooltipContent>
           </Tooltip>
         </div>
