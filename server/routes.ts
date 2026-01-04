@@ -4922,30 +4922,39 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       await storage.updateClientPlan(plan.id, { pdfUrl: objectPath });
       console.log("[Plan Assignment] PDF URL added successfully");
 
-      // Send email notification to client
-      try {
-        const planLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/plan`;
-        await sendPlanAssignmentEmail({
-          to: client.email,
-          clientName: client.name,
-          coachName: "Coach",
-          planName: plan.planName,
-          planLink,
-          message,
-        });
-        console.log("[Email] Successfully sent plan assignment email to:", client.email);
-      } catch (emailError) {
-        console.error("[Email] Failed to send plan assignment email:", emailError);
-        // Don't fail the assignment if email fails
+      // Send email notification to client (only for main/long_term plans, not weekly)
+      if (planType !== 'weekly') {
+        try {
+          const planLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/plan`;
+          await sendPlanAssignmentEmail({
+            to: client.email,
+            clientName: client.name,
+            coachName: "Coach",
+            planName: plan.planName,
+            planLink,
+            message,
+          });
+          console.log("[Email] Successfully sent plan assignment email to:", client.email);
+        } catch (emailError) {
+          console.error("[Email] Failed to send plan assignment email:", emailError);
+          // Don't fail the assignment if email fails
+        }
+      } else {
+        console.log("[Email] Skipping email for weekly plan assignment - push notification only");
       }
 
-      // Send push notification to client (non-blocking)
+      // Send push notification to client (for all plan types)
+      const notificationTitle = planType === 'weekly' ? 'New Weekly Plan!' : 'New Plan Assigned!';
+      const notificationBody = planType === 'weekly' 
+        ? `Your weekly plan is ready. Check your schedule!`
+        : `${plan.planName || 'A new plan'} has been assigned to you`;
+      
       sendPushNotificationToClient(
         client.id,
-        'New Plan Assigned!',
-        `${plan.planName || 'A new plan'} has been assigned to you`,
+        notificationTitle,
+        notificationBody,
         { 
-          tag: 'plan-assigned', 
+          tag: planType === 'weekly' ? 'weekly-plan-assigned' : 'plan-assigned', 
           url: '/client/plan',
           type: 'plan_assigned',
           metadata: { planId: plan.id, planName: plan.planName, planType: planType || 'long_term' }
@@ -4955,8 +4964,11 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
           logger.debug('Push notification not sent for plan assignment', { 
             clientId: client.id, 
             planId: plan.id,
+            planType,
             reason: result.error 
           });
+        } else {
+          console.log(`[Push] Successfully queued ${planType || 'main'} plan notification for client:`, client.id);
         }
       }).catch(err => {
         logger.error('Unexpected error sending push notification for plan assignment', { clientId: client.id, planId: plan.id }, err);
