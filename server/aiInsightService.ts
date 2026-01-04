@@ -216,21 +216,36 @@ export async function detectInsightsForClient(client: Client): Promise<{ created
           type: detected.type,
           severity: detected.severity,
         });
-      } else if (SEVERITY_ORDER[detected.severity] > SEVERITY_ORDER[existing.severity as TriggerSeverity]) {
-        await storage.updateEngagementTrigger(existing.id, {
-          severity: detected.severity,
-          reason: detected.reason,
-          recommendedAction: detected.recommendedAction,
-        });
-        escalated++;
+      } else {
+        // Always update existing triggers to keep day counts accurate
+        const severityChanged = SEVERITY_ORDER[detected.severity] > SEVERITY_ORDER[existing.severity as TriggerSeverity];
+        const reasonChanged = existing.reason !== detected.reason;
         
-        logger.info("AI insight escalated", {
-          clientId: client.id,
-          clientName: client.name,
-          type: detected.type,
-          fromSeverity: existing.severity,
-          toSeverity: detected.severity,
-        });
+        if (severityChanged || reasonChanged) {
+          await storage.updateEngagementTrigger(existing.id, {
+            severity: detected.severity,
+            reason: detected.reason,
+            recommendedAction: detected.recommendedAction,
+          });
+          
+          if (severityChanged) {
+            escalated++;
+            logger.info("AI insight escalated", {
+              clientId: client.id,
+              clientName: client.name,
+              type: detected.type,
+              fromSeverity: existing.severity,
+              toSeverity: detected.severity,
+            });
+          } else {
+            logger.debug("AI insight updated", {
+              clientId: client.id,
+              clientName: client.name,
+              type: detected.type,
+              reason: detected.reason,
+            });
+          }
+        }
       }
     }
     
