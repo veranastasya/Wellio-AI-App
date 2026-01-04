@@ -986,6 +986,18 @@ Introduction to consistent training and meal logging habits.
     return updatedMessage || undefined;
   }
 
+  async getLastClientMessageTimestamp(clientId: string): Promise<string | null> {
+    const result = await db.select({ timestamp: messages.timestamp })
+      .from(messages)
+      .where(and(
+        eq(messages.clientId, clientId),
+        eq(messages.sender, "client")
+      ))
+      .orderBy(desc(messages.timestamp))
+      .limit(1);
+    return result[0]?.timestamp || null;
+  }
+
   // Activity methods
   async getActivities(coachId?: string): Promise<Activity[]> {
     if (coachId) {
@@ -2424,6 +2436,16 @@ Introduction to consistent training and meal logging habits.
       .where(and(
         eq(sentReminders.clientId, clientId),
         eq(sentReminders.sentDate, date)
+      ));
+    return result.length;
+  }
+
+  async countInactivityRemindersToday(clientId: string, date: string): Promise<number> {
+    const result = await db.select().from(sentReminders)
+      .where(and(
+        eq(sentReminders.clientId, clientId),
+        eq(sentReminders.sentDate, date),
+        sql`${sentReminders.reminderType} LIKE 'inactivity_%'`
       ));
     return result.length;
   }

@@ -17,7 +17,6 @@ interface ReminderCandidate {
 }
 
 // Cooldown periods in hours per reminder category
-// High severity inactivity reminders bypass these cooldowns
 const REMINDER_COOLDOWNS: Record<string, number> = {
   inactivity: 24,      // 24 hours between inactivity reminders of same type
   goal: 24,            // 24 hours between goal reminders of same type
@@ -25,8 +24,11 @@ const REMINDER_COOLDOWNS: Record<string, number> = {
   daily_checkin: 24,   // Once per day for meal-time check-ins
 };
 
-// High severity threshold - notifications above this bypass cooldowns
+// High severity threshold - for messaging customization (NOT for bypassing limits)
 const HIGH_SEVERITY_DAYS_THRESHOLD = 5;
+
+// Maximum inactivity reminders per day - NEVER bypass this limit
+const MAX_INACTIVITY_REMINDERS_PER_DAY = 1;
 
 async function hasRecentReminderOfType(clientId: string, reminderType: ReminderType, cooldownHours: number): Promise<boolean> {
   const recentReminders = await storage.getRecentSentReminders(clientId, reminderType, cooldownHours);
@@ -250,6 +252,34 @@ async function getInactivityReminders(client: Client, settings: ClientReminderSe
   const today = getTodayDateString();
   const thresholdDays = settings.inactivityThresholdDays;
 
+  // Check if we've already sent the max inactivity reminders today (MAX 1 per day)
+  const inactivityRemindersToday = await storage.countInactivityRemindersToday(client.id, today);
+  if (inactivityRemindersToday >= MAX_INACTIVITY_REMINDERS_PER_DAY) {
+    logger.debug("Skipping inactivity reminders - daily limit reached", { 
+      clientId: client.id, 
+      limit: MAX_INACTIVITY_REMINDERS_PER_DAY,
+      sentToday: inactivityRemindersToday 
+    });
+    return [];
+  }
+
+  // Check if client has messaged the coach recently - treat messaging as activity
+  const lastMessageTimestamp = await storage.getLastClientMessageTimestamp(client.id);
+  if (lastMessageTimestamp) {
+    const lastMessageDate = new Date(lastMessageTimestamp);
+    const now = new Date();
+    const daysSinceMessage = Math.floor((now.getTime() - lastMessageDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // If client messaged within threshold, they're not truly inactive
+    if (daysSinceMessage < thresholdDays) {
+      logger.debug("Skipping inactivity reminders - client messaged recently", { 
+        clientId: client.id, 
+        daysSinceMessage 
+      });
+      return [];
+    }
+  }
+
   const progressEvents = await storage.getProgressEventsByClientId(client.id);
 
   const mealLogs = progressEvents.filter(e => e.eventType === "nutrition");
@@ -284,14 +314,14 @@ async function getInactivityReminders(client: Client, settings: ClientReminderSe
     return "low";
   };
 
-  // Check inactivity with smart cooldown logic
-  // High severity (5+ days) bypasses cooldowns to ensure critical notifications get through
+  // Check inactivity - respect cooldowns strictly (no bypass for high severity)
+  // Daily limit is already enforced at the top of this function
   if (daysSinceMeal >= thresholdDays && daysSinceMeal < 999) {
     const severity = getSeverity(daysSinceMeal);
     const hasRecentReminder = await hasRecentReminderOfType(client.id, "inactivity_meals", cooldownHours);
     
-    // High severity bypasses cooldowns, otherwise respect cooldown period
-    if (severity === "high" || !hasRecentReminder) {
+    // Always respect cooldown - no bypass
+    if (!hasRecentReminder) {
       eligibleReminders.push({
         type: "inactivity_meals",
         title: severity === "high" ? "We're concerned about you!" : "We miss your meal logs!",
@@ -308,7 +338,8 @@ async function getInactivityReminders(client: Client, settings: ClientReminderSe
     const severity = getSeverity(daysSinceWorkout);
     const hasRecentReminder = await hasRecentReminderOfType(client.id, "inactivity_workouts", cooldownHours);
     
-    if (severity === "high" || !hasRecentReminder) {
+    // Always respect cooldown - no bypass
+    if (!hasRecentReminder) {
       eligibleReminders.push({
         type: "inactivity_workouts",
         title: severity === "high" ? "We haven't seen you in a while!" : "Time to get moving!",
@@ -325,7 +356,8 @@ async function getInactivityReminders(client: Client, settings: ClientReminderSe
     const severity = getSeverity(daysSinceCheckIn);
     const hasRecentReminder = await hasRecentReminderOfType(client.id, "inactivity_checkin", cooldownHours);
     
-    if (severity === "high" || !hasRecentReminder) {
+    // Always respect cooldown - no bypass
+    if (!hasRecentReminder) {
       eligibleReminders.push({
         type: "inactivity_checkin",
         title: severity === "high" ? "We're thinking of you!" : "How are you feeling?",
