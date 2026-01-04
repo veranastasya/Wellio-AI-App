@@ -579,6 +579,18 @@ export async function processRemindersForClient(client: Client, options: Process
       return { sentCount: 0, skippedReason: "Reminders are disabled for this client" };
     }
 
+    // Check if we've hit the client's daily reminder limit
+    const remindersSentToday = await storage.countSentRemindersToday(client.id, today);
+    const maxPerDay = settings.maxRemindersPerDay || 3;
+    if (remindersSentToday >= maxPerDay) {
+      logger.debug("Skipping reminders - daily limit reached", { 
+        clientId: client.id, 
+        limit: maxPerDay,
+        sentToday: remindersSentToday 
+      });
+      return { sentCount: 0, skippedReason: `Daily limit of ${maxPerDay} reminders reached` };
+    }
+
     // Check quiet hours - but high severity inactivity notifications can bypass
     const inQuietHours = !options.bypassQuietHours && isWithinQuietHours(settings);
     

@@ -21,6 +21,7 @@ import { type UnitsPreference, formatWeight, formatHeight } from "@shared/units"
 import { PlanBuilderTab } from "@/components/plan-builder-tab";
 import { CoachProgressAnalytics } from "@/components/coach-progress-analytics";
 import { AIInsightsCard } from "@/components/AIInsightsCard";
+import { ReminderSettings } from "@/components/engagement/ReminderSettings";
 
 export default function CoachClientDetail() {
   const [, params] = useRoute("/coach/clients/:clientId");
@@ -513,6 +514,11 @@ export default function CoachClientDetail() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Notification Settings */}
+              <div className="md:col-span-2">
+                <ReminderSettings clientId={clientId} clientName={client.name} />
+              </div>
             </div>
           </TabsContent>
 
