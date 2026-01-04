@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Mail, Phone, Calendar, User, Scale, Ruler, Target, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle, Globe, Send } from "lucide-react";
+import { Loader2, Mail, Phone, Calendar, User, Scale, Ruler, Target, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle, Globe } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client } from "@shared/schema";
@@ -24,7 +24,6 @@ export default function ClientProfile() {
   const [showTour, setShowTour] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState<SupportedLanguage>("en");
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
   const {
     isSupported,
     isSubscribed,
@@ -33,34 +32,6 @@ export default function ClientProfile() {
     subscribe,
     unsubscribe,
   } = usePushNotifications();
-
-  const sendTestNotification = async () => {
-    setIsTesting(true);
-    try {
-      const res = await apiRequest('POST', '/api/client/push/test');
-      const data = await res.json();
-      if (data.success) {
-        toast({
-          title: 'Test Sent',
-          description: data.message || 'You should see a notification shortly!',
-        });
-      } else {
-        toast({
-          title: 'Test Failed',
-          description: data.error || 'Could not send test notification',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to send test notification',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsTesting(false);
-    }
-  };
   
   // Translation helper
   const lang = preferredLanguage;
@@ -467,36 +438,20 @@ export default function ClientProfile() {
                     </p>
                   </div>
                 ) : isSubscribed ? (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button
-                      variant="outline"
-                      className="flex-1 gap-2"
-                      onClick={sendTestNotification}
-                      disabled={isTesting}
-                      data-testid="button-test-notification"
-                    >
-                      {isTesting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4" />
-                      )}
-                      Send Test
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1 gap-2"
-                      onClick={unsubscribe}
-                      disabled={isPushLoading}
-                      data-testid="button-client-disable-notifications"
-                    >
-                      {isPushLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <BellOff className="w-4 h-4" />
-                      )}
-                      Disable
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={unsubscribe}
+                    disabled={isPushLoading}
+                    data-testid="button-client-disable-notifications"
+                  >
+                    {isPushLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <BellOff className="w-4 h-4" />
+                    )}
+                    Disable Notifications
+                  </Button>
                 ) : (
                   <Button
                     className="w-full gap-2"

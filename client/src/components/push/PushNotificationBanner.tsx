@@ -1,43 +1,10 @@
-import { useState } from 'react';
-import { Bell, BellOff, Loader2, Send } from 'lucide-react';
+import { Bell, BellOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
 
 export function PushNotificationBanner() {
   const { isSupported, isSubscribed, isLoading, permission, subscribe, unsubscribe } = usePushNotifications();
-  const { toast } = useToast();
-  const [isTesting, setIsTesting] = useState(false);
-
-  const sendTestNotification = async () => {
-    setIsTesting(true);
-    try {
-      const res = await apiRequest('POST', '/api/client/push/test');
-      const data = await res.json();
-      if (data.success) {
-        toast({
-          title: 'Test Sent',
-          description: data.message || 'Check for a notification!',
-        });
-      } else {
-        toast({
-          title: 'Test Failed',
-          description: data.error || 'Could not send test notification',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to send test notification',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsTesting(false);
-    }
-  };
 
   if (!isSupported) {
     return null;
@@ -58,26 +25,15 @@ export function PushNotificationBanner() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={sendTestNotification}
-              disabled={isTesting}
-              data-testid="button-test-push"
-            >
-              {isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-3 w-3 mr-1" />Test</>}
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={unsubscribe}
-              disabled={isLoading}
-              data-testid="button-disable-push"
-            >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Disable'}
-            </Button>
-          </div>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={unsubscribe}
+            disabled={isLoading}
+            data-testid="button-disable-push"
+          >
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Disable'}
+          </Button>
         </CardContent>
       </Card>
     );
