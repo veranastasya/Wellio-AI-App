@@ -1122,6 +1122,15 @@ Common corrections:
 - "bench" = "Bench Press"
 - "dead" or "deads" = "Deadlifts"
 
+CRITICAL: When adding a workout, you MUST ALWAYS include exercises in the exercises array. NEVER return an empty exercises array.
+If the user asks for a general workout type (e.g., "upper body", "leg day", "push day", "pull day", "full body"), generate 4-6 appropriate exercises with sets and reps.
+Example workout types and exercises:
+- Upper Body: Bench Press, Overhead Press, Bent-Over Rows, Lat Pulldown, Bicep Curls, Tricep Dips
+- Lower Body: Squats, Romanian Deadlifts, Leg Press, Lunges, Leg Curls, Calf Raises
+- Push: Bench Press, Incline Dumbbell Press, Overhead Press, Tricep Pushdowns, Lateral Raises
+- Pull: Pull-ups, Barbell Rows, Face Pulls, Bicep Curls, Rear Delt Flyes
+- Full Body: Squats, Bench Press, Deadlifts, Overhead Press, Pull-ups
+
 You must respond with a JSON object in this exact format:
 {
   "type": "add_training" | "add_schedule" | "add_meal" | "add_habit" | "add_task" | "modify_training" | "none",
@@ -1175,7 +1184,7 @@ For example, if the language is Russian, "Upper Body Day" should be "День в
         }
       ],
       temperature: 0.3,
-      max_tokens: 500,
+      max_tokens: 1500,
       response_format: { type: "json_object" }
     });
 

@@ -3980,7 +3980,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const result = await processProgramBuilderRequest(message, clientName, existingTrainingDays, preferredLanguage);
-      console.log("Program Builder AI Result:", JSON.stringify(result, null, 2));
       
       res.json(result);
     } catch (error) {

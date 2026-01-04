@@ -213,7 +213,6 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
       }
 
       const result = await response.json();
-      console.log("AI Program Builder Response:", JSON.stringify(result, null, 2));
       
       const assistantResponse: ChatMessage = {
         id: `assistant-${Date.now()}`,
