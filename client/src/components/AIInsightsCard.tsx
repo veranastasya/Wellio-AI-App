@@ -19,25 +19,52 @@ interface InsightMessageData {
 
 // Helper to parse and translate insight messages
 function translateInsightMessage(jsonString: string, lang: SupportedLanguage): string {
-  try {
-    const data: InsightMessageData = JSON.parse(jsonString);
-    const templates = COACH_UI_TRANSLATIONS.aiInsights.insightMessages as Record<string, Record<SupportedLanguage, string>>;
-    const template = templates[data.templateKey];
-    if (template && template[lang]) {
-      return template[lang]
-        .replace("{{name}}", data.params.name)
-        .replace("{{days}}", String(data.params.days));
-    }
-    // Fallback to English if template not found
-    if (template && template.en) {
-      return template.en
-        .replace("{{name}}", data.params.name)
-        .replace("{{days}}", String(data.params.days));
-    }
-  } catch {
-    // If not valid JSON, return the original string (legacy data)
+  // Early return for empty or invalid input
+  if (!jsonString || typeof jsonString !== 'string') {
+    return jsonString || '';
   }
-  return jsonString;
+  
+  // Check if it looks like JSON (starts with {)
+  const trimmed = jsonString.trim();
+  if (!trimmed.startsWith('{')) {
+    // Legacy plain text format - return as-is
+    return jsonString;
+  }
+  
+  try {
+    const data: InsightMessageData = JSON.parse(trimmed);
+    
+    // Validate the parsed data has required fields
+    if (!data.templateKey || !data.params) {
+      return jsonString;
+    }
+    
+    // Access templates from the translation structure
+    const templates = COACH_UI_TRANSLATIONS.aiInsights?.insightMessages as Record<string, Record<SupportedLanguage, string>> | undefined;
+    if (!templates) {
+      return jsonString;
+    }
+    
+    const template = templates[data.templateKey];
+    const safeLang = lang || 'en';
+    const clientName = data.params.name || 'Client';
+    const days = data.params.days ?? 0;
+    
+    // Try requested language first, then fallback to English
+    const templateText = template?.[safeLang] || template?.en;
+    if (templateText) {
+      return templateText
+        .replace('{{name}}', clientName)
+        .replace('{{days}}', String(days));
+    }
+    
+    // If no template found, return a human-readable fallback
+    return `${clientName} - ${days} days of inactivity`;
+  } catch (error) {
+    // If JSON parsing fails, return original string (legacy data)
+    console.warn('Failed to parse insight message:', error, jsonString);
+    return jsonString;
+  }
 }
 
 interface Trigger {

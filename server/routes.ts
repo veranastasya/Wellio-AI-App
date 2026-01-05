@@ -5935,7 +5935,51 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       }
 
       const triggers = await storage.getEngagementTriggers(clientId, coachId);
-      res.json(triggers);
+      
+      // Recalculate days for inactivity triggers dynamically
+      const enrichedTriggers = triggers.map(trigger => {
+        // Check if reason is JSON format with templateKey
+        try {
+          const reasonData = JSON.parse(trigger.reason);
+          if (reasonData.templateKey && reasonData.params && trigger.detectedAt) {
+            // Recalculate days from detectedAt
+            const detectedDate = new Date(trigger.detectedAt);
+            if (isNaN(detectedDate.getTime())) return trigger; // Guard against invalid dates
+            const now = new Date();
+            const daysSinceDetection = Math.floor((now.getTime() - detectedDate.getTime()) / (1000 * 60 * 60 * 24));
+            const originalDays = reasonData.params.days || 0;
+            const currentDays = originalDays + daysSinceDetection;
+            
+            // Update the days in both reason and recommendedAction
+            const updatedReason = JSON.stringify({
+              ...reasonData,
+              params: { ...reasonData.params, days: currentDays }
+            });
+            
+            let updatedAction = trigger.recommendedAction;
+            try {
+              const actionData = JSON.parse(trigger.recommendedAction);
+              if (actionData.templateKey && actionData.params) {
+                updatedAction = JSON.stringify({
+                  ...actionData,
+                  params: { ...actionData.params, days: currentDays }
+                });
+              }
+            } catch {}
+            
+            return {
+              ...trigger,
+              reason: updatedReason,
+              recommendedAction: updatedAction
+            };
+          }
+        } catch {
+          // Not JSON format (legacy data) - return as-is
+        }
+        return trigger;
+      });
+      
+      res.json(enrichedTriggers);
     } catch (error) {
       console.error("Error fetching engagement triggers:", error);
       res.status(500).json({ error: "Failed to fetch engagement triggers" });
