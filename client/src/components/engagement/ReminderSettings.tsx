@@ -6,8 +6,6 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Tooltip,
   TooltipContent,
@@ -15,7 +13,6 @@ import {
 } from "@/components/ui/tooltip";
 import {
   Bell,
-  Clock,
   Settings2,
   TestTube2,
   Info,
@@ -47,8 +44,6 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
     planRemindersEnabled: true,
     inactivityRemindersEnabled: true,
     inactivityThresholdDays: 2,
-    quietHoursStart: "21:00",
-    quietHoursEnd: "08:00",
     maxRemindersPerDay: 3,
   });
 
@@ -66,7 +61,7 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
 
   const updateMutation = useMutation({
     mutationFn: async (updates: Partial<ClientReminderSettings>) => {
-      const { id, clientId: _cid, coachId: _coach, createdAt, updatedAt, ...mutableFields } = updates as ClientReminderSettings;
+      const { id, clientId: _cid, coachId: _coach, createdAt, updatedAt, quietHoursStart: _qhs, quietHoursEnd: _qhe, ...mutableFields } = updates as ClientReminderSettings;
       return apiRequest('PATCH', `/api/clients/${clientId}/reminder-settings`, mutableFields);
     },
     onSuccess: () => {
@@ -122,7 +117,7 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
   if (isLoading) {
     return (
       <Card className="shadow-sm">
-        <CardContent className="p-6 flex items-center justify-center">
+        <CardContent className="p-4 sm:p-6 flex items-center justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </CardContent>
       </Card>
@@ -131,24 +126,24 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
 
   return (
     <Card className="shadow-sm">
-      <CardHeader className="pb-3 border-b">
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <Settings2 className="w-5 h-5 text-primary" />
-          {t('reminderSettings.title')}
+      <CardHeader className="pb-3 border-b px-3 sm:px-6">
+        <CardTitle className="text-base sm:text-lg font-semibold flex flex-wrap items-center gap-2">
+          <Settings2 className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+          <span>{t('reminderSettings.title')}</span>
           {clientName && (
-            <span className="text-muted-foreground font-normal text-sm">
+            <span className="text-muted-foreground font-normal text-xs sm:text-sm">
               {t('reminderSettings.forClient', { name: clientName })}
             </span>
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-4 space-y-5">
-        <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-          <div className="flex items-center gap-3">
-            <Bell className="w-4 h-4 text-primary" />
-            <div>
-              <p className="text-sm font-medium">{t('reminderSettings.allNotifications')}</p>
-              <p className="text-xs text-muted-foreground">{t('reminderSettings.masterToggle')}</p>
+      <CardContent className="p-3 sm:p-4 space-y-4 sm:space-y-5">
+        <div className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <Bell className="w-4 h-4 text-primary shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{t('reminderSettings.allNotifications')}</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">{t('reminderSettings.masterToggle')}</p>
             </div>
           </div>
           <Switch
@@ -160,14 +155,14 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
 
         <Separator />
 
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           <h4 className="text-sm font-medium">{t('reminderSettings.reminderTypes')}</h4>
           
           <div className="space-y-2">
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="flex items-center gap-3">
-                <Target className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">{t('reminderSettings.goalReminders')}</span>
+            <div className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <Target className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="text-sm truncate">{t('reminderSettings.goalReminders')}</span>
               </div>
               <Switch
                 checked={localSettings.goalRemindersEnabled ?? true}
@@ -177,10 +172,10 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
               />
             </div>
             
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="flex items-center gap-3">
-                <Calendar className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">{t('reminderSettings.planReminders')}</span>
+            <div className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="text-sm truncate">{t('reminderSettings.planReminders')}</span>
               </div>
               <Switch
                 checked={localSettings.planRemindersEnabled ?? true}
@@ -190,10 +185,10 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
               />
             </div>
             
-            <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <div className="flex items-center gap-3">
-                <Activity className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">{t('reminderSettings.inactivityReminders')}</span>
+            <div className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <Activity className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="text-sm truncate">{t('reminderSettings.inactivityReminders')}</span>
               </div>
               <Switch
                 checked={localSettings.inactivityRemindersEnabled ?? true}
@@ -208,7 +203,7 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
         <Separator />
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <h4 className="text-sm font-medium">{t('reminderSettings.inactivityThreshold')}</h4>
             <Badge variant="secondary" className="text-xs">
               {thresholdDays} {daysLabel}
@@ -220,18 +215,18 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
             min={1}
             max={7}
             step={1}
-            className="w-full"
+            className="w-full touch-pan-x"
             disabled={!localSettings.remindersEnabled || !localSettings.inactivityRemindersEnabled}
             data-testid="slider-inactivity-threshold"
           />
           <p className="text-xs text-muted-foreground flex items-start gap-1.5">
             <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-            {t('reminderSettings.inactivityThresholdDescription')}
+            <span>{t('reminderSettings.inactivityThresholdDescription')}</span>
           </p>
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <h4 className="text-sm font-medium">{t('reminderSettings.dailyLimit')}</h4>
             <Badge variant="secondary" className="text-xs">
               {t('reminderSettings.maxPerDay', { count: localSettings.maxRemindersPerDay ?? 3 })}
@@ -243,7 +238,7 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
             min={1}
             max={10}
             step={1}
-            className="w-full"
+            className="w-full touch-pan-x"
             disabled={!localSettings.remindersEnabled}
             data-testid="slider-max-per-day"
           />
@@ -256,43 +251,9 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
 
         <Separator />
 
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            {t('reminderSettings.quietHours')}
-          </h4>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t('reminderSettings.start')}</Label>
-              <Input
-                type="time"
-                value={localSettings.quietHoursStart ?? "21:00"}
-                onChange={(e) => handleChange('quietHoursStart', e.target.value)}
-                disabled={!localSettings.remindersEnabled}
-                data-testid="input-quiet-hours-start"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t('reminderSettings.end')}</Label>
-              <Input
-                type="time"
-                value={localSettings.quietHoursEnd ?? "08:00"}
-                onChange={(e) => handleChange('quietHoursEnd', e.target.value)}
-                disabled={!localSettings.remindersEnabled}
-                data-testid="input-quiet-hours-end"
-              />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {t('reminderSettings.quietHoursDescription')}
-          </p>
-        </div>
-
-        <Separator />
-
         <div className="flex gap-2">
           <Button
-            className="flex-1"
+            className="flex-1 min-h-[44px]"
             onClick={handleSave}
             disabled={!hasChanges || updateMutation.isPending}
             data-testid="button-save-settings"
@@ -309,6 +270,8 @@ export function ReminderSettings({ clientId, clientName }: ReminderSettingsProps
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
+                size="icon"
+                className="min-h-[44px] min-w-[44px]"
                 onClick={handleTestNotification}
                 disabled={testingSending || !localSettings.remindersEnabled}
                 data-testid="button-test-notification"

@@ -11,6 +11,35 @@ import { useToast } from "@/hooks/use-toast";
 import type { InsertMessage, Coach, SupportedLanguage } from "@shared/schema";
 import { COACH_UI_TRANSLATIONS } from "@shared/schema";
 
+// Type for insight message data stored as JSON
+interface InsightMessageData {
+  templateKey: string;
+  params: { name: string; days: number };
+}
+
+// Helper to parse and translate insight messages
+function translateInsightMessage(jsonString: string, lang: SupportedLanguage): string {
+  try {
+    const data: InsightMessageData = JSON.parse(jsonString);
+    const templates = COACH_UI_TRANSLATIONS.aiInsights.insightMessages as Record<string, Record<SupportedLanguage, string>>;
+    const template = templates[data.templateKey];
+    if (template && template[lang]) {
+      return template[lang]
+        .replace("{{name}}", data.params.name)
+        .replace("{{days}}", String(data.params.days));
+    }
+    // Fallback to English if template not found
+    if (template && template.en) {
+      return template.en
+        .replace("{{name}}", data.params.name)
+        .replace("{{days}}", String(data.params.days));
+    }
+  } catch {
+    // If not valid JSON, return the original string (legacy data)
+  }
+  return jsonString;
+}
+
 interface Trigger {
   id: string;
   clientId: string;
@@ -200,7 +229,7 @@ export function AIInsightsCard({ clientId, clientName }: AIInsightsCardProps) {
                       </Badge>
                     </div>
                     <p className="text-sm text-foreground">
-                      {trigger.reason}
+                      {translateInsightMessage(trigger.reason, lang)}
                     </p>
                   </div>
                   <Button

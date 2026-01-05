@@ -1194,6 +1194,49 @@ export const COACH_UI_TRANSLATIONS = {
     messageSent: { en: "Message Sent", ru: "Сообщение отправлено", es: "Mensaje Enviado" },
     checkInSentTo: { en: "Check-in sent to", ru: "Сообщение отправлено", es: "Mensaje enviado a" },
     failedToSend: { en: "Failed to send message", ru: "Не удалось отправить сообщение", es: "Error al enviar mensaje" },
+    // Insight message templates - the {{name}} and {{days}} placeholders will be replaced dynamically
+    insightMessages: {
+      inactivityHighReason: { 
+        en: "{{name}} hasn't logged any activity in {{days}} days. This may indicate disengagement or personal challenges.", 
+        ru: "{{name}} не вносил записи уже {{days}} дней. Это может указывать на снижение мотивации или личные трудности.",
+        es: "{{name}} no ha registrado ninguna actividad en {{days}} días. Esto puede indicar desvinculación o desafíos personales."
+      },
+      inactivityHighAction: {
+        en: "Send a supportive check-in message to understand what's going on and offer assistance.",
+        ru: "Отправьте поддерживающее сообщение, чтобы узнать, что происходит, и предложить помощь.",
+        es: "Envía un mensaje de apoyo para entender qué está pasando y ofrecer ayuda."
+      },
+      inactivityMediumReason: {
+        en: "{{name}} hasn't logged any activity in {{days}} days.",
+        ru: "{{name}} не вносил записи уже {{days}} дней.",
+        es: "{{name}} no ha registrado ninguna actividad en {{days}} días."
+      },
+      inactivityMediumAction: {
+        en: "Send a friendly reminder to check in and log their progress.",
+        ru: "Отправьте дружеское напоминание о необходимости записывать прогресс.",
+        es: "Envía un recordatorio amigable para que registre su progreso."
+      },
+      nutritionConcernReason: {
+        en: "{{name}} hasn't logged any meals in {{days}} days despite having nutrition goals.",
+        ru: "{{name}} не записывал приёмы пищи уже {{days}} дней, несмотря на цели по питанию.",
+        es: "{{name}} no ha registrado comidas en {{days}} días a pesar de tener objetivos de nutrición."
+      },
+      nutritionConcernAction: {
+        en: "Check if they're having trouble tracking meals or need meal planning support.",
+        ru: "Узнайте, есть ли трудности с отслеживанием питания или нужна помощь с планированием.",
+        es: "Verifica si tienen dificultades para registrar comidas o necesitan ayuda con la planificación."
+      },
+      missedWorkoutReason: {
+        en: "{{name}} hasn't logged a workout in {{days}} days despite having fitness goals.",
+        ru: "{{name}} не записывал тренировки уже {{days}} дней, несмотря на фитнес-цели.",
+        es: "{{name}} no ha registrado entrenamientos en {{days}} días a pesar de tener objetivos de fitness."
+      },
+      missedWorkoutAction: {
+        en: "Discuss potential barriers and consider adjusting their workout plan.",
+        ru: "Обсудите возможные препятствия и рассмотрите корректировку плана тренировок.",
+        es: "Discute las posibles barreras y considera ajustar su plan de entrenamiento."
+      },
+    },
   },
   // Gender labels
   gender: {

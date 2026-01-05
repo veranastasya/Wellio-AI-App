@@ -89,6 +89,20 @@ interface DetectedTrigger {
   recommendedAction: string;
 }
 
+// Store insight messages as JSON with template key and parameters for i18n
+interface InsightMessageData {
+  templateKey: string;
+  params: { name: string; days: number };
+}
+
+function createInsightMessage(templateKey: string, clientName: string, days: number): string {
+  const data: InsightMessageData = {
+    templateKey,
+    params: { name: clientName, days }
+  };
+  return JSON.stringify(data);
+}
+
 function detectTriggersFromAnalysis(analysis: ActivityAnalysis, clientName: string): DetectedTrigger[] {
   const triggers: DetectedTrigger[] = [];
   
@@ -96,15 +110,15 @@ function detectTriggersFromAnalysis(analysis: ActivityAnalysis, clientName: stri
     triggers.push({
       type: "inactivity",
       severity: "high",
-      reason: `${clientName} hasn't logged any activity in ${analysis.daysSinceAnyActivity} days. This may indicate disengagement or personal challenges.`,
-      recommendedAction: "Send a supportive check-in message to understand what's going on and offer assistance.",
+      reason: createInsightMessage("inactivityHighReason", clientName, analysis.daysSinceAnyActivity),
+      recommendedAction: createInsightMessage("inactivityHighAction", clientName, analysis.daysSinceAnyActivity),
     });
   } else if (analysis.daysSinceAnyActivity >= 3) {
     triggers.push({
       type: "inactivity",
       severity: "medium",
-      reason: `${clientName} hasn't logged any activity in ${analysis.daysSinceAnyActivity} days.`,
-      recommendedAction: "Send a friendly reminder to check in and log their progress.",
+      reason: createInsightMessage("inactivityMediumReason", clientName, analysis.daysSinceAnyActivity),
+      recommendedAction: createInsightMessage("inactivityMediumAction", clientName, analysis.daysSinceAnyActivity),
     });
   }
   
@@ -114,8 +128,8 @@ function detectTriggersFromAnalysis(analysis: ActivityAnalysis, clientName: stri
       triggers.push({
         type: "nutrition_concern",
         severity: analysis.daysSinceMeal >= 5 ? "high" : "medium",
-        reason: `${clientName} hasn't logged any meals in ${analysis.daysSinceMeal} days despite having nutrition goals.`,
-        recommendedAction: "Check if they're having trouble tracking meals or need meal planning support.",
+        reason: createInsightMessage("nutritionConcernReason", clientName, analysis.daysSinceMeal),
+        recommendedAction: createInsightMessage("nutritionConcernAction", clientName, analysis.daysSinceMeal),
       });
     }
   }
@@ -126,8 +140,8 @@ function detectTriggersFromAnalysis(analysis: ActivityAnalysis, clientName: stri
       triggers.push({
         type: "missed_workout",
         severity: analysis.daysSinceWorkout >= 7 ? "high" : "medium",
-        reason: `${clientName} hasn't logged a workout in ${analysis.daysSinceWorkout} days despite having fitness goals.`,
-        recommendedAction: "Discuss potential barriers and consider adjusting their workout plan.",
+        reason: createInsightMessage("missedWorkoutReason", clientName, analysis.daysSinceWorkout),
+        recommendedAction: createInsightMessage("missedWorkoutAction", clientName, analysis.daysSinceWorkout),
       });
     }
   }

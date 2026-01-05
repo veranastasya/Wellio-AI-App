@@ -35,6 +35,10 @@ async function hasRecentReminderOfType(clientId: string, reminderType: ReminderT
   return recentReminders.length > 0;
 }
 
+// Default quiet hours: 9pm to 9am in client's timezone
+const DEFAULT_QUIET_HOURS_START = "21:00";
+const DEFAULT_QUIET_HOURS_END = "09:00";
+
 function isWithinQuietHours(settings: ClientReminderSettings): boolean {
   const now = new Date();
   
@@ -61,8 +65,12 @@ function isWithinQuietHours(settings: ClientReminderSettings): boolean {
   
   const currentTime = currentHour * 60 + currentMinutes;
 
-  const [startHour, startMin] = settings.quietHoursStart.split(":").map(Number);
-  const [endHour, endMin] = settings.quietHoursEnd.split(":").map(Number);
+  // Use default quiet hours (9pm-9am) - not configurable by users
+  const quietHoursStart = DEFAULT_QUIET_HOURS_START;
+  const quietHoursEnd = DEFAULT_QUIET_HOURS_END;
+
+  const [startHour, startMin] = quietHoursStart.split(":").map(Number);
+  const [endHour, endMin] = quietHoursEnd.split(":").map(Number);
   
   const quietStart = startHour * 60 + startMin;
   const quietEnd = endHour * 60 + endMin;
