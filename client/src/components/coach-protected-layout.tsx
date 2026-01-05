@@ -1,6 +1,7 @@
 import { ReactNode, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useCoachAuth } from "@/contexts/coach-auth-context";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -39,6 +40,14 @@ export function CoachProtectedLayout({ children }: CoachProtectedLayoutProps) {
   });
 
   const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
+  const { i18n } = useTranslation();
+
+  // Sync coach's language preference with i18n
+  useEffect(() => {
+    if (coachProfile?.preferredLanguage && i18n.language !== coachProfile.preferredLanguage) {
+      i18n.changeLanguage(coachProfile.preferredLanguage);
+    }
+  }, [coachProfile?.preferredLanguage, i18n]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
