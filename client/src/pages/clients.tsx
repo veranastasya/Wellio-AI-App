@@ -933,7 +933,7 @@ function ClientForm({
             name="name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t.clients.name[lang]}</FormLabel>
+                <FormLabel>{t.clients.name[lang]} <span className="text-destructive">*</span></FormLabel>
                 <FormControl>
                   <Input placeholder="John Doe" {...field} data-testid="input-client-name" />
                 </FormControl>
@@ -946,7 +946,7 @@ function ClientForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t.clients.email[lang]}</FormLabel>
+                <FormLabel>{t.clients.email[lang]} <span className="text-destructive">*</span></FormLabel>
                 <FormControl>
                   <Input type="email" placeholder="john@example.com" {...field} data-testid="input-client-email" />
                 </FormControl>
@@ -962,7 +962,7 @@ function ClientForm({
             name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t.clients.phone[lang]} ({t.common.optional[lang]})</FormLabel>
+                <FormLabel>{t.clients.phone[lang]}</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="+1 (555) 123-4567"
@@ -980,7 +980,7 @@ function ClientForm({
             name="status"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t.clients.status[lang]}</FormLabel>
+                <FormLabel>{t.clients.status[lang]} <span className="text-destructive">*</span></FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger data-testid="select-client-status">
@@ -1000,7 +1000,7 @@ function ClientForm({
         </div>
 
         <div className="space-y-3 pt-2">
-          <h3 className="text-sm font-semibold text-foreground">{t.clientDetail.physicalStats[lang]} ({t.common.optional[lang]})</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t.clientDetail.physicalStats[lang]}</h3>
           
           <FormField
             control={form.control}
@@ -1258,7 +1258,7 @@ function ClientForm({
             name="goalType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t.clients.goals[lang]} ({t.common.optional[lang]})</FormLabel>
+                <FormLabel>{t.clients.goals[lang]}</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value || ""}>
                   <FormControl>
                     <SelectTrigger data-testid="select-client-goal">
@@ -1282,7 +1282,7 @@ function ClientForm({
             name="endDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{t.clients.endDate[lang]} ({t.common.optional[lang]})</FormLabel>
+                <FormLabel>{t.clients.endDate[lang]}</FormLabel>
                 <FormControl>
                   <Input 
                     type="date" 
@@ -1430,7 +1430,7 @@ function ClientForm({
         )}
 
         <div className="space-y-3 pt-4">
-          <h3 className="text-sm font-semibold text-foreground">{t.clients.wellnessPlanDetails[lang]} ({t.common.optional[lang]})</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t.clients.wellnessPlanDetails[lang]}</h3>
           <p className="text-xs text-muted-foreground">{t.clients.wellnessPlanHelp[lang]}</p>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1542,7 +1542,7 @@ function ClientForm({
           name="notes"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t.clients.notes[lang]} ({t.common.optional[lang]})</FormLabel>
+              <FormLabel>{t.clients.notes[lang]}</FormLabel>
               <FormControl>
                 <Textarea
                   placeholder={t.clients.notes[lang]}
@@ -1685,7 +1685,7 @@ function InviteForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="invite-message">{t.clients.notes[lang]} ({t.common.optional[lang]})</Label>
+        <Label htmlFor="invite-message">{t.clients.notes[lang]}</Label>
         <Textarea
           id="invite-message"
           value={message}
