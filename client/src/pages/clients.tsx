@@ -644,7 +644,7 @@ export default function Clients() {
                   </div>
 
                   {/* AI Insights Banners */}
-                  <ClientInsightBanners clientId={client.id} />
+                  <ClientInsightBanners clientId={client.id} lang={lang} />
 
                   {/* Expanded Section: Client Metrics */}
                   {isExpanded && (
@@ -732,8 +732,55 @@ export default function Clients() {
   );
 }
 
+// Type for insight message data stored as JSON
+interface InsightMessageData {
+  templateKey: string;
+  params: { name: string; days: number };
+}
+
+// Helper to parse and translate insight messages for client cards
+function translateInsightMessage(jsonString: string, lang: SupportedLanguage): string {
+  if (!jsonString || typeof jsonString !== 'string') {
+    return jsonString || '';
+  }
+  
+  const trimmed = jsonString.trim();
+  if (!trimmed.startsWith('{')) {
+    return jsonString;
+  }
+  
+  try {
+    const data: InsightMessageData = JSON.parse(trimmed);
+    
+    if (!data.templateKey || !data.params) {
+      return jsonString;
+    }
+    
+    const templates = COACH_UI_TRANSLATIONS.aiInsights?.insightMessages as Record<string, Record<SupportedLanguage, string>> | undefined;
+    if (!templates) {
+      return jsonString;
+    }
+    
+    const template = templates[data.templateKey];
+    const safeLang = lang || 'en';
+    const clientName = data.params.name || 'Client';
+    const days = data.params.days ?? 0;
+    
+    const templateText = template?.[safeLang] || template?.en;
+    if (templateText) {
+      return templateText
+        .replace('{{name}}', clientName)
+        .replace('{{days}}', String(days));
+    }
+    
+    return `${clientName} - ${days} days of inactivity`;
+  } catch (error) {
+    return jsonString;
+  }
+}
+
 // Component to display AI insights as small banners on client cards
-function ClientInsightBanners({ clientId }: { clientId: string }) {
+function ClientInsightBanners({ clientId, lang = "en" }: { clientId: string; lang?: SupportedLanguage }) {
   const [triggers, setTriggers] = useState<Array<{ id: string; type: string; reason: string; severity: string; isResolved?: boolean }>>([]);
 
   useEffect(() => {
@@ -775,7 +822,7 @@ function ClientInsightBanners({ clientId }: { clientId: string }) {
           data-testid={`insight-banner-${trigger.id}`}
         >
           <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-          <span className="line-clamp-2">{trigger.reason}</span>
+          <span className="line-clamp-2">{translateInsightMessage(trigger.reason, lang)}</span>
         </div>
       ))}
     </div>
