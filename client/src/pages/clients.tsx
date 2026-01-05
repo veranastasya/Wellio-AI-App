@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Plus, Search, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, ChevronUp, Users as UsersIcon, Eye, AlertTriangle, CalendarDays, TrendingUp } from "lucide-react";
 import type { Questionnaire, GoalType, SupportedLanguage, Coach } from "@shared/schema";
-import { GOAL_TYPES, GOAL_TYPE_LABELS, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, getActivityLevelLabel, COACH_UI_TRANSLATIONS } from "@shared/schema";
+import { GOAL_TYPES, GOAL_TYPE_LABELS, GOAL_TYPE_LABELS_TRANSLATED, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, ACTIVITY_LEVEL_LABELS_TRANSLATED, getActivityLevelLabel, COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1217,7 +1217,7 @@ function ClientForm({
                     <SelectContent>
                       {ACTIVITY_LEVELS.map((level) => (
                         <SelectItem key={level} value={level}>
-                          {ACTIVITY_LEVEL_LABELS[level]}
+                          {ACTIVITY_LEVEL_LABELS_TRANSLATED[lang][level]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1268,7 +1268,7 @@ function ClientForm({
                   <SelectContent>
                     {GOAL_TYPES.map((goalType) => (
                       <SelectItem key={goalType} value={goalType}>
-                        {GOAL_TYPE_LABELS[goalType]}
+                        {GOAL_TYPE_LABELS_TRANSLATED[lang][goalType]}
                       </SelectItem>
                     ))}
                   </SelectContent>

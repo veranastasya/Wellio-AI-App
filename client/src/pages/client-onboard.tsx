@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, AlertCircle, Upload, X } from "lucide-react";
 import type { Question, Questionnaire } from "@shared/schema";
-import { normalizeQuestion, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, GOAL_TYPES, GOAL_TYPE_LABELS } from "@shared/schema";
+import { normalizeQuestion, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS_TRANSLATED, GOAL_TYPES, GOAL_TYPE_LABELS_TRANSLATED, type SupportedLanguage } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 
 export default function ClientOnboard() {
@@ -24,6 +24,7 @@ export default function ClientOnboard() {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [consentGiven, setConsentGiven] = useState(false);
   const [unitsPreference, setUnitsPreference] = useState<UnitsPreference>("us");
+  const lang: SupportedLanguage = "en";
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -792,7 +793,7 @@ export default function ClientOnboard() {
                           <SelectContent>
                             {ACTIVITY_LEVELS.map((level) => (
                               <SelectItem key={level} value={level}>
-                                {ACTIVITY_LEVEL_LABELS[level]}
+                                {ACTIVITY_LEVEL_LABELS_TRANSLATED[lang][level]}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -831,7 +832,7 @@ export default function ClientOnboard() {
                             <SelectContent>
                               {GOAL_TYPES.map((goal) => (
                                 <SelectItem key={goal} value={goal}>
-                                  {GOAL_TYPE_LABELS[goal]}
+                                  {GOAL_TYPE_LABELS_TRANSLATED[lang][goal]}
                                 </SelectItem>
                               ))}
                             </SelectContent>
