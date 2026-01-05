@@ -55,6 +55,31 @@ async function assertCoachOwnsClient(coachId: string, clientId: string): Promise
   const client = await storage.getClient(clientId);
   return client !== undefined && client.coachId === coachId;
 }
+
+// Helper to resolve inactivity triggers when client shows activity
+async function resolveInactivityTriggersOnActivity(clientId: string): Promise<number> {
+  try {
+    const client = await storage.getClient(clientId);
+    if (!client?.coachId) return 0;
+    
+    const triggers = await storage.getEngagementTriggers(clientId, client.coachId);
+    const unresolvedInactivity = triggers.filter(t => !t.isResolved && t.type === 'inactivity');
+    
+    let resolved = 0;
+    for (const trigger of unresolvedInactivity) {
+      await storage.resolveEngagementTrigger(trigger.id);
+      resolved++;
+      logger.debug('Auto-resolved inactivity trigger due to client activity', { 
+        clientId, 
+        triggerId: trigger.id 
+      });
+    }
+    return resolved;
+  } catch (error) {
+    logger.error('Failed to resolve inactivity triggers', { clientId }, error);
+    return 0;
+  }
+}
 import { 
   insertClientSchema,
   updateClientSchema,
@@ -1029,6 +1054,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update client's last active time
       await storage.updateClient(clientId, { lastActiveAt: new Date().toISOString() });
       
+      // Auto-resolve inactivity triggers when client sends a message
+      resolveInactivityTriggersOnActivity(clientId);
+      
       // Send push notification to coach when client sends a message
       const client = await storage.getClient(clientId);
       if (client?.coachId) {
@@ -1969,6 +1997,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertNutritionLogSchema.parse(req.body);
       const nutritionLog = await storage.createNutritionLog(validatedData);
+      
+      // Auto-resolve inactivity triggers when client logs nutrition
+      if (validatedData.clientId) {
+        resolveInactivityTriggersOnActivity(validatedData.clientId);
+      }
+      
       res.status(201).json(nutritionLog);
     } catch (error) {
       console.error("Nutrition log validation error:", error);
@@ -1990,6 +2024,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertWorkoutLogSchema.parse(req.body);
       const workoutLog = await storage.createWorkoutLog(validatedData);
+      
+      // Auto-resolve inactivity triggers when client logs workout
+      if (validatedData.clientId) {
+        resolveInactivityTriggersOnActivity(validatedData.clientId);
+      }
+      
       res.status(201).json(workoutLog);
     } catch (error) {
       res.status(400).json({ error: "Invalid workout log data" });
@@ -2010,6 +2050,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertCheckInSchema.parse(req.body);
       const checkIn = await storage.createCheckIn(validatedData);
+      
+      // Auto-resolve inactivity triggers when client checks in
+      if (validatedData.clientId) {
+        resolveInactivityTriggersOnActivity(validatedData.clientId);
+      }
+      
       res.status(201).json(checkIn);
     } catch (error) {
       res.status(400).json({ error: "Invalid check-in data" });
@@ -5249,6 +5295,12 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       });
       
       const log = await storage.createClientDataLog(validatedData);
+      
+      // Auto-resolve inactivity triggers when client logs data
+      if (!isCoach && clientId) {
+        resolveInactivityTriggersOnActivity(clientId);
+      }
+      
       res.status(201).json(log);
     } catch (error) {
       console.error("Error creating client data log:", error);

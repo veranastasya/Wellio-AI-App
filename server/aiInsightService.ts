@@ -6,6 +6,7 @@ interface ActivityAnalysis {
   daysSinceMeal: number;
   daysSinceWorkout: number;
   daysSinceCheckIn: number;
+  daysSinceMessage: number;
   daysSinceAnyActivity: number;
   hasActiveGoals: boolean;
   hasWorkoutGoals: boolean;
@@ -49,6 +50,10 @@ async function analyzeClientActivity(client: Client): Promise<ActivityAnalysis> 
   const lastWorkoutDate = getLastDate(workoutLogs);
   const lastCheckInDate = getLastDate(checkInLogs);
   
+  // Get last message timestamp (chatting with coach counts as activity)
+  const lastMessageTimestamp = await storage.getLastClientMessageTimestamp(client.id);
+  const lastMessageDate = lastMessageTimestamp ? new Date(lastMessageTimestamp) : null;
+  
   const daysSince = (date: Date | null, fallbackToClientCreated: boolean = true): number => {
     if (!date) {
       return fallbackToClientCreated ? daysSinceClientCreated : 999;
@@ -60,7 +65,9 @@ async function analyzeClientActivity(client: Client): Promise<ActivityAnalysis> 
   const daysSinceMeal = daysSince(lastMealDate);
   const daysSinceWorkout = daysSince(lastWorkoutDate);
   const daysSinceCheckIn = daysSince(lastCheckInDate);
-  const daysSinceAnyActivity = Math.min(daysSinceMeal, daysSinceWorkout, daysSinceCheckIn);
+  const daysSinceMessage = daysSince(lastMessageDate);
+  // Include messages in activity calculation - chatting with coach is activity
+  const daysSinceAnyActivity = Math.min(daysSinceMeal, daysSinceWorkout, daysSinceCheckIn, daysSinceMessage);
   
   const activeGoals = goals.filter(g => g.status === "active");
   const hasActiveGoals = activeGoals.length > 0;
@@ -75,6 +82,7 @@ async function analyzeClientActivity(client: Client): Promise<ActivityAnalysis> 
     daysSinceMeal,
     daysSinceWorkout,
     daysSinceCheckIn,
+    daysSinceMessage,
     daysSinceAnyActivity,
     hasActiveGoals,
     hasWorkoutGoals,
