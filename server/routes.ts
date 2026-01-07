@@ -515,9 +515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Build reset link
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : 'http://localhost:5000';
+      const baseUrl = getBaseUrl();
       const resetLink = `${baseUrl}/reset-password?token=${token}&type=${userType}`;
       
       // Send email
@@ -838,9 +836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clientToken = await storage.createClientToken(tokenData);
       
       // Generate the setup link
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-        : 'http://localhost:5000';
+      const baseUrl = getBaseUrl();
       const setupLink = `${baseUrl}/client/setup-password?token=${clientToken.token}`;
       
       // Send the email
@@ -2550,9 +2546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.incrementQuestionnaireUsage(questionnaireId);
       }
 
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-        : 'http://localhost:5000';
+      const baseUrl = getBaseUrl();
       const inviteLink = `${baseUrl}/client/onboard?token=${clientToken.token}`;
       console.log("[DEBUG] Returning invite link:", inviteLink);
 
@@ -2605,9 +2599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const questionnaires = await storage.getQuestionnaires();
       const questionnaire = questionnaires.find(q => q.id === questionnaireId);
       
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-        : 'http://localhost:5000';
+      const baseUrl = getBaseUrl();
 
       for (const inviteReq of invites) {
         const { email, name } = inviteReq;
@@ -2710,9 +2702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Token not found" });
       }
 
-      const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-        ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-        : 'http://localhost:5000';
+      const baseUrl = getBaseUrl();
       const inviteLink = `${baseUrl}/client/onboard?token=${clientToken.token}`;
 
       // Get questionnaire name
@@ -5008,7 +4998,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       // Send email notification to client (only for main/long_term plans, not weekly)
       if (planType !== 'weekly') {
         try {
-          const planLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/plan`;
+          const planLink = `${getBaseUrl()}/client/plan`;
           await sendPlanAssignmentEmail({
             to: client.email,
             clientName: client.name,
@@ -5121,7 +5111,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
       // Send email notification to client
       try {
-        const planLink = `${process.env.REPLIT_DEV_DOMAIN || 'http://localhost:5000'}/client/plan`;
+        const planLink = `${getBaseUrl()}/client/plan`;
         await sendPlanAssignmentEmail({
           to: client.email,
           clientName: client.name,
