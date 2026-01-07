@@ -46,8 +46,9 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      staleTime: 30 * 1000, // 30 seconds - data becomes stale after this
       retry: false,
     },
     mutations: {
@@ -55,3 +56,16 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Handle visibility change for PWA - force refetch when app returns to foreground
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      // Invalidate critical queries when PWA returns to foreground
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages/threads'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    }
+  });
+}
