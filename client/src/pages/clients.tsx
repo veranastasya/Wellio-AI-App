@@ -218,8 +218,10 @@ export default function Clients() {
       const response = await apiRequest("POST", "/api/client-invites", data);
       return response as unknown as { invite: any; inviteLink: string };
     },
-    onSuccess: (response) => {
-      setInviteLink(response.inviteLink);
+    onSuccess: () => {
+      setInviteLink(null);
+      setInviteCopied(false);
+      setIsInviteOpen(false);
       toast({
         title: t.common.success[lang],
         description: t.clients.inviteSent[lang],
