@@ -131,7 +131,8 @@ import crypto from "crypto";
 import { logger } from "./logger";
 
 // Helper to get the correct base URL for invite links
-// In production: uses REPLIT_DOMAINS (the .replit.app domain)
+// Prioritizes custom domains over .replit.app domains
+// In production: uses custom domain from REPLIT_DOMAINS if available
 // In development: uses REPLIT_DEV_DOMAIN
 // Locally: falls back to localhost:5000
 function getBaseUrl(): string {
@@ -139,9 +140,21 @@ function getBaseUrl(): string {
   // It's available in production deployments
   const replitDomains = process.env.REPLIT_DOMAINS;
   if (replitDomains) {
-    // Parse the first domain from the comma-separated list
-    const domains = replitDomains.split(',');
-    const productionDomain = domains[0]?.trim();
+    const domains = replitDomains.split(',').map(d => d.trim()).filter(Boolean);
+    
+    // Prioritize custom domains (non-.replit.app and non-.repl.co domains)
+    const customDomain = domains.find(d => 
+      !d.endsWith('.replit.app') && 
+      !d.endsWith('.repl.co') &&
+      !d.includes('--')
+    );
+    
+    if (customDomain) {
+      return `https://${customDomain}`;
+    }
+    
+    // Fallback to first available domain if no custom domain
+    const productionDomain = domains[0];
     if (productionDomain) {
       return `https://${productionDomain}`;
     }
