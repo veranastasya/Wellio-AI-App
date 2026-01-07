@@ -130,6 +130,33 @@ import { sendInviteEmail, sendPlanAssignmentEmail, sendSessionBookingEmail, send
 import crypto from "crypto";
 import { logger } from "./logger";
 
+// Helper to get the correct base URL for invite links
+// In production: uses REPLIT_DOMAINS (the .replit.app domain)
+// In development: uses REPLIT_DEV_DOMAIN
+// Locally: falls back to localhost:5000
+function getBaseUrl(): string {
+  // REPLIT_DOMAINS contains comma-separated list of production domains
+  // It's available in production deployments
+  const replitDomains = process.env.REPLIT_DOMAINS;
+  if (replitDomains) {
+    // Parse the first domain from the comma-separated list
+    const domains = replitDomains.split(',');
+    const productionDomain = domains[0]?.trim();
+    if (productionDomain) {
+      return `https://${productionDomain}`;
+    }
+  }
+  
+  // Fallback to dev domain for development environment
+  const devDomain = process.env.REPLIT_DEV_DOMAIN;
+  if (devDomain) {
+    return `https://${devDomain}`;
+  }
+  
+  // Local development fallback
+  return 'http://localhost:5000';
+}
+
 async function sendPushNotificationToClient(
   clientId: string,
   title: string,
