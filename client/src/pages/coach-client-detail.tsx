@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Mail, Phone, Calendar, Target, User, Scale, Ruler, Activity as ActivityIcon, FileText, Pin, Download, ChevronDown, Loader2, BarChart3, Send, AlertCircle, Bell } from "lucide-react";
+import { ArrowLeft, Mail, Phone, Calendar, Target, User, Scale, Ruler, Activity as ActivityIcon, FileText, Pin, Download, ChevronDown, Loader2, BarChart3, Send, AlertCircle, Bell, Globe } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Client, Response, Coach, SupportedLanguage } from "@shared/schema";
@@ -33,6 +34,10 @@ export default function CoachClientDetail() {
   const urlParams = new URLSearchParams(window.location.search);
   const tabFromUrl = urlParams.get("tab");
   const [activeTab, setActiveTab] = useState(tabFromUrl || "overview");
+  
+  // State for invite language dialog
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [inviteLanguage, setInviteLanguage] = useState<SupportedLanguage>("en");
   
   // Update active tab when URL changes
   useEffect(() => {
@@ -56,6 +61,13 @@ export default function CoachClientDetail() {
   // Set up translation variables
   const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
   const t = COACH_UI_TRANSLATIONS;
+  
+  // Sync invite language with coach's preferred language when dialog opens
+  useEffect(() => {
+    if (isInviteDialogOpen && coachProfile?.preferredLanguage) {
+      setInviteLanguage(coachProfile.preferredLanguage as SupportedLanguage);
+    }
+  }, [isInviteDialogOpen, coachProfile?.preferredLanguage]);
 
   const { data: client, isLoading: isLoadingClient } = useQuery<Client>({
     queryKey: ["/api/clients", clientId],
@@ -139,10 +151,13 @@ export default function CoachClientDetail() {
   });
 
   const sendSetupInviteMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("POST", `/api/clients/${clientId}/send-setup-invite`, {});
+    mutationFn: async (selectedLanguage: SupportedLanguage) => {
+      return await apiRequest("POST", `/api/clients/${clientId}/send-setup-invite`, {
+        language: selectedLanguage,
+      });
     },
     onSuccess: () => {
+      setIsInviteDialogOpen(false);
       toast({
         title: t.clientDetail.inviteSent[lang],
         description: t.clientDetail.accountSetupEmailSent[lang],
@@ -267,7 +282,7 @@ export default function CoachClientDetail() {
               </div>
               {needsAccountSetup && (
                 <Button
-                  onClick={() => sendSetupInviteMutation.mutate()}
+                  onClick={() => setIsInviteDialogOpen(true)}
                   disabled={sendSetupInviteMutation.isPending}
                   data-testid="button-send-setup-invite"
                   className="gap-2"
@@ -280,6 +295,61 @@ export default function CoachClientDetail() {
                   {t.clientDetail.sendPortalInvite[lang]}
                 </Button>
               )}
+              
+              {/* Language Selection Dialog for Portal Invite */}
+              <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Globe className="w-5 h-5 text-primary" />
+                      {t.clientDetail.sendPortalInvite[lang]}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {t.clients.selectLanguageDescription?.[lang] || "Select the language for the invitation email and client portal."}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>{t.clients.language?.[lang] || "Language"}</Label>
+                      <Select
+                        value={inviteLanguage}
+                        onValueChange={(value) => setInviteLanguage(value as SupportedLanguage)}
+                      >
+                        <SelectTrigger data-testid="select-invite-language">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="ru">Русский</SelectItem>
+                          <SelectItem value="es">Español</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsInviteDialogOpen(false)}
+                      data-testid="button-cancel-invite"
+                    >
+                      {t.common.cancel[lang]}
+                    </Button>
+                    <Button
+                      onClick={() => sendSetupInviteMutation.mutate(inviteLanguage)}
+                      disabled={sendSetupInviteMutation.isPending}
+                      data-testid="button-confirm-send-invite"
+                      className="gap-2"
+                    >
+                      {sendSetupInviteMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                      {t.clients.sendInvite?.[lang] || "Send Invite"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardHeader>
         </Card>

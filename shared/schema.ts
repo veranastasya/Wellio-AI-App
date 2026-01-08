@@ -1067,6 +1067,7 @@ export const COACH_UI_TRANSLATIONS = {
     inviteLanguage: { en: "Email & Form Language", ru: "Язык письма и формы", es: "Idioma del Email y Formulario" },
     selectLanguage: { en: "Select language", ru: "Выберите язык", es: "Seleccionar idioma" },
     languageHint: { en: "The email invitation and onboarding form will be displayed in this language", ru: "Приглашение и форма регистрации будут отображаться на этом языке", es: "El email de invitación y el formulario de registro se mostrarán en este idioma" },
+    selectLanguageDescription: { en: "Select the language for the invitation email and client portal.", ru: "Выберите язык для письма-приглашения и клиентского портала.", es: "Seleccione el idioma para el email de invitación y el portal del cliente." },
     addClientAndInvite: { en: "Add Client & Send Invite", ru: "Добавить и отправить", es: "Añadir y Enviar" },
     resendInvite: { en: "Resend Invite", ru: "Отправить повторно", es: "Reenviar Invitación" },
     // Client card
