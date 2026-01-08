@@ -154,13 +154,20 @@ export default function Clients() {
   });
 
   const createClientMutation = useMutation({
-    mutationFn: async (data: InsertClient) => {
-      const response = await apiRequest("POST", "/api/clients", data);
+    mutationFn: async (data: InsertClient & { inviteLanguage?: SupportedLanguage }) => {
+      const { inviteLanguage, ...clientData } = data;
+      // Include preferredLanguage in client data
+      const clientWithLang = {
+        ...clientData,
+        preferredLanguage: inviteLanguage || "en",
+      };
+      const response = await apiRequest("POST", "/api/clients", clientWithLang);
       const client = await response.json() as Client;
       // Automatically send account setup invite after creating the client
       try {
         await apiRequest("POST", `/api/clients/${client.id}/send-setup-invite`, {
-          message: "Welcome! Please set up your account to access your coaching portal."
+          message: "Welcome! Please set up your account to access your coaching portal.",
+          language: inviteLanguage || "en",
         });
       } catch (inviteError) {
         console.error("Failed to send setup invite:", inviteError);
@@ -839,7 +846,7 @@ function ClientForm({
   t = COACH_UI_TRANSLATIONS,
 }: {
   client?: Client;
-  onSubmit: (data: InsertClient) => void;
+  onSubmit: (data: InsertClient & { inviteLanguage?: SupportedLanguage }) => void;
   isLoading: boolean;
   lang?: SupportedLanguage;
   t?: typeof COACH_UI_TRANSLATIONS;
@@ -850,6 +857,9 @@ function ClientForm({
   const [heightFeet, setHeightFeet] = useState<string>("");
   const [heightInches, setHeightInches] = useState<string>("");
   const [heightCm, setHeightCm] = useState<string>("");
+  const [inviteLanguage, setInviteLanguage] = useState<SupportedLanguage>(
+    (client?.preferredLanguage as SupportedLanguage) || "en"
+  );
   
   const form = useForm<InsertClient>({
     resolver: zodResolver(insertClientSchema),
@@ -1559,8 +1569,39 @@ function ClientForm({
           )}
         />
 
+        {/* Only show language selector when adding new client (not editing) */}
+        {!client && (
+          <div className="space-y-3 pt-2 border-t">
+            <h3 className="text-sm font-semibold text-foreground">{t.clients.inviteLanguage[lang]}</h3>
+            <div className="space-y-2">
+              <Select value={inviteLanguage} onValueChange={(val) => setInviteLanguage(val as SupportedLanguage)}>
+                <SelectTrigger data-testid="select-client-invite-language">
+                  <SelectValue placeholder={t.clients.selectLanguage[lang]} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">English</SelectItem>
+                  <SelectItem value="ru">Русский</SelectItem>
+                  <SelectItem value="es">Español</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {t.clients.languageHint[lang]}
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-end gap-3 pt-4">
-          <Button type="submit" disabled={isLoading} data-testid="button-submit-client">
+          <Button 
+            type="submit" 
+            disabled={isLoading} 
+            data-testid="button-submit-client"
+            onClick={(e) => {
+              e.preventDefault();
+              const formData = form.getValues();
+              onSubmit({ ...formData, inviteLanguage: client ? undefined : inviteLanguage });
+            }}
+          >
             {isLoading ? t.common.saving[lang] : client ? t.common.update[lang] : t.clients.addClientAndInvite[lang]}
           </Button>
         </div>

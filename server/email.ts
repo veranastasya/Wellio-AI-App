@@ -292,6 +292,7 @@ interface SendAccountSetupEmailParams {
   coachName: string;
   setupLink: string;
   message?: string;
+  language?: SupportedLanguage;
 }
 
 export async function sendAccountSetupEmail({
@@ -299,9 +300,12 @@ export async function sendAccountSetupEmail({
   clientName,
   coachName,
   setupLink,
-  message
+  message,
+  language = "en"
 }: SendAccountSetupEmailParams) {
   const { client, fromEmail } = await getUncachableResendClient();
+  const lang = language as SupportedLanguage;
+  const t = EMAIL_TRANSLATIONS.accountSetup;
   
   const emailHtml = `
     <!DOCTYPE html>
@@ -309,7 +313,7 @@ export async function sendAccountSetupEmail({
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Set Up Your Wellio Account</title>
+      <title>${t.subject[lang]}</title>
       <style>
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
@@ -391,13 +395,13 @@ export async function sendAccountSetupEmail({
     <body>
       <div class="container">
         <div class="header">
-          <h1>Welcome to Wellio</h1>
+          <h1>${t.welcomeTitle[lang]}</h1>
         </div>
         
         <div class="content">
-          <h2>Hi ${clientName}!</h2>
+          <h2>${t.greeting[lang]} ${clientName}!</h2>
           
-          <p>Your coach <strong>${coachName}</strong> has added you to their Wellio coaching platform. Click the button below to set up your password and access your personalized coaching dashboard.</p>
+          <p>${t.addedBy[lang]} <strong>${coachName}</strong> ${t.platformDescription[lang]}</p>
           
           ${message ? `
             <div class="message-box">
@@ -407,17 +411,17 @@ export async function sendAccountSetupEmail({
           ` : ''}
           
           <div style="text-align: center;">
-            <a href="${setupLink}" class="cta-button" style="color: #ffffff; text-decoration: none;">Set Up Your Account</a>
+            <a href="${setupLink}" class="cta-button" style="color: #ffffff; text-decoration: none;">${t.ctaButton[lang]}</a>
           </div>
           
           <p style="margin-top: 32px; font-size: 14px; color: #666666;">
-            This link is unique to you. If you didn't expect this email, you can safely ignore it.
+            ${t.linkNotice[lang]}
           </p>
         </div>
         
         <div class="footer">
-          <p><strong>Wellio</strong> - AI-Powered Fitness & Wellness Coaching</p>
-          <p>Need help? Contact ${coachName} directly.</p>
+          <p><strong>Wellio</strong> - ${t.footerTagline[lang]}</p>
+          <p>${t.needHelp[lang]} ${coachName} ${t.directly[lang]}</p>
         </div>
       </div>
     </body>
@@ -425,31 +429,29 @@ export async function sendAccountSetupEmail({
   `;
 
   const emailText = `
-Welcome to Wellio!
+${t.welcomeTitle[lang]}
 
-Hi ${clientName},
+${t.greeting[lang]} ${clientName},
 
-Your coach ${coachName} has added you to their Wellio coaching platform.
+${t.addedBy[lang]} ${coachName} ${t.platformDescription[lang]}
 
-Click the link below to set up your password and access your personalized coaching dashboard.
+${message ? `${coachName}:\n"${message}"\n\n` : ''}
 
-${message ? `Personal message from ${coachName}:\n"${message}"\n\n` : ''}
-
-Set Up Your Account:
+${t.ctaButton[lang]}:
 ${setupLink}
 
-This link is unique to you. If you didn't expect this email, you can safely ignore it.
+${t.linkNotice[lang]}
 
 ---
-Wellio - AI-Powered Fitness & Wellness Coaching
-Need help? Contact ${coachName} directly.
+Wellio - ${t.footerTagline[lang]}
+${t.needHelp[lang]} ${coachName} ${t.directly[lang]}
   `;
 
   try {
     const { data, error } = await client.emails.send({
       from: fromEmail,
       to: [to],
-      subject: `Set up your Wellio account with ${coachName}`,
+      subject: t.subject[lang],
       html: emailHtml,
       text: emailText,
     });

@@ -112,6 +112,7 @@ import {
   GOAL_TYPES,
   type GoalType,
   type WeeklyScheduleItem,
+  type SupportedLanguage,
 } from "@shared/schema";
 import { classifySmartLog, parseSmartLog, processSmartLogToEvents, processSmartLog } from "./smartLogProcessor";
 import { updateClientProgress, updateAllClientsProgress, calculateClientProgress } from "./progressCalculator";
@@ -816,7 +817,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const coachId = req.session.coachId!;
       const clientId = req.params.id;
-      const { message } = req.body;
+      const { message, language = "en" } = req.body;
+      
+      // Validate language
+      const validLanguages = ["en", "ru", "es"];
+      const inviteLanguage = validLanguages.includes(language) ? language : "en";
       
       // Get client
       const client = await storage.getClient(clientId);
@@ -838,6 +843,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const coach = await storage.getCoach(coachId);
       const coachName = coach?.name || "Your Coach";
       
+      // Create or update client invite with the language
+      let invite = await storage.getClientInviteByClientId(clientId);
+      if (invite) {
+        await storage.updateClientInvite(invite.id, { language: inviteLanguage });
+      } else {
+        invite = await storage.createClientInvite({
+          email: client.email,
+          name: client.name,
+          coachId: coachId,
+          coachName: coachName,
+          clientId: clientId,
+          language: inviteLanguage,
+          status: "pending",
+        });
+      }
+      
       // Create a client token linked to this client
       const tokenData = insertClientTokenSchema.parse({
         clientId: client.id,
@@ -852,7 +873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = getBaseUrl();
       const setupLink = `${baseUrl}/client/setup-password?token=${clientToken.token}`;
       
-      // Send the email
+      // Send the email in the selected language
       try {
         await sendAccountSetupEmail({
           to: client.email,
@@ -860,8 +881,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           coachName: coachName,
           setupLink,
           message,
+          language: inviteLanguage as SupportedLanguage,
         });
-        console.log("[Email] Successfully sent account setup email to:", client.email);
+        console.log("[Email] Successfully sent account setup email to:", client.email, "in language:", inviteLanguage);
       } catch (emailError) {
         console.error("[Email] Failed to send account setup email:", emailError);
         // Still return success - token is created even if email fails

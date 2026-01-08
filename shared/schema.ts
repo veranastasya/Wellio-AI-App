@@ -576,6 +576,58 @@ export const EMAIL_TRANSLATIONS = {
       es: "directamente.",
     },
   },
+  accountSetup: {
+    subject: {
+      en: "Set Up Your Wellio Account",
+      ru: "Настройте свой аккаунт Wellio",
+      es: "Configura tu Cuenta de Wellio",
+    },
+    welcomeTitle: {
+      en: "Welcome to Wellio",
+      ru: "Добро пожаловать в Wellio",
+      es: "Bienvenido a Wellio",
+    },
+    greeting: {
+      en: "Hi",
+      ru: "Здравствуйте",
+      es: "Hola",
+    },
+    addedBy: {
+      en: "Your coach",
+      ru: "Ваш тренер",
+      es: "Tu entrenador",
+    },
+    platformDescription: {
+      en: "has added you to their Wellio coaching platform. Click the button below to set up your password and access your personalized coaching dashboard.",
+      ru: "добавил(а) вас на платформу коучинга Wellio. Нажмите кнопку ниже, чтобы установить пароль и получить доступ к персональной панели управления.",
+      es: "te ha añadido a su plataforma de coaching Wellio. Haz clic en el botón de abajo para configurar tu contraseña y acceder a tu panel de coaching personalizado.",
+    },
+    ctaButton: {
+      en: "Set Up Your Account",
+      ru: "Настроить аккаунт",
+      es: "Configurar tu Cuenta",
+    },
+    linkNotice: {
+      en: "This link is unique to you. If you didn't expect this email, you can safely ignore it.",
+      ru: "Эта ссылка уникальна для вас. Если вы не ожидали этого письма, можете проигнорировать его.",
+      es: "Este enlace es único para ti. Si no esperabas este correo, puedes ignorarlo.",
+    },
+    footerTagline: {
+      en: "AI-Powered Fitness & Wellness Coaching",
+      ru: "Фитнес и велнес-коучинг с AI",
+      es: "Coaching de Fitness y Bienestar con IA",
+    },
+    needHelp: {
+      en: "Need help? Contact",
+      ru: "Нужна помощь? Свяжитесь с",
+      es: "¿Necesitas ayuda? Contacta a",
+    },
+    directly: {
+      en: "directly.",
+      ru: "напрямую.",
+      es: "directamente.",
+    },
+  },
 } as const;
 
 // Onboarding form translations
