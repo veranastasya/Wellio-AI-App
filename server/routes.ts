@@ -843,23 +843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const coach = await storage.getCoach(coachId);
       const coachName = coach?.name || "Your Coach";
       
-      // Create or update client invite with the language
-      let invite = await storage.getClientInviteByClientId(clientId);
-      if (invite) {
-        await storage.updateClientInvite(invite.id, { language: inviteLanguage });
-      } else {
-        invite = await storage.createClientInvite({
-          email: client.email,
-          name: client.name,
-          coachId: coachId,
-          coachName: coachName,
-          clientId: clientId,
-          language: inviteLanguage,
-          status: "pending",
-        });
-      }
-      
-      // Create a client token linked to this client
+      // Create a client token FIRST (needed for invite's tokenId)
       const tokenData = insertClientTokenSchema.parse({
         clientId: client.id,
         email: client.email,
@@ -868,6 +852,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: "pending",
       });
       const clientToken = await storage.createClientToken(tokenData);
+      
+      // Create or update client invite with the language and tokenId
+      let invite = await storage.getClientInviteByClientId(clientId);
+      if (invite) {
+        await storage.updateClientInvite(invite.id, { language: inviteLanguage, tokenId: clientToken.id });
+      } else {
+        invite = await storage.createClientInvite({
+          email: client.email,
+          name: client.name,
+          coachId: coachId,
+          clientId: clientId,
+          language: inviteLanguage,
+          status: "pending",
+          tokenId: clientToken.id,
+        });
+      }
       
       // Generate the setup link
       const baseUrl = getBaseUrl();
