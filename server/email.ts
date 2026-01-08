@@ -41,6 +41,8 @@ export async function getUncachableResendClient() {
   };
 }
 
+import { EMAIL_TRANSLATIONS, SupportedLanguage } from "@shared/schema";
+
 interface SendInviteEmailParams {
   to: string;
   clientName: string;
@@ -48,6 +50,7 @@ interface SendInviteEmailParams {
   inviteLink: string;
   questionnaireName?: string;
   message?: string;
+  language?: SupportedLanguage;
 }
 
 interface SendPlanAssignmentEmailParams {
@@ -65,9 +68,17 @@ export async function sendInviteEmail({
   coachName,
   inviteLink,
   questionnaireName,
-  message
+  message,
+  language = "en"
 }: SendInviteEmailParams) {
   const { client, fromEmail } = await getUncachableResendClient();
+  const t = EMAIL_TRANSLATIONS.invite;
+  const lang = language;
+  
+  // Build step 2 text based on whether questionnaire name is provided
+  const step2Text = questionnaireName 
+    ? `${t.step2WithName[lang]} "${questionnaireName}" ${t.step2Form[lang]}`.trim()
+    : t.step2Default[lang];
   
   const emailHtml = `
     <!DOCTYPE html>
@@ -75,7 +86,7 @@ export async function sendInviteEmail({
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Welcome to Wellio</title>
+      <title>${t.welcomeTitle[lang]}</title>
       <style>
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
@@ -185,13 +196,13 @@ export async function sendInviteEmail({
     <body>
       <div class="container">
         <div class="header">
-          <h1>Welcome to Wellio</h1>
+          <h1>${t.welcomeTitle[lang]}</h1>
         </div>
         
         <div class="content">
-          <h2>Hi ${clientName}!</h2>
+          <h2>${t.greeting[lang]} ${clientName}!</h2>
           
-          <p>You've been invited by <strong>${coachName}</strong> to join Wellio, a platform designed to help you achieve your fitness and wellness goals.</p>
+          <p>${t.invitedBy[lang]} <strong>${coachName}</strong> ${t.platformDescription[lang]}</p>
           
           ${message ? `
             <div class="message-box">
@@ -201,27 +212,27 @@ export async function sendInviteEmail({
           ` : ''}
           
           <div class="steps">
-            <h3>Next Steps:</h3>
+            <h3>${t.nextStepsTitle[lang]}</h3>
             <ol>
-              <li>Click the button below to complete your onboarding questionnaire</li>
-              ${questionnaireName ? `<li>Fill out the "${questionnaireName}" form</li>` : '<li>Fill out your initial health and fitness assessment</li>'}
-              <li>Your account will be automatically created</li>
-              <li>Start your journey with personalized coaching</li>
+              <li>${t.step1[lang]}</li>
+              <li>${step2Text}</li>
+              <li>${t.step3[lang]}</li>
+              <li>${t.step4[lang]}</li>
             </ol>
           </div>
           
           <div style="text-align: center;">
-            <a href="${inviteLink}" class="cta-button">Complete Your Onboarding</a>
+            <a href="${inviteLink}" class="cta-button">${t.ctaButton[lang]}</a>
           </div>
           
           <p style="margin-top: 32px; font-size: 14px; color: #666666;">
-            This link is unique to you. If you didn't expect this invitation, you can safely ignore this email.
+            ${t.linkNotice[lang]}
           </p>
         </div>
         
         <div class="footer">
-          <p><strong>Wellio</strong> - AI-Powered Fitness & Wellness Coaching</p>
-          <p>Need help? Contact ${coachName} directly.</p>
+          <p><strong>Wellio</strong> - ${t.footerTagline[lang]}</p>
+          <p>${t.needHelp[lang]} ${coachName} ${t.directly[lang]}</p>
         </div>
       </div>
     </body>
@@ -229,35 +240,35 @@ export async function sendInviteEmail({
   `;
 
   const emailText = `
-Welcome to Wellio!
+${t.welcomeTitle[lang]}!
 
-Hi ${clientName},
+${t.greeting[lang]} ${clientName},
 
-You've been invited by ${coachName} to join Wellio, a platform designed to help you achieve your fitness and wellness goals.
+${t.invitedBy[lang]} ${coachName} ${t.platformDescription[lang]}
 
-${message ? `Personal message from ${coachName}:\n"${message}"\n\n` : ''}
+${message ? `${coachName}:\n"${message}"\n\n` : ''}
 
-Next Steps:
-1. Complete your onboarding questionnaire by clicking the link below
-${questionnaireName ? `2. Fill out the "${questionnaireName}" form` : '2. Fill out your initial health and fitness assessment'}
-3. Your account will be automatically created
-4. Start your journey with personalized coaching
+${t.nextStepsTitle[lang]}
+1. ${t.step1[lang]}
+2. ${step2Text}
+3. ${t.step3[lang]}
+4. ${t.step4[lang]}
 
-Complete Your Onboarding:
+${t.ctaButton[lang]}:
 ${inviteLink}
 
-This link is unique to you. If you didn't expect this invitation, you can safely ignore this email.
+${t.linkNotice[lang]}
 
 ---
-Wellio - AI-Powered Fitness & Wellness Coaching
-Need help? Contact ${coachName} directly.
+Wellio - ${t.footerTagline[lang]}
+${t.needHelp[lang]} ${coachName} ${t.directly[lang]}
   `;
 
   try {
     const { data, error } = await client.emails.send({
       from: fromEmail,
       to: [to],
-      subject: `${coachName} invited you to Wellio`,
+      subject: t.subject[lang],
       html: emailHtml,
       text: emailText,
     });

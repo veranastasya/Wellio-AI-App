@@ -2513,10 +2513,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Client Invite routes (Coach creates invites for clients)
   app.post("/api/client-invites", async (req, res) => {
     try {
-      const { email, name, questionnaireId, message, coachName, coachId } = req.body;
+      const { email, name, questionnaireId, message, coachName, coachId, language = "en" } = req.body;
       
       // Get coachId from session or request body
       const effectiveCoachId = coachId || (req.session as any)?.coachId || "default-coach";
+      
+      // Validate language
+      const validLanguage = ["en", "ru", "es"].includes(language) ? language : "en";
       
       // Check if client with this email already exists (globally)
       const existingClient = await storage.getClientByEmail(email);
@@ -2551,6 +2554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message,
         status: "pending",
         expiresAt,
+        language: validLanguage,
       });
       const invite = await storage.createClientInvite(inviteData);
 
@@ -2575,8 +2579,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           inviteLink,
           questionnaireName: questionnaire?.name,
           message,
+          language: validLanguage as "en" | "ru" | "es",
         });
-        console.log("[Email] Successfully sent invite email to:", email);
+        console.log("[Email] Successfully sent invite email to:", email, "in language:", validLanguage);
       } catch (emailError) {
         // Log email error but don't fail the invite creation
         console.error("[Email] Failed to send invite email:", emailError);
@@ -2722,7 +2727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const questionnaires = await storage.getQuestionnaires();
       const questionnaire = questionnaires.find(q => q.id === invite.questionnaireId);
 
-      // Send email
+      // Send email with the language stored in the invite
       await sendInviteEmail({
         to: invite.email,
         clientName: invite.name || undefined,
@@ -2730,6 +2735,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         inviteLink,
         questionnaireName: questionnaire?.name,
         message: invite.message || undefined,
+        language: (invite.language as "en" | "ru" | "es") || "en",
       });
 
       // Update resend tracking
