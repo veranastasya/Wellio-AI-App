@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, AlertCircle, Upload, X } from "lucide-react";
 import type { Question, Questionnaire } from "@shared/schema";
-import { normalizeQuestion, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS_TRANSLATED, GOAL_TYPES, GOAL_TYPE_LABELS_TRANSLATED, type SupportedLanguage } from "@shared/schema";
+import { normalizeQuestion, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS_TRANSLATED, GOAL_TYPES, GOAL_TYPE_LABELS_TRANSLATED, ONBOARDING_TRANSLATIONS, type SupportedLanguage } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
 
 export default function ClientOnboard() {
@@ -24,7 +24,10 @@ export default function ClientOnboard() {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [consentGiven, setConsentGiven] = useState(false);
   const [unitsPreference, setUnitsPreference] = useState<UnitsPreference>("us");
-  const lang: SupportedLanguage = "en";
+  
+  // Get language from invite or default to English
+  const lang: SupportedLanguage = (tokenData?.invite?.language as SupportedLanguage) || "en";
+  const t = ONBOARDING_TRANSLATIONS;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -32,8 +35,8 @@ export default function ClientOnboard() {
     
     if (!urlToken) {
       toast({
-        title: "Error",
-        description: "Invalid invite link",
+        title: t.error.title[lang],
+        description: t.error.invalidLink[lang],
         variant: "destructive",
       });
       setIsVerifying(false);
@@ -52,9 +55,11 @@ export default function ClientOnboard() {
       
       if (data.client) {
         if (data.client.passwordHash) {
+          // Get invite language from the response, or default to English
+          const inviteLang = (data.invite?.language as SupportedLanguage) || "en";
           toast({
-            title: "Account exists",
-            description: "Please log in with your credentials",
+            title: ONBOARDING_TRANSLATIONS.account.existsTitle[inviteLang],
+            description: ONBOARDING_TRANSLATIONS.account.existsDescription[inviteLang],
           });
           setLocation("/client/login");
         } else {
@@ -62,9 +67,10 @@ export default function ClientOnboard() {
         }
       }
     } catch (error) {
+      // Use English fallback for error during token verification since we don't have tokenData yet
       toast({
-        title: "Error",
-        description: "Invalid or expired invite link",
+        title: ONBOARDING_TRANSLATIONS.error.title.en,
+        description: ONBOARDING_TRANSLATIONS.error.expiredLink.en,
         variant: "destructive",
       });
     } finally {
@@ -116,17 +122,17 @@ export default function ClientOnboard() {
       });
     },
     onSuccess: () => {
-      const message = questionnaire?.confirmationMessage || "Questionnaire submitted successfully!";
+      const message = questionnaire?.confirmationMessage || t.success.questionnaireSent[lang];
       toast({
-        title: "Great!",
+        title: t.success.great[lang],
         description: message,
       });
       setLocation("/client/setup-password?token=" + token);
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to submit questionnaire",
+        title: t.error.title[lang],
+        description: error.message || t.error.submitFailed[lang],
         variant: "destructive",
       });
     },
@@ -143,8 +149,8 @@ export default function ClientOnboard() {
 
     if (unansweredRequired && unansweredRequired.length > 0) {
       toast({
-        title: "Missing Required Fields",
-        description: "Please answer all required questions",
+        title: t.validation.missingRequiredFields[lang],
+        description: t.validation.pleaseAnswerAllRequired[lang],
         variant: "destructive",
       });
       return;
@@ -152,8 +158,8 @@ export default function ClientOnboard() {
 
     if (questionnaire?.consentRequired && !consentGiven) {
       toast({
-        title: "Consent Required",
-        description: "Please provide your consent to continue",
+        title: t.validation.consentRequiredTitle[lang],
+        description: t.validation.pleaseProvideConsent[lang],
         variant: "destructive",
       });
       return;
@@ -540,7 +546,7 @@ export default function ClientOnboard() {
         <Card className="w-full max-w-md">
           <CardContent className="py-16 text-center">
             <Loader2 className="w-12 h-12 mx-auto animate-spin text-primary mb-4" />
-            <p className="text-lg font-medium">Verifying your invite...</p>
+            <p className="text-lg font-medium">{t.loading.verifying[lang]}</p>
           </CardContent>
         </Card>
       </div>
@@ -555,12 +561,12 @@ export default function ClientOnboard() {
             {isLoadingQuestionnaire ? (
               <>
                 <Loader2 className="w-12 h-12 mx-auto animate-spin text-primary mb-4" />
-                <p className="text-lg font-medium">Loading questionnaire...</p>
+                <p className="text-lg font-medium">{t.loading.loadingForm[lang]}</p>
               </>
             ) : (
               <>
                 <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
-                <p className="text-lg font-medium">Invalid or expired invite link</p>
+                <p className="text-lg font-medium">{t.error.expiredLink[lang]}</p>
               </>
             )}
           </CardContent>
@@ -595,8 +601,8 @@ export default function ClientOnboard() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="us">{UNITS_LABELS_TRANSLATED.en.us}</SelectItem>
-                      <SelectItem value="metric">{UNITS_LABELS_TRANSLATED.en.metric}</SelectItem>
+                      <SelectItem value="us">{UNITS_LABELS_TRANSLATED[lang].us}</SelectItem>
+                      <SelectItem value="metric">{UNITS_LABELS_TRANSLATED[lang].metric}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -608,7 +614,7 @@ export default function ClientOnboard() {
               <div className="space-y-3 sm:space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name" data-testid="label-name">
-                    Client Name <span className="text-destructive">*</span>
+                    {t.fields.name[lang]} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="name"
@@ -621,7 +627,7 @@ export default function ClientOnboard() {
 
                 <div className="space-y-2">
                   <Label htmlFor="email" data-testid="label-email">
-                    Email <span className="text-destructive">*</span>
+                    {t.fields.email[lang]} <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="email"
@@ -957,10 +963,10 @@ export default function ClientOnboard() {
                   {submitMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Submitting...
+                      {t.submitting[lang]}
                     </>
                   ) : (
-                    "Submit"
+                    t.submit[lang]
                   )}
                 </Button>
               </div>

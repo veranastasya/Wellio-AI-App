@@ -683,11 +683,22 @@ export const ONBOARDING_TRANSLATIONS = {
     required: { en: "This field is required", ru: "Это поле обязательно", es: "Este campo es obligatorio" },
     invalidEmail: { en: "Please enter a valid email", ru: "Введите корректный email", es: "Ingresa un correo válido" },
     consentRequired: { en: "You must agree to the terms to continue", ru: "Вы должны согласиться с условиями, чтобы продолжить", es: "Debes aceptar los términos para continuar" },
+    missingRequiredFields: { en: "Missing Required Fields", ru: "Не заполнены обязательные поля", es: "Campos Obligatorios Faltantes" },
+    pleaseAnswerAllRequired: { en: "Please answer all required questions", ru: "Пожалуйста, ответьте на все обязательные вопросы", es: "Por favor, responde todas las preguntas obligatorias" },
+    consentRequiredTitle: { en: "Consent Required", ru: "Требуется согласие", es: "Consentimiento Requerido" },
+    pleaseProvideConsent: { en: "Please provide your consent to continue", ru: "Пожалуйста, дайте своё согласие для продолжения", es: "Por favor, proporciona tu consentimiento para continuar" },
   },
   // Success/Error messages
   success: {
     title: { en: "Success!", ru: "Успешно!", es: "¡Éxito!" },
+    great: { en: "Great!", ru: "Отлично!", es: "¡Excelente!" },
     message: { en: "Your questionnaire has been submitted successfully.", ru: "Ваша анкета успешно отправлена.", es: "Tu cuestionario ha sido enviado exitosamente." },
+    questionnaireSent: { en: "Questionnaire submitted successfully!", ru: "Анкета успешно отправлена!", es: "¡Cuestionario enviado exitosamente!" },
+  },
+  // Account status messages
+  account: {
+    existsTitle: { en: "Account exists", ru: "Аккаунт существует", es: "La cuenta existe" },
+    existsDescription: { en: "Please log in with your credentials", ru: "Пожалуйста, войдите с вашими учётными данными", es: "Por favor, inicia sesión con tus credenciales" },
   },
   error: {
     title: { en: "Error", ru: "Ошибка", es: "Error" },
