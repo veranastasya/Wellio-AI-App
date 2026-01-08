@@ -762,6 +762,146 @@ export const ONBOARDING_TRANSLATIONS = {
   },
 } as const;
 
+// Password setup page translations
+export const PASSWORD_SETUP_TRANSLATIONS = {
+  title: {
+    en: "Set Your Password",
+    ru: "Установите пароль",
+    es: "Establece tu Contraseña",
+  },
+  welcome: {
+    en: "Welcome",
+    ru: "Добро пожаловать",
+    es: "Bienvenido",
+  },
+  description: {
+    en: "Create a secure password to access your coaching dashboard.",
+    ru: "Создайте надёжный пароль для доступа к панели коучинга.",
+    es: "Crea una contraseña segura para acceder a tu panel de coaching.",
+  },
+  email: {
+    en: "Email",
+    ru: "Email",
+    es: "Correo Electrónico",
+  },
+  password: {
+    en: "Password",
+    ru: "Пароль",
+    es: "Contraseña",
+  },
+  confirmPassword: {
+    en: "Confirm Password",
+    ru: "Подтвердите пароль",
+    es: "Confirmar Contraseña",
+  },
+  enterPassword: {
+    en: "Enter password",
+    ru: "Введите пароль",
+    es: "Ingresa la contraseña",
+  },
+  confirmPasswordPlaceholder: {
+    en: "Confirm password",
+    ru: "Подтвердите пароль",
+    es: "Confirmar contraseña",
+  },
+  requirements: {
+    title: {
+      en: "Password Requirements:",
+      ru: "Требования к паролю:",
+      es: "Requisitos de Contraseña:",
+    },
+    minLength: {
+      en: "At least 8 characters",
+      ru: "Минимум 8 символов",
+      es: "Al menos 8 caracteres",
+    },
+    match: {
+      en: "Passwords match",
+      ru: "Пароли совпадают",
+      es: "Las contraseñas coinciden",
+    },
+  },
+  submit: {
+    en: "Create Account & Continue",
+    ru: "Создать аккаунт",
+    es: "Crear Cuenta y Continuar",
+  },
+  submitting: {
+    en: "Setting Password...",
+    ru: "Установка пароля...",
+    es: "Estableciendo Contraseña...",
+  },
+  success: {
+    title: {
+      en: "Success!",
+      ru: "Успешно!",
+      es: "¡Éxito!",
+    },
+    message: {
+      en: "Your password has been set. Welcome to Wellio!",
+      ru: "Ваш пароль установлен. Добро пожаловать в Wellio!",
+      es: "Tu contraseña ha sido establecida. ¡Bienvenido a Wellio!",
+    },
+  },
+  error: {
+    title: {
+      en: "Error",
+      ru: "Ошибка",
+      es: "Error",
+    },
+    invalidLink: {
+      en: "Invalid Link",
+      ru: "Недействительная ссылка",
+      es: "Enlace Inválido",
+    },
+    completeOnboarding: {
+      en: "Please complete the onboarding questionnaire first.",
+      ru: "Пожалуйста, сначала заполните анкету.",
+      es: "Por favor, completa primero el cuestionario.",
+    },
+    accountReady: {
+      en: "Account Ready",
+      ru: "Аккаунт готов",
+      es: "Cuenta Lista",
+    },
+    passwordAlreadySet: {
+      en: "Your password is already set. Please login.",
+      ru: "Ваш пароль уже установлен. Войдите в систему.",
+      es: "Tu contraseña ya está establecida. Por favor, inicia sesión.",
+    },
+    verifyFailed: {
+      en: "Failed to verify invite link",
+      ru: "Не удалось проверить ссылку приглашения",
+      es: "Error al verificar el enlace de invitación",
+    },
+    tooShort: {
+      en: "Password must be at least 8 characters long",
+      ru: "Пароль должен содержать минимум 8 символов",
+      es: "La contraseña debe tener al menos 8 caracteres",
+    },
+    tooShortTitle: {
+      en: "Password Too Short",
+      ru: "Пароль слишком короткий",
+      es: "Contraseña Muy Corta",
+    },
+    noMatch: {
+      en: "Please make sure both passwords match",
+      ru: "Убедитесь, что пароли совпадают",
+      es: "Asegúrate de que las contraseñas coincidan",
+    },
+    noMatchTitle: {
+      en: "Passwords Don't Match",
+      ru: "Пароли не совпадают",
+      es: "Las Contraseñas No Coinciden",
+    },
+    setFailed: {
+      en: "Failed to set password. Please try again.",
+      ru: "Не удалось установить пароль. Попробуйте ещё раз.",
+      es: "Error al establecer la contraseña. Inténtalo de nuevo.",
+    },
+  },
+} as const;
+
 // Coach UI translations for all coach-facing pages
 export const COACH_UI_TRANSLATIONS = {
   // Sidebar navigation

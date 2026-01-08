@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { PASSWORD_SETUP_TRANSLATIONS, type SupportedLanguage } from "@shared/schema";
+import { syncLanguage } from "@/lib/i18n";
 
 export default function ClientPasswordSetup() {
   const [, setLocation] = useLocation();
@@ -15,11 +17,14 @@ export default function ClientPasswordSetup() {
   
   const [token, setToken] = useState("");
   const [clientData, setClientData] = useState<{name: string; email: string} | null>(null);
+  const [language, setLanguage] = useState<SupportedLanguage>("en");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const t = PASSWORD_SETUP_TRANSLATIONS;
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
@@ -39,21 +44,24 @@ export default function ClientPasswordSetup() {
       const response = await apiRequest("POST", "/api/client-auth/verify", { token: tokenValue });
       const data = await response.json();
       
+      const inviteLang = (data.invite?.language as SupportedLanguage) || "en";
+      setLanguage(inviteLang);
+      syncLanguage(inviteLang);
+      
       if (!data.client) {
         toast({
-          title: "Invalid Link",
-          description: "Please complete the onboarding questionnaire first.",
+          title: t.error.invalidLink[inviteLang],
+          description: t.error.completeOnboarding[inviteLang],
           variant: "destructive",
         });
         setLocation("/client/onboard?token=" + tokenValue);
         return;
       }
 
-      // Check if password already set
       if (data.client.passwordHash) {
         toast({
-          title: "Account Ready",
-          description: "Your password is already set. Please login.",
+          title: t.error.accountReady[inviteLang],
+          description: t.error.passwordAlreadySet[inviteLang],
         });
         setLocation("/client/login");
         return;
@@ -65,8 +73,8 @@ export default function ClientPasswordSetup() {
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to verify invite link",
+        title: t.error.title[language],
+        description: t.error.verifyFailed[language],
         variant: "destructive",
       });
       setLocation("/client/login");
@@ -78,8 +86,8 @@ export default function ClientPasswordSetup() {
   const validatePassword = () => {
     if (password.length < 8) {
       toast({
-        title: "Password Too Short",
-        description: "Password must be at least 8 characters long",
+        title: t.error.tooShortTitle[language],
+        description: t.error.tooShort[language],
         variant: "destructive",
       });
       return false;
@@ -87,8 +95,8 @@ export default function ClientPasswordSetup() {
 
     if (password !== confirmPassword) {
       toast({
-        title: "Passwords Don't Match",
-        description: "Please make sure both passwords match",
+        title: t.error.noMatchTitle[language],
+        description: t.error.noMatch[language],
         variant: "destructive",
       });
       return false;
@@ -114,24 +122,22 @@ export default function ClientPasswordSetup() {
       const data = await response.json();
 
       if (data.success && data.client) {
-        // Store client ID in localStorage for future authentication
         localStorage.setItem("clientId", data.client.id);
         localStorage.setItem("clientEmail", data.client.email);
         
         toast({
-          title: "Success!",
-          description: "Your password has been set. Welcome to Wellio!",
+          title: t.success.title[language],
+          description: t.success.message[language],
         });
 
-        // Redirect to dashboard
         setLocation("/client/dashboard");
       } else {
         throw new Error("Failed to set password");
       }
     } catch (error: any) {
-      const errorMessage = error.message || "Failed to set password. Please try again.";
+      const errorMessage = error.message || t.error.setFailed[language];
       toast({
-        title: "Error",
+        title: t.error.title[language],
         description: errorMessage,
         variant: "destructive",
       });
@@ -153,8 +159,8 @@ export default function ClientPasswordSetup() {
   }
 
   const passwordRequirements = [
-    { met: password.length >= 8, text: "At least 8 characters" },
-    { met: password === confirmPassword && password.length > 0, text: "Passwords match" },
+    { met: password.length >= 8, text: t.requirements.minLength[language] },
+    { met: password === confirmPassword && password.length > 0, text: t.requirements.match[language] },
   ];
 
   return (
@@ -164,15 +170,15 @@ export default function ClientPasswordSetup() {
           <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4">
             <Lock className="w-6 h-6 text-primary" />
           </div>
-          <CardTitle className="text-xl sm:text-2xl">Set Your Password</CardTitle>
+          <CardTitle className="text-xl sm:text-2xl">{t.title[language]}</CardTitle>
           <CardDescription className="text-sm sm:text-base">
-            Welcome, {clientData.name}! Create a secure password to access your coaching dashboard.
+            {t.welcome[language]}, {clientData.name}! {t.description[language]}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.email[language]}</Label>
               <Input
                 id="email"
                 type="email"
@@ -184,14 +190,14 @@ export default function ClientPasswordSetup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t.password[language]}</Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
+                  placeholder={t.enterPassword[language]}
                   required
                   className="pr-10"
                   data-testid="input-password"
@@ -212,20 +218,20 @@ export default function ClientPasswordSetup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">{t.confirmPassword[language]}</Label>
               <Input
                 id="confirmPassword"
                 type={showPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
+                placeholder={t.confirmPasswordPlaceholder[language]}
                 required
                 data-testid="input-confirm-password"
               />
             </div>
 
             <div className="space-y-2 pt-2">
-              <p className="text-sm text-muted-foreground">Password Requirements:</p>
+              <p className="text-sm text-muted-foreground">{t.requirements.title[language]}</p>
               <div className="space-y-1">
                 {passwordRequirements.map((req, index) => (
                   <div key={index} className="flex items-center gap-2 text-sm">
@@ -253,10 +259,10 @@ export default function ClientPasswordSetup() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Setting Password...
+                  {t.submitting[language]}
                 </>
               ) : (
-                "Create Account & Continue"
+                t.submit[language]
               )}
             </Button>
           </form>

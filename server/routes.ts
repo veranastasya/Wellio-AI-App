@@ -2878,11 +2878,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const saltRounds = 10;
       const passwordHash = await bcrypt.hash(password, saltRounds);
 
-      // Update client with password
-      await storage.updateClient(client.id, {
+      // Get the invite to retrieve the language preference
+      const invite = await storage.getClientInviteByClientId(client.id);
+      
+      // Build update data - only set preferredLanguage if we have it from invite
+      const updateData: Record<string, any> = {
         passwordHash,
         lastLoginAt: new Date().toISOString(),
+      };
+      
+      // Only update preferredLanguage if invite has a language set
+      if (invite?.language) {
+        updateData.preferredLanguage = invite.language;
+      }
+      
+      console.log("[Set Password] Saving client data:", { 
+        clientId: client.id, 
+        inviteFound: !!invite,
+        inviteLanguage: invite?.language,
+        willUpdateLanguage: !!invite?.language
       });
+
+      // Update client with password and optionally language preference
+      await storage.updateClient(client.id, updateData);
 
       // Set session
       req.session.clientId = client.id;
