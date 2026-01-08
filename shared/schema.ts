@@ -674,6 +674,7 @@ export const ONBOARDING_TRANSLATIONS = {
     male: { en: "Male", ru: "Мужской", es: "Masculino" },
     female: { en: "Female", ru: "Женский", es: "Femenino" },
     other: { en: "Other", ru: "Другой", es: "Otro" },
+    preferNotToSay: { en: "Prefer not to say", ru: "Не хочу указывать", es: "Prefiero no decir" },
   },
   // Activity level options
   activityOptions: {
