@@ -214,7 +214,7 @@ export default function Clients() {
   });
 
   const createInviteMutation = useMutation({
-    mutationFn: async (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string; coachId: string }) => {
+    mutationFn: async (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string; coachId: string; language: SupportedLanguage }) => {
       const response = await apiRequest("POST", "/api/client-invites", data);
       return response as unknown as { invite: any; inviteLink: string };
     },
@@ -1579,7 +1579,7 @@ function InviteForm({
   t = COACH_UI_TRANSLATIONS,
 }: {
   questionnaires: Questionnaire[];
-  onSubmit: (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string; coachId: string }) => void;
+  onSubmit: (data: { email: string; name: string; questionnaireId: string; message?: string; coachName: string; coachId: string; language: SupportedLanguage }) => void;
   isLoading: boolean;
   coachName: string;
   coachId: string;
@@ -1590,6 +1590,7 @@ function InviteForm({
   const [name, setName] = useState("");
   const [questionnaireId, setQuestionnaireId] = useState("");
   const [message, setMessage] = useState("");
+  const [inviteLanguage, setInviteLanguage] = useState<SupportedLanguage>("en");
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1629,6 +1630,7 @@ function InviteForm({
       message: message || undefined,
       coachName: coachName,
       coachId: coachId,
+      language: inviteLanguage,
     });
   };
 
@@ -1696,6 +1698,21 @@ function InviteForm({
           className="min-h-20"
           data-testid="input-invite-message"
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="invite-language">{t.clients.inviteLanguage[lang]}</Label>
+        <Select value={inviteLanguage} onValueChange={(val) => setInviteLanguage(val as SupportedLanguage)}>
+          <SelectTrigger data-testid="select-invite-language">
+            <SelectValue placeholder={t.clients.selectLanguage[lang]} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="en">English</SelectItem>
+            <SelectItem value="ru">Русский</SelectItem>
+            <SelectItem value="es">Español</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">{t.clients.languageHint[lang]}</p>
       </div>
 
       <div className="bg-muted/50 p-4 rounded-lg space-y-2">
