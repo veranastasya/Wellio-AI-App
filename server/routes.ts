@@ -2514,12 +2514,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/client-invites", async (req, res) => {
     try {
       const { email, name, questionnaireId, message, coachName, coachId, language = "en" } = req.body;
+      console.log("[DEBUG] Invite request body:", { email, name, questionnaireId, coachName, coachId, language, fullBody: req.body });
       
       // Get coachId from session or request body
       const effectiveCoachId = coachId || (req.session as any)?.coachId || "default-coach";
       
       // Validate language
       const validLanguage = ["en", "ru", "es"].includes(language) ? language : "en";
+      console.log("[DEBUG] Validated language:", validLanguage);
       
       // Check if client with this email already exists (globally)
       const existingClient = await storage.getClientByEmail(email);
