@@ -172,6 +172,69 @@ export default function ClientOnboard() {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
+  // Translation mapping for known default field labels
+  const labelTranslations: Record<string, keyof typeof t.fields> = {
+    "Full Name": "name",
+    "Email": "email",
+    "Phone": "phone",
+    "Sex": "sex",
+    "Age": "age",
+    "Height": "height",
+    "Weight": "weight",
+    "Weight (lbs)": "weightLbs",
+    "Weight (kg)": "weightKg",
+    "Current Weight": "currentWeight",
+    "Target Weight": "targetWeight",
+    "Goal Weight": "goalWeight",
+    "Body Fat %": "bodyFat",
+    "Activity Level": "activityLevel",
+    "Goals": "goals",
+    "Dietary Restrictions": "dietaryRestrictions",
+    "Medical Conditions": "medicalConditions",
+    "Notes": "notes",
+    "Additional Notes": "notes",
+    "Date of Birth": "dateOfBirth",
+    "Gender": "gender",
+  };
+
+  // Translation mapping for known default placeholders
+  const placeholderTranslations: Record<string, keyof typeof t.placeholders> = {
+    "Enter your name": "enterName",
+    "Enter your email": "enterEmail",
+    "Enter your phone number": "enterPhone",
+    "Enter your age": "enterAge",
+    "Select sex": "selectSex",
+    "Enter your weight": "enterWeight",
+    "Enter your weight in lbs": "enterWeightLbs",
+    "Enter your weight in kg": "enterWeightKg",
+    "Enter your height": "enterHeight",
+    "Feet": "feet",
+    "Inches": "inches",
+    "cm": "cm",
+    "Select activity level": "selectActivityLevel",
+    "Enter your body fat percentage": "enterBodyFat",
+    "Enter your goals": "enterGoals",
+  };
+
+  // Helper function to translate a label
+  const translateLabel = (label: string): string => {
+    const key = labelTranslations[label];
+    if (key && t.fields[key]) {
+      return t.fields[key][lang] || label;
+    }
+    return label;
+  };
+
+  // Helper function to translate a placeholder
+  const translatePlaceholder = (placeholder: string | undefined): string | undefined => {
+    if (!placeholder) return undefined;
+    const key = placeholderTranslations[placeholder];
+    if (key && t.placeholders[key]) {
+      return t.placeholders[key][lang] || placeholder;
+    }
+    return placeholder;
+  };
+
   const renderQuestion = (question: Question) => {
     const value = answers[question.id] || "";
     const settings = (question.settings || {}) as any;
@@ -181,7 +244,7 @@ export default function ClientOnboard() {
         return (
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
-              {question.label}
+              {translateLabel(question.label)}
               {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
             {question.description && (
@@ -192,7 +255,7 @@ export default function ClientOnboard() {
               data-testid={`input-${question.id}`}
               value={value}
               onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-              placeholder={settings.placeholder}
+              placeholder={translatePlaceholder(settings.placeholder)}
               required={question.required}
               minLength={settings.minLength}
               maxLength={settings.maxLength}
@@ -205,7 +268,7 @@ export default function ClientOnboard() {
         return (
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
-              {question.label}
+              {translateLabel(question.label)}
               {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
             {question.description && (
@@ -216,7 +279,7 @@ export default function ClientOnboard() {
               data-testid={`textarea-${question.id}`}
               value={value}
               onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-              placeholder={settings.placeholder}
+              placeholder={translatePlaceholder(settings.placeholder)}
               required={question.required}
               minLength={settings.minLength}
               maxLength={settings.maxLength}
@@ -229,7 +292,7 @@ export default function ClientOnboard() {
         return (
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
-              {question.label}
+              {translateLabel(question.label)}
               {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
             {question.description && (
@@ -241,7 +304,7 @@ export default function ClientOnboard() {
               type="email"
               value={value}
               onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-              placeholder={settings.placeholder || "email@example.com"}
+              placeholder={translatePlaceholder(settings.placeholder) || "email@example.com"}
               required={question.required}
             />
           </div>
@@ -251,7 +314,7 @@ export default function ClientOnboard() {
         return (
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
-              {question.label}
+              {translateLabel(question.label)}
               {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
             {question.description && (
@@ -263,7 +326,7 @@ export default function ClientOnboard() {
               type="tel"
               value={value}
               onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-              placeholder={settings.placeholder || "(555) 123-4567"}
+              placeholder={translatePlaceholder(settings.placeholder) || "(555) 123-4567"}
               required={question.required}
             />
           </div>
@@ -273,7 +336,7 @@ export default function ClientOnboard() {
         return (
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
-              {question.label}
+              {translateLabel(question.label)}
               {question.required && <span className="text-destructive ml-1">*</span>}
               {settings.unitLabel && (
                 <span className="text-sm text-muted-foreground ml-2">({settings.unitLabel})</span>
@@ -288,7 +351,7 @@ export default function ClientOnboard() {
               type="number"
               value={value}
               onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-              placeholder={settings.placeholder}
+              placeholder={translatePlaceholder(settings.placeholder)}
               required={question.required}
               min={settings.min}
               max={settings.max}
@@ -301,7 +364,7 @@ export default function ClientOnboard() {
         return (
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
-              {question.label}
+              {translateLabel(question.label)}
               {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
             {question.description && (
@@ -324,7 +387,7 @@ export default function ClientOnboard() {
         return (
           <div key={question.id} className="space-y-2">
             <Label data-testid={`label-${question.id}`}>
-              {question.label}
+              {translateLabel(question.label)}
               {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
             {question.description && (
@@ -384,7 +447,7 @@ export default function ClientOnboard() {
         return (
           <div key={question.id} className="space-y-2">
             <Label data-testid={`label-${question.id}`}>
-              {question.label}
+              {translateLabel(question.label)}
               {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
             {question.description && (
@@ -450,7 +513,7 @@ export default function ClientOnboard() {
         return (
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
-              {question.label}
+              {translateLabel(question.label)}
               {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
             {question.description && (
@@ -462,7 +525,7 @@ export default function ClientOnboard() {
               required={question.required}
             >
               <SelectTrigger id={question.id} data-testid={`select-${question.id}`}>
-                <SelectValue placeholder="Select an option" />
+                <SelectValue placeholder={translatePlaceholder(settings.placeholder) || t.placeholders.selectOption[lang]} />
               </SelectTrigger>
               <SelectContent>
                 {settings.options?.map((option: string, idx: number) => (
@@ -479,7 +542,7 @@ export default function ClientOnboard() {
         return (
           <div key={question.id} className="space-y-2">
             <Label htmlFor={question.id} data-testid={`label-${question.id}`}>
-              {question.label}
+              {translateLabel(question.label)}
               {question.required && <span className="text-destructive ml-1">*</span>}
             </Label>
             {question.description && (
@@ -641,7 +704,7 @@ export default function ClientOnboard() {
 
                 <div className="space-y-2">
                   <Label htmlFor="phone" data-testid="label-phone">
-                    Phone
+                    {t.fields.phone[lang]}
                   </Label>
                   <Input
                     id="phone"
@@ -649,6 +712,7 @@ export default function ClientOnboard() {
                     data-testid="input-phone"
                     value={answers.phone || ""}
                     onChange={(e) => handleAnswerChange("phone", e.target.value)}
+                    placeholder={t.placeholders.enterPhone[lang]}
                   />
                 </div>
                 
@@ -656,19 +720,19 @@ export default function ClientOnboard() {
                   <>
                     {questionnaire.standardFields.sex && (
                       <div className="space-y-2" data-testid="standard-field-sex">
-                        <Label htmlFor="sex">Sex</Label>
+                        <Label htmlFor="sex">{t.fields.sex[lang]}</Label>
                         <Select
                           value={answers.sex || ""}
                           onValueChange={(value) => handleAnswerChange("sex", value)}
                         >
                           <SelectTrigger data-testid="select-sex">
-                            <SelectValue placeholder="Select sex" />
+                            <SelectValue placeholder={t.placeholders.selectSex[lang]} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                            <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                            <SelectItem value="male">{t.sexOptions.male[lang]}</SelectItem>
+                            <SelectItem value="female">{t.sexOptions.female[lang]}</SelectItem>
+                            <SelectItem value="other">{t.sexOptions.other[lang]}</SelectItem>
+                            <SelectItem value="prefer_not_to_say">{t.sexOptions.preferNotToSay[lang]}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -676,7 +740,7 @@ export default function ClientOnboard() {
                     
                     {questionnaire.standardFields.age && (
                       <div className="space-y-2" data-testid="standard-field-age">
-                        <Label htmlFor="age">Age</Label>
+                        <Label htmlFor="age">{t.fields.age[lang]}</Label>
                         <Input
                           id="age"
                           type="number"
@@ -685,14 +749,14 @@ export default function ClientOnboard() {
                           data-testid="input-age"
                           value={answers.age || ""}
                           onChange={(e) => handleAnswerChange("age", e.target.value)}
-                          placeholder="Enter your age"
+                          placeholder={t.placeholders.enterAge[lang]}
                         />
                       </div>
                     )}
                     
                     {questionnaire.standardFields.weight && (
                       <div className="space-y-2" data-testid="standard-field-weight">
-                        <Label htmlFor="weight">Weight ({unitsPreference === "us" ? "lbs" : "kg"})</Label>
+                        <Label htmlFor="weight">{t.fields.weight[lang]} ({unitsPreference === "us" ? "lbs" : "kg"})</Label>
                         <Input
                           id="weight"
                           type="number"
@@ -712,14 +776,14 @@ export default function ClientOnboard() {
                               : value;
                             handleAnswerChange("weightCanonical", canonicalValue);
                           }}
-                          placeholder={`Enter your weight in ${unitsPreference === "us" ? "lbs" : "kg"}`}
+                          placeholder={unitsPreference === "us" ? t.placeholders.enterWeightLbs[lang] : t.placeholders.enterWeightKg[lang]}
                         />
                       </div>
                     )}
                     
                     {questionnaire.standardFields.height && unitsPreference === "us" && (
                       <div className="space-y-2" data-testid="standard-field-height">
-                        <Label>Height</Label>
+                        <Label>{t.fields.height[lang]}</Label>
                         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                           <div className="flex-1 space-y-2">
                             <Input
@@ -736,7 +800,7 @@ export default function ClientOnboard() {
                                 handleAnswerChange("heightFeet", e.target.value);
                                 handleAnswerChange("heightCanonical", totalInches.toString());
                               }}
-                              placeholder="Feet"
+                              placeholder={t.placeholders.feet[lang]}
                               className="min-h-10"
                             />
                           </div>
@@ -756,7 +820,7 @@ export default function ClientOnboard() {
                                 handleAnswerChange("heightInches", e.target.value);
                                 handleAnswerChange("heightCanonical", totalInches.toString());
                               }}
-                              placeholder="Inches"
+                              placeholder={t.placeholders.inches[lang]}
                               className="min-h-10"
                             />
                           </div>
@@ -766,7 +830,7 @@ export default function ClientOnboard() {
                     
                     {questionnaire.standardFields.height && unitsPreference === "metric" && (
                       <div className="space-y-2" data-testid="standard-field-height">
-                        <Label htmlFor="height">Height (cm)</Label>
+                        <Label htmlFor="height">{t.fields.height[lang]} ({t.placeholders.cm[lang]})</Label>
                         <Input
                           id="height"
                           type="number"
@@ -781,20 +845,20 @@ export default function ClientOnboard() {
                             handleAnswerChange("heightCm", value);
                             handleAnswerChange("heightCanonical", canonicalValue);
                           }}
-                          placeholder="Enter your height in cm"
+                          placeholder={t.placeholders.enterHeight[lang]}
                         />
                       </div>
                     )}
                     
                     {questionnaire.standardFields.activityLevel && (
                       <div className="space-y-2" data-testid="standard-field-activity-level">
-                        <Label htmlFor="activityLevel">Activity Level</Label>
+                        <Label htmlFor="activityLevel">{t.fields.activityLevel[lang]}</Label>
                         <Select
                           value={answers.activityLevel || ""}
                           onValueChange={(value) => handleAnswerChange("activityLevel", value)}
                         >
                           <SelectTrigger data-testid="select-activity-level">
-                            <SelectValue placeholder="Select activity level" />
+                            <SelectValue placeholder={t.placeholders.selectActivityLevel[lang]} />
                           </SelectTrigger>
                           <SelectContent>
                             {ACTIVITY_LEVELS.map((level) => (
@@ -809,7 +873,7 @@ export default function ClientOnboard() {
                     
                     {questionnaire.standardFields.bodyFatPercentage && (
                       <div className="space-y-2" data-testid="standard-field-body-fat">
-                        <Label htmlFor="bodyFatPercentage">Body Fat %</Label>
+                        <Label htmlFor="bodyFatPercentage">{t.fields.bodyFat[lang]}</Label>
                         <Input
                           id="bodyFatPercentage"
                           type="number"
@@ -819,7 +883,7 @@ export default function ClientOnboard() {
                           data-testid="input-body-fat"
                           value={answers.bodyFatPercentage || ""}
                           onChange={(e) => handleAnswerChange("bodyFatPercentage", e.target.value)}
-                          placeholder="Enter your body fat percentage"
+                          placeholder={t.placeholders.enterBodyFat[lang]}
                         />
                       </div>
                     )}
@@ -827,13 +891,13 @@ export default function ClientOnboard() {
                     {questionnaire.standardFields.goal && (
                       <>
                         <div className="space-y-2" data-testid="standard-field-goal">
-                          <Label htmlFor="goalType">Primary Goal</Label>
+                          <Label htmlFor="goalType">{t.fields.primaryGoal[lang]}</Label>
                           <Select
                             value={answers.goalType || ""}
                             onValueChange={(value) => handleAnswerChange("goalType", value)}
                           >
                             <SelectTrigger data-testid="select-goal-type">
-                              <SelectValue placeholder="Select your primary goal" />
+                              <SelectValue placeholder={t.placeholders.selectPrimaryGoal[lang]} />
                             </SelectTrigger>
                             <SelectContent>
                               {GOAL_TYPES.map((goal) => (
@@ -847,7 +911,7 @@ export default function ClientOnboard() {
                         
                         {answers.goalType === "lose_weight" && (
                           <div className="space-y-2" data-testid="conditional-field-target-weight">
-                            <Label htmlFor="targetWeight">Target Weight (optional) - {unitsPreference === "us" ? "lbs" : "kg"}</Label>
+                            <Label htmlFor="targetWeight">{t.fields.targetWeightOptional[lang]} - {unitsPreference === "us" ? "lbs" : "kg"}</Label>
                             <Input
                               id="targetWeight"
                               type="number"
@@ -869,14 +933,14 @@ export default function ClientOnboard() {
                                   handleAnswerChange("targetWeightCanonical", value);
                                 }
                               }}
-                              placeholder={`Enter your target weight in ${unitsPreference === "us" ? "lbs" : "kg"}`}
+                              placeholder={t.placeholders.enterTargetWeight[lang]}
                             />
                           </div>
                         )}
                         
                         {answers.goalType === "improve_body_composition" && (
                           <div className="space-y-2" data-testid="conditional-field-target-body-fat">
-                            <Label htmlFor="targetBodyFat">Target Body Fat % (optional)</Label>
+                            <Label htmlFor="targetBodyFat">{t.fields.targetBodyFatOptional[lang]}</Label>
                             <Input
                               id="targetBodyFat"
                               type="number"
@@ -886,14 +950,14 @@ export default function ClientOnboard() {
                               data-testid="input-target-body-fat"
                               value={answers.targetBodyFat || ""}
                               onChange={(e) => handleAnswerChange("targetBodyFat", e.target.value)}
-                              placeholder="Enter your target body fat percentage"
+                              placeholder={t.placeholders.enterTargetBodyFat[lang]}
                             />
                           </div>
                         )}
                         
                         {answers.goalType === "maintain_weight" && (
                           <div className="space-y-2" data-testid="conditional-field-goal-weight">
-                            <Label htmlFor="goalWeight">Confirm Goal Weight (optional) - {unitsPreference === "us" ? "lbs" : "kg"}</Label>
+                            <Label htmlFor="goalWeight">{t.fields.goalWeightOptional[lang]} - {unitsPreference === "us" ? "lbs" : "kg"}</Label>
                             <Input
                               id="goalWeight"
                               type="number"
@@ -915,7 +979,7 @@ export default function ClientOnboard() {
                                   handleAnswerChange("goalWeightCanonical", value);
                                 }
                               }}
-                              placeholder={`Confirm weight to maintain in ${unitsPreference === "us" ? "lbs" : "kg"}`}
+                              placeholder={t.placeholders.enterGoalWeight[lang]}
                             />
                           </div>
                         )}

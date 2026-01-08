@@ -624,16 +624,64 @@ export const ONBOARDING_TRANSLATIONS = {
     phone: { en: "Phone", ru: "Телефон", es: "Teléfono" },
     dateOfBirth: { en: "Date of Birth", ru: "Дата рождения", es: "Fecha de Nacimiento" },
     age: { en: "Age", ru: "Возраст", es: "Edad" },
+    sex: { en: "Sex", ru: "Пол", es: "Sexo" },
     gender: { en: "Gender", ru: "Пол", es: "Género" },
     height: { en: "Height", ru: "Рост", es: "Altura" },
-    weight: { en: "Current Weight", ru: "Текущий вес", es: "Peso Actual" },
+    weight: { en: "Weight", ru: "Вес", es: "Peso" },
+    weightLbs: { en: "Weight (lbs)", ru: "Вес (фунты)", es: "Peso (lbs)" },
+    weightKg: { en: "Weight (kg)", ru: "Вес (кг)", es: "Peso (kg)" },
+    currentWeight: { en: "Current Weight", ru: "Текущий вес", es: "Peso Actual" },
     targetWeight: { en: "Target Weight", ru: "Целевой вес", es: "Peso Objetivo" },
     goalWeight: { en: "Goal Weight", ru: "Желаемый вес", es: "Peso Deseado" },
+    bodyFat: { en: "Body Fat %", ru: "% жира в теле", es: "% de Grasa Corporal" },
     activityLevel: { en: "Activity Level", ru: "Уровень активности", es: "Nivel de Actividad" },
     goals: { en: "Goals", ru: "Цели", es: "Metas" },
     dietaryRestrictions: { en: "Dietary Restrictions", ru: "Диетические ограничения", es: "Restricciones Dietéticas" },
     medicalConditions: { en: "Medical Conditions", ru: "Медицинские состояния", es: "Condiciones Médicas" },
     notes: { en: "Additional Notes", ru: "Дополнительные заметки", es: "Notas Adicionales" },
+    primaryGoal: { en: "Primary Goal", ru: "Основная цель", es: "Objetivo Principal" },
+    targetWeightOptional: { en: "Target Weight (optional)", ru: "Целевой вес (необязательно)", es: "Peso Objetivo (opcional)" },
+    goalWeightOptional: { en: "Confirm Goal Weight (optional)", ru: "Подтвердите целевой вес (необязательно)", es: "Confirmar Peso Objetivo (opcional)" },
+    targetBodyFatOptional: { en: "Target Body Fat % (optional)", ru: "Целевой % жира (необязательно)", es: "% de Grasa Corporal Objetivo (opcional)" },
+  },
+  // Placeholders
+  placeholders: {
+    enterName: { en: "Enter your name", ru: "Введите ваше имя", es: "Ingresa tu nombre" },
+    enterEmail: { en: "Enter your email", ru: "Введите ваш email", es: "Ingresa tu correo" },
+    enterPhone: { en: "Enter your phone number", ru: "Введите номер телефона", es: "Ingresa tu teléfono" },
+    enterAge: { en: "Enter your age", ru: "Введите ваш возраст", es: "Ingresa tu edad" },
+    selectSex: { en: "Select sex", ru: "Выберите пол", es: "Selecciona sexo" },
+    enterWeight: { en: "Enter your weight", ru: "Введите ваш вес", es: "Ingresa tu peso" },
+    enterWeightLbs: { en: "Enter your weight in lbs", ru: "Введите вес в фунтах", es: "Ingresa tu peso en lbs" },
+    enterWeightKg: { en: "Enter your weight in kg", ru: "Введите вес в кг", es: "Ingresa tu peso en kg" },
+    enterHeight: { en: "Enter your height", ru: "Введите ваш рост", es: "Ingresa tu altura" },
+    feet: { en: "Feet", ru: "Футы", es: "Pies" },
+    inches: { en: "Inches", ru: "Дюймы", es: "Pulgadas" },
+    cm: { en: "cm", ru: "см", es: "cm" },
+    selectActivityLevel: { en: "Select activity level", ru: "Выберите уровень активности", es: "Selecciona nivel de actividad" },
+    enterBodyFat: { en: "Enter your body fat percentage", ru: "Введите процент жира в теле", es: "Ingresa tu porcentaje de grasa corporal" },
+    enterGoals: { en: "Enter your goals", ru: "Введите ваши цели", es: "Ingresa tus metas" },
+    selectOption: { en: "Select an option", ru: "Выберите вариант", es: "Selecciona una opción" },
+    enterValue: { en: "Enter value", ru: "Введите значение", es: "Ingresa un valor" },
+    optional: { en: "(Optional)", ru: "(Необязательно)", es: "(Opcional)" },
+    selectPrimaryGoal: { en: "Select your primary goal", ru: "Выберите вашу основную цель", es: "Selecciona tu objetivo principal" },
+    enterTargetWeight: { en: "Enter target weight", ru: "Введите целевой вес", es: "Ingresa el peso objetivo" },
+    enterGoalWeight: { en: "Enter goal weight", ru: "Введите желаемый вес", es: "Ingresa el peso deseado" },
+    enterTargetBodyFat: { en: "Enter your target body fat percentage", ru: "Введите целевой процент жира", es: "Ingresa tu porcentaje de grasa corporal objetivo" },
+  },
+  // Sex/Gender options
+  sexOptions: {
+    male: { en: "Male", ru: "Мужской", es: "Masculino" },
+    female: { en: "Female", ru: "Женский", es: "Femenino" },
+    other: { en: "Other", ru: "Другой", es: "Otro" },
+  },
+  // Activity level options
+  activityOptions: {
+    sedentary: { en: "Sedentary", ru: "Сидячий", es: "Sedentario" },
+    light: { en: "Light", ru: "Лёгкая", es: "Ligera" },
+    moderate: { en: "Moderate", ru: "Умеренная", es: "Moderada" },
+    active: { en: "Active", ru: "Активная", es: "Activa" },
+    veryActive: { en: "Very Active", ru: "Очень активная", es: "Muy Activa" },
   },
   // Gender options
   genderOptions: {
@@ -710,12 +758,6 @@ export const ONBOARDING_TRANSLATIONS = {
   loading: {
     verifying: { en: "Verifying your invite...", ru: "Проверка вашего приглашения...", es: "Verificando tu invitación..." },
     loadingForm: { en: "Loading questionnaire...", ru: "Загрузка анкеты...", es: "Cargando cuestionario..." },
-  },
-  // Placeholders
-  placeholders: {
-    selectOption: { en: "Select an option", ru: "Выберите вариант", es: "Selecciona una opción" },
-    enterValue: { en: "Enter value", ru: "Введите значение", es: "Ingresa un valor" },
-    optional: { en: "(Optional)", ru: "(Необязательно)", es: "(Opcional)" },
   },
 } as const;
 
