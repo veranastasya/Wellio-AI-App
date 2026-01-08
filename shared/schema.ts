@@ -487,6 +487,227 @@ export function getUITranslation(
   return key;
 }
 
+// Email translations for invite and notification emails
+export const EMAIL_TRANSLATIONS = {
+  invite: {
+    subject: {
+      en: "You're invited to join Wellio",
+      ru: "Приглашение присоединиться к Wellio",
+      es: "Estás invitado a unirte a Wellio",
+    },
+    welcomeTitle: {
+      en: "Welcome to Wellio",
+      ru: "Добро пожаловать в Wellio",
+      es: "Bienvenido a Wellio",
+    },
+    greeting: {
+      en: "Hi",
+      ru: "Здравствуйте",
+      es: "Hola",
+    },
+    invitedBy: {
+      en: "You've been invited by",
+      ru: "Вас пригласил(а)",
+      es: "Has sido invitado por",
+    },
+    platformDescription: {
+      en: "to join Wellio, a platform designed to help you achieve your fitness and wellness goals.",
+      ru: "присоединиться к Wellio — платформе, которая поможет вам достичь ваших фитнес- и велнес-целей.",
+      es: "a unirte a Wellio, una plataforma diseñada para ayudarte a alcanzar tus metas de fitness y bienestar.",
+    },
+    nextStepsTitle: {
+      en: "Next Steps:",
+      ru: "Следующие шаги:",
+      es: "Próximos pasos:",
+    },
+    step1: {
+      en: "Click the button below to complete your onboarding questionnaire",
+      ru: "Нажмите кнопку ниже, чтобы заполнить анкету",
+      es: "Haz clic en el botón de abajo para completar tu cuestionario de incorporación",
+    },
+    step2Default: {
+      en: "Fill out your initial health and fitness assessment",
+      ru: "Заполните первичную оценку здоровья и физической формы",
+      es: "Completa tu evaluación inicial de salud y fitness",
+    },
+    step2WithName: {
+      en: "Fill out the",
+      ru: "Заполните анкету",
+      es: "Completa el formulario",
+    },
+    step2Form: {
+      en: "form",
+      ru: "",
+      es: "",
+    },
+    step3: {
+      en: "Your account will be automatically created",
+      ru: "Ваш аккаунт будет создан автоматически",
+      es: "Tu cuenta se creará automáticamente",
+    },
+    step4: {
+      en: "Start your journey with personalized coaching",
+      ru: "Начните свой путь к цели с персонализированным коучингом",
+      es: "Comienza tu viaje con coaching personalizado",
+    },
+    ctaButton: {
+      en: "Complete Your Onboarding",
+      ru: "Заполнить анкету",
+      es: "Completar tu Registro",
+    },
+    linkNotice: {
+      en: "This link is unique to you. If you didn't expect this invitation, you can safely ignore this email.",
+      ru: "Эта ссылка уникальна для вас. Если вы не ожидали этого приглашения, можете проигнорировать это письмо.",
+      es: "Este enlace es único para ti. Si no esperabas esta invitación, puedes ignorar este correo.",
+    },
+    footerTagline: {
+      en: "AI-Powered Fitness & Wellness Coaching",
+      ru: "Фитнес и велнес-коучинг с AI",
+      es: "Coaching de Fitness y Bienestar con IA",
+    },
+    needHelp: {
+      en: "Need help? Contact",
+      ru: "Нужна помощь? Свяжитесь с",
+      es: "¿Necesitas ayuda? Contacta a",
+    },
+    directly: {
+      en: "directly.",
+      ru: "напрямую.",
+      es: "directamente.",
+    },
+  },
+} as const;
+
+// Onboarding form translations
+export const ONBOARDING_TRANSLATIONS = {
+  // Page level
+  pageTitle: {
+    en: "Complete Your Profile",
+    ru: "Заполните ваш профиль",
+    es: "Completa tu Perfil",
+  },
+  pageSubtitle: {
+    en: "Tell us about yourself so your coach can create a personalized plan",
+    ru: "Расскажите о себе, чтобы ваш тренер мог создать персональный план",
+    es: "Cuéntanos sobre ti para que tu entrenador pueda crear un plan personalizado",
+  },
+  welcome: {
+    en: "Welcome",
+    ru: "Добро пожаловать",
+    es: "Bienvenido",
+  },
+  invitedBy: {
+    en: "You've been invited by",
+    ru: "Вас пригласил(а)",
+    es: "Has sido invitado por",
+  },
+  // Form sections
+  personalInfo: {
+    en: "Personal Information",
+    ru: "Личная информация",
+    es: "Información Personal",
+  },
+  healthMetrics: {
+    en: "Health Metrics",
+    ru: "Показатели здоровья",
+    es: "Métricas de Salud",
+  },
+  goalsPreferences: {
+    en: "Goals & Preferences",
+    ru: "Цели и предпочтения",
+    es: "Metas y Preferencias",
+  },
+  // Form fields
+  fields: {
+    name: { en: "Full Name", ru: "Полное имя", es: "Nombre Completo" },
+    email: { en: "Email", ru: "Email", es: "Correo Electrónico" },
+    phone: { en: "Phone", ru: "Телефон", es: "Teléfono" },
+    dateOfBirth: { en: "Date of Birth", ru: "Дата рождения", es: "Fecha de Nacimiento" },
+    age: { en: "Age", ru: "Возраст", es: "Edad" },
+    gender: { en: "Gender", ru: "Пол", es: "Género" },
+    height: { en: "Height", ru: "Рост", es: "Altura" },
+    weight: { en: "Current Weight", ru: "Текущий вес", es: "Peso Actual" },
+    targetWeight: { en: "Target Weight", ru: "Целевой вес", es: "Peso Objetivo" },
+    goalWeight: { en: "Goal Weight", ru: "Желаемый вес", es: "Peso Deseado" },
+    activityLevel: { en: "Activity Level", ru: "Уровень активности", es: "Nivel de Actividad" },
+    goals: { en: "Goals", ru: "Цели", es: "Metas" },
+    dietaryRestrictions: { en: "Dietary Restrictions", ru: "Диетические ограничения", es: "Restricciones Dietéticas" },
+    medicalConditions: { en: "Medical Conditions", ru: "Медицинские состояния", es: "Condiciones Médicas" },
+    notes: { en: "Additional Notes", ru: "Дополнительные заметки", es: "Notas Adicionales" },
+  },
+  // Gender options
+  genderOptions: {
+    male: { en: "Male", ru: "Мужской", es: "Masculino" },
+    female: { en: "Female", ru: "Женский", es: "Femenino" },
+    other: { en: "Other", ru: "Другой", es: "Otro" },
+    preferNotToSay: { en: "Prefer not to say", ru: "Предпочитаю не указывать", es: "Prefiero no decir" },
+  },
+  // Units
+  units: {
+    title: { en: "Measurement Units", ru: "Единицы измерения", es: "Unidades de Medida" },
+    metric: { en: "Metric (kg, cm)", ru: "Метрическая (кг, см)", es: "Métrico (kg, cm)" },
+    us: { en: "US (lbs, ft/in)", ru: "США (фунты, футы/дюймы)", es: "EE.UU. (lbs, ft/in)" },
+  },
+  // Buttons and actions
+  submit: {
+    en: "Submit",
+    ru: "Отправить",
+    es: "Enviar",
+  },
+  submitting: {
+    en: "Submitting...",
+    ru: "Отправка...",
+    es: "Enviando...",
+  },
+  previous: {
+    en: "Previous",
+    ru: "Назад",
+    es: "Anterior",
+  },
+  next: {
+    en: "Next",
+    ru: "Далее",
+    es: "Siguiente",
+  },
+  // Consent
+  consent: {
+    title: { en: "Consent", ru: "Согласие", es: "Consentimiento" },
+    text: { 
+      en: "I agree to share my health and fitness information with my coach to receive personalized guidance.",
+      ru: "Я согласен(на) поделиться информацией о своём здоровье и физической форме с тренером для получения персональных рекомендаций.",
+      es: "Acepto compartir mi información de salud y fitness con mi entrenador para recibir orientación personalizada.",
+    },
+  },
+  // Validation messages
+  validation: {
+    required: { en: "This field is required", ru: "Это поле обязательно", es: "Este campo es obligatorio" },
+    invalidEmail: { en: "Please enter a valid email", ru: "Введите корректный email", es: "Ingresa un correo válido" },
+    consentRequired: { en: "You must agree to the terms to continue", ru: "Вы должны согласиться с условиями, чтобы продолжить", es: "Debes aceptar los términos para continuar" },
+  },
+  // Success/Error messages
+  success: {
+    title: { en: "Success!", ru: "Успешно!", es: "¡Éxito!" },
+    message: { en: "Your questionnaire has been submitted successfully.", ru: "Ваша анкета успешно отправлена.", es: "Tu cuestionario ha sido enviado exitosamente." },
+  },
+  error: {
+    title: { en: "Error", ru: "Ошибка", es: "Error" },
+    invalidLink: { en: "Invalid invite link", ru: "Недействительная ссылка приглашения", es: "Enlace de invitación inválido" },
+    expiredLink: { en: "Invalid or expired invite link", ru: "Недействительная или истекшая ссылка приглашения", es: "Enlace de invitación inválido o expirado" },
+    submitFailed: { en: "Failed to submit questionnaire", ru: "Не удалось отправить анкету", es: "Error al enviar el cuestionario" },
+  },
+  // Loading states
+  loading: {
+    verifying: { en: "Verifying your invite...", ru: "Проверка вашего приглашения...", es: "Verificando tu invitación..." },
+    loadingForm: { en: "Loading questionnaire...", ru: "Загрузка анкеты...", es: "Cargando cuestionario..." },
+  },
+  // Placeholders
+  placeholders: {
+    selectOption: { en: "Select an option", ru: "Выберите вариант", es: "Selecciona una opción" },
+    enterValue: { en: "Enter value", ru: "Введите значение", es: "Ingresa un valor" },
+    optional: { en: "(Optional)", ru: "(Необязательно)", es: "(Opcional)" },
+  },
+} as const;
+
 // Coach UI translations for all coach-facing pages
 export const COACH_UI_TRANSLATIONS = {
   // Sidebar navigation
@@ -1801,6 +2022,7 @@ export const clientInvites = pgTable("client_invites", {
   resendCount: integer("resend_count").notNull().default(0), // Track how many times invite was resent
   lastResendAt: text("last_resend_at"), // Last resend timestamp
   message: text("message"),
+  language: text("language").notNull().default("en"), // Language for invite email and onboarding form (en, ru, es)
 });
 
 // Password reset tokens for both clients and coaches
