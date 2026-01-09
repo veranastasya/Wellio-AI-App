@@ -4104,12 +4104,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { message, clientName, clientId, existingTrainingDays } = parsed.data;
       
-      // Get client's preferred language
+      // Get coach's preferred language for AI responses
       let preferredLanguage: "en" | "ru" | "es" = "en";
-      if (clientId) {
-        const client = await storage.getClient(clientId);
-        if (client?.preferredLanguage) {
-          preferredLanguage = client.preferredLanguage as "en" | "ru" | "es";
+      const coachId = req.session.coachId;
+      if (coachId) {
+        const coach = await storage.getCoach(coachId);
+        if (coach?.preferredLanguage) {
+          preferredLanguage = coach.preferredLanguage as "en" | "ru" | "es";
         }
       }
       
@@ -4162,12 +4163,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = chatRequestSchema.parse(req.body);
       const { messages, clientId, clientContext } = validatedData;
       
-      // Get client's preferred language for plan generation
+      // Get coach's preferred language for plan generation
       let preferredLanguage: "en" | "ru" | "es" = "en";
-      if (clientId) {
-        const clientData = await storage.getClient(clientId);
-        if (clientData?.preferredLanguage) {
-          preferredLanguage = clientData.preferredLanguage as "en" | "ru" | "es";
+      const coachId = req.session.coachId;
+      if (coachId) {
+        const coach = await storage.getCoach(coachId);
+        if (coach?.preferredLanguage) {
+          preferredLanguage = coach.preferredLanguage as "en" | "ru" | "es";
         }
       }
       
@@ -4217,11 +4219,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ).join('\n')}`
         : '';
 
-      const systemPrompt = `You are an expert wellness coach. 
-Your job is to create clear, realistic, habit based wellness plans for clients, not just workout or diet plans.
+      const systemPrompt = `You are a certified fitness and nutrition expert with a degree in Exercise Science and Sports Nutrition. You hold certifications including NASM-CPT (Certified Personal Trainer), ISSN (Sports Nutrition), and Precision Nutrition Level 2. You have 10+ years of experience working with clients on body composition, athletic performance, and lifestyle optimization.
+
+Your approach is evidence-based, drawing from peer-reviewed research in exercise physiology, nutritional science, and behavioral psychology. You create clear, realistic, habit-based wellness plans for clients - not just workout or diet plans.
 
 You will receive a structured input with the client profile and coach notes. 
-Use it to build a personalized wellness plan that a real human could follow.
+Use it to build a personalized wellness plan that a real human could follow, applying your professional expertise and scientific knowledge.
 
 =====================
 INPUT FORMAT
