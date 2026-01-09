@@ -1216,7 +1216,7 @@ export const COACH_UI_TRANSLATIONS = {
   },
   // Scheduling page
   scheduling: {
-    title: { en: "Smart Scheduling", ru: "Умное расписание", es: "Programación Inteligente" },
+    title: { en: "Calendar", ru: "Календарь", es: "Calendario" },
     subtitle: { en: "Manage your coaching sessions and appointments", ru: "Управляйте сессиями коучинга и встречами", es: "Gestiona tus sesiones de coaching y citas" },
     scheduleSession: { en: "Schedule Session", ru: "Запланировать сессию", es: "Programar Sesión" },
     newSession: { en: "New Session", ru: "Новая сессия", es: "Nueva Sesión" },
