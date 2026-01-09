@@ -993,9 +993,9 @@ function ClientForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>{t.clients.status[lang]} <span className="text-destructive">*</span></FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={!client}>
                   <FormControl>
-                    <SelectTrigger data-testid="select-client-status">
+                    <SelectTrigger data-testid="select-client-status" disabled={!client}>
                       <SelectValue placeholder={t.clients.status[lang]} />
                     </SelectTrigger>
                   </FormControl>
