@@ -51,6 +51,36 @@ function generateSuggestedMessage(trigger: Trigger, clientName: string): string 
   }
 }
 
+function formatReasonText(reason: string): string {
+  if (!reason) return "";
+  
+  try {
+    if (reason.startsWith("{") && reason.includes("templateKey")) {
+      const parsed = JSON.parse(reason);
+      const { templateKey, params } = parsed;
+      
+      switch (templateKey) {
+        case "inactivityMediumReason":
+          return `${params?.name || "Client"} hasn't logged any activity in ${params?.days || "several"} days.`;
+        case "inactivityHighReason":
+          return `${params?.name || "Client"} has been inactive for ${params?.days || "many"} days and may need attention.`;
+        case "decliningWorkoutsReason":
+          return `${params?.name || "Client"}'s workout frequency has declined recently.`;
+        case "missedMealsReason":
+          return `${params?.name || "Client"} has gaps in their meal logging.`;
+        case "patternDeviationReason":
+          return `${params?.name || "Client"}'s activity patterns have changed recently.`;
+        default:
+          return `${params?.name || "Client"} may need your attention.`;
+      }
+    }
+  } catch {
+    // Not JSON, return as-is
+  }
+  
+  return reason;
+}
+
 export function AISuggestionsStrip({ clientId, clientName, onMessageSent }: AISuggestionsStripProps) {
   const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(true);
@@ -166,7 +196,7 @@ export function AISuggestionsStrip({ clientId, clientName, onMessageSent }: AISu
       {isExpanded && (
         <div className="px-3 pb-3 space-y-3">
           <p className="text-sm text-muted-foreground">
-            {insightText}
+            {formatReasonText(insightText)}
           </p>
 
           {isEditing ? (
