@@ -1490,7 +1490,7 @@ export const COACH_UI_TRANSLATIONS = {
   },
   // Plan builder page
   planBuilder: {
-    title: { en: "AI Plan Builder", ru: "AI Конструктор планов", es: "Creador de Planes IA" },
+    title: { en: "AI Plan Builder", ru: "Планы", es: "Creador de Planes IA" },
     aiAssistant: { en: "AI Assistant", ru: "AI-помощник", es: "Asistente de IA" },
     canvas: { en: "Canvas", ru: "Холст", es: "Lienzo" },
     planCanvas: { en: "Plan Canvas", ru: "Холст плана", es: "Lienzo del Plan" },
