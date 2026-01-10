@@ -1102,7 +1102,7 @@ export const COACH_UI_TRANSLATIONS = {
     goalsTab: { en: "Goals", ru: "Цели", es: "Objetivos" },
     intake: { en: "Intake", ru: "Анкеты", es: "Ingreso" },
     plan: { en: "Plan", ru: "План", es: "Plan" },
-    planBuilder: { en: "Plan Builder", ru: "Конструктор плана", es: "Constructor de Plan" },
+    planBuilder: { en: "Plan Builder", ru: "Планы", es: "Constructor de Plan" },
     progress: { en: "Progress", ru: "Прогресс", es: "Progreso" },
     photos: { en: "Photos", ru: "Фото", es: "Fotos" },
     settingsTab: { en: "Settings", ru: "Настройки", es: "Configuración" },
