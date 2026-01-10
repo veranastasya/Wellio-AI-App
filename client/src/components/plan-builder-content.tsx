@@ -74,8 +74,64 @@ export function PlanBuilderContent({
   const isAssigned = planStatus === "ASSIGNED";
 
   if (isMobile) {
+    const hasCanvasContent = planContent.trim().length > 0;
+    const hasAssistantMessages = messages.some(m => m.role === "assistant" && m.content.length > 50);
+    const showActionBar = hasCanvasContent || hasAssistantMessages || isAssigned;
+    
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full gap-4">
+        {/* Action bar at top - matching Weekly Plan layout */}
+        {showActionBar && (
+          <div className="flex flex-col gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <Input
+                type="text"
+                placeholder="Plan filename"
+                value={planName}
+                onChange={(e) => setPlanName(e.target.value)}
+                className="text-sm min-h-10 flex-1"
+                data-testid="input-canvas-filename-mobile"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="default"
+                onClick={handleSavePlan}
+                disabled={isSaving || !planContent.trim() || !planName.trim()}
+                className="flex-1"
+                data-testid="button-download-pdf-mobile"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                {isSaving ? "..." : "PDF"}
+              </Button>
+              {isAssigned ? (
+                <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-4 flex items-center justify-center flex-1">
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Assigned
+                </Badge>
+              ) : (
+                <Button
+                  variant="default"
+                  size="default"
+                  onClick={handleAssignToClient}
+                  disabled={isAssigning || !planContent.trim() || !planName.trim()}
+                  className="flex-1"
+                  data-testid="button-assign-to-client-mobile"
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  {isAssigning ? "..." : "Assign"}
+                </Button>
+              )}
+            </div>
+            {!hasCanvasContent && hasAssistantMessages && !isAssigned && (
+              <p className="text-xs text-muted-foreground">
+                Use desktop to add AI responses to canvas before assigning.
+              </p>
+            )}
+          </div>
+        )}
+        
         <Card className="flex flex-col flex-1 min-h-0">
           <CardHeader className="pb-3 flex-shrink-0">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -149,66 +205,6 @@ export function PlanBuilderContent({
             </div>
           </CardContent>
         </Card>
-
-        {/* Show sticky footer when there's content to assign - either in canvas or from AI messages */}
-        {(() => {
-          const hasCanvasContent = planContent.trim().length > 0;
-          const hasAssistantMessages = messages.some(m => m.role === "assistant" && m.content.length > 50);
-          const showFooter = hasCanvasContent || hasAssistantMessages || isAssigned;
-          
-          if (!showFooter) return null;
-          
-          return (
-            <div className="sticky bottom-0 left-0 right-0 bg-background border-t pt-3 pb-4 mt-3 -mx-4 px-4 z-50">
-              <div className="flex flex-col gap-2">
-                {!hasCanvasContent && hasAssistantMessages && !isAssigned && (
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Use desktop to add AI responses to canvas before assigning.
-                  </p>
-                )}
-                <Input
-                  type="text"
-                  placeholder="Plan filename"
-                  value={planName}
-                  onChange={(e) => setPlanName(e.target.value)}
-                  className="text-sm min-h-10"
-                  data-testid="input-canvas-filename-mobile"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="default"
-                    onClick={handleSavePlan}
-                    disabled={isSaving || !planContent.trim() || !planName.trim()}
-                    className="flex-1"
-                    data-testid="button-download-pdf-mobile"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    {isSaving ? "Generating..." : "PDF"}
-                  </Button>
-                  {isAssigned ? (
-                    <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-4 flex items-center justify-center flex-1">
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Assigned
-                    </Badge>
-                  ) : (
-                    <Button
-                      variant="default"
-                      size="default"
-                      onClick={handleAssignToClient}
-                      disabled={isAssigning || !planContent.trim() || !planName.trim()}
-                      className="flex-1"
-                      data-testid="button-assign-to-client-mobile"
-                    >
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      {isAssigning ? "Assigning..." : "Assign"}
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
       </div>
     );
   }
