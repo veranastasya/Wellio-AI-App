@@ -150,61 +150,58 @@ export function PlanBuilderContent({
           </CardContent>
         </Card>
 
-        <Card className="mt-3 flex-shrink-0">
-          <CardContent className="py-4 px-4">
-            <div className="flex items-center gap-3 text-muted-foreground mb-3">
-              <Monitor className="w-5 h-5 flex-shrink-0" />
-              <p className="text-sm" data-testid="text-mobile-canvas-notice">
-                Canvas view is not supported on mobile yet. Please use a desktop to build or edit plans.
-              </p>
-            </div>
-            {planContent.trim() && (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    placeholder="Plan filename"
-                    value={planName}
-                    onChange={(e) => setPlanName(e.target.value)}
-                    className="text-sm min-h-9 flex-1"
-                    data-testid="input-canvas-filename-mobile"
-                  />
-                </div>
-                <div className="flex gap-2 flex-wrap">
+        <div className="mt-3 flex-shrink-0 text-muted-foreground text-xs flex items-center gap-2 px-1">
+          <Monitor className="w-4 h-4 flex-shrink-0" />
+          <p data-testid="text-mobile-canvas-notice">
+            Canvas view is not supported on mobile yet.
+          </p>
+        </div>
+
+        {planContent.trim() && (
+          <div className="sticky bottom-0 left-0 right-0 bg-background border-t pt-3 pb-4 mt-3 -mx-4 px-4 z-50">
+            <div className="flex flex-col gap-2">
+              <Input
+                type="text"
+                placeholder="Plan filename"
+                value={planName}
+                onChange={(e) => setPlanName(e.target.value)}
+                className="text-sm min-h-10"
+                data-testid="input-canvas-filename-mobile"
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="default"
+                  onClick={handleSavePlan}
+                  disabled={isSaving || !planContent.trim() || !planName.trim()}
+                  className="flex-1"
+                  data-testid="button-download-pdf-mobile"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {isSaving ? "Generating..." : "PDF"}
+                </Button>
+                {isAssigned ? (
+                  <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-4 flex items-center justify-center flex-1">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Assigned
+                  </Badge>
+                ) : (
                   <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSavePlan}
-                    disabled={isSaving || !planContent.trim() || !planName.trim()}
-                    className="flex-1 min-h-9"
-                    data-testid="button-download-pdf-mobile"
+                    variant="default"
+                    size="default"
+                    onClick={handleAssignToClient}
+                    disabled={isAssigning || !planContent.trim() || !planName.trim()}
+                    className="flex-1"
+                    data-testid="button-assign-to-client-mobile"
                   >
-                    <Download className="w-4 h-4 mr-2" />
-                    {isSaving ? "Generating..." : "Download PDF"}
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    {isAssigning ? "Assigning..." : "Assign"}
                   </Button>
-                  {isAssigned ? (
-                    <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-3 flex items-center">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Assigned
-                    </Badge>
-                  ) : (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={handleAssignToClient}
-                      disabled={isAssigning || !planContent.trim() || !planName.trim()}
-                      className="flex-1 min-h-9"
-                      data-testid="button-assign-to-client-mobile"
-                    >
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      {isAssigning ? "Assigning..." : "Assign"}
-                    </Button>
-                  )}
-                </div>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
