@@ -1,4 +1,5 @@
-import { Activity, FileText, Send, Loader2, Download, Minimize2, Maximize2, ArrowLeft, UserPlus, CheckCircle, Monitor } from "lucide-react";
+import { useState } from "react";
+import { Activity, FileText, Send, Loader2, Download, Minimize2, Maximize2, ArrowLeft, UserPlus, CheckCircle, Monitor, Plus, PenLine } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerFooter,
+} from "@/components/ui/drawer";
 
 interface Message {
   role: "user" | "assistant";
@@ -73,65 +82,128 @@ export function PlanBuilderContent({
   const isMobile = useIsMobile();
   const isAssigned = planStatus === "ASSIGNED";
 
+  const [isCanvasDrawerOpen, setIsCanvasDrawerOpen] = useState(false);
+  
   if (isMobile) {
     const hasCanvasContent = planContent.trim().length > 0;
-    const hasAssistantMessages = messages.some(m => m.role === "assistant" && m.content.length > 50);
-    const showActionBar = hasCanvasContent || hasAssistantMessages || isAssigned;
+    const contentWordCount = planContent.trim().split(/\s+/).filter(Boolean).length;
     
     return (
-      <div className="flex flex-col h-full gap-4">
-        {/* Action bar at top - matching Weekly Plan layout */}
-        {showActionBar && (
-          <div className="flex flex-col gap-3 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                placeholder="Plan filename"
-                value={planName}
-                onChange={(e) => setPlanName(e.target.value)}
-                className="text-sm min-h-10 flex-1"
-                data-testid="input-canvas-filename-mobile"
-              />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant="outline"
-                size="default"
-                onClick={handleSavePlan}
-                disabled={isSaving || !planContent.trim() || !planName.trim()}
-                className="flex-1"
-                data-testid="button-download-pdf-mobile"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                {isSaving ? "..." : "PDF"}
-              </Button>
-              {isAssigned ? (
-                <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-4 flex items-center justify-center flex-1">
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Assigned
-                </Badge>
-              ) : (
-                <Button
-                  variant="default"
-                  size="default"
-                  onClick={handleAssignToClient}
-                  disabled={isAssigning || !planContent.trim() || !planName.trim()}
-                  className="flex-1"
-                  data-testid="button-assign-to-client-mobile"
-                >
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  {isAssigning ? "..." : "Assign"}
-                </Button>
-              )}
-            </div>
-            {!hasCanvasContent && hasAssistantMessages && !isAssigned && (
-              <p className="text-xs text-muted-foreground">
-                Use desktop to add AI responses to canvas before assigning.
-              </p>
-            )}
-          </div>
-        )}
+      <div className="flex flex-col h-full gap-3">
+        {/* Canvas button bar at top */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button
+            variant={hasCanvasContent ? "default" : "outline"}
+            onClick={() => setIsCanvasDrawerOpen(true)}
+            className="flex-1"
+            data-testid="button-open-canvas-mobile"
+          >
+            <PenLine className="w-4 h-4 mr-2" />
+            {hasCanvasContent ? `Canvas (${contentWordCount} words)` : "Open Canvas"}
+          </Button>
+          {isAssigned && (
+            <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-3">
+              <CheckCircle className="w-4 h-4 mr-1" />
+              Assigned
+            </Badge>
+          )}
+        </div>
         
+        {/* Mobile Canvas Drawer */}
+        <Drawer open={isCanvasDrawerOpen} onOpenChange={setIsCanvasDrawerOpen}>
+          <DrawerContent className="h-[90vh] max-h-[90vh]">
+            <DrawerHeader className="pb-2">
+              <DrawerTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Plan Canvas
+              </DrawerTitle>
+            </DrawerHeader>
+            <div className="flex-1 flex flex-col px-4 pb-4 min-h-0 overflow-hidden">
+              {/* Plan name and section template */}
+              <div className="flex flex-col gap-2 mb-3 flex-shrink-0">
+                <Input
+                  type="text"
+                  placeholder="Plan filename"
+                  value={planName}
+                  onChange={(e) => setPlanName(e.target.value)}
+                  className="text-sm min-h-10"
+                  data-testid="input-canvas-filename-mobile"
+                />
+                <Select onValueChange={(value) => {
+                  const template = SECTION_TEMPLATES.find(t => t.heading === value);
+                  if (template) handleAddSection(template);
+                }}>
+                  <SelectTrigger className="min-h-10 text-sm">
+                    <SelectValue placeholder="Add section template..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SECTION_TEMPLATES.map((template) => (
+                      <SelectItem key={template.heading} value={template.heading}>
+                        {template.heading}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Canvas textarea */}
+              <div className="flex-1 min-h-0 mb-3">
+                {!planContent.trim() ? (
+                  <div className="text-center text-muted-foreground py-8 h-full flex flex-col items-center justify-center bg-muted/30 rounded-lg">
+                    <FileText className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                    <p className="font-medium text-sm">Your plan canvas is empty</p>
+                    <p className="text-xs mt-2">Tap "Add to Canvas" on AI messages</p>
+                    <p className="text-xs mt-1">Or use section templates above</p>
+                  </div>
+                ) : (
+                  <Textarea
+                    value={planContent}
+                    onChange={(e) => setPlanContent(e.target.value)}
+                    className="h-full text-sm resize-none font-mono leading-relaxed"
+                    placeholder="Your plan content will appear here..."
+                    data-testid="textarea-plan-canvas-mobile"
+                  />
+                )}
+              </div>
+              
+              {/* Action buttons */}
+              <div className="flex gap-2 flex-shrink-0">
+                <Button
+                  variant="outline"
+                  onClick={handleSavePlan}
+                  disabled={isSaving || !planContent.trim() || !planName.trim()}
+                  className="flex-1"
+                  data-testid="button-download-pdf-mobile"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  {isSaving ? "Generating..." : "PDF"}
+                </Button>
+                {isAssigned ? (
+                  <Badge variant="default" className="bg-green-600 hover:bg-green-600 min-h-9 px-4 flex items-center justify-center flex-1">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Assigned
+                  </Badge>
+                ) : (
+                  <Button
+                    variant="default"
+                    onClick={() => {
+                      handleAssignToClient();
+                      setIsCanvasDrawerOpen(false);
+                    }}
+                    disabled={isAssigning || !planContent.trim() || !planName.trim()}
+                    className="flex-1"
+                    data-testid="button-assign-to-client-mobile"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    {isAssigning ? "Assigning..." : "Assign"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
+        
+        {/* Chat Card */}
         <Card className="flex flex-col flex-1 min-h-0">
           <CardHeader className="pb-3 flex-shrink-0">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -165,6 +237,24 @@ export function PlanBuilderContent({
                         <div className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</div>
                       </div>
                     </div>
+                    {/* Add to Canvas button for AI messages on mobile */}
+                    {message.role === "assistant" && (
+                      <div className="flex justify-start">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            handleAddToCanvas(message.content);
+                            setIsCanvasDrawerOpen(true);
+                          }}
+                          className="ml-2 min-h-8"
+                          data-testid={`button-add-to-canvas-mobile-${idx}`}
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add to Canvas
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {chatMutation.isPending && (
