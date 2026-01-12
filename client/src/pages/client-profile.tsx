@@ -25,7 +25,13 @@ export default function ClientProfile() {
   const [showTour, setShowTour] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState<SupportedLanguage>("en");
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
-  const [timezone, setTimezone] = useState("America/New_York");
+  const [timezone, setTimezone] = useState(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
+    } catch {
+      return "America/New_York";
+    }
+  });
   const [isSavingTimezone, setIsSavingTimezone] = useState(false);
   const {
     isSupported,

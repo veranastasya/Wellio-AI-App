@@ -37,12 +37,18 @@ export default function CoachSettings() {
     subscribe,
     unsubscribe,
   } = useCoachPushNotifications();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    preferredLanguage: "en" as SupportedLanguage,
-    timezone: "America/New_York",
+  const [formData, setFormData] = useState(() => {
+    let detectedTimezone = "America/New_York";
+    try {
+      detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
+    } catch {}
+    return {
+      name: "",
+      email: "",
+      phone: "",
+      preferredLanguage: "en" as SupportedLanguage,
+      timezone: detectedTimezone,
+    };
   });
 
   const { data: profile, isLoading } = useQuery<CoachProfile>({
