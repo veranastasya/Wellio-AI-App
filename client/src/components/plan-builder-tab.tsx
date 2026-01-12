@@ -213,6 +213,7 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
       }
 
       const result = await response.json();
+      console.log("AI Program Builder response:", JSON.stringify(result, null, 2));
       
       const assistantResponse: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -296,7 +297,9 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
       } else if (result.type === "add_meal_plan") {
         // Handle mealPlan at root level or inside data object
         const mealPlanData = result.mealPlan || result.data?.mealPlan;
+        console.log("Processing add_meal_plan, mealPlanData:", mealPlanData);
         if (mealPlanData && Array.isArray(mealPlanData)) {
+          console.log("Adding", mealPlanData.length, "meals from meal plan");
           for (const mealData of mealPlanData) {
             const meal: Meal = {
               id: generateId(),
@@ -307,8 +310,11 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
               carbs: mealData.carbs || 40,
               fat: mealData.fat || 20,
             };
+            console.log("Adding meal:", meal);
             onAddMeal("nd1", meal);
           }
+        } else {
+          console.log("mealPlanData is not a valid array:", typeof mealPlanData);
         }
       } else if (result.type === "add_habit" && result.data?.habit) {
         onAddHabit({
