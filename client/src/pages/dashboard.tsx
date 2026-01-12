@@ -108,7 +108,7 @@ export default function Dashboard() {
     })
     .slice(0, 4);
 
-  const recentClients = [...clients]
+  const recentClients = [...activeClients]
     .sort((a, b) => b.progressScore - a.progressScore)
     .slice(0, 4);
 
