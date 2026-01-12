@@ -8,6 +8,7 @@ import { Loader2, Dumbbell, Flame, TrendingUp, Trophy, Apple, Droplets, MessageS
 import { apiRequest } from "@/lib/queryClient";
 import type { Client, SmartLog, ProgressEvent, Session, ClientPlan, SupportedLanguage } from "@shared/schema";
 import { CLIENT_UI_TRANSLATIONS } from "@shared/schema";
+import { getDisplayTimeForSession } from "@shared/timezone";
 import { format, subDays, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { HybridOnboarding } from "@/components/onboarding";
@@ -207,18 +208,20 @@ export default function ClientDashboard() {
     const todayStr = format(today, "yyyy-MM-dd");
     
     // Add upcoming sessions
+    const clientTimezone = clientData?.timezone || "America/New_York";
     if (upcomingSessions && upcomingSessions.length > 0) {
       upcomingSessions.slice(0, 3).forEach(session => {
-        const sessionDate = parseISO(session.date);
+        const displayTimes = getDisplayTimeForSession(session, clientTimezone);
+        const sessionDate = parseISO(displayTimes.displayDate);
         let timeLabel: string;
-        if (session.date === todayStr) {
-          timeLabel = `Today, ${session.startTime}`;
+        if (displayTimes.displayDate === todayStr) {
+          timeLabel = `Today, ${displayTimes.displayStartTime}`;
         } else if (isToday(sessionDate)) {
-          timeLabel = `Today, ${session.startTime}`;
+          timeLabel = `Today, ${displayTimes.displayStartTime}`;
         } else if (differenceInDays(sessionDate, today) === 1) {
-          timeLabel = `Tomorrow, ${session.startTime}`;
+          timeLabel = `Tomorrow, ${displayTimes.displayStartTime}`;
         } else {
-          timeLabel = `${format(sessionDate, "EEE, MMM d")}, ${session.startTime}`;
+          timeLabel = `${format(sessionDate, "EEE, MMM d")}, ${displayTimes.displayStartTime}`;
         }
         
         // Map session types to human-friendly labels

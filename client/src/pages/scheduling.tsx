@@ -41,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type Client, type Session, type Coach, type SupportedLanguage, COACH_UI_TRANSLATIONS } from "@shared/schema";
+import { getDisplayTimeForSession } from "@shared/timezone";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -147,6 +148,16 @@ export default function Scheduling() {
 
   const lang = (coachProfile?.preferredLanguage || "en") as SupportedLanguage;
   const t = COACH_UI_TRANSLATIONS;
+  const coachTimezone = coachProfile?.timezone || "America/New_York";
+
+  const getSessionDisplayTime = (session: Session): { date: string; startTime: string; endTime: string | null } => {
+    const result = getDisplayTimeForSession(session, coachTimezone);
+    return {
+      date: result.displayDate,
+      startTime: result.displayStartTime,
+      endTime: result.displayEndTime,
+    };
+  };
 
   const getSessionTypeLabel = (type: string): string => {
     const typeMap: Record<string, keyof typeof t.scheduling> = {
@@ -995,8 +1006,9 @@ export default function Scheduling() {
               </div>
             ) : (
               upcomingSessions.map((session: Session) => {
-                const duration = session.endTime 
-                  ? calculateDuration(session.startTime, session.endTime)
+                const displayTimes = getSessionDisplayTime(session);
+                const duration = displayTimes.endTime 
+                  ? calculateDuration(displayTimes.startTime, displayTimes.endTime)
                   : 45;
                 const displayType = getSessionTypeLabel(session.sessionType);
                 const locationType = (session as any).locationType || "video";
@@ -1019,7 +1031,7 @@ export default function Scheduling() {
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Clock className="w-3 h-3" />
-                        <span>{session.startTime} • {duration} {t.scheduling.min[lang]}</span>
+                        <span>{displayTimes.startTime} • {duration} {t.scheduling.min[lang]}</span>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         {getLocationIcon(locationType)}
@@ -1083,12 +1095,19 @@ export default function Scheduling() {
                   <div>
                     <p className="text-xs text-muted-foreground">{t.scheduling.time[lang]}</p>
                     <p className="font-medium">
-                      {selectedSession.startTime} - {selectedSession.endTime}
-                      {selectedSession.endTime && (
-                        <span className="text-muted-foreground ml-1">
-                          ({calculateDuration(selectedSession.startTime, selectedSession.endTime)} {t.scheduling.min[lang]})
-                        </span>
-                      )}
+                      {(() => {
+                        const displayTimes = getSessionDisplayTime(selectedSession);
+                        return (
+                          <>
+                            {displayTimes.startTime} - {displayTimes.endTime}
+                            {displayTimes.endTime && (
+                              <span className="text-muted-foreground ml-1">
+                                ({calculateDuration(displayTimes.startTime, displayTimes.endTime)} {t.scheduling.min[lang]})
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </p>
                   </div>
                 </div>
