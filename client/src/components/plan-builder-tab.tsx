@@ -161,12 +161,13 @@ interface AiProgramBuilderPanelProps {
   trainingDays: TrainingDay[];
   onAddTrainingDay: (day: TrainingDay) => void;
   onAddMeal: (dayId: string, meal: Meal) => void;
+  onAddNutritionDay: (day: NutritionDay) => void;
   onAddHabit: (habit: Habit) => void;
   onAddTask: (task: Task) => void;
   onAddExercise: (dayId: string, exercise: Exercise) => void;
 }
 
-function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTrainingDay, onAddMeal, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
+function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTrainingDay, onAddMeal, onAddNutritionDay, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "initial",
@@ -300,19 +301,25 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
         console.log("Processing add_meal_plan, mealPlanData:", mealPlanData);
         if (mealPlanData && Array.isArray(mealPlanData)) {
           console.log("Adding", mealPlanData.length, "meals from meal plan");
-          for (const mealData of mealPlanData) {
-            const meal: Meal = {
-              id: generateId(),
-              type: mealData.type || "Lunch",
-              name: mealData.name || "New Meal",
-              calories: mealData.calories || 500,
-              protein: mealData.protein || 30,
-              carbs: mealData.carbs || 40,
-              fat: mealData.fat || 20,
-            };
-            console.log("Adding meal:", meal);
-            onAddMeal("nd1", meal);
-          }
+          // Create a nutrition day with all the meals
+          const meals: Meal[] = mealPlanData.map((mealData: any) => ({
+            id: generateId(),
+            type: mealData.type || "Lunch",
+            name: mealData.name || "New Meal",
+            calories: mealData.calories || 500,
+            protein: mealData.protein || 30,
+            carbs: mealData.carbs || 40,
+            fat: mealData.fat || 20,
+          }));
+          
+          const nutritionDay: NutritionDay = {
+            id: generateId(),
+            day: "Monday",
+            title: "AI Generated Meal Plan",
+            meals,
+          };
+          console.log("Adding nutrition day with meals:", nutritionDay);
+          onAddNutritionDay(nutritionDay);
         } else {
           console.log("mealPlanData is not a valid array:", typeof mealPlanData);
         }
@@ -2147,6 +2154,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
                   trainingDays={programState.trainingDays}
                   onAddTrainingDay={handleAddTrainingDay}
                   onAddMeal={handleAddMealToDay}
+                  onAddNutritionDay={handleAddNutritionDay}
                   onAddHabit={handleAddHabit}
                   onAddTask={handleAddTask}
                   onAddExercise={handleAddExercise}
