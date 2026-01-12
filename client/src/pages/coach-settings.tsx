@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Save, LogOut, User, Mail, Phone, Bell, BellOff, CheckCircle, XCircle, AlertCircle, HelpCircle, Globe } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, COACH_UI_TRANSLATIONS, type SupportedLanguage, type Coach } from "@shared/schema";
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS, COACH_UI_TRANSLATIONS, COMMON_TIMEZONES, type SupportedLanguage, type Coach } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useCoachPushNotifications } from "@/hooks/useCoachPushNotifications";
@@ -22,6 +22,7 @@ interface CoachProfile {
   phone: string | null;
   onboardingCompleted?: boolean;
   preferredLanguage?: string;
+  timezone?: string;
 }
 
 export default function CoachSettings() {
@@ -41,6 +42,7 @@ export default function CoachSettings() {
     email: "",
     phone: "",
     preferredLanguage: "en" as SupportedLanguage,
+    timezone: "America/New_York",
   });
 
   const { data: profile, isLoading } = useQuery<CoachProfile>({
@@ -54,6 +56,7 @@ export default function CoachSettings() {
         email: profile.email || "",
         phone: profile.phone || "",
         preferredLanguage: (profile.preferredLanguage as SupportedLanguage) || "en",
+        timezone: profile.timezone || "America/New_York",
       });
     }
   }, [profile]);
@@ -62,7 +65,7 @@ export default function CoachSettings() {
   const t = COACH_UI_TRANSLATIONS.settings;
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { name: string; email: string; phone: string; preferredLanguage: string }) => {
+    mutationFn: async (data: { name: string; email: string; phone: string; preferredLanguage: string; timezone: string }) => {
       const response = await apiRequest("PATCH", "/api/coach/profile", data);
       return response.json();
     },
@@ -235,6 +238,28 @@ export default function CoachSettings() {
                     {SUPPORTED_LANGUAGES.map((langOption) => (
                       <SelectItem key={langOption} value={langOption} data-testid={`option-language-${langOption}`}>
                         {LANGUAGE_LABELS[langOption]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="timezone" className="flex items-center gap-2">
+                  <Globe className="w-4 h-4" />
+                  {t.timezone?.[lang] || "Timezone"}
+                </Label>
+                <Select
+                  value={formData.timezone}
+                  onValueChange={(value) => setFormData({ ...formData, timezone: value })}
+                >
+                  <SelectTrigger data-testid="select-coach-timezone">
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMMON_TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value} data-testid={`option-timezone-${tz.value}`}>
+                        {tz.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

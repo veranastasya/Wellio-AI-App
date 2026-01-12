@@ -10,7 +10,7 @@ import { Loader2, Mail, Phone, Calendar, User, Scale, Ruler, Target, Bell, BellO
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Client } from "@shared/schema";
-import { getGoalTypeLabel, getGoalTypeLabelTranslated, getActivityLevelLabel, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS, CLIENT_UI_TRANSLATIONS, type SupportedLanguage } from "@shared/schema";
+import { getGoalTypeLabel, getGoalTypeLabelTranslated, getActivityLevelLabel, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS, CLIENT_UI_TRANSLATIONS, COMMON_TIMEZONES, type SupportedLanguage } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED, formatWeight, formatHeight } from "@shared/units";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { HybridOnboarding } from "@/components/onboarding";
@@ -25,6 +25,8 @@ export default function ClientProfile() {
   const [showTour, setShowTour] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState<SupportedLanguage>("en");
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
+  const [timezone, setTimezone] = useState("America/New_York");
+  const [isSavingTimezone, setIsSavingTimezone] = useState(false);
   const {
     isSupported,
     isSubscribed,
@@ -66,6 +68,9 @@ export default function ClientProfile() {
       }
       if (data.client.preferredLanguage) {
         setPreferredLanguage(data.client.preferredLanguage as SupportedLanguage);
+      }
+      if (data.client.timezone) {
+        setTimezone(data.client.timezone);
       }
     } catch (error) {
       localStorage.removeItem("clientId");
@@ -142,6 +147,40 @@ export default function ClientProfile() {
       });
     } finally {
       setIsSavingLanguage(false);
+    }
+  };
+
+  const handleTimezoneChange = async (newTimezone: string) => {
+    if (!clientData?.id) return;
+    
+    setIsSavingTimezone(true);
+    try {
+      const response = await apiRequest("PATCH", `/api/client-auth/me`, {
+        timezone: newTimezone,
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to update timezone");
+      }
+      
+      setTimezone(newTimezone);
+      setClientData({ ...clientData, timezone: newTimezone });
+      queryClient.invalidateQueries({ queryKey: ["/api/client-auth/me"] });
+      
+      const tzLabel = COMMON_TIMEZONES.find(tz => tz.value === newTimezone)?.label || newTimezone;
+      toast({
+        title: "Timezone updated",
+        description: `Session times will display in ${tzLabel}`,
+      });
+    } catch (error) {
+      console.error("Failed to update timezone:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update timezone. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingTimezone(false);
     }
   };
 
@@ -510,6 +549,46 @@ export default function ClientProfile() {
               </SelectContent>
             </Select>
             {isSavingLanguage && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Globe className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <span className="text-lg">Timezone</span>
+                <p className="text-sm text-muted-foreground font-normal">
+                  Session times will display in your timezone
+                </p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Select 
+              value={timezone} 
+              onValueChange={handleTimezoneChange}
+              disabled={isSavingTimezone}
+            >
+              <SelectTrigger className="w-full" data-testid="select-timezone">
+                <SelectValue placeholder="Select timezone" />
+              </SelectTrigger>
+              <SelectContent>
+                {COMMON_TIMEZONES.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value} data-testid={`option-timezone-${tz.value}`}>
+                    {tz.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {isSavingTimezone && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Saving...
