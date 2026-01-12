@@ -4299,6 +4299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Sex: client.sex || "Not provided",
         Height: client.height || "Not provided",
         Weight: client.weight || "Not provided",
+        TargetWeight: client.targetWeight || "Not provided",
         BodyFatPercent: client.bodyFatPercentage || "Not provided",
         ActivityLevel: client.activityLevel || "Not provided",
         Occupation: client.occupation || "Not provided",
@@ -4347,8 +4348,9 @@ ClientProfile:
 - Name:
 - Age:
 - Sex:
-- Height:
-- Weight:
+- Height (in cm or inches - convert to cm for calculations):
+- Weight (in kg or lbs - convert to kg for calculations):
+- TargetWeight (client goal weight, if provided):
 - BodyFatPercent (if provided):
 - ActivityLevel (sedentary, lightly_active, moderately_active, very_active, extra_active):
 - Occupation and daily routine:
@@ -4385,11 +4387,45 @@ The plan must include these sections:
    - Bullet list of 2 to 5 clear goals.
    - Use the client wording when possible and make them measurable where appropriate.
 
-3. Weekly structure overview
+3. Macro targets (REQUIRED - calculate using provided data)
+   IMPORTANT: If Age, Sex, Height, Weight, and ActivityLevel are provided, you MUST calculate and provide specific macro targets. Do NOT skip this section or say "consult a professional" when data is available.
+   
+   Use the Mifflin-St Jeor equation to calculate BMR:
+   - Men: BMR = (10 × weight_kg) + (6.25 × height_cm) - (5 × age) + 5
+   - Women: BMR = (10 × weight_kg) + (6.25 × height_cm) - (5 × age) - 161
+   
+   Then calculate TDEE = BMR × Activity Multiplier:
+   - sedentary: 1.2
+   - lightly_active: 1.375
+   - moderately_active: 1.55
+   - very_active: 1.725
+   - extra_active: 1.9
+   
+   Apply goal-based adjustment to get Target Calories:
+   - Weight loss goal: TDEE - 300 to 500 (moderate deficit)
+   - Muscle gain goal: TDEE + 200 to 300 (lean bulk)
+   - Maintenance/other goals: TDEE (no adjustment)
+   
+   Calculate macros from Target Calories:
+   - Protein: 1.6-2.2g per kg body weight (higher end for fat loss/muscle gain)
+   - Fats: 0.8-1g per kg body weight (minimum for hormone health)
+   - Carbs: remaining calories / 4
+   
+   Present the results as:
+   - Estimated BMR: X kcal
+   - Estimated TDEE: X kcal
+   - Target daily calories: X kcal (with brief explanation of adjustment)
+   - Daily protein target: Xg (X per meal if eating Y meals)
+   - Daily fat target: Xg
+   - Daily carb target: Xg
+   
+   If critical data is missing (weight, height, age, or sex), explain which data is needed and provide general guidance instead.
+
+4. Weekly structure overview
    - A simple table or bullet list that shows the week at a glance.
    - Include: number of movement sessions, approximate step goal range, number of strength or mobility sessions, number of stress or mindset practices, sleep target.
 
-4. Movement and activity habits
+5. Movement and activity habits
    - Daily or weekly step goal.
    - Number and type of movement sessions per week (walking, strength, mobility, yoga, cardio, etc) tailored to experience, equipment and medical notes.
    - For each type of session, give:
@@ -4398,7 +4434,7 @@ The plan must include these sections:
      - intensity guidance (easy, moderate, hard, RPE 1 to 10, etc)
    - Respect all limitations from MedicalNotes. Avoid anything that would be unsafe.
 
-5. Nutrition habits
+6. Nutrition habits
    - Focus on habits, not a strict meal plan, unless the coach notes explicitly say otherwise.
    - Give 4 to 8 simple rules, for example:
      - protein habit per meal,
@@ -4408,20 +4444,20 @@ The plan must include these sections:
      - 1 or 2 examples of balanced meals that fit the client life.
    - If the client goal is weight related, gently align portions or habits with that goal without extreme restrictions.
 
-6. Sleep and recovery
+7. Sleep and recovery
    - Sleep duration target.
    - 3 to 5 practical steps for better sleep and recovery that match the schedule and preferences.
    - Mention at least one recovery strategy (rest day, light movement day, stretching, relaxation).
 
-7. Stress management and mindset
+8. Stress management and mindset
    - 3 to 6 simple practices such as breathing work, short meditation, walks without phone, journaling, boundary setting, etc.
    - Connect at least one habit directly to the client stress pattern or work context.
 
-8. Environment and routines
+9. Environment and routines
    - 3 to 5 concrete suggestions to adjust the home, work or social environment to support the plan
      for example: prep water bottle on desk, keep walking shoes by the door, create a snack plan, grocery list idea.
 
-9. Weekly checkpoints and metrics
+10. Weekly checkpoints and metrics
    - Propose 3 to 5 simple metrics to track weekly, for example:
      - average steps,
      - workouts completed,
@@ -4456,7 +4492,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
           ...messages,
         ],
         temperature: 0.7,
-        max_tokens: 3500,
+        max_tokens: 4000,
       });
 
       const response = completion.choices[0]?.message;
