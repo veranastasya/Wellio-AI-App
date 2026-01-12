@@ -4226,7 +4226,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const result = await processProgramBuilderRequest(message, clientName, existingTrainingDays, preferredLanguage);
+      // Fetch client data and calculate macros if available
+      let clientMacros: {
+        weight?: number;
+        targetWeight?: number;
+        age?: number;
+        sex?: string;
+        height?: number;
+        activityLevel?: string;
+        goalType?: string;
+        calculatedMacros?: {
+          calories: number;
+          protein: number;
+          carbs: number;
+          fat: number;
+        };
+      } | undefined;
+      
+      if (clientId) {
+        const client = await storage.getClient(clientId);
+        if (client) {
+          clientMacros = {
+            weight: client.weight || undefined,
+            targetWeight: client.targetWeight || undefined,
+            age: client.age || undefined,
+            sex: client.sex || undefined,
+            height: client.height || undefined,
+            activityLevel: client.activityLevel || undefined,
+            goalType: client.goalType || undefined,
+          };
+          
+          // Calculate macros if we have all required data
+          if (client.weight && client.height && client.age && client.sex && client.activityLevel) {
+            const activityMultipliers: Record<string, number> = {
+              sedentary: 1.2,
+              lightly_active: 1.375,
+              moderately_active: 1.55,
+              very_active: 1.725,
+              extra_active: 1.9,
+            };
+            
+            // Mifflin-St Jeor formula
+            let bmr: number;
+            if (client.sex === "male") {
+              bmr = (10 * client.weight) + (6.25 * client.height) - (5 * client.age) + 5;
+            } else {
+              bmr = (10 * client.weight) + (6.25 * client.height) - (5 * client.age) - 161;
+            }
+            
+            const tdee = bmr * (activityMultipliers[client.activityLevel] || 1.55);
+            
+            // Adjust for goal
+            let targetCalories = tdee;
+            const goalType = (client.goalType || "").toLowerCase();
+            if (goalType.includes("lose") || goalType.includes("weight_loss") || goalType.includes("fat")) {
+              targetCalories = tdee - 400; // Moderate deficit
+            } else if (goalType.includes("gain") || goalType.includes("muscle") || goalType.includes("bulk")) {
+              targetCalories = tdee + 250; // Lean bulk
+            }
+            
+            // Calculate macros
+            const protein = Math.round(client.weight * 2); // 2g per kg
+            const fat = Math.round(client.weight * 0.9); // 0.9g per kg
+            const carbCalories = targetCalories - (protein * 4) - (fat * 9);
+            const carbs = Math.round(Math.max(carbCalories / 4, 50)); // At least 50g carbs
+            
+            clientMacros.calculatedMacros = {
+              calories: Math.round(targetCalories),
+              protein,
+              carbs,
+              fat,
+            };
+          }
+        }
+      }
+      
+      const result = await processProgramBuilderRequest(message, clientName, existingTrainingDays, preferredLanguage, clientMacros);
       
       res.json(result);
     } catch (error) {

@@ -293,6 +293,20 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
           fat: result.data.meal.fat || 20,
         };
         onAddMeal("nd1", meal);
+      } else if (result.type === "add_meal_plan" && result.data?.mealPlan) {
+        // Add multiple meals from a full day meal plan
+        for (const mealData of result.data.mealPlan) {
+          const meal: Meal = {
+            id: generateId(),
+            type: mealData.type || "Lunch",
+            name: mealData.name || "New Meal",
+            calories: mealData.calories || 500,
+            protein: mealData.protein || 30,
+            carbs: mealData.carbs || 40,
+            fat: mealData.fat || 20,
+          };
+          onAddMeal("nd1", meal);
+        }
       } else if (result.type === "add_habit" && result.data?.habit) {
         onAddHabit({
           id: generateId(),

@@ -1048,7 +1048,7 @@ function generateFallbackSummary(
 }
 
 export interface ProgramBuilderAction {
-  type: "add_training" | "add_schedule" | "add_meal" | "add_habit" | "add_task" | "modify_training" | "none";
+  type: "add_training" | "add_schedule" | "add_meal" | "add_meal_plan" | "add_habit" | "add_task" | "modify_training" | "none";
   response: string;
   data?: {
     day?: string;
@@ -1077,6 +1077,14 @@ export interface ProgramBuilderAction {
       carbs: number;
       fat: number;
     };
+    mealPlan?: Array<{
+      type: string;
+      name: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+    }>;
     habit?: {
       name: string;
       frequency: string;
@@ -1099,7 +1107,22 @@ export async function processProgramBuilderRequest(
   userMessage: string,
   clientName: string,
   existingTrainingDays?: Array<{ day: string; title: string; exercises: Array<{ name: string; sets: number; reps: number }> }>,
-  preferredLanguage: "en" | "ru" | "es" = "en"
+  preferredLanguage: "en" | "ru" | "es" = "en",
+  clientMacros?: {
+    weight?: number;
+    targetWeight?: number;
+    age?: number;
+    sex?: string;
+    height?: number;
+    activityLevel?: string;
+    goalType?: string;
+    calculatedMacros?: {
+      calories: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+    };
+  }
 ): Promise<ProgramBuilderAction> {
   try {
     const existingContext = existingTrainingDays && existingTrainingDays.length > 0
@@ -1108,6 +1131,24 @@ export async function processProgramBuilderRequest(
         ).join("\n")}`
       : "\n\nNo existing training days yet.";
 
+    // Build client macro context if available
+    let macroContext = "";
+    if (clientMacros) {
+      const parts: string[] = [];
+      if (clientMacros.weight) parts.push(`Weight: ${clientMacros.weight}kg`);
+      if (clientMacros.targetWeight) parts.push(`Target Weight: ${clientMacros.targetWeight}kg`);
+      if (clientMacros.goalType) parts.push(`Goal: ${clientMacros.goalType}`);
+      if (clientMacros.activityLevel) parts.push(`Activity Level: ${clientMacros.activityLevel}`);
+      
+      if (clientMacros.calculatedMacros) {
+        parts.push(`Daily Targets: ${clientMacros.calculatedMacros.calories} kcal, ${clientMacros.calculatedMacros.protein}g protein, ${clientMacros.calculatedMacros.carbs}g carbs, ${clientMacros.calculatedMacros.fat}g fat`);
+      }
+      
+      if (parts.length > 0) {
+        macroContext = `\n\nClient Profile & Macro Targets:\n${parts.join("\n")}`;
+      }
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -1115,7 +1156,16 @@ export async function processProgramBuilderRequest(
           role: "system",
           content: `You are a certified fitness and nutrition expert with a degree in Exercise Science and Sports Nutrition. You hold certifications including NASM-CPT, CSCS, and Precision Nutrition. With 10+ years of experience training clients, you create evidence-based, periodized training programs tailored to individual goals and abilities.
 
-Your role is to parse user requests and create or modify workout programs using your professional expertise.
+Your role is to parse user requests and create or modify workout programs AND meal plans using your professional expertise.
+
+MEAL PLANS BASED ON MACROS:
+When the user asks for a meal plan based on their macros, you CAN and SHOULD create one using the "add_meal" type.
+- Use the client's macro targets (calories, protein, carbs, fat) provided in the context
+- Create balanced meals that fit within the daily targets
+- Distribute macros across 3-5 meals (typically: breakfast 25%, lunch 30%, dinner 30%, snacks 15%)
+- For multiple meals, make separate requests or create a full day plan with type "add_meal_plan"
+
+If client macros are not provided but user asks for macro-based meal plan, respond with helpful guidance on what profile data is needed (weight, height, age, sex, activity level, goal).
 
 Your job is to understand what the user wants to add or change, even if they make typos or use informal language.
 Common corrections:
@@ -1135,7 +1185,7 @@ Example workout types and exercises:
 
 You must respond with a JSON object in this exact format:
 {
-  "type": "add_training" | "add_schedule" | "add_meal" | "add_habit" | "add_task" | "modify_training" | "none",
+  "type": "add_training" | "add_schedule" | "add_meal" | "add_meal_plan" | "add_habit" | "add_task" | "modify_training" | "none",
   "response": "A friendly confirmation message describing what you did",
   "data": {
     // For add_training (single workout day):
@@ -1153,8 +1203,16 @@ You must respond with a JSON object in this exact format:
     "targetDay": "Wednesday",
     "exercisesToAdd": [{ "name": "Bulgarian Split Squat", "sets": 3, "reps": 12 }]
     
-    // For add_meal:
+    // For add_meal (single meal):
     "meal": { "type": "Breakfast|Lunch|Dinner|Snack", "name": "Meal name", "calories": 500, "protein": 30, "carbs": 40, "fat": 20 }
+    
+    // For add_meal_plan (FULL DAY meal plan based on macros - use when user asks for meal plan based on their macros):
+    "mealPlan": [
+      { "type": "Breakfast", "name": "Oatmeal with Greek Yogurt", "calories": 450, "protein": 35, "carbs": 55, "fat": 12 },
+      { "type": "Lunch", "name": "Grilled Chicken Salad", "calories": 550, "protein": 45, "carbs": 30, "fat": 25 },
+      { "type": "Snack", "name": "Protein Shake with Banana", "calories": 300, "protein": 30, "carbs": 35, "fat": 5 },
+      { "type": "Dinner", "name": "Salmon with Rice and Vegetables", "calories": 600, "protein": 40, "carbs": 50, "fat": 22 }
+    ]
     
     // For add_habit:
     "habit": { "name": "Habit description", "frequency": "Daily|Weekly" }
@@ -1182,11 +1240,11 @@ For example, if the language is Russian, "Upper Body Day" should be "День в
         },
         {
           role: "user",
-          content: `Client: ${clientName}${existingContext}\n\nUser request: "${userMessage}"`
+          content: `Client: ${clientName}${existingContext}${macroContext}\n\nUser request: "${userMessage}"`
         }
       ],
       temperature: 0.3,
-      max_tokens: 1500,
+      max_tokens: 2000,
       response_format: { type: "json_object" }
     });
 
