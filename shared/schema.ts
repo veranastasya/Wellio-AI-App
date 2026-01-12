@@ -2006,6 +2006,30 @@ export function getActivityLevelMultiplier(activityLevel: string | null | undefi
 export const WEEK_START_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 export type WeekStartDay = typeof WEEK_START_DAYS[number];
 
+// Common timezones for coach and client selection
+export const COMMON_TIMEZONES = [
+  { value: "America/New_York", label: "Eastern Time (US & Canada)" },
+  { value: "America/Chicago", label: "Central Time (US & Canada)" },
+  { value: "America/Denver", label: "Mountain Time (US & Canada)" },
+  { value: "America/Los_Angeles", label: "Pacific Time (US & Canada)" },
+  { value: "America/Anchorage", label: "Alaska" },
+  { value: "Pacific/Honolulu", label: "Hawaii" },
+  { value: "Europe/London", label: "London (GMT/BST)" },
+  { value: "Europe/Paris", label: "Paris, Berlin, Rome" },
+  { value: "Europe/Moscow", label: "Moscow" },
+  { value: "Asia/Dubai", label: "Dubai" },
+  { value: "Asia/Kolkata", label: "India (IST)" },
+  { value: "Asia/Singapore", label: "Singapore" },
+  { value: "Asia/Tokyo", label: "Tokyo" },
+  { value: "Asia/Shanghai", label: "China (CST)" },
+  { value: "Australia/Sydney", label: "Sydney" },
+  { value: "Australia/Perth", label: "Perth" },
+  { value: "Pacific/Auckland", label: "Auckland" },
+  { value: "America/Sao_Paulo", label: "Brasilia" },
+  { value: "America/Mexico_City", label: "Mexico City" },
+  { value: "Africa/Johannesburg", label: "Johannesburg" },
+] as const;
+
 export const coaches = pgTable("coaches", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -2018,6 +2042,7 @@ export const coaches = pgTable("coaches", {
   onboardingCompleted: boolean("onboarding_completed").notNull().default(false),
   preferredLanguage: text("preferred_language").notNull().default("en"),
   weekStartDay: text("week_start_day").notNull().default("Mon"), // Coach-defined week start day
+  timezone: text("timezone").notNull().default("America/New_York"), // Coach's timezone for scheduling
 });
 
 export const insertCoachSchema = createInsertSchema(coaches).omit({ id: true });
@@ -2088,6 +2113,8 @@ export const clients = pgTable("clients", {
   preferredLanguage: text("preferred_language").notNull().default("en"),
   // Program start date (for week calculations) - defaults to joinedDate if not set
   programStartDate: text("program_start_date"),
+  // Client's timezone for displaying sessions in their local time
+  timezone: text("timezone").notNull().default("America/New_York"),
 }, (table) => ({
   coachIdIdx: index("clients_coach_id_idx").on(table.coachId),
   emailIdx: index("clients_email_idx").on(table.email),
@@ -2099,9 +2126,13 @@ export const sessions = pgTable("sessions", {
   clientName: text("client_name").notNull(),
   sessionType: text("session_type").notNull(),
   locationType: text("location_type").default("video"),
-  date: text("date").notNull(),
-  startTime: text("start_time").notNull(),
-  endTime: text("end_time").notNull(),
+  date: text("date").notNull(), // Date in coach's timezone (YYYY-MM-DD)
+  startTime: text("start_time").notNull(), // Time in coach's timezone (HH:MM)
+  endTime: text("end_time").notNull(), // Time in coach's timezone (HH:MM)
+  // UTC timestamps for accurate timezone conversion
+  startTimeUtc: text("start_time_utc"), // ISO 8601 UTC timestamp
+  endTimeUtc: text("end_time_utc"), // ISO 8601 UTC timestamp
+  coachTimezone: text("coach_timezone"), // Timezone used when session was created
   status: text("status").notNull().default("scheduled"),
   notes: text("notes"),
   meetingLink: text("meeting_link"),
