@@ -685,6 +685,7 @@ interface SendSessionBookingEmailParams {
   locationType: string;
   meetingLink?: string | null;
   notes?: string;
+  timezoneLabel?: string;
 }
 
 const SESSION_TYPE_LABELS: Record<string, string> = {
@@ -710,7 +711,8 @@ export async function sendSessionBookingEmail({
   sessionType,
   locationType,
   meetingLink,
-  notes
+  notes,
+  timezoneLabel
 }: SendSessionBookingEmailParams) {
   const { client, fromEmail } = await getUncachableResendClient();
   
@@ -724,7 +726,8 @@ export async function sendSessionBookingEmail({
     day: 'numeric'
   });
   
-  const timeDisplay = endTime ? `${sessionTime} - ${endTime}` : sessionTime;
+  const tzSuffix = timezoneLabel ? ` (${timezoneLabel})` : '';
+  const timeDisplay = endTime ? `${sessionTime} - ${endTime}${tzSuffix}` : `${sessionTime}${tzSuffix}`;
   
   const emailHtml = `
     <!DOCTYPE html>

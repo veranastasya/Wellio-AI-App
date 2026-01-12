@@ -2,6 +2,22 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcrypt";
+import { convertLocalToUtc, convertUtcToTimezone } from "@shared/timezone";
+
+function getTimezoneAbbreviation(timezone: string, dateForDst?: Date): string {
+  try {
+    // Use provided date for correct DST calculation, fallback to current date
+    const date = dateForDst || new Date();
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      timeZoneName: 'short'
+    }).formatToParts(date);
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    return tzPart?.value || timezone;
+  } catch {
+    return timezone;
+  }
+}
 import { z } from "zod";
 import multer from "multer";
 import sharp from "sharp";
@@ -1048,19 +1064,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const client = await storage.getClient(session.clientId);
         if (client && client.email && !client.email.endsWith('@pending.com')) {
+          // Convert session time to client's timezone for the email
+          const clientTimezone = client.timezone || coachTimezone;
+          let emailDate = session.date;
+          let emailStartTime = session.startTime;
+          let emailEndTime = session.endTime || undefined;
+          let sessionDateForDst: Date | undefined;
+          
+          // If we have UTC timestamps, convert to client's timezone
+          if (session.startTimeUtc) {
+            const startConverted = convertUtcToTimezone(session.startTimeUtc, clientTimezone);
+            if (startConverted) {
+              emailDate = startConverted.date;
+              emailStartTime = startConverted.time;
+              // Use the actual session date for DST-correct timezone abbreviation
+              sessionDateForDst = new Date(session.startTimeUtc);
+            }
+            if (session.endTimeUtc) {
+              const endConverted = convertUtcToTimezone(session.endTimeUtc, clientTimezone);
+              if (endConverted) {
+                emailEndTime = endConverted.time;
+              }
+            }
+          }
+          
+          // Use session date for correct DST abbreviation (e.g., EST vs EDT)
+          const timezoneLabel = getTimezoneAbbreviation(clientTimezone, sessionDateForDst);
+          
           await sendSessionBookingEmail({
             to: client.email,
             clientName: client.name,
             coachName: 'Your Coach',
-            sessionDate: session.date,
-            sessionTime: session.startTime,
-            endTime: session.endTime || undefined,
+            sessionDate: emailDate,
+            sessionTime: emailStartTime,
+            endTime: emailEndTime,
             sessionType: session.sessionType,
             locationType: session.locationType || 'video',
             meetingLink: session.meetingLink,
             notes: session.notes || undefined,
+            timezoneLabel,
           });
-          console.log(`[Sessions] Booking confirmation email sent to ${client.email}`);
+          console.log(`[Sessions] Booking confirmation email sent to ${client.email} in timezone ${clientTimezone}`);
         }
       } catch (emailError) {
         console.error('[Sessions] Failed to send booking confirmation email:', emailError);
@@ -1075,11 +1119,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/sessions/:id", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
       const session = await storage.getSession(req.params.id);
       if (!session) {
         return res.status(404).json({ error: "Session not found" });
       }
-      const updatedSession = await storage.updateSession(req.params.id, req.body);
+      
+      // Check if date/time fields are being updated (use 'in' to detect property presence, not truthiness)
+      const updateData = { ...req.body };
+      const hasTimeChange = 'date' in updateData || 'startTime' in updateData || 'endTime' in updateData;
+      
+      // If any time-related field changed, recalculate UTC timestamps
+      if (hasTimeChange) {
+        const newDate = updateData.date ?? session.date;
+        const newStartTime = updateData.startTime ?? session.startTime;
+        const newEndTime = 'endTime' in updateData ? updateData.endTime : session.endTime;
+        
+        const coach = await storage.getCoach(coachId);
+        const coachTimezone = coach?.timezone || session.coachTimezone || "America/New_York";
+        
+        // Recalculate UTC timestamps using the utility function
+        const startTimeUtc = convertLocalToUtc(newDate, newStartTime, coachTimezone);
+        
+        if (startTimeUtc) {
+          updateData.startTimeUtc = startTimeUtc;
+        }
+        
+        // Handle endTime - set to null if explicitly removed, otherwise convert
+        if (newEndTime) {
+          const endTimeUtc = convertLocalToUtc(newDate, newEndTime, coachTimezone);
+          if (endTimeUtc) {
+            updateData.endTimeUtc = endTimeUtc;
+          }
+        } else if ('endTime' in updateData && updateData.endTime === null) {
+          // Explicitly clear endTimeUtc when endTime is removed
+          updateData.endTimeUtc = null;
+        }
+        
+        updateData.coachTimezone = coachTimezone;
+      }
+      
+      const updatedSession = await storage.updateSession(req.params.id, updateData);
       res.json(updatedSession);
     } catch (error) {
       res.status(400).json({ error: "Failed to update session" });
