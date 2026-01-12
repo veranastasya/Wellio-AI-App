@@ -1009,8 +1009,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/sessions", requireCoachAuth, async (req, res) => {
     try {
+      const coachId = req.session.coachId!;
+      const coach = await storage.getCoach(coachId);
+      const coachTimezone = coach?.timezone || "America/New_York";
+      
       const validatedData = insertSessionSchema.parse(req.body);
-      const session = await storage.createSession(validatedData);
+      
+      // Convert local time to UTC for storage
+      const { date, startTime, endTime } = validatedData;
+      let startTimeUtc: string | undefined;
+      let endTimeUtc: string | undefined;
+      
+      try {
+        // Create date-time string and convert to UTC
+        const startDateTime = new Date(`${date}T${startTime}:00`);
+        const endDateTime = new Date(`${date}T${endTime}:00`);
+        
+        // Use Intl to handle timezone conversion
+        const startUtc = new Date(startDateTime.toLocaleString('en-US', { timeZone: coachTimezone }));
+        const endUtc = new Date(endDateTime.toLocaleString('en-US', { timeZone: coachTimezone }));
+        
+        // Store as ISO strings
+        startTimeUtc = startDateTime.toISOString();
+        endTimeUtc = endDateTime.toISOString();
+      } catch (tzError) {
+        console.error('[Sessions] Timezone conversion error:', tzError);
+        // Fall back to storing without UTC
+      }
+      
+      const session = await storage.createSession({
+        ...validatedData,
+        startTimeUtc,
+        endTimeUtc,
+        coachTimezone,
+      });
       
       // Send booking confirmation email to client (don't fail session creation if email fails)
       try {
