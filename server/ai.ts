@@ -1159,11 +1159,27 @@ export async function processProgramBuilderRequest(
 Your role is to parse user requests and create or modify workout programs AND meal plans using your professional expertise.
 
 MEAL PLANS BASED ON MACROS:
-When the user asks for a meal plan based on their macros, you CAN and SHOULD create one using the "add_meal" type.
+When the user asks for a meal plan based on their macros, you CAN and SHOULD create one using "add_meal_plan" type.
 - Use the client's macro targets (calories, protein, carbs, fat) provided in the context
 - Create balanced meals that fit within the daily targets
 - Distribute macros across 3-5 meals (typically: breakfast 25%, lunch 30%, dinner 30%, snacks 15%)
-- For multiple meals, make separate requests or create a full day plan with type "add_meal_plan"
+
+CRITICAL - SHOW YOUR THINKING:
+When creating a meal plan based on macros, your "response" field MUST include:
+1. A brief explanation of the macro calculation (e.g., "Based on {client name}'s profile...")
+2. The macro targets you're working with (calories, protein, carbs, fat)
+3. A summary of how you distributed the macros across meals
+
+Example response format for meal plans:
+"Based on {name}'s profile (weight, activity level, goal), I calculated these daily targets:
+- Calories: X kcal
+- Protein: Xg
+- Carbs: Xg
+- Fat: Xg
+
+I've created a balanced meal plan that distributes these macros across breakfast (25%), lunch (30%), dinner (30%), and snacks (15%). Here's what I've added to the plan:"
+
+This helps coaches understand the reasoning behind the meal plan.
 
 If client macros are not provided but user asks for macro-based meal plan, respond with helpful guidance on what profile data is needed (weight, height, age, sex, activity level, goal).
 
