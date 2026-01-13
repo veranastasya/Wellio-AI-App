@@ -4226,7 +4226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Fetch client data and calculate macros if available
+      // Fetch client data, context, and calculate macros if available
       let clientMacros: {
         weight?: number;
         targetWeight?: number;
@@ -4243,6 +4243,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       } | undefined;
       
+      // Full client context for AI to reference
+      let clientContext: {
+        goals?: Array<{ type: string; target: number; current: number; deadline: string | null; status: string }>;
+        recentNutrition?: Array<{ date: string; calories: number | null; protein: number | null; carbs: number | null; fats: number | null }>;
+        recentWorkouts?: Array<{ date: string; type: string; duration: number | null; intensity: string | null }>;
+        trainingExperience?: string;
+        equipmentAccess?: string;
+        medicalNotes?: string;
+        preferences?: any;
+      } | undefined;
+      
       if (clientId) {
         const client = await storage.getClient(clientId);
         if (client) {
@@ -4254,6 +4265,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
             height: client.height || undefined,
             activityLevel: client.activityLevel || undefined,
             goalType: client.goalType || undefined,
+          };
+          
+          // Fetch goals, nutrition logs, and workout logs for context
+          const goals = await storage.getGoalsByClientId(clientId);
+          const allNutritionLogs = await storage.getNutritionLogs();
+          const allWorkoutLogs = await storage.getWorkoutLogs();
+          
+          const nutritionLogs = allNutritionLogs.filter(n => n.clientId === clientId);
+          const workoutLogs = allWorkoutLogs.filter(w => w.clientId === clientId);
+          
+          clientContext = {
+            goals: goals.filter(g => g.status === 'active').map(g => ({
+              type: g.goalType,
+              target: g.targetValue,
+              current: g.currentValue,
+              deadline: g.deadline,
+              status: g.status,
+            })),
+            recentNutrition: nutritionLogs.slice(-7).map((n: any) => ({
+              date: n.date,
+              calories: n.calories,
+              protein: n.protein,
+              carbs: n.carbs,
+              fats: n.fats,
+            })),
+            recentWorkouts: workoutLogs.slice(-7).map((w: any) => ({
+              date: w.date,
+              type: w.type,
+              duration: w.duration,
+              intensity: w.intensity,
+            })),
+            trainingExperience: client.trainingExperience || undefined,
+            equipmentAccess: client.equipmentAccess || undefined,
+            medicalNotes: client.medicalNotes || undefined,
+            preferences: client.preferences || undefined,
           };
           
           // Calculate macros if we have all required data
@@ -4301,7 +4347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const result = await processProgramBuilderRequest(message, clientName, existingTrainingDays, preferredLanguage, clientMacros);
+      const result = await processProgramBuilderRequest(message, clientName, existingTrainingDays, preferredLanguage, clientMacros, clientContext);
       
       res.json(result);
     } catch (error) {

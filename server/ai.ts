@@ -1122,6 +1122,15 @@ export async function processProgramBuilderRequest(
       carbs: number;
       fat: number;
     };
+  },
+  clientContext?: {
+    goals?: Array<{ type: string; target: number; current: number; deadline: string | null; status: string }>;
+    recentNutrition?: Array<{ date: string; calories: number | null; protein: number | null; carbs: number | null; fats: number | null }>;
+    recentWorkouts?: Array<{ date: string; type: string; duration: number | null; intensity: string | null }>;
+    trainingExperience?: string;
+    equipmentAccess?: string;
+    medicalNotes?: string;
+    preferences?: any;
   }
 ): Promise<ProgramBuilderAction> {
   try {
@@ -1146,6 +1155,53 @@ export async function processProgramBuilderRequest(
       
       if (parts.length > 0) {
         macroContext = `\n\nClient Profile & Macro Targets:\n${parts.join("\n")}`;
+      }
+    }
+    
+    // Build full client context (goals, history, etc.)
+    let fullContext = "";
+    if (clientContext) {
+      const contextParts: string[] = [];
+      
+      // Active goals
+      if (clientContext.goals && clientContext.goals.length > 0) {
+        const goalsStr = clientContext.goals.map(g => {
+          const progress = g.target > 0 ? Math.round((g.current / g.target) * 100) : 0;
+          return `  - ${g.type}: ${g.current}/${g.target} (${progress}% complete)${g.deadline ? `, deadline: ${g.deadline}` : ''}`;
+        }).join("\n");
+        contextParts.push(`Active Goals:\n${goalsStr}`);
+      }
+      
+      // Recent workout history
+      if (clientContext.recentWorkouts && clientContext.recentWorkouts.length > 0) {
+        const workoutStr = clientContext.recentWorkouts.map(w => 
+          `  - ${w.date}: ${w.type}${w.duration ? ` (${w.duration} min)` : ''}${w.intensity ? `, ${w.intensity} intensity` : ''}`
+        ).join("\n");
+        contextParts.push(`Recent Workouts (last 7 days):\n${workoutStr}`);
+      } else {
+        contextParts.push("Recent Workouts: No workouts logged in the last 7 days");
+      }
+      
+      // Recent nutrition history
+      if (clientContext.recentNutrition && clientContext.recentNutrition.length > 0) {
+        const avgCalories = Math.round(clientContext.recentNutrition.reduce((sum, n) => sum + (n.calories || 0), 0) / clientContext.recentNutrition.length);
+        const avgProtein = Math.round(clientContext.recentNutrition.reduce((sum, n) => sum + (n.protein || 0), 0) / clientContext.recentNutrition.length);
+        contextParts.push(`Recent Nutrition (7-day avg): ~${avgCalories} kcal, ~${avgProtein}g protein/day`);
+      }
+      
+      // Training experience and equipment
+      if (clientContext.trainingExperience) {
+        contextParts.push(`Training Experience: ${clientContext.trainingExperience}`);
+      }
+      if (clientContext.equipmentAccess) {
+        contextParts.push(`Equipment Access: ${clientContext.equipmentAccess}`);
+      }
+      if (clientContext.medicalNotes) {
+        contextParts.push(`Medical Notes: ${clientContext.medicalNotes}`);
+      }
+      
+      if (contextParts.length > 0) {
+        fullContext = `\n\nClient History & Context:\n${contextParts.join("\n")}`;
       }
     }
 
@@ -1182,6 +1238,17 @@ I've created a balanced meal plan that distributes these macros across breakfast
 This helps coaches understand the reasoning behind the meal plan.
 
 If client macros are not provided but user asks for macro-based meal plan, respond with helpful guidance on what profile data is needed (weight, height, age, sex, activity level, goal).
+
+PERSONALIZATION BASED ON CLIENT HISTORY:
+When creating ANY plan (training, nutrition, habits, or tasks), you MUST consider and reference the client's:
+1. Active Goals - Design plans that directly support their goals (e.g., if goal is "lose 5kg", prioritize caloric deficit and cardio)
+2. Recent Workout History - Build on what they've been doing (e.g., "I see you've been doing upper body work, let's add a complementary lower body session")
+3. Recent Nutrition - Address gaps or maintain consistency (e.g., "Your protein intake has been around 80g/day, let's boost that closer to your target")
+4. Training Experience - Adjust complexity and volume accordingly (beginner vs advanced)
+5. Equipment Access - Only include exercises they can actually perform
+6. Medical Notes - Avoid exercises or foods that could cause issues
+
+Your "response" field should briefly mention HOW the plan relates to their history/goals to show personalization.
 
 Your job is to understand what the user wants to add or change, even if they make typos or use informal language.
 Common corrections:
@@ -1256,7 +1323,7 @@ For example, if the language is Russian, "Upper Body Day" should be "День в
         },
         {
           role: "user",
-          content: `Client: ${clientName}${existingContext}${macroContext}\n\nUser request: "${userMessage}"`
+          content: `Client: ${clientName}${existingContext}${macroContext}${fullContext}\n\nUser request: "${userMessage}"`
         }
       ],
       temperature: 0.3,
