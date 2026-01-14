@@ -1,6 +1,9 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
+import { eq, and, asc, lt } from "drizzle-orm";
+import { planBuilderChatMessages } from "@shared/schema";
 import bcrypt from "bcrypt";
 import { convertLocalToUtc, convertUtcToTimezone } from "@shared/timezone";
 
@@ -4353,6 +4356,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing program builder request:", error);
       res.status(500).json({ error: "Failed to process request" });
+    }
+  });
+
+  // Plan Builder Chat History - Load messages for a client (with 14-day auto-cleanup)
+  app.get("/api/program-builder/messages/:clientId", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = (req.session as any).coachId;
+      const { clientId } = req.params;
+
+      if (!clientId) {
+        return res.status(400).json({ error: "Client ID is required" });
+      }
+
+      // Delete messages older than 14 days
+      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      await db.delete(planBuilderChatMessages)
+        .where(lt(planBuilderChatMessages.createdAt, fourteenDaysAgo));
+
+      // Fetch remaining messages for this coach-client pair
+      const messages = await db.select()
+        .from(planBuilderChatMessages)
+        .where(
+          and(
+            eq(planBuilderChatMessages.coachId, coachId),
+            eq(planBuilderChatMessages.clientId, clientId)
+          )
+        )
+        .orderBy(asc(planBuilderChatMessages.createdAt));
+
+      res.json(messages);
+    } catch (error) {
+      console.error("Error loading plan builder chat messages:", error);
+      res.status(500).json({ error: "Failed to load chat messages" });
+    }
+  });
+
+  // Plan Builder Chat History - Save a message
+  app.post("/api/program-builder/messages", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = (req.session as any).coachId;
+      
+      const messageSchema = z.object({
+        clientId: z.string(),
+        role: z.enum(["user", "assistant"]),
+        content: z.string(),
+      });
+
+      const parsed = messageSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid request", details: parsed.error });
+      }
+
+      const { clientId, role, content } = parsed.data;
+
+      const [message] = await db.insert(planBuilderChatMessages)
+        .values({
+          coachId,
+          clientId,
+          role,
+          content,
+          createdAt: new Date().toISOString(),
+        })
+        .returning();
+
+      res.json(message);
+    } catch (error) {
+      console.error("Error saving plan builder chat message:", error);
+      res.status(500).json({ error: "Failed to save chat message" });
+    }
+  });
+
+  // Plan Builder Chat History - Clear all messages for a client
+  app.delete("/api/program-builder/messages/:clientId", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = (req.session as any).coachId;
+      const { clientId } = req.params;
+
+      await db.delete(planBuilderChatMessages)
+        .where(
+          and(
+            eq(planBuilderChatMessages.coachId, coachId),
+            eq(planBuilderChatMessages.clientId, clientId)
+          )
+        );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error clearing plan builder chat messages:", error);
+      res.status(500).json({ error: "Failed to clear chat messages" });
     }
   });
 
