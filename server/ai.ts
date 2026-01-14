@@ -1287,7 +1287,7 @@ Example workout types and exercises:
 You must respond with a JSON object in this exact format:
 {
   "type": "add_training" | "add_schedule" | "add_meal" | "add_meal_plan" | "add_weekly_meal_plan" | "add_habit" | "add_task" | "modify_training" | "none",
-  "response": "A friendly confirmation message describing what you did",
+  "response": "FOR MEAL PLANS: MUST include calculation breakdown: '**Macro Calculation:** BMR (Mifflin-St Jeor) for [name] ([weight]kg, [height]cm, [age]yo): [X] kcal. TDEE: BMR × [multiplier] = [X] kcal. Goal adjustment: [X] kcal daily target. **Daily Targets:** [X] kcal, [X]g protein, [X]g carbs, [X]g fat. **Distribution:** Breakfast 25%, Lunch 30%, Dinner 30%, Snacks 15%.' FOR OTHER TYPES: A friendly confirmation message.",
   "data": {
     // For add_training (single workout day):
     "day": "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday",
