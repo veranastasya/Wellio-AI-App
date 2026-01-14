@@ -1286,7 +1286,7 @@ Example workout types and exercises:
 
 You must respond with a JSON object in this exact format:
 {
-  "type": "add_training" | "add_schedule" | "add_meal" | "add_meal_plan" | "add_weekly_meal_plan" | "add_habit" | "add_task" | "modify_training" | "none",
+  "type": "add_training" | "add_schedule" | "add_meal" | "add_meal_plan" | "add_weekly_meal_plan" | "update_weekly_meal_plan" | "add_habit" | "add_task" | "modify_training" | "none",
   "response": "FOR MEAL PLANS: MUST include calculation breakdown: '**Macro Calculation:** BMR (Mifflin-St Jeor) for [name] ([weight]kg, [height]cm, [age]yo): [X] kcal. TDEE: BMR × [multiplier] = [X] kcal. Goal adjustment: [X] kcal daily target. **Daily Targets:** [X] kcal, [X]g protein, [X]g carbs, [X]g fat. **Distribution:** Breakfast 25%, Lunch 30%, Dinner 30%, Snacks 15%.' FOR OTHER TYPES: A friendly confirmation message.",
   "data": {
     // For add_training (single workout day):
@@ -1315,7 +1315,7 @@ You must respond with a JSON object in this exact format:
       { "type": "Dinner", "name": "Salmon with Rice and Vegetables", "calories": 600, "protein": 40, "carbs": 50, "fat": 22 }
     ]
     
-    // For add_weekly_meal_plan (MULTIPLE DAYS of meal plans - use for weekly meal plans):
+    // For add_weekly_meal_plan OR update_weekly_meal_plan (same format - update replaces existing):
     "weeklyMealPlan": [
       { "day": "Monday", "title": "Day 1 Meals", "meals": [
         { "type": "Breakfast", "name": "Eggs & Toast", "calories": 400, "protein": 25, "carbs": 30, "fat": 18 },
@@ -1340,7 +1340,14 @@ CRITICAL DISTINCTION:
 
 IMPORTANT: When the user requests multiple training days (e.g., "4-day split", "weekly schedule", "3 day workout plan", "upper lower split"), use "add_schedule" with an array of days. Only use "add_training" for a single workout day.
 
-If you don't understand the request or it's unrelated to fitness programming, use type "none" and provide a helpful response explaining what you can do.
+CRITICAL BEHAVIOR: NEVER respond with type "none" when asked to modify, update, adjust, or recalculate a plan. If the user asks you to change something about an existing plan (e.g., "recalculate with 1g fat per kg", "update macros", "adjust the meal plan"), you MUST:
+1. Make the requested changes immediately
+2. Use "update_weekly_meal_plan" to replace the current nutrition plan with the updated version
+3. NEVER ask "Would you like me to..." - just do it
+
+The "update_weekly_meal_plan" type works exactly like "add_weekly_meal_plan" but signals to replace existing nutrition instead of adding to it.
+
+Only use type "none" if the request is completely unrelated to fitness/nutrition programming (e.g., "tell me a joke", "what's the weather").
 
 IMPORTANT LANGUAGE INSTRUCTION: Write ALL text content in the client's preferred language. ${LANGUAGE_INSTRUCTIONS[preferredLanguage]}
 This includes:

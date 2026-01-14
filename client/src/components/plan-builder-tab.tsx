@@ -162,12 +162,13 @@ interface AiProgramBuilderPanelProps {
   onAddTrainingDay: (day: TrainingDay) => void;
   onAddMeal: (dayId: string, meal: Meal) => void;
   onAddNutritionDay: (day: NutritionDay) => void;
+  onReplaceNutritionDays: (days: NutritionDay[]) => void;
   onAddHabit: (habit: Habit) => void;
   onAddTask: (task: Task) => void;
   onAddExercise: (dayId: string, exercise: Exercise) => void;
 }
 
-function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTrainingDay, onAddMeal, onAddNutritionDay, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
+function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTrainingDay, onAddMeal, onAddNutritionDay, onReplaceNutritionDays, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "initial",
@@ -323,15 +324,17 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
         } else {
           console.log("mealPlanData is not a valid array:", typeof mealPlanData);
         }
-      } else if (result.type === "add_weekly_meal_plan") {
+      } else if (result.type === "add_weekly_meal_plan" || result.type === "update_weekly_meal_plan") {
         // Handle weekly meal plan - multiple days of nutrition
         // Check both root level and inside data object
         const weeklyPlanData = (result as any).weeklyMealPlan || result.data?.weeklyMealPlan;
-        console.log("Processing add_weekly_meal_plan, weeklyPlanData:", weeklyPlanData);
+        const isUpdate = result.type === "update_weekly_meal_plan";
+        console.log(`Processing ${result.type}, weeklyPlanData:`, weeklyPlanData);
         if (weeklyPlanData && Array.isArray(weeklyPlanData)) {
-          console.log("Adding", weeklyPlanData.length, "nutrition days from weekly meal plan");
-          // Create a nutrition day for each day in the plan
-          weeklyPlanData.forEach((dayPlan: any) => {
+          console.log((isUpdate ? "Replacing with" : "Adding"), weeklyPlanData.length, "nutrition days from weekly meal plan");
+          
+          // Create nutrition days array
+          const newNutritionDays: NutritionDay[] = weeklyPlanData.map((dayPlan: any) => {
             const meals: Meal[] = (dayPlan.meals || []).map((mealData: any) => ({
               id: generateId(),
               type: mealData.type || "Lunch",
@@ -342,15 +345,25 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
               fat: mealData.fat || 20,
             }));
             
-            const nutritionDay: NutritionDay = {
+            return {
               id: generateId(),
               day: dayPlan.day || "Monday",
               title: dayPlan.title || `${dayPlan.day} Meal Plan`,
               meals,
             };
-            console.log("Adding nutrition day:", nutritionDay);
-            onAddNutritionDay(nutritionDay);
           });
+          
+          if (isUpdate) {
+            // Replace all existing nutrition days
+            console.log("Replacing all nutrition days with new plan");
+            onReplaceNutritionDays(newNutritionDays);
+          } else {
+            // Add each day individually
+            newNutritionDays.forEach((nutritionDay) => {
+              console.log("Adding nutrition day:", nutritionDay);
+              onAddNutritionDay(nutritionDay);
+            });
+          }
         } else {
           console.log("weeklyPlanData is not a valid array:", typeof weeklyPlanData);
         }
@@ -1759,6 +1772,13 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
     }));
   };
 
+  const handleReplaceNutritionDays = (days: NutritionDay[]) => {
+    setProgramState(prev => ({
+      ...prev,
+      nutritionDays: days,
+    }));
+  };
+
   const handleUpdateNutritionDay = (dayId: string, updates: Partial<NutritionDay>) => {
     setProgramState(prev => ({
       ...prev,
@@ -2186,6 +2206,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
                   onAddTrainingDay={handleAddTrainingDay}
                   onAddMeal={handleAddMealToDay}
                   onAddNutritionDay={handleAddNutritionDay}
+                  onReplaceNutritionDays={handleReplaceNutritionDays}
                   onAddHabit={handleAddHabit}
                   onAddTask={handleAddTask}
                   onAddExercise={handleAddExercise}
