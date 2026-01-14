@@ -323,6 +323,36 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
         } else {
           console.log("mealPlanData is not a valid array:", typeof mealPlanData);
         }
+      } else if (result.type === "add_weekly_meal_plan") {
+        // Handle weekly meal plan - multiple days of nutrition
+        const weeklyPlanData = result.data?.weeklyMealPlan;
+        console.log("Processing add_weekly_meal_plan, weeklyPlanData:", weeklyPlanData);
+        if (weeklyPlanData && Array.isArray(weeklyPlanData)) {
+          console.log("Adding", weeklyPlanData.length, "nutrition days from weekly meal plan");
+          // Create a nutrition day for each day in the plan
+          weeklyPlanData.forEach((dayPlan: any) => {
+            const meals: Meal[] = (dayPlan.meals || []).map((mealData: any) => ({
+              id: generateId(),
+              type: mealData.type || "Lunch",
+              name: mealData.name || "New Meal",
+              calories: mealData.calories || 500,
+              protein: mealData.protein || 30,
+              carbs: mealData.carbs || 40,
+              fat: mealData.fat || 20,
+            }));
+            
+            const nutritionDay: NutritionDay = {
+              id: generateId(),
+              day: dayPlan.day || "Monday",
+              title: dayPlan.title || `${dayPlan.day} Meal Plan`,
+              meals,
+            };
+            console.log("Adding nutrition day:", nutritionDay);
+            onAddNutritionDay(nutritionDay);
+          });
+        } else {
+          console.log("weeklyPlanData is not a valid array:", typeof weeklyPlanData);
+        }
       } else if (result.type === "add_habit" && result.data?.habit) {
         onAddHabit({
           id: generateId(),

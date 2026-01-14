@@ -1048,7 +1048,7 @@ function generateFallbackSummary(
 }
 
 export interface ProgramBuilderAction {
-  type: "add_training" | "add_schedule" | "add_meal" | "add_meal_plan" | "add_habit" | "add_task" | "modify_training" | "none";
+  type: "add_training" | "add_schedule" | "add_meal" | "add_meal_plan" | "add_weekly_meal_plan" | "add_habit" | "add_task" | "modify_training" | "none";
   response: string;
   data?: {
     day?: string;
@@ -1084,6 +1084,18 @@ export interface ProgramBuilderAction {
       protein: number;
       carbs: number;
       fat: number;
+    }>;
+    weeklyMealPlan?: Array<{
+      day: string;
+      title: string;
+      meals: Array<{
+        type: string;
+        name: string;
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+      }>;
     }>;
     habit?: {
       name: string;
@@ -1268,7 +1280,7 @@ Example workout types and exercises:
 
 You must respond with a JSON object in this exact format:
 {
-  "type": "add_training" | "add_schedule" | "add_meal" | "add_meal_plan" | "add_habit" | "add_task" | "modify_training" | "none",
+  "type": "add_training" | "add_schedule" | "add_meal" | "add_meal_plan" | "add_weekly_meal_plan" | "add_habit" | "add_task" | "modify_training" | "none",
   "response": "A friendly confirmation message describing what you did",
   "data": {
     // For add_training (single workout day):
@@ -1276,7 +1288,7 @@ You must respond with a JSON object in this exact format:
     "title": "Workout Title",
     "exercises": [{ "name": "Exercise Name", "sets": 4, "reps": 10, "note": "optional note" }]
     
-    // For add_schedule (MULTIPLE workout days - use when user asks for a weekly schedule, multiple days, or X-day program):
+    // For add_schedule (MULTIPLE TRAINING/WORKOUT days - use ONLY for workouts/exercise programs):
     "schedule": [
       { "day": "Monday", "title": "Upper Body", "exercises": [{ "name": "Bench Press", "sets": 4, "reps": 10 }] },
       { "day": "Wednesday", "title": "Lower Body", "exercises": [{ "name": "Squats", "sets": 4, "reps": 8 }] }
@@ -1289,12 +1301,22 @@ You must respond with a JSON object in this exact format:
     // For add_meal (single meal):
     "meal": { "type": "Breakfast|Lunch|Dinner|Snack", "name": "Meal name", "calories": 500, "protein": 30, "carbs": 40, "fat": 20 }
     
-    // For add_meal_plan (FULL DAY meal plan based on macros - use when user asks for meal plan based on their macros):
+    // For add_meal_plan (SINGLE DAY meal plan):
     "mealPlan": [
       { "type": "Breakfast", "name": "Oatmeal with Greek Yogurt", "calories": 450, "protein": 35, "carbs": 55, "fat": 12 },
       { "type": "Lunch", "name": "Grilled Chicken Salad", "calories": 550, "protein": 45, "carbs": 30, "fat": 25 },
       { "type": "Snack", "name": "Protein Shake with Banana", "calories": 300, "protein": 30, "carbs": 35, "fat": 5 },
       { "type": "Dinner", "name": "Salmon with Rice and Vegetables", "calories": 600, "protein": 40, "carbs": 50, "fat": 22 }
+    ]
+    
+    // For add_weekly_meal_plan (MULTIPLE DAYS of meal plans - use for weekly meal plans):
+    "weeklyMealPlan": [
+      { "day": "Monday", "title": "Day 1 Meals", "meals": [
+        { "type": "Breakfast", "name": "Eggs & Toast", "calories": 400, "protein": 25, "carbs": 30, "fat": 18 },
+        { "type": "Lunch", "name": "Chicken Salad", "calories": 500, "protein": 40, "carbs": 20, "fat": 25 },
+        { "type": "Dinner", "name": "Grilled Fish", "calories": 550, "protein": 45, "carbs": 30, "fat": 22 }
+      ]},
+      { "day": "Tuesday", "title": "Day 2 Meals", "meals": [...] }
     ]
     
     // For add_habit:
@@ -1304,6 +1326,11 @@ You must respond with a JSON object in this exact format:
     "task": { "name": "Task description", "dueDay": "Mon|Tue|Wed|Thu|Fri|Sat|Sun" }
   }
 }
+
+CRITICAL DISTINCTION:
+- "add_schedule" is ONLY for TRAINING/WORKOUT schedules (exercises with sets and reps). NEVER use it for meals.
+- "add_weekly_meal_plan" is for NUTRITION/MEAL plans across multiple days. Use this when user asks for "weekly meal plan", "meal plan for the week", or any multi-day nutrition request.
+- "add_meal_plan" is for a single day's worth of meals.
 
 IMPORTANT: When the user requests multiple training days (e.g., "4-day split", "weekly schedule", "3 day workout plan", "upper lower split"), use "add_schedule" with an array of days. Only use "add_training" for a single workout day.
 
