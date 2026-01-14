@@ -169,15 +169,67 @@ interface AiProgramBuilderPanelProps {
 }
 
 function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTrainingDay, onAddMeal, onAddNutritionDay, onReplaceNutritionDays, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "initial",
-      role: "assistant",
-      content: `Hi! I'm ready to help you build this week's program for ${clientName}. I can create:\n\n- Training sessions with exercises, sets, and reps\n- Meal plans with macros and recipes\n- Daily habits to track\n- Weekly tasks and goals\n\nWhat would you like to add to this week's program?`,
-    },
-  ]);
+  const getInitialMessage = () => ({
+    id: "initial",
+    role: "assistant" as const,
+    content: `Hi! I'm ready to help you build this week's program for ${clientName}. I can create:\n\n- Training sessions with exercises, sets, and reps\n- Meal plans with macros and recipes\n- Daily habits to track\n- Weekly tasks and goals\n\nWhat would you like to add to this week's program?`,
+  });
+
+  const [messages, setMessages] = useState<ChatMessage[]>([getInitialMessage()]);
   const [inputValue, setInputValue] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+
+  // Load chat history on mount
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!clientId) {
+        setIsLoadingHistory(false);
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/program-builder/messages/${clientId}`, {
+          credentials: "include",
+        });
+        
+        if (response.ok) {
+          const historyMessages = await response.json();
+          if (historyMessages.length > 0) {
+            // Convert stored messages to ChatMessage format
+            const loadedMessages: ChatMessage[] = historyMessages.map((m: any) => ({
+              id: m.id,
+              role: m.role as "user" | "assistant",
+              content: m.content,
+            }));
+            setMessages([getInitialMessage(), ...loadedMessages]);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load chat history:", error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadHistory();
+  }, [clientId, clientName]);
+
+  // Helper to save a message to the database
+  const saveMessage = async (role: "user" | "assistant", content: string) => {
+    if (!clientId) return;
+    
+    try {
+      await fetch("/api/program-builder/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ clientId, role, content }),
+      });
+    } catch (error) {
+      console.error("Failed to save chat message:", error);
+    }
+  };
 
   const handleSend = async () => {
     if (!inputValue.trim() || isProcessing) return;
@@ -192,6 +244,9 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
     const messageText = inputValue;
     setInputValue("");
     setIsProcessing(true);
+
+    // Save user message to database
+    saveMessage("user", messageText);
 
     try {
       const response = await fetch("/api/program-builder/process", {
@@ -224,6 +279,9 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
       };
 
       setMessages((prev) => [...prev, assistantResponse]);
+      
+      // Save assistant response to database
+      saveMessage("assistant", result.response);
 
       if (result.type === "add_training" && result.data) {
         const newDay: TrainingDay = {
