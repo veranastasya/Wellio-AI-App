@@ -516,11 +516,9 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
     }
 
     const metrics = [];
-    if (client.weight) metrics.push(`Weight: ${client.weight} lbs`);
+    if (client.weight) metrics.push(`Weight: ${client.weight}kg`);
     if (client.height) {
-      const feet = Math.floor(client.height / 12);
-      const inches = client.height % 12;
-      metrics.push(`Height: ${feet}'${inches}"`);
+      metrics.push(`Height: ${client.height}cm`);
     }
     if (client.bodyFatPercentage) metrics.push(`Body Fat: ${client.bodyFatPercentage}%`);
     if (client.activityLevel) metrics.push(`Activity Level: ${client.activityLevel}`);
@@ -536,13 +534,13 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
       }
       
       if (client.goal === 'lose_weight' && client.targetWeight) {
-        prompt += `\n  - Target Weight: ${client.targetWeight} lbs`;
+        prompt += `\n  - Target Weight: ${client.targetWeight}kg`;
       }
       if (client.goal === 'improve_body_composition' && client.targetBodyFat) {
         prompt += `\n  - Target Body Fat: ${client.targetBodyFat}%`;
       }
       if (client.goal === 'maintain_weight' && client.goalWeight) {
-        prompt += `\n  - Goal Weight: ${client.goalWeight} lbs`;
+        prompt += `\n  - Goal Weight: ${client.goalWeight}kg`;
       }
     }
 
