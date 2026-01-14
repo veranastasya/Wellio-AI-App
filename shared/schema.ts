@@ -3453,3 +3453,29 @@ export const insertProgressPhotoSchema = createInsertSchema(progressPhotos).omit
 
 export type InsertProgressPhoto = z.infer<typeof insertProgressPhotoSchema>;
 export type ProgressPhoto = typeof progressPhotos.$inferSelect;
+
+// Plan Builder Chat Messages - Persistent chat history for AI plan builder (14-day retention)
+export const PLAN_BUILDER_CHAT_ROLES = ["user", "assistant"] as const;
+export type PlanBuilderChatRole = typeof PLAN_BUILDER_CHAT_ROLES[number];
+
+export const planBuilderChatMessages = pgTable("plan_builder_chat_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coachId: varchar("coach_id").notNull(),
+  clientId: varchar("client_id").notNull(),
+  role: varchar("role").notNull(), // 'user' or 'assistant'
+  content: text("content").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => ({
+  coachClientIdx: index("plan_builder_chat_coach_client_idx").on(table.coachId, table.clientId),
+  createdAtIdx: index("plan_builder_chat_created_at_idx").on(table.createdAt),
+}));
+
+export const insertPlanBuilderChatMessageSchema = createInsertSchema(planBuilderChatMessages).omit({
+  id: true,
+}).extend({
+  role: z.enum(PLAN_BUILDER_CHAT_ROLES),
+  createdAt: z.string().optional(),
+});
+
+export type InsertPlanBuilderChatMessage = z.infer<typeof insertPlanBuilderChatMessageSchema>;
+export type PlanBuilderChatMessage = typeof planBuilderChatMessages.$inferSelect;
