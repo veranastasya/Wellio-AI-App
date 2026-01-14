@@ -325,7 +325,8 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
         }
       } else if (result.type === "add_weekly_meal_plan") {
         // Handle weekly meal plan - multiple days of nutrition
-        const weeklyPlanData = result.data?.weeklyMealPlan;
+        // Check both root level and inside data object
+        const weeklyPlanData = (result as any).weeklyMealPlan || result.data?.weeklyMealPlan;
         console.log("Processing add_weekly_meal_plan, weeklyPlanData:", weeklyPlanData);
         if (weeklyPlanData && Array.isArray(weeklyPlanData)) {
           console.log("Adding", weeklyPlanData.length, "nutrition days from weekly meal plan");
