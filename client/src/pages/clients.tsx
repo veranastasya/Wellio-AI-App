@@ -41,10 +41,10 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertClientSchema, type Client, type InsertClient } from "@shared/schema";
@@ -345,19 +345,19 @@ export default function Clients() {
             <p className="text-sm sm:text-base text-muted-foreground mt-1">{t.clients.subtitle[lang]}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <Popover>
+              <PopoverTrigger asChild>
                 <button 
                   className="p-1 text-muted-foreground hover:text-foreground transition-colors" 
                   data-testid="button-add-client-info"
                 >
                   <Info className="w-4 h-4" />
                 </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-xs whitespace-pre-line text-left">
+              </PopoverTrigger>
+              <PopoverContent side="bottom" className="max-w-xs whitespace-pre-line text-left text-sm">
                 {t.clients.addClientInfoTooltip[lang]}
-              </TooltipContent>
-            </Tooltip>
+              </PopoverContent>
+            </Popover>
             <Dialog open={isInviteOpen} onOpenChange={(open) => {
               setIsInviteOpen(open);
               if (!open) {
