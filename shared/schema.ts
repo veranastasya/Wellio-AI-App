@@ -1063,6 +1063,11 @@ export const COACH_UI_TRANSLATIONS = {
     copyLink: { en: "Copy Link", ru: "Скопировать ссылку", es: "Copiar Enlace" },
     copied: { en: "Copied!", ru: "Скопировано!", es: "¡Copiado!" },
     sendInvite: { en: "Send Invite", ru: "Отправить приглашение", es: "Enviar Invitación" },
+    addClientInfoTooltip: { 
+      en: "Send Invite: Automated email with onboarding questionnaire - best for new clients.\n\nNew Client: Manual entry for clients you've already onboarded offline or imported from another system.", 
+      ru: "Отправить приглашение: Автоматическое письмо с анкетой — лучший вариант для новых клиентов.\n\nНовый клиент: Ручной ввод для клиентов, которых вы уже приняли офлайн или импортировали из другой системы.", 
+      es: "Enviar Invitación: Email automático con cuestionario de incorporación - mejor para nuevos clientes.\n\nNuevo Cliente: Entrada manual para clientes que ya has incorporado offline o importado de otro sistema." 
+    },
     sendQuestionnaire: { en: "Send questionnaire", ru: "Отправить анкету", es: "Enviar cuestionario" },
     inviteLanguage: { en: "Email & Form Language", ru: "Язык письма и формы", es: "Idioma del Email y Formulario" },
     selectLanguage: { en: "Select language", ru: "Выберите язык", es: "Seleccionar idioma" },

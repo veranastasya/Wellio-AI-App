@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Plus, Search, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, ChevronUp, Users as UsersIcon, Eye, AlertTriangle, CalendarDays, TrendingUp } from "lucide-react";
+import { Plus, Search, Target, Calendar, MoreVertical, Pencil, Trash2, Copy, Check, UserPlus, Sparkles, ChevronDown, ChevronUp, Users as UsersIcon, Eye, AlertTriangle, CalendarDays, TrendingUp, Info } from "lucide-react";
 import type { Questionnaire, GoalType, SupportedLanguage, Coach } from "@shared/schema";
 import { GOAL_TYPES, GOAL_TYPE_LABELS, GOAL_TYPE_LABELS_TRANSLATED, getGoalTypeLabel, ACTIVITY_LEVELS, ACTIVITY_LEVEL_LABELS, ACTIVITY_LEVEL_LABELS_TRANSLATED, getActivityLevelLabel, COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED, formatWeight, formatHeight, lbsToKg, kgToLbs, inchesToCm, cmToInches, inchesToFeetAndInches, feetAndInchesToInches } from "@shared/units";
@@ -40,6 +40,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertClientSchema, type Client, type InsertClient } from "@shared/schema";
@@ -339,7 +344,20 @@ export default function Clients() {
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-clients-title">{t.clients.title[lang]}</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">{t.clients.subtitle[lang]}</p>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button 
+                  className="p-1 text-muted-foreground hover:text-foreground transition-colors" 
+                  data-testid="button-add-client-info"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs whitespace-pre-line text-left">
+                {t.clients.addClientInfoTooltip[lang]}
+              </TooltipContent>
+            </Tooltip>
             <Dialog open={isInviteOpen} onOpenChange={(open) => {
               setIsInviteOpen(open);
               if (!open) {
