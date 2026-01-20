@@ -633,6 +633,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==========================================
+  // External Payment Integration APIs
+  // These endpoints are called from the landing page (wellioai.com)
+  // and require WELLIOAI_SHARED_SECRET for authentication
+  // ==========================================
+
+  // Middleware to verify shared secret for external API calls
+  const verifySharedSecret = (req: Request, res: Response, next: NextFunction) => {
+    const sharedSecret = process.env.WELLIOAI_SHARED_SECRET;
+    const providedSecret = req.headers['x-wellio-secret'];
+    
+    if (!sharedSecret) {
+      console.error("[External API] WELLIOAI_SHARED_SECRET not configured");
+      return res.status(500).json({ error: "server_configuration_error" });
+    }
+    
+    if (!providedSecret || providedSecret !== sharedSecret) {
+      return res.status(401).json({ error: "unauthorized" });
+    }
+    
+    next();
+  };
+
+  // Check if email exists (called before payment to prevent duplicate signups)
+  app.post("/api/auth/check-email", verifySharedSecret, async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email || typeof email !== 'string') {
+        return res.status(400).json({ error: "invalid_data", message: "Email is required" });
+      }
+      
+      const normalizedEmail = email.toLowerCase().trim();
+      const existingCoach = await storage.getCoachByEmail(normalizedEmail);
+      
+      if (existingCoach) {
+        return res.json({ exists: true, message: "Account already exists" });
+      }
+      
+      res.json({ exists: false });
+    } catch (error) {
+      console.error("[Check Email] Error:", error);
+      res.status(500).json({ error: "database_error" });
+    }
+  });
+
+  // Create user from successful Stripe payment
+  app.post("/api/auth/create-user-from-payment", verifySharedSecret, async (req, res) => {
+    try {
+      const { email, firstName, lastName, passwordHash, plan, stripeCustomerId, stripeSubscriptionId } = req.body;
+      
+      // Validate required fields
+      if (!email || !firstName || !passwordHash || !plan || !stripeCustomerId || !stripeSubscriptionId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "invalid_data",
+          message: "Missing required fields: email, firstName, passwordHash, plan, stripeCustomerId, stripeSubscriptionId"
+        });
+      }
+      
+      // Validate plan type
+      if (!['starter', 'pro', 'elite'].includes(plan)) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "invalid_data",
+          message: "Plan must be one of: starter, pro, elite"
+        });
+      }
+      
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      // Check if email already exists
+      const existingCoach = await storage.getCoachByEmail(normalizedEmail);
+      if (existingCoach) {
+        return res.status(409).json({ success: false, error: "email_already_exists" });
+      }
+      
+      // Generate one-time login token (valid for 1 hour)
+      const crypto = await import('crypto');
+      const loginToken = crypto.randomBytes(32).toString('hex');
+      const loginTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+      
+      // Create the coach account
+      const name = lastName ? `${firstName} ${lastName}` : firstName;
+      const newCoach = await storage.createCoach({
+        name,
+        email: normalizedEmail,
+        passwordHash,
+        plan,
+        stripeCustomerId,
+        stripeSubscriptionId,
+        loginToken,
+        loginTokenExpiresAt,
+        onboardingCompleted: false,
+        preferredLanguage: "en",
+        weekStartDay: "Mon",
+        timezone: "America/New_York",
+      });
+      
+      console.log(`[Create User] Created coach account for ${normalizedEmail} with plan: ${plan}`);
+      
+      res.json({
+        success: true,
+        userId: newCoach.id,
+        loginToken
+      });
+    } catch (error) {
+      console.error("[Create User From Payment] Error:", error);
+      res.status(500).json({ success: false, error: "database_error" });
+    }
+  });
+
+  // Auto-login with one-time token (used after payment redirect)
+  app.post("/api/auth/token-login", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ success: false, error: "Token is required" });
+      }
+      
+      // Find coach with this token by querying database directly
+      const { coaches } = await import("@shared/schema");
+      const coachResult = await db.select().from(coaches).where(eq(coaches.loginToken, token));
+      const coach = coachResult[0];
+      
+      if (!coach) {
+        return res.status(401).json({ success: false, error: "Invalid or expired token" });
+      }
+      
+      // Check if token is expired
+      if (coach.loginTokenExpiresAt && new Date(coach.loginTokenExpiresAt) < new Date()) {
+        return res.status(401).json({ success: false, error: "Token has expired" });
+      }
+      
+      // Clear the token (one-time use)
+      await storage.updateCoach(coach.id, { loginToken: null, loginTokenExpiresAt: null });
+      
+      // Set session
+      req.session.coachId = coach.id;
+      
+      console.log(`[Token Login] Coach ${coach.email} logged in via token`);
+      
+      res.json({ 
+        success: true, 
+        coach: {
+          id: coach.id,
+          name: coach.name,
+          email: coach.email,
+          onboardingCompleted: coach.onboardingCompleted
+        }
+      });
+    } catch (error) {
+      console.error("[Token Login] Error:", error);
+      res.status(500).json({ success: false, error: "Login failed" });
+    }
+  });
+
   // Coach profile routes
   app.get("/api/coach/profile", requireCoachAuth, async (req, res) => {
     try {

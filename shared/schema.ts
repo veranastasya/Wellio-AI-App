@@ -2048,6 +2048,12 @@ export const coaches = pgTable("coaches", {
   preferredLanguage: text("preferred_language").notNull().default("en"),
   weekStartDay: text("week_start_day").notNull().default("Mon"), // Coach-defined week start day
   timezone: text("timezone").notNull().default("America/New_York"), // Coach's timezone for scheduling
+  // Stripe/subscription fields
+  plan: text("plan"), // "starter" | "pro" | "elite"
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  loginToken: text("login_token"), // One-time token for auto-login after payment
+  loginTokenExpiresAt: timestamp("login_token_expires_at"),
 });
 
 export const insertCoachSchema = createInsertSchema(coaches).omit({ id: true });
