@@ -792,12 +792,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Token Login] Coach ${coach.email} logged in via token`);
       
-      // Redirect to dashboard (or onboarding if not completed)
-      if (coach.onboardingCompleted) {
-        res.redirect("/");
-      } else {
-        res.redirect("/onboarding");
-      }
+      // Redirect to dashboard - SmartRedirect will handle routing
+      res.redirect("/");
     } catch (error) {
       console.error("[Token Login] Error:", error);
       res.redirect("/login?error=login_failed");
