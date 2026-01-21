@@ -682,14 +682,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create user from successful Stripe payment
   app.post("/api/auth/create-user-from-payment", verifySharedSecret, async (req, res) => {
     try {
-      const { email, firstName, lastName, passwordHash, plan, stripeCustomerId, stripeSubscriptionId } = req.body;
+      const { email, name, password, plan, stripeCustomerId, stripeSubscriptionId } = req.body;
       
       // Validate required fields
-      if (!email || !firstName || !passwordHash || !plan || !stripeCustomerId || !stripeSubscriptionId) {
+      if (!email || !name || !password || !plan || !stripeCustomerId || !stripeSubscriptionId) {
         return res.status(400).json({ 
           success: false, 
           error: "invalid_data",
-          message: "Missing required fields: email, firstName, passwordHash, plan, stripeCustomerId, stripeSubscriptionId"
+          message: "Missing required fields: email, name, password, plan, stripeCustomerId, stripeSubscriptionId"
         });
       }
       
@@ -702,6 +702,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Validate password length
+      if (password.length < 8) {
+        return res.status(400).json({
+          success: false,
+          error: "invalid_data",
+          message: "Password must be at least 8 characters"
+        });
+      }
+      
       const normalizedEmail = email.toLowerCase().trim();
       
       // Check if email already exists
@@ -710,15 +719,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ success: false, error: "email_already_exists" });
       }
       
+      // Hash password server-side with bcrypt
+      const passwordHash = await bcrypt.hash(password, 10);
+      
       // Generate one-time login token (valid for 1 hour)
       const crypto = await import('crypto');
       const loginToken = crypto.randomBytes(32).toString('hex');
       const loginTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
       
       // Create the coach account
-      const name = lastName ? `${firstName} ${lastName}` : firstName;
       const newCoach = await storage.createCoach({
-        name,
+        name: name.trim(),
         email: normalizedEmail,
         passwordHash,
         plan,
@@ -734,10 +745,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Create User] Created coach account for ${normalizedEmail} with plan: ${plan}`);
       
+      // Build the login URL for redirect
+      const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] 
+        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+        : 'https://app.wellioai.com';
+      const loginUrl = `${baseUrl}/api/auth/token-login?token=${loginToken}`;
+      
       res.json({
         success: true,
         userId: newCoach.id,
-        loginToken
+        loginToken,
+        loginUrl
       });
     } catch (error) {
       console.error("[Create User From Payment] Error:", error);
