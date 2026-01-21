@@ -745,11 +745,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Create User] Created coach account for ${normalizedEmail} with plan: ${plan}`);
       
-      // Build the login URL for redirect
-      const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] 
-        ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
-        : 'https://app.wellioai.com';
-      const loginUrl = `${baseUrl}/api/auth/token-login?token=${loginToken}`;
+      // Build the login URL for redirect - always use production domain
+      const loginUrl = `https://app.wellioai.com/api/auth/token-login?token=${loginToken}`;
       
       res.json({
         success: true,
