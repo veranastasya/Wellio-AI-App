@@ -761,12 +761,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Auto-login with one-time token (used after payment redirect)
-  app.post("/api/auth/token-login", async (req, res) => {
+  // GET request so it works with URL redirects from landing page
+  app.get("/api/auth/token-login", async (req, res) => {
     try {
-      const { token } = req.body;
+      const token = req.query.token as string;
       
       if (!token) {
-        return res.status(400).json({ success: false, error: "Token is required" });
+        return res.redirect("/login?error=missing_token");
       }
       
       // Find coach with this token by querying database directly
@@ -775,12 +776,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const coach = coachResult[0];
       
       if (!coach) {
-        return res.status(401).json({ success: false, error: "Invalid or expired token" });
+        return res.redirect("/login?error=invalid_token");
       }
       
       // Check if token is expired
       if (coach.loginTokenExpiresAt && new Date(coach.loginTokenExpiresAt) < new Date()) {
-        return res.status(401).json({ success: false, error: "Token has expired" });
+        return res.redirect("/login?error=expired_token");
       }
       
       // Clear the token (one-time use)
@@ -791,18 +792,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Token Login] Coach ${coach.email} logged in via token`);
       
-      res.json({ 
-        success: true, 
-        coach: {
-          id: coach.id,
-          name: coach.name,
-          email: coach.email,
-          onboardingCompleted: coach.onboardingCompleted
-        }
-      });
+      // Redirect to dashboard (or onboarding if not completed)
+      if (coach.onboardingCompleted) {
+        res.redirect("/");
+      } else {
+        res.redirect("/onboarding");
+      }
     } catch (error) {
       console.error("[Token Login] Error:", error);
-      res.status(500).json({ success: false, error: "Login failed" });
+      res.redirect("/login?error=login_failed");
     }
   });
 
