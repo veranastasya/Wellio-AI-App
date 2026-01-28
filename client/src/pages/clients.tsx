@@ -371,7 +371,7 @@ export default function Clients() {
                   <span className="hidden sm:inline">{t.clients.sendInvite[lang]}</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto safe-area-bottom">
                 <DialogHeader>
                   <DialogTitle>{t.clients.sendClientInvite[lang]}</DialogTitle>
                   <DialogDescription>
@@ -430,7 +430,7 @@ export default function Clients() {
                   {t.clients.newClient[lang]}
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto safe-area-bottom">
                 <DialogHeader>
                   <DialogTitle>{t.clients.addClient[lang]}</DialogTitle>
                   <DialogDescription>
@@ -736,7 +736,7 @@ export default function Clients() {
         )}
 
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto safe-area-bottom">
             <DialogHeader>
               <DialogTitle>{t.clients.editClient[lang]}</DialogTitle>
               <DialogDescription>{t.clients.inviteDescription[lang]}</DialogDescription>
