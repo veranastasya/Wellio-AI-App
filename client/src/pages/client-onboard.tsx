@@ -672,7 +672,7 @@ export default function ClientOnboard() {
               )}
             </div>
           </CardHeader>
-          <CardContent className="overflow-y-auto max-h-[calc(100vh-200px)] p-4 sm:p-6 pt-0">
+          <CardContent className="p-4 sm:p-6 pt-0">
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               <div className="space-y-3 sm:space-y-4">
                 <div className="space-y-2">
