@@ -438,47 +438,6 @@ export default function QuestionnaireBuilder() {
 
               <FormField
                 control={form.control}
-                name="consentText"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t.consentText[lang]}</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        placeholder={lang === "ru" ? "Я соглашаюсь с условиями..." : lang === "es" ? "Acepto los términos y condiciones..." : "I agree to the terms and conditions..."}
-                        rows={2}
-                        data-testid="input-consent-text"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="consentRequired"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">{t.requireConsent[lang]}</FormLabel>
-                      <div className="text-sm text-muted-foreground">
-                        {t.consentDescription[lang]}
-                      </div>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-consent-required"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="confirmationMessage"
                 render={({ field }) => (
                   <FormItem>
