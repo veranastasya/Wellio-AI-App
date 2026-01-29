@@ -156,7 +156,7 @@ export default function ClientOnboard() {
       return;
     }
 
-    if (questionnaire?.consentRequired && !consentGiven) {
+    if (questionnaire?.consentRequired && questionnaire?.consentText && !consentGiven) {
       toast({
         title: t.validation.consentRequiredTitle[lang],
         description: t.validation.pleaseProvideConsent[lang],
