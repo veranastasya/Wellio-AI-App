@@ -2827,10 +2827,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validLanguage = ["en", "ru", "es"].includes(language) ? language : "en";
       console.log("[DEBUG] Validated language:", validLanguage);
       
-      // Check if client with this email already exists (globally)
-      const existingClient = await storage.getClientByEmail(email);
+      // Check if client with this email already exists for this coach
+      const existingClient = await storage.getClientByEmail(email, effectiveCoachId);
       if (existingClient) {
-        return res.status(400).json({ error: "A client with this email already exists" });
+        return res.status(400).json({ error: "A client with this email already exists in your roster" });
       }
       
       // Check if client already has an active invite from this coach
