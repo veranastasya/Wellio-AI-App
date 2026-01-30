@@ -139,6 +139,16 @@ import { analyzeClientData, analyzeProgressEventsWithGoals, processProgramBuilde
 import { syncAppleHealthData } from "./sync";
 import OpenAI from "openai";
 import PDFDocument from "pdfkit";
+import path from "path";
+
+// Font paths for Cyrillic support in PDFs
+const FONT_PATH = path.join(process.cwd(), 'server', 'fonts');
+const FONTS = {
+  regular: path.join(FONT_PATH, 'Roboto-Regular.ttf'),
+  bold: path.join(FONT_PATH, 'Roboto-Bold.ttf'),
+  italic: path.join(FONT_PATH, 'Roboto-Italic.ttf'),
+  boldItalic: path.join(FONT_PATH, 'Roboto-BoldItalic.ttf'),
+};
 import { 
   verifyRookWebhook, 
   mapRookNutritionToLog, 
@@ -2206,6 +2216,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         size: 'LETTER'
       });
       
+      // Register Roboto fonts for Cyrillic support
+      doc.registerFont('Roboto', FONTS.regular);
+      doc.registerFont('Roboto-Bold', FONTS.bold);
+      doc.registerFont('Roboto-Italic', FONTS.italic);
+      doc.registerFont('Roboto-BoldItalic', FONTS.boldItalic);
+      doc.font('Roboto');
+      
       // Set response headers for PDF download
       const filename = `response-${response.clientName || 'client'}-${new Date(response.submittedAt).toISOString().split('T')[0]}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
@@ -2264,12 +2281,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           // Question text (bold, primary color)
-          doc.fontSize(11).fillColor('#28A0AE').font('Helvetica-Bold');
+          doc.fontSize(11).fillColor('#28A0AE').font('Roboto-Bold');
           doc.text(questionText, { continued: false });
           doc.moveDown(0.3);
           
           // Answer text (normal, black)
-          doc.fontSize(10).fillColor('#000000').font('Helvetica');
+          doc.fontSize(10).fillColor('#000000').font('Roboto');
           doc.text(formattedAnswer, { 
             align: 'left',
             indent: 20
@@ -4908,6 +4925,14 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
       }
 
       const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+      
+      // Register Roboto fonts for Cyrillic support
+      doc.registerFont('Roboto', FONTS.regular);
+      doc.registerFont('Roboto-Bold', FONTS.bold);
+      doc.registerFont('Roboto-Italic', FONTS.italic);
+      doc.registerFont('Roboto-BoldItalic', FONTS.boldItalic);
+      doc.font('Roboto');
+      
       const chunks: Buffer[] = [];
 
       doc.on('data', (chunk) => chunks.push(chunk));
@@ -5133,13 +5158,13 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
           
           // Set font based on formatting
           if (segment.bold && segment.italic) {
-            doc.font('Helvetica-BoldOblique');
+            doc.font('Roboto-BoldItalic');
           } else if (segment.bold) {
-            doc.font('Helvetica-Bold');
+            doc.font('Roboto-Bold');
           } else if (segment.italic) {
-            doc.font('Helvetica-Oblique');
+            doc.font('Roboto-Italic');
           } else {
-            doc.font('Helvetica');
+            doc.font('Roboto');
           }
           
           // Render the segment
@@ -5151,7 +5176,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         }
         
         // Reset to default font
-        doc.font('Helvetica');
+        doc.font('Roboto');
       };
 
       if (!contentText.trim()) {
@@ -5349,6 +5374,14 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
       // Generate PDF (reuse logic from generate-pdf endpoint)
       const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+      
+      // Register Roboto fonts for Cyrillic support
+      doc.registerFont('Roboto', FONTS.regular);
+      doc.registerFont('Roboto-Bold', FONTS.bold);
+      doc.registerFont('Roboto-Italic', FONTS.italic);
+      doc.registerFont('Roboto-BoldItalic', FONTS.boldItalic);
+      doc.font('Roboto');
+      
       const chunks: Buffer[] = [];
       doc.on('data', (chunk) => chunks.push(chunk));
       const pdfPromise = new Promise<Buffer>((resolve) => {
@@ -5454,13 +5487,13 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
           
           // Set font based on formatting
           if (segment.bold && segment.italic) {
-            doc.font('Helvetica-BoldOblique');
+            doc.font('Roboto-BoldItalic');
           } else if (segment.bold) {
-            doc.font('Helvetica-Bold');
+            doc.font('Roboto-Bold');
           } else if (segment.italic) {
-            doc.font('Helvetica-Oblique');
+            doc.font('Roboto-Italic');
           } else {
-            doc.font('Helvetica');
+            doc.font('Roboto');
           }
           
           // Render the segment
@@ -5472,7 +5505,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
         }
         
         // Reset to default font
-        doc.font('Helvetica');
+        doc.font('Roboto');
       };
 
       // Render content with beautiful formatting
