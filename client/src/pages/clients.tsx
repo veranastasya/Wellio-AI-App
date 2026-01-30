@@ -698,23 +698,23 @@ export default function Clients() {
                   )}
 
                   {/* Action Buttons: View and Plan */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="grid grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                     <Button
-                      className="flex-1 min-w-[120px] bg-primary text-white hover:bg-primary/90"
+                      className="bg-primary text-white hover:bg-primary/90 whitespace-nowrap"
                       onClick={() => setLocation(`/coach/clients/${client.id}`)}
                       data-testid={`button-view-${index}`}
                     >
                       <Eye className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">{t.clients.viewProfile[lang]}</span>
+                      {t.clients.viewProfile[lang]}
                     </Button>
                     <Button
                       variant="outline"
-                      className="flex-1 min-w-[100px]"
+                      className="whitespace-nowrap"
                       onClick={() => setLocation(`/coach/clients/${client.id}?tab=plan`)}
                       data-testid={`button-plan-${index}`}
                     >
                       <Sparkles className="w-4 h-4 mr-2 flex-shrink-0" />
-                      <span className="truncate">{t.clientDetail.plan[lang]}</span>
+                      {t.clientDetail.plan[lang]}
                     </Button>
                   </div>
                 </div>
