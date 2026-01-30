@@ -705,24 +705,89 @@ export default function CoachClientDetail() {
                                   return null;
                                 }
 
+                                // Translation maps for default field labels
+                                const defaultFieldLabels: Record<string, { en: string; ru: string; es: string }> = {
+                                  age: { en: "Age", ru: "Возраст", es: "Edad" },
+                                  weight: { en: "Weight", ru: "Вес", es: "Peso" },
+                                  height: { en: "Height", ru: "Рост", es: "Altura" },
+                                  activityLevel: { en: "Activity Level", ru: "Уровень активности", es: "Nivel de actividad" },
+                                  goalType: { en: "Goal Type", ru: "Тип цели", es: "Tipo de objetivo" },
+                                  unitsPreference: { en: "Units Preference", ru: "Единицы измерения", es: "Preferencia de unidades" },
+                                  sex: { en: "Sex", ru: "Пол", es: "Sexo" },
+                                  phone: { en: "Phone", ru: "Телефон", es: "Teléfono" },
+                                  email: { en: "Email", ru: "Эл. почта", es: "Correo electrónico" },
+                                  name: { en: "Name", ru: "Имя", es: "Nombre" },
+                                  occupation: { en: "Occupation", ru: "Род занятий", es: "Ocupación" },
+                                  medicalNotes: { en: "Medical Notes", ru: "Медицинские заметки", es: "Notas médicas" },
+                                  trainingExperience: { en: "Training Experience", ru: "Опыт тренировок", es: "Experiencia de entrenamiento" },
+                                  equipmentAccess: { en: "Equipment Access", ru: "Доступ к оборудованию", es: "Acceso a equipamiento" },
+                                  currentHabits: { en: "Current Habits", ru: "Текущие привычки", es: "Hábitos actuales" },
+                                  preferences: { en: "Preferences", ru: "Предпочтения", es: "Preferencias" },
+                                  timeframe: { en: "Timeframe", ru: "Сроки", es: "Plazo" },
+                                  goalDescription: { en: "Goal Description", ru: "Описание цели", es: "Descripción del objetivo" },
+                                  targetWeight: { en: "Target Weight", ru: "Целевой вес", es: "Peso objetivo" },
+                                  targetBodyFat: { en: "Target Body Fat", ru: "Целевой % жира", es: "Grasa corporal objetivo" },
+                                  bodyFatPercentage: { en: "Body Fat Percentage", ru: "Процент жира", es: "Porcentaje de grasa corporal" },
+                                };
+
+                                // Translation maps for common field values
+                                const valueTranslations: Record<string, { en: string; ru: string; es: string }> = {
+                                  // Activity levels
+                                  sedentary: { en: "Sedentary", ru: "Сидячий образ жизни", es: "Sedentario" },
+                                  lightly_active: { en: "Lightly Active", ru: "Легкая активность", es: "Ligeramente activo" },
+                                  moderately_active: { en: "Moderately Active", ru: "Умеренно активный", es: "Moderadamente activo" },
+                                  very_active: { en: "Very Active", ru: "Очень активный", es: "Muy activo" },
+                                  extremely_active: { en: "Extremely Active", ru: "Экстремально активный", es: "Extremadamente activo" },
+                                  // Goal types
+                                  weight_loss: { en: "Weight Loss", ru: "Похудение", es: "Pérdida de peso" },
+                                  muscle_gain: { en: "Muscle Gain", ru: "Набор мышечной массы", es: "Ganancia muscular" },
+                                  maintenance: { en: "Maintenance", ru: "Поддержание формы", es: "Mantenimiento" },
+                                  eat_healthier: { en: "Eat Healthier", ru: "Питаться здоровее", es: "Comer más sano" },
+                                  improve_fitness: { en: "Improve Fitness", ru: "Улучшить физ. форму", es: "Mejorar la forma física" },
+                                  build_strength: { en: "Build Strength", ru: "Развить силу", es: "Desarrollar fuerza" },
+                                  increase_energy: { en: "Increase Energy", ru: "Повысить энергию", es: "Aumentar la energía" },
+                                  reduce_stress: { en: "Reduce Stress", ru: "Снизить стресс", es: "Reducir el estrés" },
+                                  better_sleep: { en: "Better Sleep", ru: "Улучшить сон", es: "Dormir mejor" },
+                                  body_recomposition: { en: "Body Recomposition", ru: "Рекомпозиция тела", es: "Recomposición corporal" },
+                                  general_wellness: { en: "General Wellness", ru: "Общее здоровье", es: "Bienestar general" },
+                                  // Units
+                                  metric: { en: "Metric (kg/cm)", ru: "Метрические (кг/см)", es: "Métrico (kg/cm)" },
+                                  imperial: { en: "Imperial (lbs/in)", ru: "Имперские (фунты/дюймы)", es: "Imperial (lbs/in)" },
+                                  // Sex
+                                  male: { en: "Male", ru: "Мужской", es: "Masculino" },
+                                  female: { en: "Female", ru: "Женский", es: "Femenino" },
+                                  other: { en: "Other", ru: "Другой", es: "Otro" },
+                                };
+
                                 // Find the actual question text from the questionnaire definition
                                 const questionnaireQuestions = (response as any).questionnaireQuestions || [];
                                 const questionObj = questionnaireQuestions.find((q: any) => q.id === key);
                                 
-                                // Use actual question label if found, otherwise format the key
-                                const questionText = questionObj?.label || questionObj?.text || key
-                                  .replace(/([A-Z])/g, ' $1')
-                                  .replace(/^./, (str) => str.toUpperCase())
-                                  .replace(/_/g, ' ');
+                                // Use actual question label if found, otherwise use translated default or format the key
+                                let questionText = questionObj?.label || questionObj?.text;
+                                if (!questionText) {
+                                  const translatedLabel = defaultFieldLabels[key];
+                                  questionText = translatedLabel ? translatedLabel[lang] : key
+                                    .replace(/([A-Z])/g, ' $1')
+                                    .replace(/^./, (str) => str.toUpperCase())
+                                    .replace(/_/g, ' ');
+                                }
 
                                 // Format the answer based on type
-                                let formattedAnswer = value;
+                                let formattedAnswer: any = value;
                                 if (typeof value === 'boolean') {
                                   formattedAnswer = value ? t.clientDetail.yes[lang] : t.clientDetail.no[lang];
                                 } else if (Array.isArray(value)) {
-                                  formattedAnswer = value.join(', ');
+                                  formattedAnswer = value.map(v => {
+                                    const translated = valueTranslations[v];
+                                    return translated ? translated[lang] : v;
+                                  }).join(', ');
                                 } else if (typeof value === 'object') {
                                   formattedAnswer = JSON.stringify(value, null, 2);
+                                } else if (typeof value === 'string') {
+                                  // Check if value has a translation
+                                  const translated = valueTranslations[value];
+                                  formattedAnswer = translated ? translated[lang] : value;
                                 }
 
                                 return (
