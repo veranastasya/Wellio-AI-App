@@ -698,7 +698,7 @@ export default function Clients() {
                   )}
 
                   {/* Action Buttons: View and Plan */}
-                  <div className="grid grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="grid grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2 gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
                     <Button
                       className="bg-primary text-white hover:bg-primary/90 whitespace-nowrap"
                       onClick={() => setLocation(`/coach/clients/${client.id}`)}
