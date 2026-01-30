@@ -1034,7 +1034,7 @@ export const COACH_UI_TRANSLATIONS = {
     new: { en: "New", ru: "Новый", es: "Nuevo" },
     editClient: { en: "Edit Client", ru: "Редактировать клиента", es: "Editar Cliente" },
     deleteClient: { en: "Delete Client", ru: "Удалить клиента", es: "Eliminar Cliente" },
-    viewProfile: { en: "View Profile", ru: "Смотреть профиль", es: "Ver Perfil" },
+    viewProfile: { en: "View Profile", ru: "В профиль", es: "Ver Perfil" },
     sendMessage: { en: "Send Message", ru: "Отправить сообщение", es: "Enviar Mensaje" },
     // Filters
     all: { en: "All", ru: "Все", es: "Todos" },
