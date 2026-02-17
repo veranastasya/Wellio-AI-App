@@ -7837,6 +7837,82 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
 
+  // ========== Questionnaire Image Upload ==========
+
+  app.post("/api/questionnaire-images/upload", requireCoachAuth, upload.single('image'), async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No image uploaded" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+
+      const uploadResponse = await fetch(uploadURL, {
+        method: 'PUT',
+        body: req.file.buffer,
+        headers: {
+          'Content-Type': req.file.mimetype || 'image/jpeg',
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload to object storage');
+      }
+
+      const objectURL = uploadURL.split('?')[0];
+
+      let imageUrl: string;
+      try {
+        imageUrl = await objectStorageService.trySetObjectEntityAclPolicy(
+          objectURL,
+          {
+            owner: coachId,
+            visibility: "public",
+            aclRules: []
+          }
+        );
+      } catch (aclError) {
+        logger.error('Failed to set ACL policy for questionnaire image', { coachId }, aclError);
+        imageUrl = objectURL;
+      }
+
+      const normalizedPath = objectStorageService.normalizeObjectEntityPath(imageUrl);
+
+      logger.info('Questionnaire image uploaded', { coachId, imageUrl, normalizedPath });
+      res.json({ imageUrl: normalizedPath, objectPath: normalizedPath });
+    } catch (error) {
+      logger.error('Failed to upload questionnaire image', {}, error);
+      res.status(500).json({ error: 'Failed to upload questionnaire image' });
+    }
+  });
+
+  app.get("/api/questionnaire-images/signed-url", async (req, res) => {
+    try {
+      if (!req.session?.coachId && !req.session?.clientId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const objectPath = req.query.path as string;
+      if (!objectPath) {
+        return res.status(400).json({ error: "Missing path parameter" });
+      }
+
+      if (!objectPath.startsWith("/objects/")) {
+        return res.status(400).json({ error: "Invalid object path" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const signedUrl = await objectStorageService.getSignedDownloadURL(objectPath);
+      res.json({ url: signedUrl });
+    } catch (error) {
+      logger.error('Failed to get signed URL for questionnaire image', {}, error);
+      res.status(500).json({ error: 'Failed to get signed URL' });
+    }
+  });
+
   // ========== Client Files (Coach uploads for clients) ==========
 
   app.get("/api/clients/:clientId/files", requireCoachAuth, async (req, res) => {

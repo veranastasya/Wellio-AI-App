@@ -607,14 +607,12 @@ export default function ClientOnboard() {
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
             )}
-            {settings.imageUrl && (
-              <div className="rounded-md overflow-hidden">
-                <img
-                  src={settings.imageUrl}
-                  alt={settings.altText || ""}
-                  className="max-h-64 w-full object-contain"
-                />
-              </div>
+            {(settings.imageUrl || settings.objectPath) && (
+              <OnboardImageBlock
+                imageUrl={settings.imageUrl}
+                objectPath={settings.objectPath}
+                altText={settings.altText || ""}
+              />
             )}
             {settings.caption && (
               <p className="text-xs text-muted-foreground text-center italic">{settings.caption}</p>
@@ -1062,6 +1060,35 @@ export default function ClientOnboard() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function OnboardImageBlock({ imageUrl, objectPath, altText }: { imageUrl?: string; objectPath?: string; altText: string }) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (objectPath && objectPath.startsWith("/objects/")) {
+      fetch(`/api/questionnaire-images/signed-url?path=${encodeURIComponent(objectPath)}`)
+        .then(res => res.json())
+        .then(data => setResolvedUrl(data.url))
+        .catch(() => {
+          if (imageUrl) setResolvedUrl(imageUrl);
+        });
+    } else if (imageUrl) {
+      setResolvedUrl(imageUrl);
+    }
+  }, [imageUrl, objectPath]);
+
+  if (!resolvedUrl) return null;
+
+  return (
+    <div className="rounded-md overflow-hidden">
+      <img
+        src={resolvedUrl}
+        alt={altText}
+        className="max-h-64 w-full object-contain"
+      />
     </div>
   );
 }

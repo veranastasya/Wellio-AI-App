@@ -34,7 +34,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Trash2, GripVertical, ArrowLeft, Save, X } from "lucide-react";
+import { Plus, Trash2, GripVertical, ArrowLeft, Save, X, Upload, Loader2, ImageIcon } from "lucide-react";
 import type { Questionnaire, Question, QuestionType, Coach, SupportedLanguage } from "@shared/schema";
 import { normalizeQuestion, COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED } from "@shared/units";
@@ -1051,55 +1051,165 @@ function QuestionSettings({ question, index, lang, t, onUpdateSettings }: Questi
 
     case "image_block":
       return (
-        <div className="space-y-3 pt-2 border-t">
-          <Label className="text-sm font-medium">{t.imageBlock[lang]}</Label>
-          <div className="space-y-2">
-            <Label htmlFor={`image-caption-${question.id}`} className="text-sm text-muted-foreground">
-              {t.imageBlockCaption[lang]}
-            </Label>
-            <Input
-              id={`image-caption-${question.id}`}
-              value={settings.caption || ""}
-              onChange={(e) => onUpdateSettings({ caption: e.target.value })}
-              data-testid={`input-image-caption-${index}`}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`image-alt-${question.id}`} className="text-sm text-muted-foreground">
-              {t.imageBlockAlt[lang]}
-            </Label>
-            <Input
-              id={`image-alt-${question.id}`}
-              value={settings.altText || ""}
-              onChange={(e) => onUpdateSettings({ altText: e.target.value })}
-              data-testid={`input-image-alt-${index}`}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`image-url-${question.id}`} className="text-sm text-muted-foreground">
-              URL
-            </Label>
-            <Input
-              id={`image-url-${question.id}`}
-              value={settings.imageUrl || ""}
-              onChange={(e) => onUpdateSettings({ imageUrl: e.target.value })}
-              placeholder="https://..."
-              data-testid={`input-image-url-${index}`}
-            />
-          </div>
-          {settings.imageUrl && (
-            <div className="mt-2 rounded-md overflow-hidden border">
-              <img
-                src={settings.imageUrl}
-                alt={settings.altText || t.imageBlockPreview[lang]}
-                className="max-h-48 w-full object-contain"
-              />
-            </div>
-          )}
-        </div>
+        <ImageBlockSettings
+          question={question}
+          index={index}
+          lang={lang}
+          t={t}
+          settings={settings}
+          onUpdateSettings={onUpdateSettings}
+        />
       );
 
     default:
       return null;
   }
+}
+
+function ImageBlockSettings({ question, index, lang, t, settings, onUpdateSettings }: {
+  question: Question;
+  index: number;
+  lang: SupportedLanguage;
+  t: typeof COACH_UI_TRANSLATIONS.questionnaires;
+  settings: any;
+  onUpdateSettings: (settings: any) => void;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (settings.objectPath && settings.objectPath.startsWith("/objects/")) {
+      fetch(`/api/questionnaire-images/signed-url?path=${encodeURIComponent(settings.objectPath)}`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => setPreviewUrl(data.url))
+        .catch(() => setPreviewUrl(null));
+    } else if (settings.imageUrl) {
+      setPreviewUrl(settings.imageUrl);
+    }
+  }, [settings.objectPath, settings.imageUrl]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch('/api/questionnaire-images/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      onUpdateSettings({ imageUrl: data.imageUrl, objectPath: data.objectPath });
+      setPreviewUrl(null);
+    } catch {
+      // error handled silently
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    onUpdateSettings({ imageUrl: "", objectPath: "" });
+    setPreviewUrl(null);
+  };
+
+  return (
+    <div className="space-y-3 pt-2 border-t">
+      <Label className="text-sm font-medium">{t.imageBlock[lang]}</Label>
+
+      {!settings.imageUrl && !settings.objectPath ? (
+        <div className="space-y-2">
+          <label
+            htmlFor={`image-upload-${question.id}`}
+            className="flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-lg p-6 cursor-pointer hover-elevate"
+          >
+            {isUploading ? (
+              <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+            ) : (
+              <ImageIcon className="h-8 w-8 text-muted-foreground" />
+            )}
+            <span className="text-sm font-medium">
+              {isUploading ? t.imageBlockUpload[lang] + "..." : t.imageBlockUpload[lang]}
+            </span>
+            <span className="text-xs text-muted-foreground">PNG, JPG, GIF, SVG</span>
+          </label>
+          <input
+            id={`image-upload-${question.id}`}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+            disabled={isUploading}
+            data-testid={`input-image-upload-${index}`}
+          />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {previewUrl && (
+            <div className="relative rounded-md overflow-hidden border">
+              <img
+                src={previewUrl}
+                alt={settings.altText || t.imageBlockPreview[lang]}
+                className="max-h-48 w-full object-contain"
+              />
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor={`image-replace-${question.id}`}
+              className="cursor-pointer"
+            >
+              <Button variant="outline" size="sm" asChild>
+                <span>
+                  <Upload className="w-3.5 h-3.5 mr-1.5" />
+                  {lang === "ru" ? "Заменить" : lang === "es" ? "Reemplazar" : "Replace"}
+                </span>
+              </Button>
+            </label>
+            <input
+              id={`image-replace-${question.id}`}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+              disabled={isUploading}
+            />
+            <Button variant="ghost" size="sm" onClick={handleRemoveImage} data-testid={`button-remove-image-${index}`}>
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              {lang === "ru" ? "Удалить" : lang === "es" ? "Eliminar" : "Remove"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor={`image-caption-${question.id}`} className="text-sm text-muted-foreground">
+          {t.imageBlockCaption[lang]}
+        </Label>
+        <Input
+          id={`image-caption-${question.id}`}
+          value={settings.caption || ""}
+          onChange={(e) => onUpdateSettings({ caption: e.target.value })}
+          data-testid={`input-image-caption-${index}`}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor={`image-alt-${question.id}`} className="text-sm text-muted-foreground">
+          {t.imageBlockAlt[lang]}
+        </Label>
+        <Input
+          id={`image-alt-${question.id}`}
+          value={settings.altText || ""}
+          onChange={(e) => onUpdateSettings({ altText: e.target.value })}
+          data-testid={`input-image-alt-${index}`}
+        />
+      </div>
+    </div>
+  );
 }

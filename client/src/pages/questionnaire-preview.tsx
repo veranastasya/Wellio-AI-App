@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -229,6 +230,15 @@ export default function QuestionnairePreview() {
             </div>
           </div>
         )}
+
+        {question.type === "image_block" && (settings.imageUrl || settings.objectPath) && (
+          <PreviewImageBlock
+            imageUrl={settings.imageUrl}
+            objectPath={settings.objectPath}
+            altText={settings.altText || t.imageBlockPreview[lang]}
+            caption={settings.caption}
+          />
+        )}
       </div>
     );
   };
@@ -373,6 +383,40 @@ export default function QuestionnairePreview() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+function PreviewImageBlock({ imageUrl, objectPath, altText, caption }: { imageUrl?: string; objectPath?: string; altText: string; caption?: string }) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (objectPath && objectPath.startsWith("/objects/")) {
+      fetch(`/api/questionnaire-images/signed-url?path=${encodeURIComponent(objectPath)}`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => setResolvedUrl(data.url))
+        .catch(() => {
+          if (imageUrl) setResolvedUrl(imageUrl);
+        });
+    } else if (imageUrl) {
+      setResolvedUrl(imageUrl);
+    }
+  }, [imageUrl, objectPath]);
+
+  if (!resolvedUrl) return null;
+
+  return (
+    <div className="space-y-1">
+      <div className="rounded-md overflow-hidden">
+        <img
+          src={resolvedUrl}
+          alt={altText}
+          className="max-h-64 w-full object-contain"
+        />
+      </div>
+      {caption && (
+        <p className="text-xs text-muted-foreground text-center italic">{caption}</p>
+      )}
     </div>
   );
 }
