@@ -598,6 +598,30 @@ export default function ClientOnboard() {
           </div>
         );
 
+      case "image_block":
+        return (
+          <div key={question.id} className="space-y-2">
+            {question.label && (
+              <p className="text-sm font-medium">{translateLabel(question.label)}</p>
+            )}
+            {question.description && (
+              <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
+            {settings.imageUrl && (
+              <div className="rounded-md overflow-hidden">
+                <img
+                  src={settings.imageUrl}
+                  alt={settings.altText || ""}
+                  className="max-h-64 w-full object-contain"
+                />
+              </div>
+            )}
+            {settings.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{settings.caption}</p>
+            )}
+          </div>
+        );
+
       default:
         return null;
     }

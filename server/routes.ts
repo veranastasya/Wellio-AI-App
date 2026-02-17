@@ -7837,6 +7837,119 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
 
+  // ========== Client Files (Coach uploads for clients) ==========
+
+  app.get("/api/clients/:clientId/files", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+      const files = await storage.getClientFiles(clientId, coachId);
+      res.json(files);
+    } catch (error) {
+      logger.error('Failed to get client files', { clientId: req.params.clientId }, error);
+      res.status(500).json({ error: 'Failed to get client files' });
+    }
+  });
+
+  app.post("/api/clients/:clientId/files/upload", requireCoachAuth, upload.single('file'), async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const { clientId } = req.params;
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { category, notes } = req.body;
+
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+
+      const uploadResponse = await fetch(uploadURL, {
+        method: 'PUT',
+        body: req.file.buffer,
+        headers: {
+          'Content-Type': req.file.mimetype || 'application/octet-stream',
+        },
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload to object storage');
+      }
+
+      const objectURL = uploadURL.split('?')[0];
+
+      let fileUrl: string;
+      try {
+        fileUrl = await objectStorageService.trySetObjectEntityAclPolicy(
+          objectURL,
+          {
+            owner: coachId,
+            visibility: "private",
+            aclRules: [
+              {
+                accessGroup: { type: "user" as ObjectAccessGroupType, identifier: coachId },
+                permission: "read" as ObjectPermission
+              }
+            ]
+          }
+        );
+      } catch (aclError) {
+        logger.error('Failed to set ACL policy for client file', { coachId, clientId }, aclError);
+        fileUrl = objectURL;
+      }
+
+      const clientFile = await storage.createClientFile({
+        coachId,
+        clientId,
+        fileName: req.file.originalname,
+        fileType: req.file.mimetype || 'application/octet-stream',
+        fileSize: req.file.size,
+        objectPath: fileUrl,
+        category: category || 'general',
+        notes: notes || null,
+        uploadedAt: new Date().toISOString(),
+      });
+
+      logger.info('Client file uploaded', { coachId, clientId, fileId: clientFile.id });
+      res.json(clientFile);
+    } catch (error) {
+      logger.error('Failed to upload client file', { clientId: req.params.clientId }, error);
+      res.status(500).json({ error: 'Failed to upload client file' });
+    }
+  });
+
+  app.get("/api/clients/:clientId/files/:fileId/download", requireCoachAuth, async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      const file = await storage.getClientFile(fileId);
+      if (!file) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const signedUrl = await objectStorageService.getSignedDownloadURL(file.objectPath);
+      res.json({ url: signedUrl });
+    } catch (error) {
+      logger.error('Failed to get file download URL', { fileId: req.params.fileId }, error);
+      res.status(500).json({ error: 'Failed to get download URL' });
+    }
+  });
+
+  app.delete("/api/clients/:clientId/files/:fileId", requireCoachAuth, async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      const deleted = await storage.deleteClientFile(fileId);
+      if (!deleted) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('Failed to delete client file', { fileId: req.params.fileId }, error);
+      res.status(500).json({ error: 'Failed to delete client file' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

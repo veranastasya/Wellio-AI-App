@@ -23,6 +23,7 @@ import { PlanBuilderTab } from "@/components/plan-builder-tab";
 import { CoachProgressAnalytics } from "@/components/coach-progress-analytics";
 import { AIInsightsCard } from "@/components/AIInsightsCard";
 import { ReminderSettings } from "@/components/engagement/ReminderSettings";
+import { ClientFilesSection } from "@/components/client-files-section";
 
 export default function CoachClientDetail() {
   const [, params] = useRoute("/coach/clients/:clientId");
@@ -373,6 +374,14 @@ export default function CoachClientDetail() {
               className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md"
             >
               {t.clientDetail.planBuilder[lang]}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="files" 
+              data-testid="tab-files"
+              className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md"
+            >
+              <FileText className="w-4 h-4 mr-1.5 hidden sm:inline" />
+              {t.clientDetail.files[lang]}
             </TabsTrigger>
           </TabsList>
 
@@ -824,6 +833,11 @@ export default function CoachClientDetail() {
               programStartDate={client?.programStartDate}
               joinedDate={client?.joinedDate}
             />
+          </TabsContent>
+
+          {/* Files Tab */}
+          <TabsContent value="files" className="space-y-6">
+            <ClientFilesSection clientId={clientId || ""} lang={lang} />
           </TabsContent>
 
         </Tabs>

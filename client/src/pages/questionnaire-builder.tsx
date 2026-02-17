@@ -72,6 +72,7 @@ export default function QuestionnaireBuilder() {
     email: t.emailType[lang],
     phone: t.phoneType[lang],
     file_upload: t.fileUpload[lang],
+    image_block: t.imageBlock[lang],
   };
 
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -235,6 +236,8 @@ export default function QuestionnaireBuilder() {
         return { minDate: "", maxDate: "" };
       case "file_upload":
         return { allowedTypes: ["image/*", "application/pdf"], maxSizeMB: 10, maxFiles: 5 };
+      case "image_block":
+        return { imageUrl: "", objectPath: "", altText: "", caption: "" };
       default:
         return {};
     }
@@ -1043,6 +1046,56 @@ function QuestionSettings({ question, index, lang, t, onUpdateSettings }: Questi
               />
             </div>
           </div>
+        </div>
+      );
+
+    case "image_block":
+      return (
+        <div className="space-y-3 pt-2 border-t">
+          <Label className="text-sm font-medium">{t.imageBlock[lang]}</Label>
+          <div className="space-y-2">
+            <Label htmlFor={`image-caption-${question.id}`} className="text-sm text-muted-foreground">
+              {t.imageBlockCaption[lang]}
+            </Label>
+            <Input
+              id={`image-caption-${question.id}`}
+              value={settings.caption || ""}
+              onChange={(e) => onUpdateSettings({ caption: e.target.value })}
+              data-testid={`input-image-caption-${index}`}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`image-alt-${question.id}`} className="text-sm text-muted-foreground">
+              {t.imageBlockAlt[lang]}
+            </Label>
+            <Input
+              id={`image-alt-${question.id}`}
+              value={settings.altText || ""}
+              onChange={(e) => onUpdateSettings({ altText: e.target.value })}
+              data-testid={`input-image-alt-${index}`}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`image-url-${question.id}`} className="text-sm text-muted-foreground">
+              URL
+            </Label>
+            <Input
+              id={`image-url-${question.id}`}
+              value={settings.imageUrl || ""}
+              onChange={(e) => onUpdateSettings({ imageUrl: e.target.value })}
+              placeholder="https://..."
+              data-testid={`input-image-url-${index}`}
+            />
+          </div>
+          {settings.imageUrl && (
+            <div className="mt-2 rounded-md overflow-hidden border">
+              <img
+                src={settings.imageUrl}
+                alt={settings.altText || t.imageBlockPreview[lang]}
+                className="max-h-48 w-full object-contain"
+              />
+            </div>
+          )}
         </div>
       );
 

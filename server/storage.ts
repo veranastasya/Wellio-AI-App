@@ -70,6 +70,8 @@ import {
   type InsertWeeklyScheduleItem,
   type PlanItemCompletion,
   type InsertPlanItemCompletion,
+  type ClientFile,
+  type InsertClientFile,
   coaches,
   clients,
   sessions,
@@ -105,6 +107,7 @@ import {
   passwordResetTokens,
   weeklyScheduleItems,
   planItemCompletions,
+  clientFiles,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte, inArray, ne } from "drizzle-orm";
@@ -364,6 +367,12 @@ export interface IStorage {
   createProgressPhoto(photo: InsertProgressPhoto): Promise<ProgressPhoto>;
   updateProgressPhoto(id: string, photo: Partial<InsertProgressPhoto>): Promise<ProgressPhoto | undefined>;
   deleteProgressPhoto(id: string): Promise<boolean>;
+
+  // Client Files
+  getClientFiles(clientId: string, coachId: string): Promise<ClientFile[]>;
+  getClientFile(id: string): Promise<ClientFile | undefined>;
+  createClientFile(file: InsertClientFile): Promise<ClientFile>;
+  deleteClientFile(id: string): Promise<boolean>;
 
   // Seeding
   seedData(): Promise<void>;
@@ -2518,6 +2527,30 @@ Introduction to consistent training and meal logging habits.
   async deleteProgressPhoto(id: string): Promise<boolean> {
     const result = await db.delete(progressPhotos)
       .where(eq(progressPhotos.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async getClientFiles(clientId: string, coachId: string): Promise<ClientFile[]> {
+    return await db.select().from(clientFiles)
+      .where(and(eq(clientFiles.clientId, clientId), eq(clientFiles.coachId, coachId)))
+      .orderBy(desc(clientFiles.uploadedAt));
+  }
+
+  async getClientFile(id: string): Promise<ClientFile | undefined> {
+    const result = await db.select().from(clientFiles)
+      .where(eq(clientFiles.id, id));
+    return result[0];
+  }
+
+  async createClientFile(file: InsertClientFile): Promise<ClientFile> {
+    const result = await db.insert(clientFiles).values(file).returning();
+    return result[0];
+  }
+
+  async deleteClientFile(id: string): Promise<boolean> {
+    const result = await db.delete(clientFiles)
+      .where(eq(clientFiles.id, id))
       .returning();
     return result.length > 0;
   }

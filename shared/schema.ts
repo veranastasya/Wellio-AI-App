@@ -1179,6 +1179,24 @@ export const COACH_UI_TRANSLATIONS = {
     progressPhotos: { en: "Progress Photos", ru: "Фото прогресса", es: "Fotos de Progreso" },
     sharedByClient: { en: "Shared by client", ru: "Поделился клиент", es: "Compartido por el cliente" },
     noPhotos: { en: "No photos shared yet", ru: "Фото ещё не добавлены", es: "Sin fotos todavía" },
+    // Files section
+    files: { en: "Files", ru: "Файлы", es: "Archivos" },
+    uploadFile: { en: "Upload File", ru: "Загрузить файл", es: "Subir Archivo" },
+    noFiles: { en: "No files uploaded yet", ru: "Файлы ещё не загружены", es: "Sin archivos subidos" },
+    noFilesDesc: { en: "Upload client documents like lab results, analysis reports, or other files", ru: "Загрузите документы клиента: результаты анализов, отчёты и другие файлы", es: "Sube documentos del cliente como resultados de laboratorio, informes de análisis u otros archivos" },
+    fileCategory: { en: "Category", ru: "Категория", es: "Categoría" },
+    fileNotes: { en: "Notes", ru: "Заметки", es: "Notas" },
+    general: { en: "General", ru: "Общее", es: "General" },
+    labResults: { en: "Lab Results", ru: "Анализы", es: "Resultados de Laboratorio" },
+    medicalReports: { en: "Medical Reports", ru: "Медицинские отчёты", es: "Informes Médicos" },
+    nutritionPlans: { en: "Nutrition Plans", ru: "Планы питания", es: "Planes de Nutrición" },
+    trainingPlans: { en: "Training Plans", ru: "Планы тренировок", es: "Planes de Entrenamiento" },
+    otherCategory: { en: "Other", ru: "Прочее", es: "Otro" },
+    deleteFile: { en: "Delete File", ru: "Удалить файл", es: "Eliminar Archivo" },
+    downloading: { en: "Downloading...", ru: "Загрузка...", es: "Descargando..." },
+    uploadingFile: { en: "Uploading...", ru: "Загрузка...", es: "Subiendo..." },
+    fileUploaded: { en: "File uploaded successfully", ru: "Файл успешно загружен", es: "Archivo subido exitosamente" },
+    fileDeleted: { en: "File deleted", ru: "Файл удалён", es: "Archivo eliminado" },
     // Toast messages
     success: { en: "Success", ru: "Успешно", es: "Éxito" },
     error: { en: "Error", ru: "Ошибка", es: "Error" },
@@ -1455,6 +1473,11 @@ export const COACH_UI_TRANSLATIONS = {
     emailType: { en: "Email", ru: "Email", es: "Correo" },
     phoneType: { en: "Phone", ru: "Телефон", es: "Teléfono" },
     fileUpload: { en: "File Upload", ru: "Загрузка файла", es: "Carga de Archivo" },
+    imageBlock: { en: "Image Block", ru: "Блок с изображением", es: "Bloque de Imagen" },
+    imageBlockCaption: { en: "Caption", ru: "Подпись", es: "Leyenda" },
+    imageBlockAlt: { en: "Alt Text", ru: "Альтернативный текст", es: "Texto Alternativo" },
+    imageBlockUpload: { en: "Upload Image", ru: "Загрузить изображение", es: "Subir Imagen" },
+    imageBlockPreview: { en: "Image preview", ru: "Предпросмотр изображения", es: "Vista previa de imagen" },
     scale: { en: "Scale", ru: "Шкала", es: "Escala" },
     yesNo: { en: "Yes/No", ru: "Да/Нет", es: "Sí/No" },
     // Preview page
@@ -2496,6 +2519,7 @@ export const QUESTION_TYPES = [
   "email",
   "phone",
   "file_upload",
+  "image_block",
 ] as const;
 
 export type QuestionType = typeof QUESTION_TYPES[number];
@@ -2559,6 +2583,13 @@ const fileUploadSettingsSchema = z.object({
   allowedTypes: z.array(z.string()).optional(),
   maxSizeMB: z.number().optional(),
   maxFiles: z.number().optional(),
+});
+
+const imageBlockSettingsSchema = z.object({
+  imageUrl: z.string().optional(),
+  objectPath: z.string().optional(),
+  altText: z.string().optional(),
+  caption: z.string().optional(),
 });
 
 export const questionSchema = z.discriminatedUnion("type", [
@@ -2642,6 +2673,14 @@ export const questionSchema = z.discriminatedUnion("type", [
     required: z.boolean(),
     settings: fileUploadSettingsSchema.optional(),
   }),
+  z.object({
+    id: z.string(),
+    type: z.literal("image_block"),
+    label: z.string(),
+    description: z.string().optional(),
+    required: z.boolean(),
+    settings: imageBlockSettingsSchema.optional(),
+  }),
 ]);
 
 export type Question = z.infer<typeof questionSchema>;
@@ -2652,7 +2691,7 @@ export function normalizeQuestion(q: any): Question {
     type: q.type || "short_text",
     label: q.label || "",
     description: q.description || "",
-    required: q.isRequired ?? q.required ?? false,
+    required: q.type === "image_block" ? false : (q.isRequired ?? q.required ?? false),
     settings: q.settings || {},
   };
 
@@ -3490,3 +3529,26 @@ export const insertPlanBuilderChatMessageSchema = createInsertSchema(planBuilder
 
 export type InsertPlanBuilderChatMessage = z.infer<typeof insertPlanBuilderChatMessageSchema>;
 export type PlanBuilderChatMessage = typeof planBuilderChatMessages.$inferSelect;
+
+export const clientFiles = pgTable("client_files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  coachId: varchar("coach_id").notNull(),
+  clientId: varchar("client_id").notNull(),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  objectPath: text("object_path").notNull(),
+  category: text("category").default("general"),
+  notes: text("notes"),
+  uploadedAt: text("uploaded_at").notNull(),
+}, (table) => ({
+  clientIdIdx: index("client_files_client_id_idx").on(table.clientId),
+  coachIdIdx: index("client_files_coach_id_idx").on(table.coachId),
+}));
+
+export const insertClientFileSchema = createInsertSchema(clientFiles).omit({
+  id: true,
+});
+
+export type InsertClientFile = z.infer<typeof insertClientFileSchema>;
+export type ClientFile = typeof clientFiles.$inferSelect;
