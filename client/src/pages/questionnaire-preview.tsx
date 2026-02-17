@@ -69,6 +69,14 @@ export default function QuestionnairePreview() {
           <p className="text-sm text-muted-foreground">{question.description}</p>
         )}
 
+        {(question as any).questionImage?.objectPath && (
+          <PreviewImageBlock
+            objectPath={(question as any).questionImage.objectPath}
+            altText={(question as any).questionImage.altText || question.label}
+            caption={(question as any).questionImage.caption}
+          />
+        )}
+
         {question.type === "short_text" && (
           <Input 
             placeholder={settings.placeholder || t.yourAnswer[lang]} 

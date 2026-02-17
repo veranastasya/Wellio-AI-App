@@ -250,6 +250,17 @@ export default function ClientOnboard() {
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
             )}
+            {(question as any).questionImage?.objectPath && (
+              <OnboardImageBlock
+                imageUrl={undefined}
+                objectPath={(question as any).questionImage.objectPath}
+                altText={(question as any).questionImage.altText || ""}
+                token={token || undefined}
+              />
+            )}
+            {(question as any).questionImage?.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{(question as any).questionImage.caption}</p>
+            )}
             <Input
               id={question.id}
               data-testid={`input-${question.id}`}
@@ -273,6 +284,17 @@ export default function ClientOnboard() {
             </Label>
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
+            {(question as any).questionImage?.objectPath && (
+              <OnboardImageBlock
+                imageUrl={undefined}
+                objectPath={(question as any).questionImage.objectPath}
+                altText={(question as any).questionImage.altText || ""}
+                token={token || undefined}
+              />
+            )}
+            {(question as any).questionImage?.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{(question as any).questionImage.caption}</p>
             )}
             <Textarea
               id={question.id}
@@ -298,6 +320,17 @@ export default function ClientOnboard() {
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
             )}
+            {(question as any).questionImage?.objectPath && (
+              <OnboardImageBlock
+                imageUrl={undefined}
+                objectPath={(question as any).questionImage.objectPath}
+                altText={(question as any).questionImage.altText || ""}
+                token={token || undefined}
+              />
+            )}
+            {(question as any).questionImage?.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{(question as any).questionImage.caption}</p>
+            )}
             <Input
               id={question.id}
               data-testid={`input-${question.id}`}
@@ -319,6 +352,17 @@ export default function ClientOnboard() {
             </Label>
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
+            {(question as any).questionImage?.objectPath && (
+              <OnboardImageBlock
+                imageUrl={undefined}
+                objectPath={(question as any).questionImage.objectPath}
+                altText={(question as any).questionImage.altText || ""}
+                token={token || undefined}
+              />
+            )}
+            {(question as any).questionImage?.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{(question as any).questionImage.caption}</p>
             )}
             <Input
               id={question.id}
@@ -345,6 +389,17 @@ export default function ClientOnboard() {
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
             )}
+            {(question as any).questionImage?.objectPath && (
+              <OnboardImageBlock
+                imageUrl={undefined}
+                objectPath={(question as any).questionImage.objectPath}
+                altText={(question as any).questionImage.altText || ""}
+                token={token || undefined}
+              />
+            )}
+            {(question as any).questionImage?.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{(question as any).questionImage.caption}</p>
+            )}
             <Input
               id={question.id}
               data-testid={`input-${question.id}`}
@@ -370,6 +425,17 @@ export default function ClientOnboard() {
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
             )}
+            {(question as any).questionImage?.objectPath && (
+              <OnboardImageBlock
+                imageUrl={undefined}
+                objectPath={(question as any).questionImage.objectPath}
+                altText={(question as any).questionImage.altText || ""}
+                token={token || undefined}
+              />
+            )}
+            {(question as any).questionImage?.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{(question as any).questionImage.caption}</p>
+            )}
             <Input
               id={question.id}
               data-testid={`input-${question.id}`}
@@ -392,6 +458,17 @@ export default function ClientOnboard() {
             </Label>
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
+            {(question as any).questionImage?.objectPath && (
+              <OnboardImageBlock
+                imageUrl={undefined}
+                objectPath={(question as any).questionImage.objectPath}
+                altText={(question as any).questionImage.altText || ""}
+                token={token || undefined}
+              />
+            )}
+            {(question as any).questionImage?.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{(question as any).questionImage.caption}</p>
             )}
             <div className="space-y-2">
               {settings.options?.map((option: string, idx: number) => (
@@ -452,6 +529,17 @@ export default function ClientOnboard() {
             </Label>
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
+            {(question as any).questionImage?.objectPath && (
+              <OnboardImageBlock
+                imageUrl={undefined}
+                objectPath={(question as any).questionImage.objectPath}
+                altText={(question as any).questionImage.altText || ""}
+                token={token || undefined}
+              />
+            )}
+            {(question as any).questionImage?.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{(question as any).questionImage.caption}</p>
             )}
             <div className="space-y-2">
               {settings.options?.map((option: string, idx: number) => (
@@ -519,6 +607,17 @@ export default function ClientOnboard() {
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
             )}
+            {(question as any).questionImage?.objectPath && (
+              <OnboardImageBlock
+                imageUrl={undefined}
+                objectPath={(question as any).questionImage.objectPath}
+                altText={(question as any).questionImage.altText || ""}
+                token={token || undefined}
+              />
+            )}
+            {(question as any).questionImage?.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{(question as any).questionImage.caption}</p>
+            )}
             <Select
               value={value}
               onValueChange={(val) => handleAnswerChange(question.id, val)}
@@ -547,6 +646,17 @@ export default function ClientOnboard() {
             </Label>
             {question.description && (
               <p className="text-sm text-muted-foreground">{question.description}</p>
+            )}
+            {(question as any).questionImage?.objectPath && (
+              <OnboardImageBlock
+                imageUrl={undefined}
+                objectPath={(question as any).questionImage.objectPath}
+                altText={(question as any).questionImage.altText || ""}
+                token={token || undefined}
+              />
+            )}
+            {(question as any).questionImage?.caption && (
+              <p className="text-xs text-muted-foreground text-center italic">{(question as any).questionImage.caption}</p>
             )}
             <div className="border-2 border-dashed rounded-lg p-4">
               <Input

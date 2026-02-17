@@ -1478,6 +1478,11 @@ export const COACH_UI_TRANSLATIONS = {
     imageBlockAlt: { en: "Alt Text", ru: "Альтернативный текст", es: "Texto Alternativo" },
     imageBlockUpload: { en: "Upload Image", ru: "Загрузить изображение", es: "Subir Imagen" },
     imageBlockPreview: { en: "Image preview", ru: "Предпросмотр изображения", es: "Vista previa de imagen" },
+    attachReferenceImage: { en: "Attach Reference Image", ru: "Прикрепить справочное изображение", es: "Adjuntar Imagen de Referencia" },
+    referenceImage: { en: "Reference Image", ru: "Справочное изображение", es: "Imagen de Referencia" },
+    removeImage: { en: "Remove", ru: "Удалить", es: "Eliminar" },
+    replaceImage: { en: "Replace", ru: "Заменить", es: "Reemplazar" },
+    uploadingImage: { en: "Uploading...", ru: "Загрузка...", es: "Subiendo..." },
     scale: { en: "Scale", ru: "Шкала", es: "Escala" },
     yesNo: { en: "Yes/No", ru: "Да/Нет", es: "Sí/No" },
     // Preview page
@@ -2592,6 +2597,12 @@ const imageBlockSettingsSchema = z.object({
   caption: z.string().optional(),
 });
 
+export const questionImageSchema = z.object({
+  objectPath: z.string(),
+  altText: z.string().optional(),
+  caption: z.string().optional(),
+}).optional();
+
 export const questionSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string(),
@@ -2599,6 +2610,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: shortTextSettingsSchema.optional(),
   }),
   z.object({
@@ -2607,6 +2619,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: paragraphSettingsSchema.optional(),
   }),
   z.object({
@@ -2615,6 +2628,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: multipleChoiceSettingsSchema,
   }),
   z.object({
@@ -2623,6 +2637,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: checkboxesSettingsSchema,
   }),
   z.object({
@@ -2631,6 +2646,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: dropdownSettingsSchema,
   }),
   z.object({
@@ -2639,6 +2655,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: numberSettingsSchema.optional(),
   }),
   z.object({
@@ -2647,6 +2664,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: dateSettingsSchema.optional(),
   }),
   z.object({
@@ -2655,6 +2673,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: emailSettingsSchema.optional(),
   }),
   z.object({
@@ -2663,6 +2682,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: phoneSettingsSchema.optional(),
   }),
   z.object({
@@ -2671,6 +2691,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string().min(1),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: fileUploadSettingsSchema.optional(),
   }),
   z.object({
@@ -2679,6 +2700,7 @@ export const questionSchema = z.discriminatedUnion("type", [
     label: z.string(),
     description: z.string().optional(),
     required: z.boolean(),
+    questionImage: questionImageSchema,
     settings: imageBlockSettingsSchema.optional(),
   }),
 ]);
@@ -2693,6 +2715,7 @@ export function normalizeQuestion(q: any): Question {
     description: q.description || "",
     required: q.type === "image_block" ? false : (q.isRequired ?? q.required ?? false),
     settings: q.settings || {},
+    ...(q.questionImage ? { questionImage: q.questionImage } : {}),
   };
 
   if (q.options && !q.settings?.options) {

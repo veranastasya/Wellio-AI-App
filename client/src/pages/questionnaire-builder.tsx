@@ -721,6 +721,16 @@ function QuestionEditor({ question, index, lang, t, questionTypeLabels, onUpdate
               t={t}
               onUpdateSettings={onUpdateSettings}
             />
+
+            {question.type !== "image_block" && (
+              <QuestionImageUpload
+                question={question}
+                index={index}
+                lang={lang}
+                t={t}
+                onUpdate={onUpdate}
+              />
+            )}
           </div>
         </AccordionContent>
       </div>
@@ -1064,6 +1074,143 @@ function QuestionSettings({ question, index, lang, t, onUpdateSettings }: Questi
     default:
       return null;
   }
+}
+
+function QuestionImageUpload({ question, index, lang, t, onUpdate }: {
+  question: Question;
+  index: number;
+  lang: SupportedLanguage;
+  t: typeof COACH_UI_TRANSLATIONS.questionnaires;
+  onUpdate: (updates: Partial<Question>) => void;
+}) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const qImage = (question as any).questionImage as { objectPath: string; altText?: string; caption?: string } | undefined;
+
+  useEffect(() => {
+    if (qImage?.objectPath && qImage.objectPath.startsWith("/objects/")) {
+      fetch(`/api/questionnaire-images/signed-url?path=${encodeURIComponent(qImage.objectPath)}`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => setPreviewUrl(data.url))
+        .catch(() => setPreviewUrl(null));
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [qImage?.objectPath]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const res = await fetch('/api/questionnaire-images/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      onUpdate({
+        questionImage: {
+          objectPath: data.objectPath,
+          altText: qImage?.altText || "",
+          caption: qImage?.caption || "",
+        },
+      } as any);
+    } catch {
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemove = () => {
+    onUpdate({ questionImage: undefined } as any);
+    setPreviewUrl(null);
+  };
+
+  return (
+    <div className="space-y-2 pt-3 border-t">
+      <Label className="text-sm text-muted-foreground">{t.referenceImage[lang]}</Label>
+
+      {!qImage?.objectPath ? (
+        <div>
+          <label
+            htmlFor={`q-image-upload-${question.id}`}
+            className="flex items-center gap-2 text-sm cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {isUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ImageIcon className="h-4 w-4" />
+            )}
+            <span>{isUploading ? t.uploadingImage[lang] : t.attachReferenceImage[lang]}</span>
+          </label>
+          <input
+            id={`q-image-upload-${question.id}`}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+            disabled={isUploading}
+            data-testid={`input-question-image-${index}`}
+          />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {previewUrl && (
+            <div className="relative rounded-md overflow-hidden border">
+              <img
+                src={previewUrl}
+                alt={qImage.altText || t.referenceImage[lang]}
+                className="max-h-32 w-full object-contain"
+              />
+            </div>
+          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <label htmlFor={`q-image-replace-${question.id}`} className="cursor-pointer">
+              <Button variant="outline" size="sm" asChild>
+                <span>
+                  <Upload className="w-3.5 h-3.5 mr-1.5" />
+                  {t.replaceImage[lang]}
+                </span>
+              </Button>
+            </label>
+            <input
+              id={`q-image-replace-${question.id}`}
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
+              disabled={isUploading}
+            />
+            <Button variant="ghost" size="sm" onClick={handleRemove} data-testid={`button-remove-question-image-${index}`}>
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              {t.removeImage[lang]}
+            </Button>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`q-image-caption-${question.id}`} className="text-xs text-muted-foreground">
+              {t.imageBlockCaption[lang]}
+            </Label>
+            <Input
+              id={`q-image-caption-${question.id}`}
+              value={qImage.caption || ""}
+              onChange={(e) =>
+                onUpdate({ questionImage: { ...qImage, caption: e.target.value } } as any)
+              }
+              className="min-h-9 text-sm"
+              data-testid={`input-question-image-caption-${index}`}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ImageBlockSettings({ question, index, lang, t, settings, onUpdateSettings }: {
