@@ -612,6 +612,7 @@ export default function ClientOnboard() {
                 imageUrl={settings.imageUrl}
                 objectPath={settings.objectPath}
                 altText={settings.altText || ""}
+                token={token || undefined}
               />
             )}
             {settings.caption && (
@@ -1064,12 +1065,14 @@ export default function ClientOnboard() {
   );
 }
 
-function OnboardImageBlock({ imageUrl, objectPath, altText }: { imageUrl?: string; objectPath?: string; altText: string }) {
+function OnboardImageBlock({ imageUrl, objectPath, altText, token }: { imageUrl?: string; objectPath?: string; altText: string; token?: string }) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (objectPath && objectPath.startsWith("/objects/")) {
-      fetch(`/api/questionnaire-images/signed-url?path=${encodeURIComponent(objectPath)}`)
+      const params = new URLSearchParams({ path: objectPath });
+      if (token) params.set("token", token);
+      fetch(`/api/questionnaire-images/signed-url?${params.toString()}`, { credentials: 'include' })
         .then(res => res.json())
         .then(data => setResolvedUrl(data.url))
         .catch(() => {
@@ -1078,7 +1081,7 @@ function OnboardImageBlock({ imageUrl, objectPath, altText }: { imageUrl?: strin
     } else if (imageUrl) {
       setResolvedUrl(imageUrl);
     }
-  }, [imageUrl, objectPath]);
+  }, [imageUrl, objectPath, token]);
 
   if (!resolvedUrl) return null;
 

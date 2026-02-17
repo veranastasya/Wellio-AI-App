@@ -7891,7 +7891,17 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
 
   app.get("/api/questionnaire-images/signed-url", async (req, res) => {
     try {
-      if (!req.session?.coachId && !req.session?.clientId) {
+      const token = req.query.token as string | undefined;
+      let isAuthenticated = !!(req.session?.coachId || req.session?.clientId);
+
+      if (!isAuthenticated && token) {
+        const clientToken = await storage.getClientTokenByToken(token);
+        if (clientToken && (!clientToken.expiresAt || new Date(clientToken.expiresAt) >= new Date())) {
+          isAuthenticated = true;
+        }
+      }
+
+      if (!isAuthenticated) {
         return res.status(401).json({ error: "Authentication required" });
       }
 
