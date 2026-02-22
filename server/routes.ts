@@ -792,6 +792,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stripe webhook endpoint for subscription lifecycle events
+  app.post("/api/webhooks/stripe", async (req: any, res) => {
+    try {
+      const Stripe = (await import('stripe')).default;
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+      if (!stripeSecretKey || !webhookSecret) {
+        logger.warn('Stripe webhook skipped: missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET');
+        return res.status(200).json({ received: true });
+      }
+
+      const stripe = new Stripe(stripeSecretKey);
+      const sig = req.headers['stripe-signature'];
+
+      if (!sig || !req.rawBody) {
+        return res.status(400).json({ error: 'Missing signature or raw body' });
+      }
+
+      let event;
+      try {
+        event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
+      } catch (err: any) {
+        logger.error('Stripe webhook signature verification failed', {}, err);
+        return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+      }
+
+      logger.info('Stripe webhook received', { type: event.type, id: event.id });
+
+      const extractPlan = (subscription: any): string | undefined => {
+        const lookupKey = subscription.items?.data?.[0]?.price?.lookup_key;
+        if (!lookupKey) return undefined;
+        const planMap: Record<string, string> = {
+          'starter_monthly': 'starter', 'starter_yearly': 'starter',
+          'pro_monthly': 'pro', 'pro_yearly': 'pro',
+          'elite_monthly': 'elite', 'elite_yearly': 'elite',
+        };
+        return planMap[lookupKey];
+      };
+
+      switch (event.type) {
+        case 'customer.subscription.created':
+        case 'customer.subscription.updated': {
+          const subscription = event.data.object as any;
+          const coach = await storage.getCoachByStripeCustomerId(subscription.customer as string);
+          if (coach) {
+            const updates: any = {
+              subscriptionStatus: subscription.status,
+              stripeSubscriptionId: subscription.id,
+            };
+            const plan = extractPlan(subscription);
+            if (plan) updates.plan = plan;
+            await storage.updateCoach(coach.id, updates);
+            logger.info('Coach subscription synced', { coachId: coach.id, status: subscription.status, eventType: event.type });
+          }
+          break;
+        }
+        case 'customer.subscription.deleted': {
+          const subscription = event.data.object as any;
+          const coach = await storage.getCoachByStripeCustomerId(subscription.customer as string);
+          if (coach) {
+            await storage.updateCoach(coach.id, { subscriptionStatus: 'canceled' });
+            logger.info('Coach subscription canceled', { coachId: coach.id });
+          }
+          break;
+        }
+        case 'invoice.payment_failed': {
+          const invoice = event.data.object as any;
+          const coach = await storage.getCoachByStripeCustomerId(invoice.customer as string);
+          if (coach) {
+            await storage.updateCoach(coach.id, { subscriptionStatus: 'past_due' });
+            logger.info('Coach payment failed', { coachId: coach.id });
+          }
+          break;
+        }
+        case 'invoice.payment_succeeded': {
+          const invoice = event.data.object as any;
+          if (invoice.billing_reason === 'subscription_cycle' || invoice.billing_reason === 'subscription_update') {
+            const coach = await storage.getCoachByStripeCustomerId(invoice.customer as string);
+            if (coach && coach.subscriptionStatus !== 'canceled') {
+              await storage.updateCoach(coach.id, { subscriptionStatus: 'active' });
+              logger.info('Coach payment succeeded, subscription active', { coachId: coach.id });
+            }
+          }
+          break;
+        }
+        default:
+          logger.debug('Unhandled Stripe event type', { type: event.type });
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      logger.error('Stripe webhook error', {}, error);
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+
   // Auto-login with one-time token (used after payment redirect)
   // GET request so it works with URL redirects from landing page
   app.get("/api/auth/token-login", async (req, res) => {
@@ -969,6 +1066,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/clients", requireCoachAuth, async (req, res) => {
     try {
       const coachId = req.session.coachId!;
+
+      // Plan tier enforcement: check client count limits
+      const coach = await storage.getCoach(coachId);
+      if (coach) {
+        const status = coach.subscriptionStatus || 'active';
+        const effectivePlan = (status === 'active' || status === 'past_due') ? (coach.plan || 'starter') : 'starter';
+        const planLimits: Record<string, number> = { starter: 10, pro: 30, elite: Infinity };
+        const limit = planLimits[effectivePlan] ?? 10;
+        if (status === 'canceled' || status === 'unpaid') {
+          const currentCount = await storage.getClientCountByCoachId(coachId);
+          if (currentCount >= 10) {
+            return res.status(403).json({
+              error: "Your subscription is inactive. You're limited to 10 clients on the Starter plan. Please renew your subscription to add more."
+            });
+          }
+        } else if (limit !== Infinity) {
+          const currentCount = await storage.getClientCountByCoachId(coachId);
+          if (currentCount >= limit) {
+            return res.status(403).json({
+              error: `Your ${effectivePlan.charAt(0).toUpperCase() + effectivePlan.slice(1)} plan allows up to ${limit} clients. Please upgrade to add more.`
+            });
+          }
+        }
+      }
       
       // Check if client with this email already exists for this coach
       const email = req.body.email;
@@ -981,7 +1102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = insertClientSchema.parse({
         ...req.body,
-        coachId, // Automatically assign to the logged-in coach
+        coachId,
       });
       const client = await storage.createClient(validatedData);
       res.status(201).json(client);
@@ -1020,12 +1141,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (client.coachId && client.coachId !== coachId) {
         return res.status(403).json({ error: "Access denied" });
       }
-      const success = await storage.deleteClient(req.params.id);
+      const success = await storage.deleteClientCascade(req.params.id);
       if (!success) {
         return res.status(404).json({ error: "Client not found" });
       }
       res.status(204).send();
     } catch (error) {
+      console.error("Failed to delete client:", error);
       res.status(500).json({ error: "Failed to delete client" });
     }
   });
@@ -3435,12 +3557,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/client-plans/my-plans", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.session.clientId!;
-      console.log("[GET my-plans] Client ID from session:", clientId);
+      await storage.expireWeeklyPlans(clientId);
       const plans = await storage.getClientPlansByClientId(clientId);
-      console.log("[GET my-plans] All plans for client:", plans.map(p => ({ id: p.id, clientId: p.clientId, shared: p.shared, status: p.status, planName: p.planName })));
-      // Only return shared and active plans for clients
       const activePlans = plans.filter(plan => plan.shared && plan.status === 'active');
-      console.log("[GET my-plans] Filtered active plans:", activePlans.map(p => ({ id: p.id, shared: p.shared, status: p.status, planName: p.planName })));
       res.json(activePlans);
     } catch (error) {
       console.error("[GET my-plans] Error:", error);
@@ -3464,6 +3583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/client-plans/my-weekly", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.session.clientId!;
+      await storage.expireWeeklyPlans(clientId);
       const plans = await storage.getClientWeeklyPlans(clientId);
       res.json(plans);
     } catch (error) {
@@ -3795,7 +3915,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!await assertCoachOwnsClient(coachId, clientId)) {
         return res.status(403).json({ error: "Access denied" });
       }
-      
+
+      await storage.expireWeeklyPlans(clientId);
       const plans = await storage.getClientPlansByClientId(clientId);
       res.json(plans);
     } catch (error) {
@@ -3812,7 +3933,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!await assertCoachOwnsClient(coachId, clientId)) {
         return res.status(403).json({ error: "Access denied" });
       }
-      
+
+      await storage.expireWeeklyPlans(clientId);
       const plan = await storage.getActiveClientPlan(clientId);
       res.json(plan || null);
     } catch (error) {

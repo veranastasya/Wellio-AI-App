@@ -108,6 +108,7 @@ import {
   weeklyScheduleItems,
   planItemCompletions,
   clientFiles,
+  planBuilderChatMessages,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte, inArray, ne } from "drizzle-orm";
@@ -117,6 +118,7 @@ export interface IStorage {
   getCoach(id: string): Promise<Coach | undefined>;
   getCoachByEmail(email: string): Promise<Coach | undefined>;
   getCoachByOAuthId(oauthId: string): Promise<Coach | undefined>;
+  getCoachByStripeCustomerId(stripeCustomerId: string): Promise<Coach | undefined>;
   getDefaultCoach(): Promise<Coach | undefined>;
   createCoach(coach: InsertCoach): Promise<Coach>;
   updateCoach(id: string, coach: Partial<InsertCoach>): Promise<Coach | undefined>;
@@ -129,6 +131,8 @@ export interface IStorage {
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, client: Partial<InsertClient>): Promise<Client | undefined>;
   deleteClient(id: string): Promise<boolean>;
+  deleteClientCascade(id: string): Promise<boolean>;
+  getClientCountByCoachId(coachId: string): Promise<number>;
 
   // Sessions
   getSessions(coachId?: string): Promise<Session[]>;
@@ -229,6 +233,7 @@ export interface IStorage {
   getClientPlans(): Promise<ClientPlan[]>;
   getClientPlan(id: string): Promise<ClientPlan | undefined>;
   getClientPlansByClientId(clientId: string): Promise<ClientPlan[]>;
+  expireWeeklyPlans(clientId: string): Promise<void>;
   getActiveClientPlan(clientId: string): Promise<ClientPlan | undefined>;
   createClientPlan(clientPlan: InsertClientPlan): Promise<ClientPlan>;
   updateClientPlan(id: string, clientPlan: Partial<InsertClientPlan>): Promise<ClientPlan | undefined>;
@@ -855,6 +860,11 @@ Introduction to consistent training and meal logging habits.
     return result[0];
   }
 
+  async getCoachByStripeCustomerId(stripeCustomerId: string): Promise<Coach | undefined> {
+    const result = await db.select().from(coaches).where(eq(coaches.stripeCustomerId, stripeCustomerId));
+    return result[0];
+  }
+
   async getDefaultCoach(): Promise<Coach | undefined> {
     const result = await db.select().from(coaches).limit(1);
     return result[0];
@@ -916,6 +926,48 @@ Introduction to consistent training and meal logging habits.
   async deleteClient(id: string): Promise<boolean> {
     const result = await db.delete(clients).where(eq(clients.id, id));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async deleteClientCascade(id: string): Promise<boolean> {
+    await db.delete(planItemCompletions).where(eq(planItemCompletions.clientId, id));
+    await db.delete(weeklyScheduleItems).where(eq(weeklyScheduleItems.clientId, id));
+    await db.delete(progressEvents).where(eq(progressEvents.clientId, id));
+    await db.delete(smartLogs).where(eq(smartLogs.clientId, id));
+    await db.delete(clientDataLogs).where(eq(clientDataLogs.clientId, id));
+    await db.delete(planBuilderChatMessages).where(eq(planBuilderChatMessages.clientId, id));
+    await db.delete(planMessages).where(sql`plan_session_id IN (SELECT id FROM plan_sessions WHERE client_id = ${id})`);
+    await db.delete(planTargets).where(sql`plan_session_id IN (SELECT id FROM plan_sessions WHERE client_id = ${id})`);
+    await db.delete(planSessions).where(eq(planSessions.clientId, id));
+    await db.delete(clientPlans).where(eq(clientPlans.clientId, id));
+    await db.delete(goals).where(eq(goals.clientId, id));
+    await db.delete(weeklyReports).where(eq(weeklyReports.clientId, id));
+    await db.delete(sentReminders).where(eq(sentReminders.clientId, id));
+    await db.delete(clientReminderSettings).where(eq(clientReminderSettings.clientId, id));
+    await db.delete(engagementRecommendations).where(eq(engagementRecommendations.clientId, id));
+    await db.delete(engagementTriggers).where(eq(engagementTriggers.clientId, id));
+    await db.delete(engagementNotificationPreferences).where(eq(engagementNotificationPreferences.clientId, id));
+    await db.delete(inAppNotifications).where(eq(inAppNotifications.clientId, id));
+    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.clientId, id));
+    await db.delete(progressPhotos).where(eq(progressPhotos.clientId, id));
+    await db.delete(clientFiles).where(eq(clientFiles.clientId, id));
+    await db.delete(messages).where(eq(messages.clientId, id));
+    await db.delete(sessions).where(eq(sessions.clientId, id));
+    await db.delete(activities).where(eq(activities.clientId, id));
+    await db.delete(nutritionLogs).where(eq(nutritionLogs.clientId, id));
+    await db.delete(workoutLogs).where(eq(workoutLogs.clientId, id));
+    await db.delete(checkIns).where(eq(checkIns.clientId, id));
+    await db.delete(deviceConnections).where(eq(deviceConnections.clientId, id));
+    await db.delete(connectionRequests).where(eq(connectionRequests.clientId, id));
+    await db.delete(responses).where(eq(responses.clientId, id));
+    await db.delete(clientTokens).where(eq(clientTokens.clientId, id));
+    await db.delete(clientInvites).where(eq(clientInvites.clientId, id));
+    const result = await db.delete(clients).where(eq(clients.id, id));
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async getClientCountByCoachId(coachId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)::int` }).from(clients).where(eq(clients.coachId, coachId));
+    return result[0]?.count ?? 0;
   }
 
   // Session methods
@@ -1432,6 +1484,20 @@ Introduction to consistent training and meal logging habits.
 
   async getClientPlansByClientId(clientId: string): Promise<ClientPlan[]> {
     return await db.select().from(clientPlans).where(eq(clientPlans.clientId, clientId));
+  }
+
+  async expireWeeklyPlans(clientId: string): Promise<void> {
+    const today = new Date().toISOString().split('T')[0];
+    await db.update(clientPlans)
+      .set({ status: 'expired', updatedAt: new Date().toISOString() })
+      .where(
+        and(
+          eq(clientPlans.clientId, clientId),
+          eq(clientPlans.planType, 'weekly'),
+          eq(clientPlans.status, 'active'),
+          sql`${clientPlans.weekEndDate} < ${today}`
+        )
+      );
   }
 
   async getActiveClientPlan(clientId: string): Promise<ClientPlan | undefined> {

@@ -47,7 +47,7 @@ app.use(passport.session());
 // Store raw body for webhook signature verification
 app.use(express.json({
   verify: (req: any, _res, buf, encoding) => {
-    if (req.url === '/api/webhooks/rook') {
+    if (req.url === '/api/webhooks/rook' || req.url === '/api/webhooks/stripe') {
       req.rawBody = buf.toString((encoding as BufferEncoding) || 'utf8');
     }
   }

@@ -37,6 +37,10 @@ Wellio is built with a React frontend and an Express.js backend. Data is stored 
 - **Client Portal**: Secure password-based authentication with dashboard, activity feed, upcoming checklist, chat, and profile management.
 - **Push Notifications**: Web push notifications with multi-device support, VAPID authentication, deep-linking, and various notification types.
 - **Smart Reminders**: Intelligent automated reminder system with severity-based prioritization, cooldowns, quiet hours, and client timezone support.
+- **Stripe Subscription Management**: Webhook handler at /api/webhooks/stripe for subscription lifecycle (created, updated, deleted, payment_failed, payment_succeeded) with signature verification.
+- **Plan Tier Enforcement**: Client count limits per plan (Starter: 10, Pro: 30, Elite: unlimited), subscription status-aware (canceled/unpaid coaches downgraded to Starter limits).
+- **Weekly Plan Auto-Expiry**: Weekly plans automatically transition to "expired" status when their weekEndDate passes, checked on plan fetch.
+- **Client Cascade Delete**: Full cleanup of 25+ related tables when a client is deleted.
 
 ### System Design Choices
 All displayed data is sourced from a robust backend, ensuring 100% authenticity and accuracy. Calculations are derived from live API data. AI insights leverage OpenAI GPT-4 for sophisticated pattern detection and recommendations, requiring a minimum of three data points for trend analysis and incorporating zero-baseline protection.

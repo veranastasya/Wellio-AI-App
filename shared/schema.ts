@@ -2078,6 +2078,7 @@ export const coaches = pgTable("coaches", {
   timezone: text("timezone").notNull().default("America/New_York"), // Coach's timezone for scheduling
   // Stripe/subscription fields
   plan: text("plan"), // "starter" | "pro" | "elite"
+  subscriptionStatus: text("subscription_status").default("active"), // "active" | "past_due" | "canceled" | "unpaid"
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   loginToken: text("login_token"), // One-time token for auto-login after payment
