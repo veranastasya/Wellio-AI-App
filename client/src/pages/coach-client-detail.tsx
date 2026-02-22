@@ -357,28 +357,28 @@ export default function CoachClientDetail() {
 
         {/* Tabbed Content */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="inline-flex h-auto items-center gap-1 rounded-lg bg-muted p-1">
-            <TabsTrigger value="overview" className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-overview">
+          <TabsList className="inline-flex h-auto items-center gap-1 rounded-lg bg-muted p-1 overflow-x-auto max-w-full flex-nowrap scrollbar-hide">
+            <TabsTrigger value="overview" className="shrink-0 py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-overview">
               {t.clientDetail.overview[lang]}
             </TabsTrigger>
-            <TabsTrigger value="progress" className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-progress">
+            <TabsTrigger value="progress" className="shrink-0 py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-progress">
               <BarChart3 className="w-4 h-4 mr-1.5 hidden sm:inline" />
               {t.clientDetail.progress[lang]}
             </TabsTrigger>
-            <TabsTrigger value="intake" className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-intake">
+            <TabsTrigger value="intake" className="shrink-0 py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-intake">
               {t.clientDetail.intake[lang]}
             </TabsTrigger>
             <TabsTrigger 
               value="plan" 
               data-testid="tab-plan"
-              className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md"
+              className="shrink-0 py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md"
             >
               {t.clientDetail.planBuilder[lang]}
             </TabsTrigger>
             <TabsTrigger 
               value="files" 
               data-testid="tab-files"
-              className="py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md"
+              className="shrink-0 py-2 px-4 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md"
             >
               <FileText className="w-4 h-4 mr-1.5 hidden sm:inline" />
               {t.clientDetail.files[lang]}

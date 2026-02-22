@@ -110,7 +110,14 @@ export function ClientFilesSection({ clientId, lang }: { clientId: string; lang:
       const res = await fetch(`/api/clients/${clientId}/files/${file.id}/download`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to get download URL');
       const { url } = await res.json();
-      window.open(url, '_blank');
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.download = file.fileName || '';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch {
       toast({ title: t.clientDetail.error[lang], variant: "destructive" });
     } finally {
@@ -258,7 +265,6 @@ export function ClientFilesSection({ clientId, lang }: { clientId: string; lang:
                 </>
               ) : (
                 <>
-                  <Upload className="w-4 h-4 mr-2" />
                   {t.clientDetail.uploadFile[lang]}
                 </>
               )}
