@@ -29,6 +29,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ClipboardList, Apple, Dumbbell, Scale, History, Trash2, Loader2, Plus } from "lucide-react";
 import { z } from "zod";
 import type { Client, ClientDataLog } from "@shared/schema";
+import type { SupportedLanguage } from "@shared/schema";
 import { format, parseISO } from "date-fns";
 
 const nutritionFormSchema = z.object({
@@ -59,12 +60,76 @@ type NutritionFormData = z.infer<typeof nutritionFormSchema>;
 type WorkoutFormData = z.infer<typeof workoutFormSchema>;
 type CheckInFormData = z.infer<typeof checkinFormSchema>;
 
+const pt = {
+  trackProgress: { en: "Track Progress", ru: "Отслеживание прогресса", es: "Seguimiento del progreso" },
+  logNutritionWorkouts: { en: "Log your nutrition, workouts, and body metrics", ru: "Записывайте питание, тренировки и показатели тела", es: "Registra tu nutrición, entrenamientos y métricas corporales" },
+  nutrition: { en: "Nutrition", ru: "Питание", es: "Nutrición" },
+  food: { en: "Food", ru: "Еда", es: "Comida" },
+  workout: { en: "Workout", ru: "Тренировка", es: "Entrenamiento" },
+  train: { en: "Train", ru: "Трен.", es: "Entrenar" },
+  checkin: { en: "Check-in", ru: "Замер", es: "Control" },
+  body: { en: "Body", ru: "Тело", es: "Cuerpo" },
+  logNutrition: { en: "Log Nutrition", ru: "Записать питание", es: "Registrar nutrición" },
+  trackDailyFood: { en: "Track your daily food intake", ru: "Отслеживайте ежедневное питание", es: "Registra tu ingesta diaria" },
+  date: { en: "Date", ru: "Дата", es: "Fecha" },
+  calories: { en: "Calories", ru: "Калории", es: "Calorías" },
+  proteinG: { en: "Protein (g)", ru: "Белки (г)", es: "Proteína (g)" },
+  carbsG: { en: "Carbs (g)", ru: "Углеводы (г)", es: "Carbohidratos (g)" },
+  fatsG: { en: "Fats (g)", ru: "Жиры (г)", es: "Grasas (g)" },
+  notesOptional: { en: "Notes (Optional)", ru: "Заметки (необязательно)", es: "Notas (opcional)" },
+  howWasEating: { en: "How was your eating today?", ru: "Как вы питались сегодня?", es: "¿Cómo fue tu alimentación hoy?" },
+  saving: { en: "Saving...", ru: "Сохранение...", es: "Guardando..." },
+  nutritionHistory: { en: "Nutrition History", ru: "История питания", es: "Historial de nutrición" },
+  logWorkout: { en: "Log Workout", ru: "Записать тренировку", es: "Registrar entrenamiento" },
+  trackTraining: { en: "Track your training sessions", ru: "Отслеживайте тренировки", es: "Registra tus sesiones" },
+  type: { en: "Type", ru: "Тип", es: "Tipo" },
+  strength: { en: "Strength", ru: "Силовая", es: "Fuerza" },
+  cardio: { en: "Cardio", ru: "Кардио", es: "Cardio" },
+  hiit: { en: "HIIT", ru: "ВИИТ", es: "HIIT" },
+  flexibility: { en: "Flexibility", ru: "Растяжка", es: "Flexibilidad" },
+  sports: { en: "Sports", ru: "Спорт", es: "Deportes" },
+  durationMin: { en: "Duration (min)", ru: "Длительность (мин)", es: "Duración (min)" },
+  intensity: { en: "Intensity", ru: "Интенсивность", es: "Intensidad" },
+  low: { en: "Low", ru: "Низкая", es: "Baja" },
+  moderate: { en: "Moderate", ru: "Средняя", es: "Moderada" },
+  high: { en: "High", ru: "Высокая", es: "Alta" },
+  whatExercises: { en: "What exercises did you do?", ru: "Какие упражнения вы делали?", es: "¿Qué ejercicios hiciste?" },
+  workoutHistory: { en: "Workout History", ru: "История тренировок", es: "Historial de entrenamientos" },
+  bodyCheckin: { en: "Body Check-in", ru: "Замер тела", es: "Control corporal" },
+  trackBodyMetrics: { en: "Track your body metrics", ru: "Отслеживайте показатели тела", es: "Registra tus métricas corporales" },
+  weightLbs: { en: "Weight (lbs)", ru: "Вес (кг)", es: "Peso (lbs)" },
+  bodyFatPct: { en: "Body Fat (%)", ru: "Жир (%)", es: "Grasa corporal (%)" },
+  howFeeling: { en: "How are you feeling today?", ru: "Как вы себя чувствуете сегодня?", es: "¿Cómo te sientes hoy?" },
+  logCheckin: { en: "Log Check-in", ru: "Записать замер", es: "Registrar control" },
+  checkinHistory: { en: "Check-in History", ru: "История замеров", es: "Historial de controles" },
+  logged: { en: "Logged!", ru: "Записано!", es: "¡Registrado!" },
+  entrySaved: { en: "entry saved", ru: "запись сохранена", es: "entrada guardada" },
+  error: { en: "Error", ru: "Ошибка", es: "Error" },
+  failedSave: { en: "Failed to save entry", ru: "Не удалось сохранить запись", es: "Error al guardar" },
+  deleted: { en: "Deleted", ru: "Удалено", es: "Eliminado" },
+  entryRemoved: { en: "Entry removed", ru: "Запись удалена", es: "Entrada eliminada" },
+  failedDelete: { en: "Failed to delete entry", ru: "Не удалось удалить запись", es: "Error al eliminar" },
+  you: { en: "You", ru: "Вы", es: "Tú" },
+  coach: { en: "Coach", ru: "Тренер", es: "Entrenador" },
+  noEntries: { en: "entries yet", ru: "записей", es: "entradas aún" },
+  startTracking: { en: "Start tracking to see your progress!", ru: "Начните отслеживание, чтобы видеть прогресс!", es: "¡Empieza a registrar para ver tu progreso!" },
+  noDataRecorded: { en: "No data recorded", ru: "Нет данных", es: "Sin datos registrados" },
+  cal: { en: "cal", ru: "ккал", es: "cal" },
+  protein: { en: "protein", ru: "белки", es: "proteína" },
+  carbs: { en: "carbs", ru: "углеводы", es: "carbohidratos" },
+  fats: { en: "fats", ru: "жиры", es: "grasas" },
+  min: { en: "min", ru: "мин", es: "min" },
+  lbs: { en: "lbs", ru: "кг", es: "lbs" },
+  bodyFat: { en: "body fat", ru: "жир тела", es: "grasa corporal" },
+} as const;
+
 export default function ClientProgress() {
   const [, setLocation] = useLocation();
   const [clientData, setClientData] = useState<Client | null>(null);
   const [isVerifying, setIsVerifying] = useState(true);
   const [activeTab, setActiveTab] = useState("nutrition");
   const { toast } = useToast();
+  const lang = (clientData?.preferredLanguage || "en") as SupportedLanguage;
 
   useEffect(() => {
     const clientId = localStorage.getItem("clientId");
@@ -147,14 +212,14 @@ export default function ClientProgress() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/client-data-logs", clientData?.id] });
       toast({
-        title: "Logged!",
-        description: `${variables.type.charAt(0).toUpperCase() + variables.type.slice(1)} entry saved`,
+        title: pt.logged[lang],
+        description: `${(pt as any)[variables.type]?.[lang] || variables.type} — ${pt.entrySaved[lang]}`,
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to save entry",
+        title: pt.error[lang],
+        description: pt.failedSave[lang],
         variant: "destructive",
       });
     },
@@ -166,14 +231,14 @@ export default function ClientProgress() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/client-data-logs", clientData?.id] });
       toast({
-        title: "Deleted",
-        description: "Entry removed",
+        title: pt.deleted[lang],
+        description: pt.entryRemoved[lang],
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to delete entry",
+        title: pt.error[lang],
+        description: pt.failedDelete[lang],
         variant: "destructive",
       });
     },
@@ -257,22 +322,22 @@ export default function ClientProgress() {
     }
   };
 
-  const formatPayload = (type: string, payload: Record<string, unknown>) => {
+  const formatPayload = (type: string, payload: Record<string, unknown>, l: SupportedLanguage) => {
     const parts: string[] = [];
     if (type === "nutrition") {
-      if (payload.calories) parts.push(`${payload.calories} cal`);
-      if (payload.protein) parts.push(`${payload.protein}g protein`);
-      if (payload.carbs) parts.push(`${payload.carbs}g carbs`);
-      if (payload.fats) parts.push(`${payload.fats}g fats`);
+      if (payload.calories) parts.push(`${payload.calories} ${pt.cal[l]}`);
+      if (payload.protein) parts.push(`${payload.protein}g ${pt.protein[l]}`);
+      if (payload.carbs) parts.push(`${payload.carbs}g ${pt.carbs[l]}`);
+      if (payload.fats) parts.push(`${payload.fats}g ${pt.fats[l]}`);
     } else if (type === "workout") {
       if (payload.workoutType) parts.push(String(payload.workoutType).charAt(0).toUpperCase() + String(payload.workoutType).slice(1));
-      if (payload.duration) parts.push(`${payload.duration} min`);
+      if (payload.duration) parts.push(`${payload.duration} ${pt.min[l]}`);
       if (payload.intensity) parts.push(String(payload.intensity).charAt(0).toUpperCase() + String(payload.intensity).slice(1));
     } else if (type === "checkin") {
-      if (payload.weight) parts.push(`${payload.weight} lbs`);
-      if (payload.bodyFat) parts.push(`${payload.bodyFat}% body fat`);
+      if (payload.weight) parts.push(`${payload.weight} ${pt.lbs[l]}`);
+      if (payload.bodyFat) parts.push(`${payload.bodyFat}% ${pt.bodyFat[l]}`);
     }
-    return parts.length > 0 ? parts.join(" • ") : "No data recorded";
+    return parts.length > 0 ? parts.join(" • ") : pt.noDataRecorded[l];
   };
 
   if (isVerifying) {
@@ -297,8 +362,8 @@ export default function ClientProgress() {
       return (
         <div className="text-center py-8 text-muted-foreground">
           <History className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p className="text-sm">No {type} entries yet</p>
-          <p className="text-xs mt-1">Start tracking to see your progress!</p>
+          <p className="text-sm">{`No ${type} ${pt.noEntries[lang]}`}</p>
+          <p className="text-xs mt-1">{pt.startTracking[lang]}</p>
         </div>
       );
     }
@@ -321,11 +386,11 @@ export default function ClientProgress() {
                     {format(parseISO(log.date), "MMM d, yyyy")}
                   </span>
                   <Badge variant="outline" className={`text-xs ${getLogTypeBadgeVariant(log.type)}`}>
-                    {log.source === "client" ? "You" : "Coach"}
+                    {log.source === "client" ? pt.you[lang] : pt.coach[lang]}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {formatPayload(log.type, log.payload as Record<string, unknown>)}
+                  {formatPayload(log.type, log.payload as Record<string, unknown>, lang)}
                 </p>
                 {(() => {
                   const notes = (log.payload as Record<string, unknown>).notes;
@@ -364,10 +429,10 @@ export default function ClientProgress() {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground" data-testid="heading-client-progress">
-              Track Progress
+              {pt.trackProgress[lang]}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Log your nutrition, workouts, and body metrics
+              {pt.logNutritionWorkouts[lang]}
             </p>
           </div>
         </div>
@@ -376,18 +441,18 @@ export default function ClientProgress() {
           <TabsList className="grid w-full grid-cols-3 gap-1 h-auto p-1 bg-muted rounded-lg">
             <TabsTrigger value="nutrition" data-testid="tab-nutrition" className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
               <Apple className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Nutrition</span>
-              <span className="sm:hidden">Food</span>
+              <span className="hidden sm:inline">{pt.nutrition[lang]}</span>
+              <span className="sm:hidden">{pt.food[lang]}</span>
             </TabsTrigger>
             <TabsTrigger value="workout" data-testid="tab-workout" className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
               <Dumbbell className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Workout</span>
-              <span className="sm:hidden">Train</span>
+              <span className="hidden sm:inline">{pt.workout[lang]}</span>
+              <span className="sm:hidden">{pt.train[lang]}</span>
             </TabsTrigger>
             <TabsTrigger value="checkin" data-testid="tab-checkin" className="text-xs sm:text-sm py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md">
               <Scale className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Check-in</span>
-              <span className="sm:hidden">Body</span>
+              <span className="hidden sm:inline">{pt.checkin[lang]}</span>
+              <span className="sm:hidden">{pt.body[lang]}</span>
             </TabsTrigger>
           </TabsList>
 
@@ -396,10 +461,10 @@ export default function ClientProgress() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <Plus className="w-5 h-5" />
-                  Log Nutrition
+                  {pt.logNutrition[lang]}
                 </CardTitle>
                 <CardDescription>
-                  Track your daily food intake
+                  {pt.trackDailyFood[lang]}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -410,7 +475,7 @@ export default function ClientProgress() {
                       name="date"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Date</FormLabel>
+                          <FormLabel>{pt.date[lang]}</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} data-testid="input-nutrition-date" />
                           </FormControl>
@@ -425,7 +490,7 @@ export default function ClientProgress() {
                         name="calories"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Calories</FormLabel>
+                            <FormLabel>{pt.calories[lang]}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -446,7 +511,7 @@ export default function ClientProgress() {
                         name="protein"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Protein (g)</FormLabel>
+                            <FormLabel>{pt.proteinG[lang]}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -467,7 +532,7 @@ export default function ClientProgress() {
                         name="carbs"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Carbs (g)</FormLabel>
+                            <FormLabel>{pt.carbsG[lang]}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -488,7 +553,7 @@ export default function ClientProgress() {
                         name="fats"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Fats (g)</FormLabel>
+                            <FormLabel>{pt.fatsG[lang]}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -510,12 +575,12 @@ export default function ClientProgress() {
                       name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormLabel>{pt.notesOptional[lang]}</FormLabel>
                           <FormControl>
                             <Textarea 
                               {...field} 
                               value={field.value || ""}
-                              placeholder="How was your eating today?"
+                              placeholder={pt.howWasEating[lang]}
                               data-testid="input-nutrition-notes" 
                             />
                           </FormControl>
@@ -530,7 +595,7 @@ export default function ClientProgress() {
                       disabled={createLogMutation.isPending}
                       data-testid="button-save-nutrition"
                     >
-                      {createLogMutation.isPending ? "Saving..." : "Log Nutrition"}
+                      {createLogMutation.isPending ? pt.saving[lang] : pt.logNutrition[lang]}
                     </Button>
                   </form>
                 </Form>
@@ -541,7 +606,7 @@ export default function ClientProgress() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <History className="w-5 h-5" />
-                  Nutrition History
+                  {pt.nutritionHistory[lang]}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -561,10 +626,10 @@ export default function ClientProgress() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <Plus className="w-5 h-5" />
-                  Log Workout
+                  {pt.logWorkout[lang]}
                 </CardTitle>
                 <CardDescription>
-                  Track your training sessions
+                  {pt.trackTraining[lang]}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -575,7 +640,7 @@ export default function ClientProgress() {
                       name="date"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Date</FormLabel>
+                          <FormLabel>{pt.date[lang]}</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} data-testid="input-workout-date" />
                           </FormControl>
@@ -590,7 +655,7 @@ export default function ClientProgress() {
                         name="workoutType"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Type</FormLabel>
+                            <FormLabel>{pt.type[lang]}</FormLabel>
                             <Select 
                               onValueChange={field.onChange} 
                               defaultValue={field.value}
@@ -602,11 +667,11 @@ export default function ClientProgress() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="strength">Strength</SelectItem>
-                                <SelectItem value="cardio">Cardio</SelectItem>
-                                <SelectItem value="hiit">HIIT</SelectItem>
-                                <SelectItem value="flexibility">Flexibility</SelectItem>
-                                <SelectItem value="sports">Sports</SelectItem>
+                                <SelectItem value="strength">{pt.strength[lang]}</SelectItem>
+                                <SelectItem value="cardio">{pt.cardio[lang]}</SelectItem>
+                                <SelectItem value="hiit">{pt.hiit[lang]}</SelectItem>
+                                <SelectItem value="flexibility">{pt.flexibility[lang]}</SelectItem>
+                                <SelectItem value="sports">{pt.sports[lang]}</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -619,7 +684,7 @@ export default function ClientProgress() {
                         name="duration"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Duration (min)</FormLabel>
+                            <FormLabel>{pt.durationMin[lang]}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -641,7 +706,7 @@ export default function ClientProgress() {
                       name="intensity"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Intensity</FormLabel>
+                          <FormLabel>{pt.intensity[lang]}</FormLabel>
                           <Select 
                             onValueChange={field.onChange} 
                             defaultValue={field.value ?? undefined}
@@ -653,9 +718,9 @@ export default function ClientProgress() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="low">Low</SelectItem>
-                              <SelectItem value="moderate">Moderate</SelectItem>
-                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="low">{pt.low[lang]}</SelectItem>
+                              <SelectItem value="moderate">{pt.moderate[lang]}</SelectItem>
+                              <SelectItem value="high">{pt.high[lang]}</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -668,12 +733,12 @@ export default function ClientProgress() {
                       name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormLabel>{pt.notesOptional[lang]}</FormLabel>
                           <FormControl>
                             <Textarea 
                               {...field} 
                               value={field.value || ""}
-                              placeholder="What exercises did you do?"
+                              placeholder={pt.whatExercises[lang]}
                               data-testid="input-workout-notes" 
                             />
                           </FormControl>
@@ -688,7 +753,7 @@ export default function ClientProgress() {
                       disabled={createLogMutation.isPending}
                       data-testid="button-save-workout"
                     >
-                      {createLogMutation.isPending ? "Saving..." : "Log Workout"}
+                      {createLogMutation.isPending ? pt.saving[lang] : pt.logWorkout[lang]}
                     </Button>
                   </form>
                 </Form>
@@ -699,7 +764,7 @@ export default function ClientProgress() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <History className="w-5 h-5" />
-                  Workout History
+                  {pt.workoutHistory[lang]}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -719,10 +784,10 @@ export default function ClientProgress() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <Plus className="w-5 h-5" />
-                  Body Check-in
+                  {pt.bodyCheckin[lang]}
                 </CardTitle>
                 <CardDescription>
-                  Track your body metrics
+                  {pt.trackBodyMetrics[lang]}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -733,7 +798,7 @@ export default function ClientProgress() {
                       name="date"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Date</FormLabel>
+                          <FormLabel>{pt.date[lang]}</FormLabel>
                           <FormControl>
                             <Input type="date" {...field} data-testid="input-checkin-date" />
                           </FormControl>
@@ -748,7 +813,7 @@ export default function ClientProgress() {
                         name="weight"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Weight (lbs)</FormLabel>
+                            <FormLabel>{pt.weightLbs[lang]}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -770,7 +835,7 @@ export default function ClientProgress() {
                         name="bodyFat"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Body Fat (%)</FormLabel>
+                            <FormLabel>{pt.bodyFatPct[lang]}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="number" 
@@ -793,12 +858,12 @@ export default function ClientProgress() {
                       name="notes"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Notes (Optional)</FormLabel>
+                          <FormLabel>{pt.notesOptional[lang]}</FormLabel>
                           <FormControl>
                             <Textarea 
                               {...field} 
                               value={field.value || ""}
-                              placeholder="How are you feeling today?"
+                              placeholder={pt.howFeeling[lang]}
                               data-testid="input-checkin-notes" 
                             />
                           </FormControl>
@@ -813,7 +878,7 @@ export default function ClientProgress() {
                       disabled={createLogMutation.isPending}
                       data-testid="button-save-checkin"
                     >
-                      {createLogMutation.isPending ? "Saving..." : "Log Check-in"}
+                      {createLogMutation.isPending ? pt.saving[lang] : pt.logCheckin[lang]}
                     </Button>
                   </form>
                 </Form>
@@ -824,7 +889,7 @@ export default function ClientProgress() {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <History className="w-5 h-5" />
-                  Check-in History
+                  {pt.checkinHistory[lang]}
                 </CardTitle>
               </CardHeader>
               <CardContent>

@@ -98,6 +98,34 @@ interface WeeklyProgramContent {
   phases?: ProgramPhase[];
 }
 
+const planT = {
+  myPlan: { en: "My Plan", ru: "Мой план", es: "Mi plan" },
+  personalizedProgram: { en: "Your personalized program and weekly schedule", ru: "Ваша персональная программа и расписание на неделю", es: "Tu programa personalizado y horario semanal" },
+  thisWeek: { en: "This Week", ru: "Эта неделя", es: "Esta semana" },
+  myProgram: { en: "My Program", ru: "Моя программа", es: "Mi programa" },
+  weekOf: { en: "Week", ru: "Неделя", es: "Semana" },
+  of: { en: "of", ru: "из", es: "de" },
+  viewFullProgram: { en: "View Full Program", ru: "Полная программа", es: "Ver programa completo" },
+  view: { en: "View", ru: "Подробнее", es: "Ver" },
+  previous: { en: "Previous", ru: "Назад", es: "Anterior" },
+  current: { en: "Current", ru: "Текущая", es: "Actual" },
+  next: { en: "Next", ru: "Вперёд", es: "Siguiente" },
+  progress: { en: "Progress", ru: "Прогресс", es: "Progreso" },
+  completed: { en: "completed", ru: "выполнено", es: "completado" },
+  noTraining: { en: "No training scheduled for", ru: "Нет тренировок на", es: "Sin entrenamiento para" },
+  exercises: { en: "exercises", ru: "упражнений", es: "ejercicios" },
+  nutritionPlan: { en: "Nutrition Plan", ru: "План питания", es: "Plan de nutrición" },
+  meals: { en: "meals", ru: "приёмов пищи", es: "comidas" },
+  dailyHabits: { en: "Daily Habits", ru: "Ежедневные привычки", es: "Hábitos diarios" },
+  habits: { en: "habits", ru: "привычек", es: "hábitos" },
+  sets: { en: "sets", ru: "подходов", es: "series" },
+  reps: { en: "reps", ru: "повторений", es: "reps" },
+  min: { en: "min", ru: "мин", es: "min" },
+  noProgramYet: { en: "No Program Yet", ru: "Программы пока нет", es: "Aún no hay programa" },
+  noProgramDesc: { en: "Your coach hasn't assigned a program to you yet. Check back soon!", ru: "Ваш тренер ещё не назначил вам программу. Загляните позже!", es: "Tu entrenador aún no te ha asignado un programa. ¡Vuelve pronto!" },
+  planNotAvailable: { en: "Plan content is not available. Please contact your coach.", ru: "Содержание плана недоступно. Пожалуйста, свяжитесь с тренером.", es: "El contenido del plan no está disponible. Contacta a tu entrenador." },
+} as const;
+
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function formatInlineMarkdown(text: string): JSX.Element[] {
@@ -314,10 +342,12 @@ function DayChips({
 
 function ExerciseItem({ 
   exercise, 
-  onToggle 
+  onToggle,
+  lang 
 }: { 
   exercise: Exercise; 
   onToggle: (id: string, completed: boolean) => void;
+  lang: SupportedLanguage;
 }) {
   const isCompleted = exercise.completed ?? false;
   
@@ -343,7 +373,7 @@ function ExerciseItem({
           {exercise.name}
         </p>
         <p className="text-xs sm:text-sm text-muted-foreground">
-          {exercise.sets} sets • {exercise.reps} reps
+          {exercise.sets} {planT.sets[lang]} • {exercise.reps} {planT.reps[lang]}
         </p>
         {exercise.note && (
           <p className="text-xs text-primary/70 mt-1 flex items-center gap-1">
@@ -438,11 +468,13 @@ function HabitItem({
 function TrainingSection({ 
   training, 
   selectedDate,
-  onToggleExercise 
+  onToggleExercise,
+  lang 
 }: { 
   training: TrainingDay[]; 
   selectedDate: Date;
   onToggleExercise: (exerciseId: string, completed: boolean) => void;
+  lang: SupportedLanguage;
 }) {
   const dayName = format(selectedDate, 'EEEE');
   const todayTraining = training.find(t => 
@@ -455,7 +487,7 @@ function TrainingSection({
       <Card>
         <CardContent className="py-8 text-center">
           <Dumbbell className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-muted-foreground text-sm">No training scheduled for {dayName}</p>
+          <p className="text-muted-foreground text-sm">{planT.noTraining[lang]} {dayName}</p>
         </CardContent>
       </Card>
     );
@@ -475,8 +507,8 @@ function TrainingSection({
             <div className="flex-1">
               <p className="font-semibold text-foreground">{todayTraining.title}</p>
               <p className="text-sm text-muted-foreground">
-                {completedCount} of {totalCount} exercises
-                {todayTraining.duration && ` • ${todayTraining.duration} min`}
+                {completedCount} {planT.of[lang]} {totalCount} {planT.exercises[lang]}
+                {todayTraining.duration && ` • ${todayTraining.duration} ${planT.min[lang]}`}
               </p>
             </div>
           </div>
@@ -488,6 +520,7 @@ function TrainingSection({
                 key={exercise.id} 
                 exercise={exercise} 
                 onToggle={onToggleExercise}
+                lang={lang}
               />
             ))}
           </div>
@@ -500,11 +533,13 @@ function TrainingSection({
 function NutritionSection({ 
   nutrition, 
   selectedDate,
-  onToggleMeal 
+  onToggleMeal,
+  lang 
 }: { 
   nutrition: NutritionDay[]; 
   selectedDate: Date;
   onToggleMeal: (mealId: string, completed: boolean) => void;
+  lang: SupportedLanguage;
 }) {
   const dayName = format(selectedDate, 'EEEE');
   const todayNutrition = nutrition.find(n => 
@@ -528,9 +563,9 @@ function NutritionSection({
               <UtensilsCrossed className="w-5 h-5 text-orange-500" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-foreground">Nutrition Plan</p>
+              <p className="font-semibold text-foreground">{planT.nutritionPlan[lang]}</p>
               <p className="text-sm text-muted-foreground">
-                {completedCount} of {totalCount} meals
+                {completedCount} {planT.of[lang]} {totalCount} {planT.meals[lang]}
               </p>
             </div>
           </div>
@@ -553,10 +588,12 @@ function NutritionSection({
 
 function HabitsSection({ 
   habits,
-  onToggleHabit 
+  onToggleHabit,
+  lang 
 }: { 
   habits: Habit[];
   onToggleHabit: (habitId: string, completed: boolean) => void;
+  lang: SupportedLanguage;
 }) {
   if (!habits || habits.length === 0) return null;
   
@@ -572,9 +609,9 @@ function HabitsSection({
               <Target className="w-5 h-5 text-violet-500" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-foreground">Daily Habits</p>
+              <p className="font-semibold text-foreground">{planT.dailyHabits[lang]}</p>
               <p className="text-sm text-muted-foreground">
-                {completedCount} of {totalCount} habits
+                {completedCount} {planT.of[lang]} {totalCount} {planT.habits[lang]}
               </p>
             </div>
           </div>
@@ -598,11 +635,13 @@ function HabitsSection({
 function ThisWeekTab({ 
   planData, 
   onViewProgram,
-  clientId
+  clientId,
+  lang
 }: { 
   planData: MyPlanData;
   onViewProgram: () => void;
   clientId: string;
+  lang: SupportedLanguage;
 }) {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -744,7 +783,7 @@ function ThisWeekTab({
               <div className="min-w-0">
                 <p className="font-semibold text-sm sm:text-base text-foreground truncate">{planData.program.name}</p>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Week {weeklyContent?.week || 1} of {weeklyContent?.totalWeeks || 12}
+                  {planT.weekOf[lang]} {weeklyContent?.week || 1} {planT.of[lang]} {weeklyContent?.totalWeeks || 12}
                 </p>
               </div>
             </div>
@@ -755,8 +794,8 @@ function ThisWeekTab({
               className="text-primary flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
               data-testid="button-view-program"
             >
-              <span className="hidden sm:inline">View Full Program</span>
-              <span className="sm:hidden">View</span>
+              <span className="hidden sm:inline">{planT.viewFullProgram[lang]}</span>
+              <span className="sm:hidden">{planT.view[lang]}</span>
               <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </CardContent>
@@ -774,14 +813,14 @@ function ThisWeekTab({
               data-testid="button-prev-week"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span className="hidden sm:inline ml-1">Previous</span>
+              <span className="hidden sm:inline ml-1">{planT.previous[lang]}</span>
             </Button>
             
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 text-center">
               {currentWeekOffset === 0 && (
                 <Badge variant="outline" className="text-primary border-primary text-[10px] sm:text-xs px-1.5 sm:px-2">
                   <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
-                  Current
+                  {planT.current[lang]}
                 </Badge>
               )}
               <span className="text-xs sm:text-sm text-muted-foreground">
@@ -796,7 +835,7 @@ function ThisWeekTab({
               className="h-8 w-8 sm:h-9 sm:w-auto sm:px-3"
               data-testid="button-next-week"
             >
-              <span className="hidden sm:inline mr-1">Next</span>
+              <span className="hidden sm:inline mr-1">{planT.next[lang]}</span>
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
@@ -813,9 +852,9 @@ function ThisWeekTab({
         <CardContent className="p-3 sm:p-4">
           <div className="flex items-center justify-between mb-2 gap-2">
             <div className="min-w-0">
-              <p className="font-semibold text-sm sm:text-base text-foreground">{dayName}'s Progress</p>
+              <p className="font-semibold text-sm sm:text-base text-foreground">{dayName} — {planT.progress[lang]}</p>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                {completedItems} of {totalItems} completed
+                {completedItems} {planT.of[lang]} {totalItems} {planT.completed[lang]}
               </p>
             </div>
             <span className="text-lg sm:text-xl font-bold text-primary flex-shrink-0">{progressPercent}%</span>
@@ -829,22 +868,25 @@ function ThisWeekTab({
           training={training}
           selectedDate={selectedDate}
           onToggleExercise={handleToggleExercise}
+          lang={lang}
         />
         <NutritionSection 
           nutrition={nutrition}
           selectedDate={selectedDate}
           onToggleMeal={handleToggleMeal}
+          lang={lang}
         />
         <HabitsSection 
           habits={habits}
           onToggleHabit={handleToggleHabit}
+          lang={lang}
         />
       </div>
     </div>
   );
 }
 
-function MyProgramTab({ planData }: { planData: MyPlanData }) {
+function MyProgramTab({ planData, lang }: { planData: MyPlanData; lang: SupportedLanguage }) {
   const program = planData.program;
   const planContent = program?.content ? getContentFromPlanData(program.content) : '';
   
@@ -853,9 +895,9 @@ function MyProgramTab({ planData }: { planData: MyPlanData }) {
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-16">
           <Target className="w-16 h-16 text-muted-foreground opacity-50 mb-4" />
-          <h3 className="text-xl font-semibold mb-2">No Program Yet</h3>
+          <h3 className="text-xl font-semibold mb-2">{planT.noProgramYet[lang]}</h3>
           <p className="text-muted-foreground text-center max-w-md">
-            Your coach hasn't assigned a program to you yet. Check back soon!
+            {planT.noProgramDesc[lang]}
           </p>
         </CardContent>
       </Card>
@@ -877,7 +919,7 @@ function MyProgramTab({ planData }: { planData: MyPlanData }) {
           <MarkdownRenderer content={planContent} />
         ) : (
           <p className="text-sm text-muted-foreground leading-relaxed text-center py-8">
-            Plan content is not available. Please contact your coach.
+            {planT.planNotAvailable[lang]}
           </p>
         )}
       </CardContent>
@@ -961,20 +1003,20 @@ export default function ClientPlan() {
       <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground" data-testid="text-plan-title">
-            My Plan
+            {planT.myPlan[lang]}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Your personalized program and weekly schedule
+            {planT.personalizedProgram[lang]}
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 max-w-xs" data-testid="tabs-plan-type">
             <TabsTrigger value="this-week" data-testid="tab-this-week">
-              This Week
+              {planT.thisWeek[lang]}
             </TabsTrigger>
             <TabsTrigger value="my-program" data-testid="tab-my-program">
-              My Program
+              {planT.myProgram[lang]}
             </TabsTrigger>
           </TabsList>
 
@@ -983,11 +1025,12 @@ export default function ClientPlan() {
               planData={effectivePlanData}
               onViewProgram={() => setActiveTab("my-program")}
               clientId={clientId!}
+              lang={lang}
             />
           </TabsContent>
 
           <TabsContent value="my-program" className="mt-4">
-            <MyProgramTab planData={effectivePlanData} />
+            <MyProgramTab planData={effectivePlanData} lang={lang} />
           </TabsContent>
         </Tabs>
       </div>
