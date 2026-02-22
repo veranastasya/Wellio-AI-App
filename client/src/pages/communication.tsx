@@ -59,6 +59,7 @@ export default function Communication() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/coach/messages"] });
       setMessageText("");
+      setPendingAttachments([]);
     },
   });
 
@@ -223,7 +224,6 @@ export default function Communication() {
     };
 
     sendMessageMutation.mutate(newMessage);
-    setPendingAttachments([]); // Clear attachments after sending
   };
 
   const formatTime = (timestamp: string) => {

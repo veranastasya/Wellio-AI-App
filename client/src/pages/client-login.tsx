@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,25 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import logoImage from "@assets/Group 626535_1761099357468.png";
+import type { SupportedLanguage } from "@shared/schema";
+
+const t = {
+  welcomeToWellio: { en: "Welcome to Wellio", ru: "Добро пожаловать в Wellio", es: "Bienvenido a Wellio" },
+  signInToContinue: { en: "Sign in to continue your wellness journey", ru: "Войдите, чтобы продолжить путь к здоровью", es: "Inicia sesión para continuar tu camino de bienestar" },
+  email: { en: "Email", ru: "Эл. почта", es: "Correo electrónico" },
+  password: { en: "Password", ru: "Пароль", es: "Contraseña" },
+  forgotPassword: { en: "Forgot password?", ru: "Забыли пароль?", es: "¿Olvidaste tu contraseña?" },
+  enterPassword: { en: "Enter your password", ru: "Введите пароль", es: "Ingresa tu contraseña" },
+  signingIn: { en: "Signing In...", ru: "Вход...", es: "Iniciando sesión..." },
+  signIn: { en: "Sign In", ru: "Войти", es: "Iniciar sesión" },
+  firstTimeHere: { en: "First time here? Check your email for an invite link from your coach.", ru: "Впервые здесь? Проверьте почту — тренер отправил вам ссылку-приглашение.", es: "¿Primera vez aquí? Revisa tu correo para un enlace de invitación de tu entrenador." },
+  missingInfo: { en: "Missing Information", ru: "Заполните все поля", es: "Información faltante" },
+  enterBothFields: { en: "Please enter both email and password", ru: "Пожалуйста, введите email и пароль", es: "Por favor ingresa correo y contraseña" },
+  welcomeBack: { en: "Welcome Back!", ru: "С возвращением!", es: "¡Bienvenido de vuelta!" },
+  loggedInAs: { en: "Logged in as", ru: "Вы вошли как", es: "Sesión iniciada como" },
+  loginFailed: { en: "Login Failed", ru: "Ошибка входа", es: "Error de inicio de sesión" },
+  invalidCredentials: { en: "Invalid email or password. Please try again.", ru: "Неверный email или пароль. Попробуйте снова.", es: "Correo o contraseña incorrectos. Inténtalo de nuevo." },
+} as const;
 
 export default function ClientLogin() {
   const [, setLocation] = useLocation();
@@ -17,14 +36,26 @@ export default function ClientLogin() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lang, setLang] = useState<SupportedLanguage>("en");
+
+  useEffect(() => {
+    const storedLang = localStorage.getItem("clientPreferredLanguage") as SupportedLanguage | null;
+    if (storedLang && (storedLang === "en" || storedLang === "ru" || storedLang === "es")) {
+      setLang(storedLang);
+    } else {
+      const browserLang = navigator.language.toLowerCase();
+      if (browserLang.startsWith("ru")) setLang("ru");
+      else if (browserLang.startsWith("es")) setLang("es");
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!email || !password) {
       toast({
-        title: "Missing Information",
-        description: "Please enter both email and password",
+        title: t.missingInfo[lang],
+        description: t.enterBothFields[lang],
         variant: "destructive",
       });
       return;
@@ -40,24 +71,22 @@ export default function ClientLogin() {
       const data = await response.json();
 
       if (data.success && data.client) {
-        // Store client info in localStorage
         localStorage.setItem("clientId", data.client.id);
         localStorage.setItem("clientEmail", data.client.email);
         
         toast({
-          title: "Welcome Back!",
-          description: `Logged in as ${data.client.name}`,
+          title: t.welcomeBack[lang],
+          description: `${t.loggedInAs[lang]} ${data.client.name}`,
         });
 
-        // Redirect to dashboard
         setLocation("/client/dashboard");
       } else {
         throw new Error("Login failed");
       }
     } catch (error: any) {
       toast({
-        title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
+        title: t.loginFailed[lang],
+        description: t.invalidCredentials[lang],
         variant: "destructive",
       });
     } finally {
@@ -66,7 +95,6 @@ export default function ClientLogin() {
   };
 
   const handleBrandKeyDown = (e: React.KeyboardEvent) => {
-    // Support both Enter and Space for keyboard navigation
     if (e.key === ' ' || e.key === 'Spacebar') {
       e.preventDefault();
       setLocation("/");
@@ -91,16 +119,16 @@ export default function ClientLogin() {
                 className="w-6 h-6 object-contain"
               />
             </Link>
-            <CardTitle className="text-xl sm:text-2xl">Welcome to Wellio</CardTitle>
+            <CardTitle className="text-xl sm:text-2xl">{t.welcomeToWellio[lang]}</CardTitle>
           </div>
           <CardDescription className="text-sm sm:text-base">
-            Sign in to continue your wellness journey
+            {t.signInToContinue[lang]}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-2">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.email[lang]}</Label>
               <Input
                 id="email"
                 type="email"
@@ -115,13 +143,13 @@ export default function ClientLogin() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t.password[lang]}</Label>
                 <Link 
                   href="/forgot-password?type=client"
                   className="text-xs text-primary hover:underline"
                   data-testid="link-forgot-password"
                 >
-                  Forgot password?
+                  {t.forgotPassword[lang]}
                 </Link>
               </div>
               <div className="relative">
@@ -130,7 +158,7 @@ export default function ClientLogin() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={t.enterPassword[lang]}
                   required
                   autoComplete="current-password"
                   className="pr-10"
@@ -161,16 +189,16 @@ export default function ClientLogin() {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Signing In...
+                  {t.signingIn[lang]}
                 </>
               ) : (
-                "Sign In"
+                t.signIn[lang]
               )}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-xs sm:text-sm text-muted-foreground">
-            <p>First time here? Check your email for an invite link from your coach.</p>
+            <p>{t.firstTimeHere[lang]}</p>
           </div>
         </CardContent>
       </Card>

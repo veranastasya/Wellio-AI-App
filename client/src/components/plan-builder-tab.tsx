@@ -17,12 +17,15 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
+import type { SupportedLanguage } from "@shared/schema";
+
 interface PlanBuilderTabProps {
   clientId: string;
   clientName: string;
   onSwitchToClientView?: () => void;
   programStartDate?: string | null;
   joinedDate?: string | null;
+  lang?: SupportedLanguage;
 }
 
 interface ChatMessage {
@@ -80,6 +83,71 @@ interface Task {
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 11);
+
+const pbtT: Record<string, Record<string, string>> = {
+  aiProgramBuilder: { en: "AI Program Builder", ru: "ИИ-конструктор программ", es: "Constructor de programas IA" },
+  aiBuilderHint: { en: "Tell me what to add - training, meals, habits, or tasks", ru: "Скажите, что добавить — тренировки, питание, привычки или задачи", es: "Dime qué agregar: entrenamiento, comidas, hábitos o tareas" },
+  generating: { en: "Generating...", ru: "Генерация...", es: "Generando..." },
+  aiInputPlaceholder: { en: "e.g. Add upper body workout for Monday", ru: "Напр. Добавить тренировку верха тела на понедельник", es: "Ej. Agregar entrenamiento de torso para lunes" },
+  exerciseName: { en: "Exercise Name", ru: "Название упражнения", es: "Nombre del ejercicio" },
+  sets: { en: "Sets", ru: "Подходы", es: "Series" },
+  reps: { en: "Reps", ru: "Повторы", es: "Repeticiones" },
+  coachNote: { en: "Coach Note (optional)", ru: "Заметка тренера (необязательно)", es: "Nota del entrenador (opcional)" },
+  coachNoteLabel: { en: "Coach note:", ru: "Заметка:", es: "Nota:" },
+  cancel: { en: "Cancel", ru: "Отмена", es: "Cancelar" },
+  save: { en: "Save", ru: "Сохранить", es: "Guardar" },
+  add: { en: "Add", ru: "Добавить", es: "Agregar" },
+  mealType: { en: "Meal Type", ru: "Тип приёма пищи", es: "Tipo de comida" },
+  mealName: { en: "Meal Name", ru: "Название блюда", es: "Nombre de la comida" },
+  calories: { en: "Calories", ru: "Калории", es: "Calorías" },
+  proteinG: { en: "Protein (g)", ru: "Белок (г)", es: "Proteína (g)" },
+  carbsG: { en: "Carbs (g)", ru: "Углеводы (г)", es: "Carbohidratos (g)" },
+  fatG: { en: "Fat (g)", ru: "Жиры (г)", es: "Grasa (g)" },
+  weeklyHabits: { en: "Weekly Habits", ru: "Еженедельные привычки", es: "Hábitos semanales" },
+  weeklyTasks: { en: "Weekly Tasks", ru: "Еженедельные задачи", es: "Tareas semanales" },
+  training: { en: "Training", ru: "Тренировки", es: "Entrenamiento" },
+  nutrition: { en: "Nutrition", ru: "Питание", es: "Nutrición" },
+  habits: { en: "Habits", ru: "Привычки", es: "Hábitos" },
+  tasks: { en: "Tasks", ru: "Задачи", es: "Tareas" },
+  planBuilder: { en: "Plan Builder", ru: "Конструктор планов", es: "Constructor de planes" },
+  weeklyPlan: { en: "Weekly Plan", ru: "Еженедельный план", es: "Plan semanal" },
+  week: { en: "Week", ru: "Неделя", es: "Semana" },
+  breakfast: { en: "Breakfast", ru: "Завтрак", es: "Desayuno" },
+  lunch: { en: "Lunch", ru: "Обед", es: "Almuerzo" },
+  dinner: { en: "Dinner", ru: "Ужин", es: "Cena" },
+  snack: { en: "Snack", ru: "Перекус", es: "Merienda" },
+  daily: { en: "Daily", ru: "Ежедневно", es: "Diario" },
+  weekly: { en: "Weekly", ru: "Еженедельно", es: "Semanal" },
+  monday: { en: "Monday", ru: "Понедельник", es: "Lunes" },
+  tuesday: { en: "Tuesday", ru: "Вторник", es: "Martes" },
+  wednesday: { en: "Wednesday", ru: "Среда", es: "Miércoles" },
+  thursday: { en: "Thursday", ru: "Четверг", es: "Jueves" },
+  friday: { en: "Friday", ru: "Пятница", es: "Viernes" },
+  saturday: { en: "Saturday", ru: "Суббота", es: "Sábado" },
+  sunday: { en: "Sunday", ru: "Воскресенье", es: "Domingo" },
+  mon: { en: "Mon", ru: "Пн", es: "Lun" },
+  tue: { en: "Tue", ru: "Вт", es: "Mar" },
+  wed: { en: "Wed", ru: "Ср", es: "Mié" },
+  thu: { en: "Thu", ru: "Чт", es: "Jue" },
+  fri: { en: "Fri", ru: "Пт", es: "Vie" },
+  sat: { en: "Sat", ru: "Сб", es: "Sáb" },
+  sun: { en: "Sun", ru: "Вс", es: "Dom" },
+  cal: { en: "cal", ru: "кал", es: "cal" },
+  p: { en: "P", ru: "Б", es: "P" },
+  c: { en: "C", ru: "У", es: "C" },
+  f: { en: "F", ru: "Ж", es: "G" },
+  savePlan: { en: "Save Plan", ru: "Сохранить план", es: "Guardar plan" },
+  saving: { en: "Saving...", ru: "Сохранение...", es: "Guardando..." },
+  loadingSessions: { en: "Loading sessions...", ru: "Загрузка сессий...", es: "Cargando sesiones..." },
+  noSessions: { en: "No sessions yet", ru: "Нет сессий", es: "Sin sesiones aún" },
+  startNewPlan: { en: "Start a new plan below", ru: "Начните новый план ниже", es: "Comienza un nuevo plan abajo" },
+  newSession: { en: "New Session", ru: "Новая сессия", es: "Nueva sesión" },
+  continueSession: { en: "Continue Session", ru: "Продолжить сессию", es: "Continuar sesión" },
+  deleteSession: { en: "Delete Session", ru: "Удалить сессию", es: "Eliminar sesión" },
+  assigned: { en: "Assigned", ru: "Назначено", es: "Asignado" },
+  inProgress: { en: "In Progress", ru: "В процессе", es: "En progreso" },
+  draft: { en: "Draft", ru: "Черновик", es: "Borrador" },
+};
 
 const initialTrainingDays: TrainingDay[] = [
   {
@@ -166,9 +234,10 @@ interface AiProgramBuilderPanelProps {
   onAddHabit: (habit: Habit) => void;
   onAddTask: (task: Task) => void;
   onAddExercise: (dayId: string, exercise: Exercise) => void;
+  lang?: string;
 }
 
-function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTrainingDay, onAddMeal, onAddNutritionDay, onReplaceNutritionDays, onAddHabit, onAddTask, onAddExercise }: AiProgramBuilderPanelProps) {
+function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTrainingDay, onAddMeal, onAddNutritionDay, onReplaceNutritionDays, onAddHabit, onAddTask, onAddExercise, lang = "en" }: AiProgramBuilderPanelProps) {
   const getInitialMessage = () => ({
     id: "initial",
     role: "assistant" as const,
@@ -460,8 +529,8 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
           <Sparkles className="w-4 h-4 text-white" />
         </div>
         <div>
-          <h3 className="text-white font-semibold text-sm">AI Program Builder</h3>
-          <p className="text-white/80 text-xs">Tell me what to add - training, meals, habits, or tasks</p>
+          <h3 className="text-white font-semibold text-sm">{pbtT.aiProgramBuilder[lang]}</h3>
+          <p className="text-white/80 text-xs">{pbtT.aiBuilderHint[lang]}</p>
         </div>
       </div>
       <CardContent className="flex-1 flex flex-col p-0 min-h-0">
@@ -484,7 +553,7 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
             {isProcessing && (
               <div className="flex items-center gap-2 text-muted-foreground text-sm">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Generating...</span>
+                <span>{pbtT.generating[lang]}</span>
               </div>
             )}
           </div>
@@ -492,7 +561,7 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
         <div className="p-4 border-t bg-muted/30">
           <div className="flex gap-2">
             <Input
-              placeholder="e.g. Add upper body workout for Monday"
+              placeholder={pbtT.aiInputPlaceholder[lang]}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
@@ -520,9 +589,10 @@ interface EditableExerciseProps {
   exercise: Exercise;
   onUpdate: (updated: Exercise) => void;
   onDelete: () => void;
+  lang?: string;
 }
 
-function EditableExercise({ exercise, onUpdate, onDelete }: EditableExerciseProps) {
+function EditableExercise({ exercise, onUpdate, onDelete, lang = "en" }: EditableExerciseProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(exercise.name);
   const [editSets, setEditSets] = useState(exercise.sets);
@@ -552,7 +622,7 @@ function EditableExercise({ exercise, onUpdate, onDelete }: EditableExerciseProp
     return (
       <div className="p-3 rounded-lg border-2 border-[#28A0AE] bg-card space-y-3" data-testid={`exercise-edit-${exercise.id}`}>
         <div className="space-y-2">
-          <Label className="text-xs">Exercise Name</Label>
+          <Label className="text-xs">{pbtT.exerciseName[lang]}</Label>
           <Input
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
@@ -563,7 +633,7 @@ function EditableExercise({ exercise, onUpdate, onDelete }: EditableExerciseProp
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label className="text-xs">Sets</Label>
+            <Label className="text-xs">{pbtT.sets[lang]}</Label>
             <Input
               type="number"
               min={1}
@@ -574,7 +644,7 @@ function EditableExercise({ exercise, onUpdate, onDelete }: EditableExerciseProp
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs">Reps</Label>
+            <Label className="text-xs">{pbtT.reps[lang]}</Label>
             <Input
               type="number"
               min={1}
@@ -586,7 +656,7 @@ function EditableExercise({ exercise, onUpdate, onDelete }: EditableExerciseProp
           </div>
         </div>
         <div className="space-y-2">
-          <Label className="text-xs">Coach Note (optional)</Label>
+          <Label className="text-xs">{pbtT.coachNote[lang]}</Label>
           <Input
             value={editNote}
             onChange={(e) => setEditNote(e.target.value)}
@@ -597,10 +667,10 @@ function EditableExercise({ exercise, onUpdate, onDelete }: EditableExerciseProp
         </div>
         <div className="flex gap-2 justify-end">
           <Button variant="ghost" size="sm" onClick={handleCancel} data-testid="button-cancel-exercise">
-            Cancel
+            {pbtT.cancel[lang]}
           </Button>
           <Button size="sm" onClick={handleSave} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white" data-testid="button-save-exercise">
-            Save
+            {pbtT.save[lang]}
           </Button>
         </div>
       </div>
@@ -617,11 +687,11 @@ function EditableExercise({ exercise, onUpdate, onDelete }: EditableExerciseProp
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-foreground">{exercise.name}</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Sets: {exercise.sets} &nbsp;&nbsp;&nbsp; Reps: {exercise.reps}
+          {pbtT.sets[lang]}: {exercise.sets} &nbsp;&nbsp;&nbsp; {pbtT.reps[lang]}: {exercise.reps}
         </p>
         {exercise.note && (
           <p className="text-xs text-[#28A0AE] mt-1.5">
-            <span className="font-medium">Coach note:</span> {exercise.note}
+            <span className="font-medium">{pbtT.coachNoteLabel[lang]}</span> {exercise.note}
           </p>
         )}
       </div>
@@ -646,9 +716,10 @@ interface TrainingTabProps {
   onAddExercise: (dayId: string, exercise: Exercise) => void;
   onDeleteDay: (dayId: string) => void;
   onAddDay: (day: TrainingDay) => void;
+  lang?: string;
 }
 
-function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, onAddExercise, onDeleteDay, onAddDay }: TrainingTabProps) {
+function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, onAddExercise, onDeleteDay, onAddDay, lang = "en" }: TrainingTabProps) {
   const [addingExerciseToDay, setAddingExerciseToDay] = useState<string | null>(null);
   const [newExerciseName, setNewExerciseName] = useState("");
   const [newExerciseSets, setNewExerciseSets] = useState(3);
@@ -726,13 +797,13 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Monday">Monday</SelectItem>
-                <SelectItem value="Tuesday">Tuesday</SelectItem>
-                <SelectItem value="Wednesday">Wednesday</SelectItem>
-                <SelectItem value="Thursday">Thursday</SelectItem>
-                <SelectItem value="Friday">Friday</SelectItem>
-                <SelectItem value="Saturday">Saturday</SelectItem>
-                <SelectItem value="Sunday">Sunday</SelectItem>
+                <SelectItem value="Monday">{pbtT.monday[lang]}</SelectItem>
+                <SelectItem value="Tuesday">{pbtT.tuesday[lang]}</SelectItem>
+                <SelectItem value="Wednesday">{pbtT.wednesday[lang]}</SelectItem>
+                <SelectItem value="Thursday">{pbtT.thursday[lang]}</SelectItem>
+                <SelectItem value="Friday">{pbtT.friday[lang]}</SelectItem>
+                <SelectItem value="Saturday">{pbtT.saturday[lang]}</SelectItem>
+                <SelectItem value="Sunday">{pbtT.sunday[lang]}</SelectItem>
               </SelectContent>
             </Select>
             <span className="text-muted-foreground">|</span>
@@ -770,6 +841,7 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
                 exercise={exercise}
                 onUpdate={(updated) => onUpdateExercise(day.id, exercise.id, updated)}
                 onDelete={() => onDeleteExercise(day.id, exercise.id)}
+                lang={lang}
               />
             ))}
             
@@ -785,7 +857,7 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs w-10">Sets:</Label>
+                    <Label className="text-xs w-10">{pbtT.sets[lang]}:</Label>
                     <Input
                       type="number"
                       min={1}
@@ -796,7 +868,7 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <Label className="text-xs w-10">Reps:</Label>
+                    <Label className="text-xs w-10">{pbtT.reps[lang]}:</Label>
                     <Input
                       type="number"
                       min={1}
@@ -816,10 +888,10 @@ function TrainingTab({ days, onUpdateDay, onUpdateExercise, onDeleteExercise, on
                 />
                 <div className="flex gap-2 justify-end">
                   <Button variant="ghost" size="sm" onClick={() => setAddingExerciseToDay(null)} data-testid="button-cancel-new-exercise">
-                    Cancel
+                    {pbtT.cancel[lang]}
                   </Button>
                   <Button size="sm" onClick={() => handleAddExercise(day.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white" data-testid="button-add-new-exercise">
-                    Add
+                    {pbtT.add[lang]}
                   </Button>
                 </div>
               </div>
@@ -855,9 +927,10 @@ interface EditableMealProps {
   meal: Meal;
   onUpdate: (updated: Meal) => void;
   onDelete: () => void;
+  lang?: string;
 }
 
-function EditableMeal({ meal, onUpdate, onDelete }: EditableMealProps) {
+function EditableMeal({ meal, onUpdate, onDelete, lang = "en" }: EditableMealProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editType, setEditType] = useState(meal.type);
   const [editName, setEditName] = useState(meal.name);
@@ -884,21 +957,21 @@ function EditableMeal({ meal, onUpdate, onDelete }: EditableMealProps) {
       <div className="p-3 rounded-lg border-2 border-[#28A0AE] bg-card space-y-3" data-testid={`meal-edit-${meal.id}`}>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label className="text-xs">Meal Type</Label>
+            <Label className="text-xs">{pbtT.mealType[lang]}</Label>
             <Select value={editType} onValueChange={setEditType}>
               <SelectTrigger className="h-8 text-sm" data-testid="select-meal-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Breakfast">Breakfast</SelectItem>
-                <SelectItem value="Lunch">Lunch</SelectItem>
-                <SelectItem value="Dinner">Dinner</SelectItem>
-                <SelectItem value="Snack">Snack</SelectItem>
+                <SelectItem value="Breakfast">{pbtT.breakfast[lang]}</SelectItem>
+                <SelectItem value="Lunch">{pbtT.lunch[lang]}</SelectItem>
+                <SelectItem value="Dinner">{pbtT.dinner[lang]}</SelectItem>
+                <SelectItem value="Snack">{pbtT.snack[lang]}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs">Meal Name</Label>
+            <Label className="text-xs">{pbtT.mealName[lang]}</Label>
             <Input
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
@@ -909,25 +982,25 @@ function EditableMeal({ meal, onUpdate, onDelete }: EditableMealProps) {
         </div>
         <div className="grid grid-cols-4 gap-2">
           <div className="space-y-1">
-            <Label className="text-xs">Calories</Label>
+            <Label className="text-xs">{pbtT.calories[lang]}</Label>
             <Input type="number" value={editCalories} onChange={(e) => setEditCalories(parseInt(e.target.value) || 0)} className="h-8 text-sm" data-testid="input-meal-calories" />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Protein (g)</Label>
+            <Label className="text-xs">{pbtT.proteinG[lang]}</Label>
             <Input type="number" value={editProtein} onChange={(e) => setEditProtein(parseInt(e.target.value) || 0)} className="h-8 text-sm" data-testid="input-meal-protein" />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Carbs (g)</Label>
+            <Label className="text-xs">{pbtT.carbsG[lang]}</Label>
             <Input type="number" value={editCarbs} onChange={(e) => setEditCarbs(parseInt(e.target.value) || 0)} className="h-8 text-sm" data-testid="input-meal-carbs" />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Fat (g)</Label>
+            <Label className="text-xs">{pbtT.fatG[lang]}</Label>
             <Input type="number" value={editFat} onChange={(e) => setEditFat(parseInt(e.target.value) || 0)} className="h-8 text-sm" data-testid="input-meal-fat" />
           </div>
         </div>
         <div className="flex gap-2 justify-end">
-          <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Cancel</Button>
-          <Button size="sm" onClick={handleSave} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Save</Button>
+          <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>{pbtT.cancel[lang]}</Button>
+          <Button size="sm" onClick={handleSave} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">{pbtT.save[lang]}</Button>
         </div>
       </div>
     );
@@ -966,9 +1039,10 @@ interface NutritionTabProps {
   onUpdateMeal: (dayId: string, mealId: string, updates: Meal) => void;
   onDeleteMeal: (dayId: string, mealId: string) => void;
   onAddMeal: (dayId: string, meal: Meal) => void;
+  lang?: string;
 }
 
-function NutritionTab({ days, onUpdateDay, onDeleteDay, onAddDay, onUpdateMeal, onDeleteMeal, onAddMeal }: NutritionTabProps) {
+function NutritionTab({ days, onUpdateDay, onDeleteDay, onAddDay, onUpdateMeal, onDeleteMeal, onAddMeal, lang = "en" }: NutritionTabProps) {
   const [addingMealToDay, setAddingMealToDay] = useState<string | null>(null);
   const [newMealType, setNewMealType] = useState("Lunch");
   const [newMealName, setNewMealName] = useState("");
@@ -1043,13 +1117,13 @@ function NutritionTab({ days, onUpdateDay, onDeleteDay, onAddDay, onUpdateMeal, 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Monday">Monday</SelectItem>
-                <SelectItem value="Tuesday">Tuesday</SelectItem>
-                <SelectItem value="Wednesday">Wednesday</SelectItem>
-                <SelectItem value="Thursday">Thursday</SelectItem>
-                <SelectItem value="Friday">Friday</SelectItem>
-                <SelectItem value="Saturday">Saturday</SelectItem>
-                <SelectItem value="Sunday">Sunday</SelectItem>
+                <SelectItem value="Monday">{pbtT.monday[lang]}</SelectItem>
+                <SelectItem value="Tuesday">{pbtT.tuesday[lang]}</SelectItem>
+                <SelectItem value="Wednesday">{pbtT.wednesday[lang]}</SelectItem>
+                <SelectItem value="Thursday">{pbtT.thursday[lang]}</SelectItem>
+                <SelectItem value="Friday">{pbtT.friday[lang]}</SelectItem>
+                <SelectItem value="Saturday">{pbtT.saturday[lang]}</SelectItem>
+                <SelectItem value="Sunday">{pbtT.sunday[lang]}</SelectItem>
               </SelectContent>
             </Select>
             <span className="text-muted-foreground">|</span>
@@ -1087,6 +1161,7 @@ function NutritionTab({ days, onUpdateDay, onDeleteDay, onAddDay, onUpdateMeal, 
                 meal={meal}
                 onUpdate={(updated) => onUpdateMeal(day.id, meal.id, updated)}
                 onDelete={() => onDeleteMeal(day.id, meal.id)}
+                lang={lang}
               />
             ))}
             {addingMealToDay === day.id ? (
@@ -1097,10 +1172,10 @@ function NutritionTab({ days, onUpdateDay, onDeleteDay, onAddDay, onUpdateMeal, 
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Breakfast">Breakfast</SelectItem>
-                      <SelectItem value="Lunch">Lunch</SelectItem>
-                      <SelectItem value="Dinner">Dinner</SelectItem>
-                      <SelectItem value="Snack">Snack</SelectItem>
+                      <SelectItem value="Breakfast">{pbtT.breakfast[lang]}</SelectItem>
+                      <SelectItem value="Lunch">{pbtT.lunch[lang]}</SelectItem>
+                      <SelectItem value="Dinner">{pbtT.dinner[lang]}</SelectItem>
+                      <SelectItem value="Snack">{pbtT.snack[lang]}</SelectItem>
                     </SelectContent>
                   </Select>
                   <Input
@@ -1112,8 +1187,8 @@ function NutritionTab({ days, onUpdateDay, onDeleteDay, onAddDay, onUpdateMeal, 
                   />
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <Button variant="ghost" size="sm" onClick={() => setAddingMealToDay(null)}>Cancel</Button>
-                  <Button size="sm" onClick={() => handleAddMeal(day.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Add</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setAddingMealToDay(null)}>{pbtT.cancel[lang]}</Button>
+                  <Button size="sm" onClick={() => handleAddMeal(day.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">{pbtT.add[lang]}</Button>
                 </div>
               </div>
             ) : (
@@ -1150,9 +1225,10 @@ interface HabitsTabProps {
   onDeleteHabit: (habitId: string) => void;
   onAddHabit: (habit: Habit) => void;
   onToggleHabit: (habitId: string) => void;
+  lang?: string;
 }
 
-function HabitsTab({ habits, onUpdateHabit, onDeleteHabit, onAddHabit, onToggleHabit }: HabitsTabProps) {
+function HabitsTab({ habits, onUpdateHabit, onDeleteHabit, onAddHabit, onToggleHabit, lang = "en" }: HabitsTabProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newHabitName, setNewHabitName] = useState("");
   const [newHabitFreq, setNewHabitFreq] = useState("Daily");
@@ -1191,7 +1267,7 @@ function HabitsTab({ habits, onUpdateHabit, onDeleteHabit, onAddHabit, onToggleH
   return (
     <Card data-testid="card-habits">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Weekly Habits</CardTitle>
+        <CardTitle className="text-base">{pbtT.weeklyHabits[lang]}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {habits.map((habit) => (
@@ -1203,14 +1279,14 @@ function HabitsTab({ habits, onUpdateHabit, onDeleteHabit, onAddHabit, onToggleH
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Daily">Daily</SelectItem>
+                  <SelectItem value="Daily">{pbtT.daily[lang]}</SelectItem>
                   <SelectItem value="3x per week">3x per week</SelectItem>
-                  <SelectItem value="Weekly">Weekly</SelectItem>
+                  <SelectItem value="Weekly">{pbtT.weekly[lang]}</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex gap-2 justify-end">
-                <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
-                <Button size="sm" onClick={() => handleSaveEdit(habit.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Save</Button>
+                <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>{pbtT.cancel[lang]}</Button>
+                <Button size="sm" onClick={() => handleSaveEdit(habit.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">{pbtT.save[lang]}</Button>
               </div>
             </div>
           ) : (
@@ -1245,14 +1321,14 @@ function HabitsTab({ habits, onUpdateHabit, onDeleteHabit, onAddHabit, onToggleH
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Daily">Daily</SelectItem>
+                <SelectItem value="Daily">{pbtT.daily[lang]}</SelectItem>
                 <SelectItem value="3x per week">3x per week</SelectItem>
-                <SelectItem value="Weekly">Weekly</SelectItem>
+                <SelectItem value="Weekly">{pbtT.weekly[lang]}</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex gap-2 justify-end">
-              <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>Cancel</Button>
-              <Button size="sm" onClick={handleAdd} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Add</Button>
+              <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>{pbtT.cancel[lang]}</Button>
+              <Button size="sm" onClick={handleAdd} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">{pbtT.add[lang]}</Button>
             </div>
           </div>
         ) : (
@@ -1271,9 +1347,10 @@ interface TasksTabProps {
   onDeleteTask: (taskId: string) => void;
   onAddTask: (task: Task) => void;
   onToggleTask: (taskId: string) => void;
+  lang?: string;
 }
 
-function TasksTab({ tasks, onUpdateTask, onDeleteTask, onAddTask, onToggleTask }: TasksTabProps) {
+function TasksTab({ tasks, onUpdateTask, onDeleteTask, onAddTask, onToggleTask, lang = "en" }: TasksTabProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
   const [newTaskDue, setNewTaskDue] = useState("Mon");
@@ -1312,7 +1389,7 @@ function TasksTab({ tasks, onUpdateTask, onDeleteTask, onAddTask, onToggleTask }
   return (
     <Card data-testid="card-tasks">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Weekly Tasks</CardTitle>
+        <CardTitle className="text-base">{pbtT.weeklyTasks[lang]}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {tasks.map((task) => (
@@ -1324,18 +1401,18 @@ function TasksTab({ tasks, onUpdateTask, onDeleteTask, onAddTask, onToggleTask }
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Mon">Monday</SelectItem>
-                  <SelectItem value="Tue">Tuesday</SelectItem>
-                  <SelectItem value="Wed">Wednesday</SelectItem>
-                  <SelectItem value="Thu">Thursday</SelectItem>
-                  <SelectItem value="Fri">Friday</SelectItem>
-                  <SelectItem value="Sat">Saturday</SelectItem>
-                  <SelectItem value="Sun">Sunday</SelectItem>
+                  <SelectItem value="Mon">{pbtT.monday[lang]}</SelectItem>
+                  <SelectItem value="Tue">{pbtT.tuesday[lang]}</SelectItem>
+                  <SelectItem value="Wed">{pbtT.wednesday[lang]}</SelectItem>
+                  <SelectItem value="Thu">{pbtT.thursday[lang]}</SelectItem>
+                  <SelectItem value="Fri">{pbtT.friday[lang]}</SelectItem>
+                  <SelectItem value="Sat">{pbtT.saturday[lang]}</SelectItem>
+                  <SelectItem value="Sun">{pbtT.sunday[lang]}</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex gap-2 justify-end">
-                <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
-                <Button size="sm" onClick={() => handleSaveEdit(task.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Save</Button>
+                <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>{pbtT.cancel[lang]}</Button>
+                <Button size="sm" onClick={() => handleSaveEdit(task.id)} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">{pbtT.save[lang]}</Button>
               </div>
             </div>
           ) : (
@@ -1370,18 +1447,18 @@ function TasksTab({ tasks, onUpdateTask, onDeleteTask, onAddTask, onToggleTask }
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Mon">Monday</SelectItem>
-                <SelectItem value="Tue">Tuesday</SelectItem>
-                <SelectItem value="Wed">Wednesday</SelectItem>
-                <SelectItem value="Thu">Thursday</SelectItem>
-                <SelectItem value="Fri">Friday</SelectItem>
-                <SelectItem value="Sat">Saturday</SelectItem>
-                <SelectItem value="Sun">Sunday</SelectItem>
+                <SelectItem value="Mon">{pbtT.monday[lang]}</SelectItem>
+                <SelectItem value="Tue">{pbtT.tuesday[lang]}</SelectItem>
+                <SelectItem value="Wed">{pbtT.wednesday[lang]}</SelectItem>
+                <SelectItem value="Thu">{pbtT.thursday[lang]}</SelectItem>
+                <SelectItem value="Fri">{pbtT.friday[lang]}</SelectItem>
+                <SelectItem value="Sat">{pbtT.saturday[lang]}</SelectItem>
+                <SelectItem value="Sun">{pbtT.sunday[lang]}</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex gap-2 justify-end">
-              <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>Cancel</Button>
-              <Button size="sm" onClick={handleAdd} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">Add</Button>
+              <Button variant="ghost" size="sm" onClick={() => setIsAdding(false)}>{pbtT.cancel[lang]}</Button>
+              <Button size="sm" onClick={handleAdd} className="bg-[#28A0AE] hover:bg-[#28A0AE]/90 text-white">{pbtT.add[lang]}</Button>
             </div>
           </div>
         ) : (
@@ -1416,6 +1493,7 @@ interface WeeklyEditorProps {
   onDeleteTask: (taskId: string) => void;
   onAddTask: (task: Task) => void;
   onToggleTask: (taskId: string) => void;
+  lang?: string;
 }
 
 function WeeklyEditor({ 
@@ -1439,7 +1517,8 @@ function WeeklyEditor({
   onUpdateTask,
   onDeleteTask,
   onAddTask,
-  onToggleTask
+  onToggleTask,
+  lang = "en"
 }: WeeklyEditorProps) {
   return (
     <Card className="h-full flex flex-col border-2 border-[#28A0AE]/20" data-testid="card-weekly-editor">
@@ -1448,19 +1527,19 @@ function WeeklyEditor({
           <TabsList className="grid grid-cols-4 h-auto p-1 bg-muted rounded-lg">
             <TabsTrigger value="training" className="gap-1.5 py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-training">
               <Dumbbell className="w-4 h-4" />
-              Training
+              {pbtT.training[lang]}
             </TabsTrigger>
             <TabsTrigger value="nutrition" className="gap-1.5 py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-nutrition">
               <UtensilsCrossed className="w-4 h-4" />
-              Nutrition
+              {pbtT.nutrition[lang]}
             </TabsTrigger>
             <TabsTrigger value="habits" className="gap-1.5 py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-habits">
               <CheckCircle2 className="w-4 h-4" />
-              Habits
+              {pbtT.habits[lang]}
             </TabsTrigger>
             <TabsTrigger value="tasks" className="gap-1.5 py-2 data-[state=active]:bg-[#28A0AE] data-[state=active]:text-white rounded-md" data-testid="tab-tasks">
               <ClipboardList className="w-4 h-4" />
-              Tasks
+              {pbtT.tasks[lang]}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -1474,6 +1553,7 @@ function WeeklyEditor({
               onAddExercise={onAddExercise}
               onDeleteDay={onDeleteTrainingDay}
               onAddDay={onAddTrainingDay}
+              lang={lang}
             />
           </TabsContent>
           <TabsContent value="nutrition" className="m-0 mt-0">
@@ -1485,6 +1565,7 @@ function WeeklyEditor({
               onUpdateMeal={onUpdateMeal}
               onDeleteMeal={onDeleteMeal}
               onAddMeal={onAddMeal}
+              lang={lang}
             />
           </TabsContent>
           <TabsContent value="habits" className="m-0 mt-0">
@@ -1494,6 +1575,7 @@ function WeeklyEditor({
               onDeleteHabit={onDeleteHabit}
               onAddHabit={onAddHabit}
               onToggleHabit={onToggleHabit}
+              lang={lang}
             />
           </TabsContent>
           <TabsContent value="tasks" className="m-0 mt-0">
@@ -1503,6 +1585,7 @@ function WeeklyEditor({
               onDeleteTask={onDeleteTask}
               onAddTask={onAddTask}
               onToggleTask={onToggleTask}
+              lang={lang}
             />
           </TabsContent>
         </CardContent>
@@ -1538,7 +1621,7 @@ interface ClientPlan {
   weekEndDate?: string;
 }
 
-export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, programStartDate, joinedDate }: PlanBuilderTabProps) {
+export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, programStartDate, joinedDate, lang = "en" }: PlanBuilderTabProps) {
   // Calculate the base date for week calculations (program start or joined date)
   const getBaseDate = (): Date => {
     // Use programStartDate if set, otherwise use joinedDate, fallback to today
@@ -2268,6 +2351,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
                   onAddHabit={handleAddHabit}
                   onAddTask={handleAddTask}
                   onAddExercise={handleAddExercise}
+                  lang={lang}
                 />
               </div>
               <div className="lg:col-span-8 flex flex-col min-h-[600px]">
@@ -2293,6 +2377,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
                   onDeleteTask={handleDeleteTask}
                   onAddTask={handleAddTask}
                   onToggleTask={handleToggleTask}
+                  lang={lang}
                 />
               </div>
             </div>
@@ -2339,6 +2424,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
                 handleAddSection={planBuilder.handleAddSection}
                 handleSavePlan={planBuilder.handleSavePlan}
                 handleAssignToClient={planBuilder.handleAssignToClient}
+                lang={lang}
               />
             </div>
           )}

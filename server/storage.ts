@@ -1435,10 +1435,9 @@ Introduction to consistent training and meal logging habits.
   }
 
   async getActiveClientPlan(clientId: string): Promise<ClientPlan | undefined> {
-    const plans = await db.select()
+    const [plan] = await db.select()
       .from(clientPlans)
-      .where(eq(clientPlans.clientId, clientId));
-    const [plan] = plans.filter(p => p.status === 'active');
+      .where(and(eq(clientPlans.clientId, clientId), eq(clientPlans.status, 'active')));
     return plan || undefined;
   }
 

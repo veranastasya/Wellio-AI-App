@@ -3272,9 +3272,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Email and password are required" });
       }
 
-      // Find client by email
-      const clients = await storage.getClients();
-      const client = clients.find(c => c.email.toLowerCase() === email.toLowerCase());
+      // Find client by email (case-insensitive)
+      const client = await storage.getClientByEmail(email.toLowerCase());
 
       if (!client || !client.passwordHash) {
         return res.status(401).json({ error: "Invalid email or password" });

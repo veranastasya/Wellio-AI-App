@@ -34,7 +34,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Plus, Trash2, GripVertical, ArrowLeft, Save, X, Upload, Loader2, ImageIcon } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Save, X, Upload, Loader2, ImageIcon } from "lucide-react";
 import type { Questionnaire, Question, QuestionType, Coach, SupportedLanguage } from "@shared/schema";
 import { normalizeQuestion, COACH_UI_TRANSLATIONS } from "@shared/schema";
 import { type UnitsPreference, UNITS_LABELS, UNITS_LABELS_TRANSLATED } from "@shared/units";
@@ -479,7 +479,6 @@ export default function QuestionnaireBuilder() {
                 data-testid={`default-field-${field.name.toLowerCase().replace(" ", "-")}`}
               >
                 <div className="flex items-center gap-3">
-                  <GripVertical className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{field.name}</span>
                 </div>
                 <span className="text-sm text-muted-foreground">
@@ -612,7 +611,6 @@ function QuestionEditor({ question, index, lang, t, questionTypeLabels, onUpdate
     <AccordionItem value={question.id}>
       <div className="border rounded-lg">
         <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4">
-          <GripVertical className="hidden sm:block h-4 w-4 text-muted-foreground mt-2 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <AccordionTrigger className="hover:no-underline py-0">
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-left">

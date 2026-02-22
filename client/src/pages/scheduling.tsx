@@ -407,12 +407,12 @@ export default function Scheduling() {
     editForm.reset({
       clientId: selectedSession.clientId,
       sessionType: selectedSession.sessionType,
-      locationType: (selectedSession as any).locationType || "video",
+      locationType: selectedSession.locationType || "video",
       date: selectedSession.date,
       startTime: selectedSession.startTime,
       duration,
       notes: selectedSession.notes || "",
-      meetingLink: (selectedSession as any).meetingLink || "",
+      meetingLink: selectedSession.meetingLink || "",
     });
     setIsDetailsDialogOpen(false);
     setIsEditDialogOpen(true);

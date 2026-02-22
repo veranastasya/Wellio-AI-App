@@ -832,6 +832,7 @@ export default function CoachClientDetail() {
               clientName={client?.name || "Client"} 
               programStartDate={client?.programStartDate}
               joinedDate={client?.joinedDate}
+              lang={lang}
             />
           </TabsContent>
 
