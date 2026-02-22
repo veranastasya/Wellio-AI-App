@@ -672,6 +672,58 @@ export async function detectInsightsForClient(client: Client): Promise<{ created
   }
 }
 
+export async function debugDetectInsightsForClient(clientId: string): Promise<any> {
+  const clients = await storage.getClients();
+  const client = clients.find((c: Client) => c.id === clientId);
+  if (!client) return { error: "Client not found" };
+  if (!client.coachId) return { error: "Client has no coach" };
+
+  const debugLog: any = { clientId, clientName: client.name, stages: {} };
+
+  const ctx = await buildComprehensiveContext(client);
+  const analysis = ctx.activityAnalysis;
+
+  debugLog.stages.activityAnalysis = analysis;
+  debugLog.stages.dataCounts = {
+    nutritionLogs: ctx.recentNutrition.length,
+    workoutLogs: ctx.recentWorkouts.length,
+    checkinLogs: ctx.recentCheckins.length,
+    smartLogs: ctx.recentSmartLogs.length,
+    messages: ctx.recentMessages.length,
+    goals: ctx.goals.length,
+    weeklyPlanItems: ctx.weeklyPlanAdherence.totalItems,
+    planTargets: ctx.planTargets ? "present" : "none",
+  };
+
+  const totalDataPoints = ctx.recentNutrition.length + ctx.recentWorkouts.length + ctx.recentCheckins.length + ctx.recentSmartLogs.length;
+  debugLog.stages.hasEnoughDataForAI = totalDataPoints >= 3;
+  debugLog.stages.totalDataPoints = totalDataPoints;
+
+  if (totalDataPoints >= 3) {
+    debugLog.stages.contextSummaryPreview = buildContextSummaryForAI(ctx).substring(0, 500) + "...";
+  }
+
+  const ruleBasedTriggers = detectRuleBasedTriggers(analysis, client.name);
+  debugLog.stages.ruleBasedTriggers = ruleBasedTriggers;
+
+  let aiTriggers: AIInsightResult[] = [];
+  try {
+    aiTriggers = await generateAIInsights(ctx);
+    debugLog.stages.aiTriggers = aiTriggers;
+    debugLog.stages.aiTriggersError = null;
+  } catch (err: any) {
+    debugLog.stages.aiTriggers = [];
+    debugLog.stages.aiTriggersError = err?.message || String(err);
+  }
+
+  const existingTriggers = await storage.getEngagementTriggers(client.id, client.coachId);
+  debugLog.stages.existingUnresolvedTriggers = existingTriggers.filter(t => !t.isResolved).length;
+
+  debugLog.stages.totalTriggersDetected = ruleBasedTriggers.length + aiTriggers.length;
+
+  return debugLog;
+}
+
 export async function processAllClientInsights(): Promise<{
   processedClients: number;
   createdTriggers: number;
