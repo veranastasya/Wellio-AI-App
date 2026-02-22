@@ -5,7 +5,6 @@ import { db } from "./db";
 import { eq, and, asc, lt } from "drizzle-orm";
 import { planBuilderChatMessages } from "@shared/schema";
 import bcrypt from "bcrypt";
-import { debugDetectInsightsForClient } from "./aiInsightService";
 import { convertLocalToUtc, convertUtcToTimezone } from "@shared/timezone";
 
 function getTimezoneAbbreviation(timezone: string, dateForDst?: Date): string {
@@ -8177,15 +8176,6 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     } catch (error) {
       logger.error('Failed to delete client file', { fileId: req.params.fileId }, error);
       res.status(500).json({ error: 'Failed to delete client file' });
-    }
-  });
-
-  app.get("/api/debug/ai-insights/:clientId", async (req, res) => {
-    try {
-      const result = await debugDetectInsightsForClient(req.params.clientId);
-      res.json(result);
-    } catch (error: any) {
-      res.status(500).json({ error: error?.message || "Debug failed" });
     }
   });
 
