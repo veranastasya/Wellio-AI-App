@@ -143,6 +143,7 @@ export interface IStorage {
 
   // Messages
   getMessages(coachId?: string): Promise<Message[]>;
+  getMessagesByClientId(clientId: string, options?: { limit?: number }): Promise<Message[]>;
   getMessage(id: string): Promise<Message | undefined>;
   createMessage(message: InsertMessage): Promise<Message>;
   updateMessage(id: string, message: Partial<InsertMessage>): Promise<Message | undefined>;
@@ -1026,6 +1027,16 @@ Introduction to consistent training and meal logging habits.
         .where(inArray(messages.clientId, coachClientIds));
     }
     return await db.select().from(messages);
+  }
+
+  async getMessagesByClientId(clientId: string, options?: { limit?: number }): Promise<Message[]> {
+    const query = db.select().from(messages)
+      .where(eq(messages.clientId, clientId))
+      .orderBy(desc(messages.timestamp));
+    if (options?.limit) {
+      return await query.limit(options.limit);
+    }
+    return await query;
   }
 
   async getMessage(id: string): Promise<Message | undefined> {
