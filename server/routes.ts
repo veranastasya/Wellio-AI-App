@@ -44,6 +44,28 @@ const upload = multer({
   }
 });
 
+const documentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit for documents
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = [
+      'image/', 'application/pdf',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain', 'text/csv',
+    ];
+    const ext = file.originalname.toLowerCase();
+    if (allowedMimes.some(m => file.mimetype.startsWith(m)) ||
+        ext.endsWith('.heic') || ext.endsWith('.heif') ||
+        ext.endsWith('.pdf') || ext.endsWith('.doc') || ext.endsWith('.docx') ||
+        ext.endsWith('.xls') || ext.endsWith('.xlsx') || ext.endsWith('.csv') || ext.endsWith('.txt')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported file type'));
+    }
+  }
+});
+
 // Extend Express session type
 declare module 'express-session' {
   interface SessionData {
@@ -7937,7 +7959,7 @@ ${JSON.stringify(formattedProfile, null, 2)}${questionnaireContext}`;
     }
   });
 
-  app.post("/api/clients/:clientId/files/upload", requireCoachAuth, upload.single('file'), async (req, res) => {
+  app.post("/api/clients/:clientId/files/upload", requireCoachAuth, documentUpload.single('file'), async (req, res) => {
     try {
       const coachId = req.session.coachId!;
       const { clientId } = req.params;
