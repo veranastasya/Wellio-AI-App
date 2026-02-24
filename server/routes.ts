@@ -4872,7 +4872,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ).join('\n')}`
         : '';
 
-      const systemPrompt = `You are a certified fitness and nutrition expert with a degree in Exercise Science and Sports Nutrition. You hold certifications including NASM-CPT (Certified Personal Trainer), ISSN (Sports Nutrition), and Precision Nutrition Level 2. You have 10+ years of experience working with clients on body composition, athletic performance, and lifestyle optimization.
+      const systemPrompt = `MANDATORY LANGUAGE REQUIREMENT: ${languageInstructions[preferredLanguage]} All content you generate must be written entirely in this language.
+
+You are a certified fitness and nutrition expert with a degree in Exercise Science and Sports Nutrition. You hold certifications including NASM-CPT (Certified Personal Trainer), ISSN (Sports Nutrition), and Precision Nutrition Level 2. You have 10+ years of experience working with clients on body composition, athletic performance, and lifestyle optimization.
 
 Your approach is evidence-based, drawing from peer-reviewed research in exercise physiology, nutritional science, and behavioral psychology. You create clear, realistic, habit-based wellness plans for clients - not just workout or diet plans.
 
@@ -5018,7 +5020,7 @@ STYLE AND CONSTRAINTS
 
 Now read the ClientProfile input and generate the personalized wellness plan following the structure above.
 
-IMPORTANT LANGUAGE INSTRUCTION: ${languageInstructions[preferredLanguage]}
+REMINDER - LANGUAGE REQUIREMENT: ${languageInstructions[preferredLanguage]} Every section heading, bullet point, and piece of text must be in this language.
 
 =====================
 CLIENT PROFILE

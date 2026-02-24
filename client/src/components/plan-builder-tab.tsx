@@ -109,6 +109,11 @@ const pbtT: Record<string, Record<string, string>> = {
   nutrition: { en: "Nutrition", ru: "Питание", es: "Nutrición" },
   habits: { en: "Habits", ru: "Привычки", es: "Hábitos" },
   tasks: { en: "Tasks", ru: "Задачи", es: "Tareas" },
+  aiGreeting: {
+    en: "Hi! I'm ready to help you build this week's program for {clientName}. I can create:\n\n- Training sessions with exercises, sets, and reps\n- Meal plans with macros and recipes\n- Daily habits to track\n- Weekly tasks and goals\n\nWhat would you like to add to this week's program?",
+    ru: "Привет! Я готов помочь вам составить программу на эту неделю для {clientName}. Я могу создать:\n\n- Тренировочные сессии с упражнениями, подходами и повторениями\n- Планы питания с макросами и рецептами\n- Ежедневные привычки для отслеживания\n- Еженедельные задачи и цели\n\nЧто бы вы хотели добавить в программу на эту неделю?",
+    es: "¡Hola! Estoy listo para ayudarte a crear el programa de esta semana para {clientName}. Puedo crear:\n\n- Sesiones de entrenamiento con ejercicios, series y repeticiones\n- Planes de comidas con macros y recetas\n- Hábitos diarios para seguimiento\n- Tareas y objetivos semanales\n\n¿Qué te gustaría agregar al programa de esta semana?",
+  },
   planBuilder: { en: "Plan Builder", ru: "Конструктор планов", es: "Constructor de planes" },
   weeklyPlan: { en: "Weekly Plan", ru: "Еженедельный план", es: "Plan semanal" },
   week: { en: "Week", ru: "Неделя", es: "Semana" },
@@ -241,7 +246,7 @@ function AiProgramBuilderPanel({ clientId, clientName, trainingDays, onAddTraini
   const getInitialMessage = () => ({
     id: "initial",
     role: "assistant" as const,
-    content: `Hi! I'm ready to help you build this week's program for ${clientName}. I can create:\n\n- Training sessions with exercises, sets, and reps\n- Meal plans with macros and recipes\n- Daily habits to track\n- Weekly tasks and goals\n\nWhat would you like to add to this week's program?`,
+    content: (pbtT.aiGreeting[lang] || pbtT.aiGreeting.en).replace("{clientName}", clientName),
   });
 
   const [messages, setMessages] = useState<ChatMessage[]>([getInitialMessage()]);
@@ -1698,7 +1703,7 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
     enabled: !!clientId,
   });
 
-  const planBuilder = usePlanBuilder(clientId || undefined);
+  const planBuilder = usePlanBuilder(clientId || undefined, lang);
 
   const [weeklyPrograms, setWeeklyPrograms] = useState<Record<number, WeeklyProgramState>>({
     1: {

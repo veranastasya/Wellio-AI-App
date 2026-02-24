@@ -68,7 +68,7 @@ interface PlanBuilderState {
   handleAssignToClient: () => Promise<void>;
 }
 
-export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
+export function usePlanBuilder(clientId: string | undefined, lang: string = "en"): PlanBuilderState {
   const { toast } = useToast();
   
   const [messages, setMessages] = useState<Message[]>([]);
@@ -576,6 +576,12 @@ export function usePlanBuilder(clientId: string | undefined): PlanBuilderState {
       });
     }
 
+    const langLabels: Record<string, string> = {
+      en: "Write the entire response in English.",
+      ru: "Напиши весь ответ на русском языке (Russian).",
+      es: "Escribe toda la respuesta en español (Spanish).",
+    };
+
     prompt += `\n\n---
 
 Please create a personalized wellness plan with:
@@ -586,7 +592,9 @@ Please create a personalized wellness plan with:
 5. Nutrition Habits
 6. Sleep & Recovery
 7. Stress Management
-8. Weekly Checkpoints`;
+8. Weekly Checkpoints
+
+IMPORTANT: ${langLabels[lang] || langLabels.en}`;
 
     return prompt;
   };
