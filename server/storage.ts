@@ -257,6 +257,7 @@ export interface IStorage {
 
   // Plan Item Completions
   getPlanItemCompletions(clientId: string, planId: string, date: string): Promise<PlanItemCompletion[]>;
+  getPlanItemCompletionsByDateRange(clientId: string, planId: string, startDate: string, endDate: string): Promise<PlanItemCompletion[]>;
   getPlanItemCompletion(clientId: string, planId: string, itemId: string, date: string): Promise<PlanItemCompletion | undefined>;
   upsertPlanItemCompletion(completion: InsertPlanItemCompletion): Promise<PlanItemCompletion>;
   deletePlanItemCompletions(clientId: string, planId: string): Promise<boolean>;
@@ -1690,6 +1691,17 @@ Introduction to consistent training and meal logging habits.
       ));
   }
 
+  async getPlanItemCompletionsByDateRange(clientId: string, planId: string, startDate: string, endDate: string): Promise<PlanItemCompletion[]> {
+    return await db.select()
+      .from(planItemCompletions)
+      .where(and(
+        eq(planItemCompletions.clientId, clientId),
+        eq(planItemCompletions.planId, planId),
+        gte(planItemCompletions.date, startDate),
+        lte(planItemCompletions.date, endDate)
+      ));
+  }
+
   async getPlanItemCompletion(clientId: string, planId: string, itemId: string, date: string): Promise<PlanItemCompletion | undefined> {
     const [completion] = await db.select()
       .from(planItemCompletions)
@@ -1715,6 +1727,7 @@ Introduction to consistent training and meal logging habits.
         .set({
           completed: completion.completed,
           completedAt: completion.completed ? new Date().toISOString() : null,
+          ...(completion.weight !== undefined ? { weight: completion.weight } : {}),
         })
         .where(eq(planItemCompletions.id, existing.id))
         .returning();

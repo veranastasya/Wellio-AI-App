@@ -2444,6 +2444,7 @@ export const planItemCompletions = pgTable("plan_item_completions", {
   date: text("date").notNull(), // YYYY-MM-DD - the date for which this completion applies
   completed: boolean("completed").notNull().default(false),
   completedAt: text("completed_at"),
+  weight: real("weight"), // Client-logged weight used during exercise (kg)
   createdAt: text("created_at").notNull(),
 }, (table) => ({
   clientIdIdx: index("plan_item_completions_client_id_idx").on(table.clientId),

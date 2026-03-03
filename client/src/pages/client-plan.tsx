@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { 
   Loader2, ChevronLeft, ChevronRight, Dumbbell, UtensilsCrossed, 
   Target, CheckCircle2, Info, Play, Clock, Sparkles
@@ -39,6 +40,8 @@ interface Exercise {
   reps: number;
   note?: string;
   completed?: boolean;
+  targetWeight?: number;
+  loggedWeight?: number | null;
 }
 
 interface TrainingDay {
@@ -121,6 +124,11 @@ const planT = {
   sets: { en: "sets", ru: "подходов", es: "series" },
   reps: { en: "reps", ru: "повторений", es: "reps" },
   min: { en: "min", ru: "мин", es: "min" },
+  target: { en: "Target", ru: "Цель", es: "Objetivo" },
+  kg: { en: "kg", ru: "кг", es: "kg" },
+  logWeight: { en: "Log weight used (kg)", ru: "Записать рабочий вес (кг)", es: "Registrar peso usado (kg)" },
+  logged: { en: "Logged", ru: "Факт", es: "Registrado" },
+  weightPlaceholder: { en: "e.g. 25", ru: "напр. 25", es: "ej. 25" },
   noProgramYet: { en: "No Program Yet", ru: "Программы пока нет", es: "Aún no hay programa" },
   noProgramDesc: { en: "Your coach hasn't assigned a program to you yet. Check back soon!", ru: "Ваш тренер ещё не назначил вам программу. Загляните позже!", es: "Tu entrenador aún no te ha asignado un programa. ¡Vuelve pronto!" },
   planNotAvailable: { en: "Plan content is not available. Please contact your coach.", ru: "Содержание плана недоступно. Пожалуйста, свяжитесь с тренером.", es: "El contenido del plan no está disponible. Contacta a tu entrenador." },
@@ -343,13 +351,34 @@ function DayChips({
 function ExerciseItem({ 
   exercise, 
   onToggle,
+  onWeightLog,
   lang 
 }: { 
   exercise: Exercise; 
   onToggle: (id: string, completed: boolean) => void;
+  onWeightLog: (id: string, weight: number | null) => void;
   lang: SupportedLanguage;
 }) {
   const isCompleted = exercise.completed ?? false;
+  const [weightInput, setWeightInput] = useState<string>(
+    exercise.loggedWeight != null ? String(exercise.loggedWeight) : ""
+  );
+
+  const handleWeightSubmit = () => {
+    const parsed = parseFloat(weightInput);
+    if (weightInput.trim() === "") {
+      onWeightLog(exercise.id, null);
+    } else if (!isNaN(parsed) && parsed > 0) {
+      onWeightLog(exercise.id, parsed);
+    }
+  };
+
+  const handleWeightKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleWeightSubmit();
+      (e.target as HTMLInputElement).blur();
+    }
+  };
   
   return (
     <div 
@@ -374,11 +403,38 @@ function ExerciseItem({
         </p>
         <p className="text-xs sm:text-sm text-muted-foreground">
           {exercise.sets} {planT.sets[lang]} • {exercise.reps} {planT.reps[lang]}
+          {exercise.targetWeight != null && (
+            <span className="ml-2 text-primary font-medium">
+              {planT.target[lang]}: {exercise.targetWeight} {planT.kg[lang]}
+            </span>
+          )}
         </p>
         {exercise.note && (
-          <p className="text-xs text-primary/70 mt-1 flex items-center gap-1">
-            <span className="text-amber-500">💡</span> {exercise.note}
+          <p className="text-xs text-primary/70 mt-1">
+            {exercise.note}
           </p>
+        )}
+        {isCompleted && (
+          <div className="mt-2 flex items-center gap-2" data-testid={`weight-log-${exercise.id}`}>
+            {exercise.loggedWeight != null ? (
+              <span className="text-xs text-primary font-medium">
+                {planT.logged[lang]}: {exercise.loggedWeight} {planT.kg[lang]}
+              </span>
+            ) : null}
+            <Input
+              type="number"
+              min={0}
+              step={0.5}
+              value={weightInput}
+              onChange={(e) => setWeightInput(e.target.value)}
+              onBlur={handleWeightSubmit}
+              onKeyDown={handleWeightKeyDown}
+              placeholder={planT.weightPlaceholder[lang]}
+              className="h-7 w-24 text-xs"
+              data-testid={`input-weight-${exercise.id}`}
+            />
+            <span className="text-xs text-muted-foreground">{planT.kg[lang]}</span>
+          </div>
         )}
       </div>
     </div>
@@ -469,11 +525,13 @@ function TrainingSection({
   training, 
   selectedDate,
   onToggleExercise,
+  onWeightLog,
   lang 
 }: { 
   training: TrainingDay[]; 
   selectedDate: Date;
   onToggleExercise: (exerciseId: string, completed: boolean) => void;
+  onWeightLog: (exerciseId: string, weight: number | null) => void;
   lang: SupportedLanguage;
 }) {
   const dayName = format(selectedDate, 'EEEE');
@@ -520,6 +578,7 @@ function TrainingSection({
                 key={exercise.id} 
                 exercise={exercise} 
                 onToggle={onToggleExercise}
+                onWeightLog={onWeightLog}
                 lang={lang}
               />
             ))}
@@ -645,7 +704,8 @@ function ThisWeekTab({
 }) {
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [localCompletions, setLocalCompletions] = useState<Record<string, Record<string, boolean>>>({});
+  type CompletionEntry = { completed: boolean; weight?: number | null };
+  const [localCompletions, setLocalCompletions] = useState<Record<string, Record<string, CompletionEntry>>>({});
   
   const weekDates = useMemo(() => {
     const baseDate = currentWeekOffset === 0 
@@ -670,19 +730,20 @@ function ThisWeekTab({
   const weeklyContent = currentWeekPlan?.planContent as WeeklyProgramContent | null;
   const planId = currentWeekPlan?.id || null;
   
-  const { data: serverCompletions, isLoading: isLoadingCompletions } = useQuery<Record<string, boolean>>({
+  const { data: serverCompletions, isLoading: isLoadingCompletions } = useQuery<Record<string, CompletionEntry>>({
     queryKey: ["/api/client/plan-completions", planId, dateKey],
     enabled: !!planId,
   });
   
   const completionMutation = useMutation({
-    mutationFn: async (data: { itemId: string; itemType: string; completed: boolean }) => {
+    mutationFn: async (data: { itemId: string; itemType: string; completed: boolean; weight?: number | null }) => {
       const response = await apiRequest("POST", "/api/client/plan-completions", {
         planId,
         itemId: data.itemId,
         itemType: data.itemType,
         date: dateKey,
         completed: data.completed,
+        weight: data.weight,
       });
       return response.json();
     },
@@ -702,7 +763,7 @@ function ThisWeekTab({
   });
   
   const dateLocalCompletions = localCompletions[dateKey] || {};
-  const completions: Record<string, boolean> = useMemo(() => {
+  const completions: Record<string, CompletionEntry> = useMemo(() => {
     const base = serverCompletions ?? {};
     return { ...base, ...dateLocalCompletions };
   }, [serverCompletions, dateLocalCompletions]);
@@ -710,10 +771,28 @@ function ThisWeekTab({
   const handleToggle = (itemId: string, itemType: string, completed: boolean) => {
     setLocalCompletions(prev => ({
       ...prev,
-      [dateKey]: { ...(prev[dateKey] || {}), [itemId]: completed },
+      [dateKey]: { 
+        ...(prev[dateKey] || {}), 
+        [itemId]: { ...((prev[dateKey] || {})[itemId] || {}), completed } 
+      },
     }));
     if (planId) {
       completionMutation.mutate({ itemId, itemType, completed });
+    }
+  };
+
+  const handleWeightLog = (exerciseId: string, weight: number | null) => {
+    const currentEntry = completions[exerciseId];
+    if (!currentEntry?.completed) return; // Only log weight for completed exercises
+    setLocalCompletions(prev => ({
+      ...prev,
+      [dateKey]: {
+        ...(prev[dateKey] || {}),
+        [exerciseId]: { completed: true, weight },
+      },
+    }));
+    if (planId) {
+      completionMutation.mutate({ itemId: exerciseId, itemType: 'exercise', completed: true, weight });
     }
   };
   
@@ -733,10 +812,14 @@ function ThisWeekTab({
     const rawTraining = weeklyContent?.training || [];
     return rawTraining.map(day => ({
       ...day,
-      exercises: day.exercises.map(ex => ({
-        ...ex,
-        completed: completions[ex.id] ?? ex.completed ?? false,
-      })),
+      exercises: day.exercises.map(ex => {
+        const entry = completions[ex.id];
+        return {
+          ...ex,
+          completed: entry?.completed ?? ex.completed ?? false,
+          loggedWeight: entry?.weight ?? null,
+        };
+      }),
     }));
   }, [weeklyContent?.training, completions]);
   
@@ -746,7 +829,7 @@ function ThisWeekTab({
       ...day,
       meals: day.meals.map(meal => ({
         ...meal,
-        completed: completions[meal.id] ?? meal.completed ?? false,
+        completed: completions[meal.id]?.completed ?? meal.completed ?? false,
       })),
     }));
   }, [weeklyContent?.nutrition, completions]);
@@ -755,7 +838,7 @@ function ThisWeekTab({
     const rawHabits = weeklyContent?.habits || [];
     return rawHabits.map(habit => ({
       ...habit,
-      completed: completions[habit.id] ?? habit.completed ?? false,
+      completed: completions[habit.id]?.completed ?? habit.completed ?? false,
     }));
   }, [weeklyContent?.habits, completions]);
   
@@ -868,6 +951,7 @@ function ThisWeekTab({
           training={training}
           selectedDate={selectedDate}
           onToggleExercise={handleToggleExercise}
+          onWeightLog={handleWeightLog}
           lang={lang}
         />
         <NutritionSection 

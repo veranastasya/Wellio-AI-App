@@ -40,6 +40,7 @@ interface Exercise {
   sets: number;
   reps: number;
   note?: string;
+  targetWeight?: number;
 }
 
 interface TrainingDay {
@@ -94,6 +95,10 @@ const pbtT: Record<string, Record<string, string>> = {
   reps: { en: "Reps", ru: "Повторы", es: "Repeticiones" },
   coachNote: { en: "Coach Note (optional)", ru: "Заметка тренера (необязательно)", es: "Nota del entrenador (opcional)" },
   coachNoteLabel: { en: "Coach note:", ru: "Заметка:", es: "Nota:" },
+  targetWeight: { en: "Target Weight (kg)", ru: "Целевой вес (кг)", es: "Peso objetivo (kg)" },
+  targetWeightLabel: { en: "Target:", ru: "Цель:", es: "Objetivo:" },
+  kg: { en: "kg", ru: "кг", es: "kg" },
+  loggedWeight: { en: "Logged:", ru: "Факт:", es: "Registrado:" },
   cancel: { en: "Cancel", ru: "Отмена", es: "Cancelar" },
   save: { en: "Save", ru: "Сохранить", es: "Guardar" },
   add: { en: "Add", ru: "Добавить", es: "Agregar" },
@@ -603,14 +608,19 @@ function EditableExercise({ exercise, onUpdate, onDelete, lang = "en" }: Editabl
   const [editSets, setEditSets] = useState(exercise.sets);
   const [editReps, setEditReps] = useState(exercise.reps);
   const [editNote, setEditNote] = useState(exercise.note || "");
+  const [editTargetWeight, setEditTargetWeight] = useState<string>(
+    exercise.targetWeight != null ? String(exercise.targetWeight) : ""
+  );
 
   const handleSave = () => {
+    const parsedWeight = editTargetWeight.trim() !== "" ? parseFloat(editTargetWeight) : undefined;
     onUpdate({
       ...exercise,
       name: editName,
       sets: editSets,
       reps: editReps,
       note: editNote || undefined,
+      targetWeight: parsedWeight && !isNaN(parsedWeight) ? parsedWeight : undefined,
     });
     setIsEditing(false);
   };
@@ -620,6 +630,7 @@ function EditableExercise({ exercise, onUpdate, onDelete, lang = "en" }: Editabl
     setEditSets(exercise.sets);
     setEditReps(exercise.reps);
     setEditNote(exercise.note || "");
+    setEditTargetWeight(exercise.targetWeight != null ? String(exercise.targetWeight) : "");
     setIsEditing(false);
   };
 
@@ -636,7 +647,7 @@ function EditableExercise({ exercise, onUpdate, onDelete, lang = "en" }: Editabl
             data-testid="input-exercise-name"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="space-y-2">
             <Label className="text-xs">{pbtT.sets[lang]}</Label>
             <Input
@@ -657,6 +668,19 @@ function EditableExercise({ exercise, onUpdate, onDelete, lang = "en" }: Editabl
               onChange={(e) => setEditReps(parseInt(e.target.value) || 1)}
               className="h-8 text-sm"
               data-testid="input-exercise-reps"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">{pbtT.targetWeight[lang]}</Label>
+            <Input
+              type="number"
+              min={0}
+              step={0.5}
+              value={editTargetWeight}
+              onChange={(e) => setEditTargetWeight(e.target.value)}
+              className="h-8 text-sm"
+              placeholder="—"
+              data-testid="input-exercise-target-weight"
             />
           </div>
         </div>
@@ -693,6 +717,9 @@ function EditableExercise({ exercise, onUpdate, onDelete, lang = "en" }: Editabl
         <p className="font-semibold text-sm text-foreground">{exercise.name}</p>
         <p className="text-xs text-muted-foreground mt-1">
           {pbtT.sets[lang]}: {exercise.sets} &nbsp;&nbsp;&nbsp; {pbtT.reps[lang]}: {exercise.reps}
+          {exercise.targetWeight != null && (
+            <> &nbsp;&nbsp;&nbsp; <span className="text-[#28A0AE] font-medium">{exercise.targetWeight} {pbtT.kg[lang]}</span></>
+          )}
         </p>
         {exercise.note && (
           <p className="text-xs text-[#28A0AE] mt-1.5">
@@ -1626,6 +1653,96 @@ interface ClientPlan {
   weekEndDate?: string;
 }
 
+interface PlanItemCompletion {
+  id: string;
+  clientId: string;
+  planId: string;
+  itemId: string;
+  itemType: string;
+  date: string;
+  completed: boolean;
+  weight?: number | null;
+}
+
+function LoggedWeightsSummary({ 
+  clientId, 
+  planId, 
+  weekStartDate, 
+  weekEndDate, 
+  exercises 
+}: { 
+  clientId: string; 
+  planId: string; 
+  weekStartDate: string; 
+  weekEndDate: string; 
+  exercises: Exercise[];
+}) {
+  const { data: completions = [], isLoading } = useQuery<PlanItemCompletion[]>({
+    queryKey: ["/api/coach/clients", clientId, "plan-completions", planId, weekStartDate, weekEndDate],
+    queryFn: async () => {
+      const resp = await apiRequest("GET", `/api/coach/clients/${clientId}/plan-completions/${planId}?startDate=${weekStartDate}&endDate=${weekEndDate}`);
+      return resp.json();
+    },
+    enabled: !!planId && !!clientId,
+    refetchInterval: 30000,
+  });
+
+  const exerciseMap = new Map(exercises.map(e => [e.id, e]));
+  const withWeights = completions.filter(c => c.itemType === "exercise" && c.completed && c.weight != null);
+  const completedExercises = completions.filter(c => c.itemType === "exercise" && c.completed);
+  const uniqueCompletedIds = new Set(completedExercises.map(c => c.itemId));
+  
+  if (isLoading) return null;
+  if (completedExercises.length === 0) {
+    return (
+      <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Dumbbell className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">Client Activity This Week</span>
+        </div>
+        <p className="text-xs text-muted-foreground">No exercises completed yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-lg border border-border bg-muted/30 p-4" data-testid="logged-weights-summary">
+      <div className="flex items-center gap-2 mb-3">
+        <Dumbbell className="w-4 h-4 text-[#28A0AE]" />
+        <span className="text-sm font-semibold text-foreground">Client Activity This Week</span>
+        <Badge className="bg-[#E2F9AD] text-[#1a1a1a] text-xs">{uniqueCompletedIds.size} exercises done</Badge>
+      </div>
+      <div className="space-y-1.5">
+        {Array.from(uniqueCompletedIds).map(itemId => {
+          const ex = exerciseMap.get(itemId);
+          const name = ex?.name ?? itemId;
+          const targetWeight = ex?.targetWeight;
+          const weightEntries = withWeights.filter(c => c.itemId === itemId);
+          const latestWeight = weightEntries.length > 0 
+            ? weightEntries[weightEntries.length - 1].weight 
+            : null;
+          return (
+            <div key={itemId} className="flex items-center gap-2 text-xs" data-testid={`logged-weight-row-${itemId}`}>
+              <Check className="w-3 h-3 text-green-500 flex-shrink-0" />
+              <span className="text-foreground font-medium truncate">{name}</span>
+              {targetWeight != null && (
+                <span className="text-muted-foreground">
+                  Target: <span className="text-[#28A0AE] font-medium">{targetWeight} kg</span>
+                </span>
+              )}
+              {latestWeight != null && (
+                <span className="text-muted-foreground ml-auto flex-shrink-0">
+                  Logged: <span className="text-green-600 font-semibold">{latestWeight} kg</span>
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, programStartDate, joinedDate, lang = "en" }: PlanBuilderTabProps) {
   // Calculate the base date for week calculations (program start or joined date)
   const getBaseDate = (): Date => {
@@ -1772,6 +1889,10 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
   
   // Gate assignment until coach profile is ready and week has data
   const canAssign = hasWeekData && !isAssigning && !isAssigned && !!coachProfile?.id;
+
+  // Find existing assigned plan for current week (for logged weights display)
+  const existingWeekPlan = existingPlans.find(p => p.planContent?.week === weekIndex) ?? null;
+  const allExercisesThisWeek = programState?.trainingDays.flatMap(d => d.exercises) ?? [];
 
   const setProgramState = (updater: (prev: WeeklyProgramState) => WeeklyProgramState) => {
     setWeeklyPrograms(prev => ({
@@ -2384,6 +2505,15 @@ export function PlanBuilderTab({ clientId, clientName, onSwitchToClientView, pro
                   onToggleTask={handleToggleTask}
                   lang={lang}
                 />
+                {isAssigned && existingWeekPlan?.id && existingWeekPlan.weekStartDate && existingWeekPlan.weekEndDate && (
+                  <LoggedWeightsSummary
+                    clientId={clientId}
+                    planId={existingWeekPlan.id}
+                    weekStartDate={existingWeekPlan.weekStartDate}
+                    weekEndDate={existingWeekPlan.weekEndDate}
+                    exercises={allExercisesThisWeek}
+                  />
+                )}
               </div>
             </div>
           )}

@@ -1292,7 +1292,8 @@ You must respond with a JSON object in this exact format:
     // For add_training (single workout day):
     "day": "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday",
     "title": "Workout Title",
-    "exercises": [{ "name": "Exercise Name", "sets": 4, "reps": 10, "note": "optional note" }]
+    "exercises": [{ "name": "Exercise Name", "sets": 4, "reps": 10, "note": "optional note", "targetWeight": 20 }]
+    // note: targetWeight is optional (kg) - include only if the coach mentioned a specific weight
     
     // For add_schedule (MULTIPLE TRAINING/WORKOUT days - use ONLY for workouts/exercise programs):
     "schedule": [

@@ -3323,54 +3323,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Password must be at least 8 characters" });
       }
 
-      // Verify token and get client
-      const clientToken = await storage.getClientTokenByToken(token);
+      // Step 1: Verify token
+      let clientToken;
+      try {
+        clientToken = await storage.getClientTokenByToken(token);
+      } catch (err) {
+        console.error("[Set Password] Step 1 failed - token lookup:", err);
+        return res.status(500).json({ error: "Failed to verify token" });
+      }
       if (!clientToken || !clientToken.clientId) {
         return res.status(404).json({ error: "Invalid token or client not found" });
       }
 
-      const client = await storage.getClient(clientToken.clientId);
+      // Step 2: Get client
+      let client;
+      try {
+        client = await storage.getClient(clientToken.clientId);
+      } catch (err) {
+        console.error("[Set Password] Step 2 failed - client lookup:", err);
+        return res.status(500).json({ error: "Failed to retrieve client" });
+      }
       if (!client) {
         return res.status(404).json({ error: "Client not found" });
       }
 
-      // Check if password already set
+      // If password already set, allow them to log in instead of blocking
       if (client.passwordHash) {
+        console.log("[Set Password] Password already set for client:", client.id, "- redirecting to login");
         return res.status(400).json({ error: "Password already set. Please use login instead." });
       }
 
-      // Hash password
-      const saltRounds = 10;
-      const passwordHash = await bcrypt.hash(password, saltRounds);
-
-      // Get the invite to retrieve the language preference
-      const invite = await storage.getClientInviteByClientId(client.id);
-      
-      // Build update data - only set preferredLanguage if we have it from invite
-      const updateData: Record<string, any> = {
-        passwordHash,
-        lastLoginAt: new Date().toISOString(),
-      };
-      
-      // Only update preferredLanguage if invite has a language set
-      if (invite?.language) {
-        updateData.preferredLanguage = invite.language;
+      // Step 3: Hash password
+      let passwordHash;
+      try {
+        passwordHash = await bcrypt.hash(password, 10);
+      } catch (err) {
+        console.error("[Set Password] Step 3 failed - bcrypt hash:", err);
+        return res.status(500).json({ error: "Failed to process password" });
       }
-      
-      console.log("[Set Password] Saving client data:", { 
-        clientId: client.id, 
-        inviteFound: !!invite,
-        inviteLanguage: invite?.language,
-        willUpdateLanguage: !!invite?.language
-      });
 
-      // Update client with password and optionally language preference
-      await storage.updateClient(client.id, updateData);
+      // Step 4: Get invite language preference
+      let invite;
+      try {
+        invite = await storage.getClientInviteByClientId(client.id);
+      } catch (err) {
+        console.error("[Set Password] Step 4 warning - invite lookup failed (non-fatal):", err);
+        invite = undefined;
+      }
 
-      // Set session
-      req.session.clientId = client.id;
-      req.session.clientEmail = client.email;
+      // Step 5: Update client record with properly typed fields
+      try {
+        const clientUpdateFields: Parameters<typeof storage.updateClient>[1] = {
+          passwordHash,
+          lastLoginAt: new Date().toISOString(),
+          ...(invite?.language ? { preferredLanguage: invite.language } : {}),
+        };
+        console.log("[Set Password] Step 5 - updating client:", {
+          clientId: client.id,
+          hasInvite: !!invite,
+          inviteLanguage: invite?.language,
+        });
+        await storage.updateClient(client.id, clientUpdateFields);
+      } catch (err) {
+        console.error("[Set Password] Step 5 failed - updateClient:", err);
+        return res.status(500).json({ error: "Failed to save account" });
+      }
 
+      // Step 6: Set session with explicit save for async PostgreSQL store
+      try {
+        req.session.clientId = client.id;
+        req.session.clientEmail = client.email;
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err) => {
+            if (err) {
+              console.error("[Set Password] Step 6 warning - session save failed (non-fatal):", err);
+            }
+            resolve(); // Resolve even on session error — password was saved successfully
+          });
+        });
+      } catch (err) {
+        console.error("[Set Password] Step 6 warning - session setup error (non-fatal):", err);
+        // Non-fatal: password is set, client can log in manually
+      }
+
+      console.log("[Set Password] Success for client:", client.id, client.email);
       res.json({ 
         success: true, 
         client: { 
@@ -3380,7 +3416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } 
       });
     } catch (error) {
-      console.error("Error setting password:", error);
+      console.error("[Set Password] Unexpected error:", error);
       res.status(500).json({ error: "Failed to set password" });
     }
   });
@@ -3856,10 +3892,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const completions = await storage.getPlanItemCompletions(clientId, planId, date);
       
-      // Transform to a simple map for frontend
-      const completionMap: Record<string, boolean> = {};
+      // Transform to a map with completion status and logged weight
+      const completionMap: Record<string, { completed: boolean; weight?: number | null }> = {};
       completions.forEach(c => {
-        completionMap[c.itemId] = c.completed;
+        completionMap[c.itemId] = { completed: c.completed, weight: c.weight };
       });
       
       res.json(completionMap);
@@ -3869,11 +3905,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Client-facing: Toggle plan item completion
+  // Client-facing: Toggle plan item completion (with optional logged weight)
   app.post("/api/client/plan-completions", requireClientAuth, async (req, res) => {
     try {
       const clientId = req.session.clientId!;
-      const { planId, itemId, itemType, date, completed } = req.body;
+      const { planId, itemId, itemType, date, completed, weight } = req.body;
       
       if (!planId || !itemId || !itemType || !date) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -3892,6 +3928,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         itemType,
         date,
         completed: completed ?? true,
+        weight: typeof weight === "number" ? weight : null,
         createdAt: new Date().toISOString(),
       });
       
@@ -3902,6 +3939,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error toggling plan completion:", error);
       res.status(500).json({ error: "Failed to update completion" });
+    }
+  });
+
+  // Coach-facing: Get plan completions (with logged weights) for a client's plan over a date range
+  app.get("/api/coach/clients/:clientId/plan-completions/:planId", requireCoachAuth, async (req, res) => {
+    try {
+      const coachId = req.session.coachId!;
+      const { clientId, planId } = req.params;
+      const { startDate, endDate } = req.query as { startDate?: string; endDate?: string };
+
+      if (!await assertCoachOwnsClient(coachId, clientId)) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const plan = await storage.getClientPlan(planId);
+      if (!plan || plan.clientId !== clientId) {
+        return res.status(403).json({ error: "Plan not found or access denied" });
+      }
+
+      const start = startDate || plan.weekStartDate || "";
+      const end = endDate || plan.weekEndDate || "";
+
+      const completions = await storage.getPlanItemCompletionsByDateRange(clientId, planId, start, end);
+      res.json(completions);
+    } catch (error) {
+      console.error("Error fetching coach plan completions:", error);
+      res.status(500).json({ error: "Failed to fetch completions" });
     }
   });
 
