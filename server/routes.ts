@@ -469,9 +469,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { password, email, username } = req.body;
       
-      // Test account for automated testing (username: coach_test, password: coach123)
-      if (username === "coach_test" && password === "coach123") {
+      // Test account for automated testing (email: coach_test@example.com, password: coach123)
+      if (email === "coach_test@example.com" && password === "coach123") {
         req.session.coachId = "test-coach";
+        await new Promise<void>((resolve, reject) =>
+          req.session.save((err) => (err ? reject(err) : resolve()))
+        );
         return res.json({ success: true, coachId: "test-coach" });
       }
       
