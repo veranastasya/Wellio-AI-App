@@ -1,0 +1,138 @@
+You are a senior product leader and SaaS monetization expert designing the business model for an early-stage startup.
+
+## CONTEXT
+
+We are building an AI-powered platform for wellness / fitness / nutrition coaches.
+
+Primary user: coaches who manage multiple clients
+Secondary user: their clients
+
+The product replaces or augments:
+
+* spreadsheets
+* WhatsApp/iMessage communication
+* manual plan creation
+* manual progress tracking
+* basic coaching apps
+
+The core value:
+→ help coaches save time, scale their business, and deliver better outcomes using AI
+
+---
+
+## TASK 1: DEFINE THE PRODUCT CAPABILITIES
+
+Without being given a feature list, infer the most likely core capabilities of this product.
+
+Group them into:
+
+1. Non-AI (core SaaS functionality)
+2. AI-powered functionality
+
+Be concrete. Avoid generic categories like “analytics” without explaining what that actually means in this context.
+
+---
+
+## TASK 2: DEFINE "AI ACTION"
+
+Define what an "AI action" is such that:
+
+* it represents a unit of user-perceived value
+* it is consistent across different features
+* it is NOT based on tokens or API calls
+
+Then map each inferred AI capability to:
+
+* how many actions it consumes per use
+* clear real-world examples
+
+---
+
+## TASK 3: USAGE MODEL
+
+Segment coaches into:
+
+1. 1–5 clients
+2. 6–20 clients
+3. 20+ clients
+
+For each segment:
+
+* estimate actions per client per month
+* estimate total actions per coach per month
+
+Break down usage by type of activity (not just totals)
+
+---
+
+## TASK 4: COST MODEL
+
+Assume:
+
+* cost per AI action = $0.005–$0.015
+
+Calculate:
+
+* monthly cost per coach (by segment)
+* cost sensitivity (what happens if usage doubles)
+
+---
+
+## TASK 5: PRICING + PACKAGING
+
+Design a 3-tier pricing model.
+
+Constraints:
+
+* pricing should scale primarily with number of clients
+* AI should be a major differentiator in mid/high tiers
+* entry tier should not create high AI cost exposure
+* include overage pricing ($/action)
+
+Output for each tier:
+
+* price
+* target user
+* client limit
+* included capabilities
+* included AI actions (if any)
+* expected usage
+* expected margin
+
+---
+
+## TASK 6: PRODUCT LOGIC (CRITICAL)
+
+Translate the business model into actual product behavior.
+
+For each key action in the UI:
+
+* define when an AI action is triggered
+* define what happens when usage limits are reached
+* define how the user is nudged to upgrade
+
+Example level of specificity:
+“When a coach clicks [X], the system does [Y], consuming [Z] actions”
+
+---
+
+## TASK 7: OUTPUT FORMAT
+
+Return in this exact structure:
+
+1. Product capabilities (AI vs non-AI)
+2. Definition of AI action
+3. Usage model (table by segment)
+4. Cost model
+5. Pricing tiers (table)
+6. Product behavior (very concrete)
+
+---
+
+## IMPORTANT
+
+* Avoid generic SaaS advice
+* Do not stay high-level
+* Make reasonable assumptions where needed
+* Optimize for clarity, simplicity, and scalability
+* This should be implementation-ready, not conceptual
