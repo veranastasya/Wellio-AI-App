@@ -1,0 +1,112 @@
+You are a startup strategist and investor helping design a pricing model for an AI SaaS product.
+
+Your goal is to create a pricing slide AND ensure that unit economics are logical, realistic, and investor-ready.
+
+---
+
+CONTEXT:
+
+We are building Wellio AI — an AI-powered platform for wellness coaches (fitness, nutrition, lifestyle).
+
+The platform helps coaches:
+- generate personalized plans using AI
+- manage clients
+- track progress
+- scale their business
+
+Target customer:
+- Individual coaches and small coaching businesses
+
+Business model direction:
+- SaaS subscription (monthly)
+- Possibly usage-based component (AI actions, plan generation, etc.)
+
+---
+
+CRITICAL CONSTRAINT:
+
+The pricing MUST account for:
+- AI costs (per action / per generation)
+- infrastructure (hosting, storage)
+- expected usage per coach
+- reasonable gross margin (target 70%+ long-term, lower acceptable early)
+
+---
+
+TASK 1: DEFINE PRICING MODEL
+
+Propose a pricing structure with:
+
+- 2–3 tiers (e.g. Starter / Pro / Scale)
+- Price per tier
+- What’s included in each tier:
+  - number of clients
+  - AI usage (plans, actions)
+  - features
+
+Make it realistic for early-stage adoption (not overpriced).
+
+---
+
+TASK 2: ESTIMATE USAGE
+
+Estimate:
+- average number of clients per coach
+- average AI actions per client per month
+- total AI usage per coach
+
+Explain assumptions clearly.
+
+---
+
+TASK 3: UNIT ECONOMICS
+
+Calculate per-customer:
+
+- Revenue (ARPU)
+- AI cost
+- Infra cost
+- Total cost per customer
+- Gross margin
+
+Show:
+- margin by tier
+- blended margin
+
+---
+
+TASK 4: PRICING SLIDE (INVESTOR-READY)
+
+Create a clean pricing slide with:
+
+- tiers
+- pricing
+- key features
+- a short line explaining monetization logic
+
+Then add a small section:
+“Unit Economics Snapshot” with 2–3 key numbers:
+- ARPU
+- Cost per user
+- Gross margin
+
+---
+
+TASK 5: STRESS TEST
+
+Answer:
+- What happens if usage doubles?
+- Where does margin break?
+- What are key risks in this pricing model?
+
+---
+
+OUTPUT FORMAT:
+
+Section 1: Pricing Model (table)  
+Section 2: Assumptions  
+Section 3: Unit Economics Breakdown (table)  
+Section 4: Investor-Ready Pricing Slide (clean text)  
+Section 5: Risks & Sensitivity  
+
+Be realistic, not optimistic. Avoid generic SaaS answers.
