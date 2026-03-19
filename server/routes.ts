@@ -435,13 +435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Coach authentication routes
   app.post("/api/coach/login", async (req, res) => {
     try {
-      const { password, email, username } = req.body;
-      
-      // Test account for automated testing (username: coach_test, password: coach123)
-      if (username === "coach_test" && password === "coach123") {
-        req.session.coachId = "test-coach";
-        return res.json({ success: true, coachId: "test-coach" });
-      }
+      const { password, email } = req.body;
       
       // Email-based login against coaches table
       if (email) {
@@ -920,7 +914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin migration endpoint - idempotent goalType migration
-  app.post("/api/admin/migrate-goal-types", async (_req, res) => {
+  app.post("/api/admin/migrate-goal-types", requireCoachAuth, async (_req: Request, res: Response) => {
     try {
       const clients = await storage.getClients();
       const migratedIds: string[] = [];
@@ -2157,7 +2151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Nutrition Log routes
-  app.get("/api/nutrition-logs", async (_req, res) => {
+  app.get("/api/nutrition-logs", requireCoachAuth, async (_req: Request, res: Response) => {
     try {
       const nutritionLogs = await storage.getNutritionLogs();
       res.json(nutritionLogs);
@@ -2166,7 +2160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/nutrition-logs", async (req, res) => {
+  app.post("/api/nutrition-logs", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const validatedData = insertNutritionLogSchema.parse(req.body);
       const nutritionLog = await storage.createNutritionLog(validatedData);
@@ -2184,7 +2178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Workout Log routes
-  app.get("/api/workout-logs", async (_req, res) => {
+  app.get("/api/workout-logs", requireCoachAuth, async (_req: Request, res: Response) => {
     try {
       const workoutLogs = await storage.getWorkoutLogs();
       res.json(workoutLogs);
@@ -2193,7 +2187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/workout-logs", async (req, res) => {
+  app.post("/api/workout-logs", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const validatedData = insertWorkoutLogSchema.parse(req.body);
       const workoutLog = await storage.createWorkoutLog(validatedData);
@@ -2210,7 +2204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check-in routes
-  app.get("/api/check-ins", async (_req, res) => {
+  app.get("/api/check-ins", requireCoachAuth, async (_req: Request, res: Response) => {
     try {
       const checkIns = await storage.getCheckIns();
       res.json(checkIns);
@@ -2219,7 +2213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/check-ins", async (req, res) => {
+  app.post("/api/check-ins", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const validatedData = insertCheckInSchema.parse(req.body);
       const checkIn = await storage.createCheckIn(validatedData);
@@ -2236,7 +2230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Device Connection routes
-  app.get("/api/device-connections", async (_req, res) => {
+  app.get("/api/device-connections", requireCoachAuth, async (_req: Request, res: Response) => {
     try {
       const connections = await storage.getDeviceConnections();
       res.json(connections);
@@ -2245,7 +2239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/device-connections/client/:clientId", async (req, res) => {
+  app.get("/api/device-connections/client/:clientId", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const connections = await storage.getDeviceConnectionsByClient(req.params.clientId);
       res.json(connections);
@@ -2254,7 +2248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/device-connections", async (req, res) => {
+  app.post("/api/device-connections", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const validatedData = insertDeviceConnectionSchema.parse(req.body);
       const connection = await storage.createDeviceConnection(validatedData);
@@ -2264,7 +2258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/device-connections/:id", async (req, res) => {
+  app.patch("/api/device-connections/:id", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const validatedData = insertDeviceConnectionSchema.partial().parse(req.body);
       const connection = await storage.updateDeviceConnection(req.params.id, validatedData);
@@ -2277,7 +2271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/device-connections/:id", async (req, res) => {
+  app.delete("/api/device-connections/:id", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const success = await storage.deleteDeviceConnection(req.params.id);
       if (!success) {
@@ -2565,7 +2559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Insights routes
-  app.get("/api/insights/:clientId", async (req, res) => {
+  app.get("/api/insights/:clientId", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const { clientId } = req.params;
       
