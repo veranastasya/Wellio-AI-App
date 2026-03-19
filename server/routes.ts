@@ -1289,6 +1289,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/coach/messages", requireCoachAuth, async (req, res) => {
     try {
       const validatedData = insertMessageSchema.parse(req.body);
+
+      if (validatedData.clientId && !(await assertCoachOwnsClient(req.session.coachId!, validatedData.clientId))) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
       const message = await storage.createMessage(validatedData);
       
       // Send push notification to client when coach sends a message (non-blocking)
@@ -1316,7 +1321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/coach/messages/:id/read", async (req, res) => {
+  app.patch("/api/coach/messages/:id/read", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const message = await storage.updateMessage(req.params.id, { read: true });
       if (!message) {
@@ -2443,7 +2448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Connection Request routes (Apple Health integration)
-  app.post("/api/connection-requests", async (req, res) => {
+  app.post("/api/connection-requests", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const { clientId, clientName, clientEmail, deviceType } = req.body;
       
@@ -2545,7 +2550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/connection-requests/client/:clientId", async (req, res) => {
+  app.get("/api/connection-requests/client/:clientId", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const { clientId } = req.params;
       
@@ -2642,13 +2647,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Client Invite routes (Coach creates invites for clients)
-  app.post("/api/client-invites", async (req, res) => {
+  app.post("/api/client-invites", requireCoachAuth, async (req: Request, res: Response) => {
     try {
-      const { email, name, questionnaireId, message, coachName, coachId, language = "en" } = req.body;
-      console.log("[DEBUG] Invite request body:", { email, name, questionnaireId, coachName, coachId, language, fullBody: req.body });
-      
-      // Get coachId from session or request body
-      const effectiveCoachId = coachId || (req.session as any)?.coachId || "default-coach";
+      const { email, name, questionnaireId, message, coachName, language = "en" } = req.body;
+      console.log("[DEBUG] Invite request body:", { email, name, questionnaireId, coachName, language, fullBody: req.body });
+
+      // Get coachId from session (guaranteed by requireCoachAuth)
+      const effectiveCoachId = req.session.coachId!;
       
       // Validate language
       const validLanguage = ["en", "ru", "es"].includes(language) ? language : "en";
@@ -2732,11 +2737,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk invite endpoint - send multiple invites at once
-  app.post("/api/client-invites/bulk", async (req, res) => {
+  app.post("/api/client-invites/bulk", requireCoachAuth, async (req: Request, res: Response) => {
     try {
-      const { invites, coachId, coachName, questionnaireId, message } = req.body;
-      
-      const effectiveCoachId = coachId || (req.session as any)?.coachId || "default-coach";
+      const { invites, coachName, questionnaireId, message } = req.body;
+
+      const effectiveCoachId = req.session.coachId!;
       
       if (!invites || !Array.isArray(invites) || invites.length === 0) {
         return res.status(400).json({ error: "Invites array is required" });
@@ -2832,7 +2837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Resend invite email
-  app.post("/api/client-invites/:id/resend", async (req, res) => {
+  app.post("/api/client-invites/:id/resend", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const invite = await storage.getClientInvite(id);
@@ -2884,7 +2889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/client-invites/client/:clientId", async (req, res) => {
+  app.get("/api/client-invites/client/:clientId", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const invite = await storage.getClientInviteByClientId(req.params.clientId);
       res.json(invite || null);
@@ -2893,7 +2898,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/client-invites/email/:email", async (req, res) => {
+  app.get("/api/client-invites/email/:email", requireCoachAuth, async (req: Request, res: Response) => {
     try {
       const invite = await storage.getClientInviteByEmail(req.params.email);
       res.json(invite || null);

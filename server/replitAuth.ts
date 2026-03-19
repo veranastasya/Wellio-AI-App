@@ -1,5 +1,6 @@
 import * as client from "openid-client";
 import { Strategy, type VerifyFunction } from "openid-client/passport";
+import { randomBytes } from "crypto";
 
 import passport from "passport";
 import session from "express-session";
@@ -256,7 +257,7 @@ export async function setupOAuth(app: Express) {
     (req.session as any).clientOAuthToken = token;
     
     // Generate a nonce for security
-    const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const nonce = randomBytes(32).toString('hex');
     (req.session as any).clientOAuthNonce = nonce;
     
     req.session.save((err) => {
@@ -447,7 +448,7 @@ export async function setupOAuth(app: Express) {
   // Returning client OAuth login - for clients who already have OAuth accounts
   app.get("/api/client-oauth/returning-login", (req, res, next) => {
     // Generate a nonce for security
-    const nonce = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const nonce = randomBytes(32).toString('hex');
     (req.session as any).clientReturningNonce = nonce;
     
     req.session.save((err) => {
